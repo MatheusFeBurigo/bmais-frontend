@@ -1,13 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { apiFetch, getToken, setToken, setUnauthorizedHandler } from '../api/client'
-import type { LoginResponse } from '../types/api'
+import type { LoginResponse, RegisterResponse } from '../types/api'
 
 interface AuthState {
   username: string | null
   authenticated: boolean
   loading: boolean
-  login: (username: string, password: string) => Promise<void>
+  // remember=true (padrão) mantém a sessão entre reinícios do navegador.
+  login: (username: string, password: string, remember?: boolean) => Promise<void>
+  // Devolve o resultado do registro: se exigir confirmação de e-mail, a UI mostra
+  // o aviso; senão a sessão já é aplicada e o app redireciona automaticamente.
+  register: (email: string, password: string, remember?: boolean) => Promise<RegisterResponse>
   logout: () => void
 }
 
@@ -54,19 +58,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null)
   }, [])
 
-  const login = useCallback(async (u: string, p: string) => {
+  const login = useCallback(async (u: string, p: string, remember = true) => {
     const res = await apiFetch<LoginResponse>('/login', {
       method: 'POST',
-      body: { username: u, password: p },
+      body: { email: u, username: u, password: p },
       skipAuthRedirect: true,
     })
-    setToken(res.token)
+    setToken(res.token, remember)
     setUsername(res.username)
   }, [])
 
+  const register = useCallback(async (email: string, password: string, remember = true) => {
+    const res = await apiFetch<RegisterResponse>('/register', {
+      method: 'POST',
+      body: { email, password },
+      skipAuthRedirect: true,
+    })
+    // Sessão imediata (sem confirmação de e-mail): já entra no app.
+    if (!res.confirmacao_necessaria && res.token && res.username) {
+      setToken(res.token, remember)
+      setUsername(res.username)
+    }
+    return res
+  }, [])
+
   const value = useMemo<AuthState>(
-    () => ({ username, authenticated: !!username, loading, login, logout }),
-    [username, loading, login, logout],
+    () => ({ username, authenticated: !!username, loading, login, register, logout }),
+    [username, loading, login, register, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

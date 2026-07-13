@@ -20,6 +20,15 @@ const localStyles = `
 .up-tabnav-item.active{color:var(--primary);font-weight:600;border-bottom-color:var(--primary)}
 .res-ok{border-left:3px solid var(--success);background:var(--success-bg);border-radius:0 var(--r-md) var(--r-md) 0;padding:10px 14px}
 .res-err{border-left:3px solid var(--danger);background:var(--danger-bg);border-radius:0 var(--r-md) var(--r-md) 0;padding:10px 14px}
+/* Banner de sucesso do upload — feedback claro de que os arquivos subiram. */
+.up-success{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:var(--r-md);background:linear-gradient(180deg,var(--success-bg),var(--surface) 92%);border:1px solid rgba(14,122,83,.28);animation:up-pop .3s cubic-bezier(.2,.7,.2,1)}
+.up-success-ico{flex-shrink:0;width:40px;height:40px;border-radius:50%;background:var(--success);color:#fff;display:grid;place-items:center;box-shadow:0 4px 12px rgba(14,122,83,.3)}
+.up-success-ico svg{animation:up-check .4s .1s both cubic-bezier(.2,.7,.2,1)}
+.up-success-title{font-weight:600;font-size:var(--t-md);color:var(--success-2);line-height:1.2}
+.up-success-sub{font-size:var(--t-sm);color:var(--ink-3);margin-top:2px}
+.up-success-sub strong{color:var(--success-2)}
+@keyframes up-pop{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes up-check{from{stroke-dasharray:0 40;opacity:0}to{stroke-dasharray:40 40;opacity:1}}
 `
 
 type TabKey = 'censos' | 'relatorios'
@@ -67,7 +76,7 @@ function DropZone({ accept, icon, titulo, hint, onFiles, files }: DropZoneProps)
         <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>{hint}</div>
       </div>
       <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', marginTop: 10, minHeight: 18 }}>
-        {files.length > 0 && `${files.length} arquivo(s): ${files.map((f) => f.name).join(', ')}`}
+        {files.length > 0 && `${files.length} arquivo${files.length > 1 ? 's' : ''} selecionado${files.length > 1 ? 's' : ''}`}
       </div>
     </>
   )
@@ -228,27 +237,10 @@ export default function Upload() {
           )}
         </div>
 
-        {/* Atalho pasta local */}
-        <div className="card" style={{ marginTop: 12, background: 'var(--warning-bg)', borderColor: 'rgba(180,108,0,.2)' }}>
-          <div className="row" style={{ gap: 14, alignItems: 'flex-start', padding: 16 }}>
-            <div style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /></svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className="fw-6" style={{ fontSize: 'var(--t-sm)', color: 'var(--ink-2)', marginBottom: 3 }}>
-                Atalho: processar pasta local
-              </div>
-              <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
-                Coloque arquivos na pasta de relatórios configurada no servidor e clique no botão
-                "Processar pasta de relatórios" para processar todos de uma vez.
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Resultados */}
         {result && (
           <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <SucessoBanner kind={result.kind} data={result.data} />
             <Resultados kind={result.kind} data={result.data} />
           </div>
         )}
@@ -256,6 +248,47 @@ export default function Upload() {
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </Layout>
+  )
+}
+
+// ── Banner de sucesso: feedback visual claro de que os arquivos foram subidos ─
+function SucessoBanner({ kind, data }: { kind: Kind; data: ResultData }) {
+  let total = 0
+  let ok = 0
+  let detalhe = ''
+
+  if (kind === 'censos') {
+    const resultados = (data as UploadCensoResponse).resultados ?? []
+    total = resultados.length
+    ok = resultados.filter((r) => !r.erro).length
+    const pacientes = resultados.reduce((s, r) => s + (r.total || 0), 0)
+    detalhe = `${pacientes} pacientes atualizados no banco`
+  } else {
+    const d = data as RelatorioRefreshResponse
+    const resultados = d.resultados ?? []
+    total = d.arquivos ?? resultados.length
+    ok = resultados.filter((r) => !r.erro).length
+    detalhe = `${d.aplicados ?? 0} relatórios aplicados`
+  }
+
+  const falhas = total - ok
+  const titulo = falhas > 0
+    ? `${ok} de ${total} arquivo${total > 1 ? 's' : ''} processado${ok > 1 ? 's' : ''}`
+    : `${total} arquivo${total > 1 ? 's' : ''} enviado${total > 1 ? 's' : ''} com sucesso`
+
+  return (
+    <div className="up-success">
+      <div className="up-success-ico">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="up-success-title">{titulo}</div>
+        <div className="up-success-sub">
+          <strong>{detalhe}</strong>
+          {falhas > 0 && <span style={{ color: 'var(--danger)' }}> · {falhas} com erro (ver abaixo)</span>}
+        </div>
+      </div>
+    </div>
   )
 }
 

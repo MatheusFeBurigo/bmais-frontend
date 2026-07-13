@@ -5,7 +5,7 @@ import type {
   EquipePayload, Profissional, ProfissionalDetalhe, ProfTipo, Escala, Hospital,
 } from '../types/api'
 import Layout from '../components/Layout'
-import { KpiCard, Badge, Modal } from '../components/ui'
+import { KpiCard, Badge, Modal, LoadingState } from '../components/ui'
 import Toast from '../components/Toast'
 
 const TIPO_LABEL: Record<ProfTipo, string> = {
@@ -21,11 +21,29 @@ const SERVICOS = [
   { key: 'PS', label: 'PS — Pronto Socorro' },
 ]
 
+// ── Ícones (portados do equipe.html) ─────────────────────────────────────────
+const IconPlus = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+)
+const IconCheck = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+)
+const IconX = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+)
+const IconEyeOff = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.1 10.1 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+)
+const IconUsers = ({ size = 40 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+)
+
 const localStyles = `
 .prof-item{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);cursor:pointer;transition:border-color .12s,background .12s;margin-bottom:6px}
 .prof-item:hover{border-color:var(--primary-3);background:var(--primary-soft)}
 .prof-item.active{border-color:var(--primary);background:var(--primary-soft)}
 .prof-item.inativo{opacity:.55}
+.prof-item.inativo:hover{opacity:.75}
 .prof-avatar{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0;font-family:var(--font-mono)}
 .prof-avatar.E{background:linear-gradient(135deg,#0E7A53,#065A3D)}
 .prof-avatar.M{background:linear-gradient(135deg,#1F6FBE,#0F4D9E)}
@@ -38,6 +56,9 @@ const localStyles = `
 .tab-sec-btn.active{background:var(--ink);color:#fff;border-color:var(--ink)}
 .edit-field label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:600;color:var(--muted);margin-bottom:4px}
 .inativos-toggle{font-size:var(--t-sm);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-sm);background:var(--surface-3);border:1px solid var(--border);margin-bottom:10px;user-select:none}
+.inativos-toggle:hover{border-color:var(--border-strong)}
+.escala-remove{background:none;border:none;cursor:pointer;color:var(--muted-2);padding:2px 4px;border-radius:4px;line-height:1;flex-shrink:0;display:grid;place-items:center;transition:color .12s}
+.escala-remove:hover{color:var(--danger)}
 `
 
 function isAtivo(p: Profissional): boolean {
@@ -90,6 +111,7 @@ export default function Equipe() {
 
   const actions = (
     <button className="btn btn-primary btn-sm" onClick={() => setAddOpen(true)}>
+      {IconPlus}
       Adicionar
     </button>
   )
@@ -102,7 +124,7 @@ export default function Equipe() {
     <Layout title="Equipe B+ Auditoria" subtitle={subtitle} actions={actions}>
       <style>{localStyles}</style>
 
-      {isLoading && <div className="empty-state">Carregando equipe…</div>}
+      {isLoading && <LoadingState label="Carregando equipe…" />}
 
       {data && (
         <>
@@ -118,18 +140,22 @@ export default function Equipe() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 16, alignItems: 'start' }}>
             {/* Lista */}
             <div>
+              {/* Filtro por tipo */}
               <div className="tab-section">
                 {([['todos', `Todos (${data.total_todos})`], ['E', `Enfermeiros (${data.enfermeiros.length})`], ['M', `Médicos Auditores (${data.medicos.length})`], ['O', `Operadores (${data.operadores.length})`]] as const).map(([t, lbl]) => (
                   <button key={t} className={`tab-sec-btn${tipoFiltro === t ? ' active' : ''}`} onClick={() => setTipoFiltro(t)}>{lbl}</button>
                 ))}
               </div>
 
+              {/* Toggle mostrar/ocultar inativos */}
               {totalInativos > 0 && (
                 <div className="inativos-toggle" onClick={() => setShowInativos((v) => !v)}>
-                  {showInativos ? 'Ocultar desativados' : `Mostrar ${totalInativos} desativado${totalInativos > 1 ? 's' : ''}`}
+                  {IconEyeOff}
+                  <span>{showInativos ? 'Ocultar desativados' : `Mostrar ${totalInativos} desativado${totalInativos > 1 ? 's' : ''}`}</span>
                 </div>
               )}
 
+              {/* Profissionais de Saúde */}
               <div className="section-label">Profissionais de Saúde</div>
               <div>
                 {enfermeirosMedicos.map((p) => (
@@ -137,12 +163,14 @@ export default function Equipe() {
                 ))}
                 {enfermeirosMedicos.length === 0 && (
                   <div className="empty-state" style={{ padding: '36px 16px' }}>
-                    <div className="fw-6">Nenhum profissional</div>
-                    <div style={{ fontSize: 'var(--t-sm)', marginTop: 4 }}>Use "Adicionar" para cadastrar.</div>
+                    <div style={{ marginBottom: 8, opacity: 0.4, display: 'flex', justifyContent: 'center' }}><IconUsers /></div>
+                    <div className="fw-6">Nenhum profissional cadastrado</div>
+                    <div style={{ fontSize: 'var(--t-sm)', marginTop: 4 }}>Use o botão "+ Adicionar" para cadastrar.</div>
                   </div>
                 )}
               </div>
 
+              {/* Operadores Internos B+ */}
               {mostrarOperadores && (
                 <>
                   <div className="section-label" style={{ marginTop: 20 }}>Operadores Internos B+</div>
@@ -160,11 +188,12 @@ export default function Equipe() {
               )}
             </div>
 
-            {/* Painel de detalhe */}
+            {/* Painel de detalhe / edição */}
             <div>
               <div className="detail-panel">
                 {selId == null && (
                   <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                    <div style={{ opacity: 0.3, marginBottom: 12, display: 'flex', justifyContent: 'center' }}><IconUsers size={48} /></div>
                     <div className="fw-6" style={{ color: 'var(--ink-2)', marginBottom: 4 }}>Selecione um profissional</div>
                     <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>Clique em um nome na lista para ver e editar os detalhes.</div>
                   </div>
@@ -278,14 +307,20 @@ function DetalheProf({ detalhe, opsLista, onToast, onChanged }: {
           </select>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button className="btn btn-primary btn-sm" onClick={salvarEdicao} disabled={saving}>{saving ? 'Salvando…' : 'Salvar'}</button>
+          <button className="btn btn-primary btn-sm" onClick={salvarEdicao} disabled={saving}>
+            {IconCheck}
+            {saving ? 'Salvando…' : 'Salvar'}
+          </button>
         </div>
       </div>
 
-      {/* Escala */}
+      {/* Escala de Hospitais */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div className="section-label" style={{ marginBottom: 0 }}>Escala de Hospitais</div>
-        <button className="btn btn-outline btn-sm" onClick={() => setFormEscala((v) => !v)}>Adicionar</button>
+        <button className="btn btn-outline btn-sm" onClick={() => setFormEscala((v) => !v)}>
+          {IconPlus}
+          Adicionar
+        </button>
       </div>
 
       {formEscala && (
@@ -348,7 +383,7 @@ function EscalaList({ escala, onToast, onChanged }: { escala: Escala[]; onToast:
                 <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)' }}>{SERVICO_LABEL[e.servico] || e.servico}</div>
               </div>
               <span className="servico-badge">{e.servico}</span>
-              <button onClick={() => remover(e.id)} title="Remover" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-2)', padding: '2px 4px', flexShrink: 0 }}>✕</button>
+              <button className="escala-remove" onClick={() => remover(e.id)} title="Remover">{IconX}</button>
             </div>
           ))}
         </div>

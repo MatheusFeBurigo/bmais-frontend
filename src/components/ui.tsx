@@ -71,6 +71,41 @@ export function OpAvatar({ opKey, size = 26 }: { opKey: string; size?: number })
   )
 }
 
+// ── Spinner ─────────────────────────────────────────────────────────────────
+// Indicador de carregamento reutilizável. `size` é o diâmetro em px; a espessura
+// da borda escala junto para manter a proporção em qualquer tamanho.
+export function Spinner({ size = 20, className, style }: {
+  size?: number
+  className?: string
+  style?: React.CSSProperties
+}) {
+  const border = Math.max(2, Math.round(size / 8))
+  return (
+    <span
+      className={`bm-spinner${className ? ` ${className}` : ''}`}
+      role="status"
+      aria-label="Carregando"
+      style={{ width: size, height: size, borderWidth: border, ...style }}
+    />
+  )
+}
+
+// Estado de carregamento centralizado: spinner + texto opcional. Substitui os
+// "Carregando…" soltos, dando um retorno visual consistente entre as telas.
+export function LoadingState({ label = 'Carregando…', size = 28, className, style }: {
+  label?: ReactNode
+  size?: number
+  className?: string
+  style?: React.CSSProperties
+}) {
+  return (
+    <div className={`bm-loading${className ? ` ${className}` : ''}`} style={style}>
+      <Spinner size={size} />
+      {label != null && <div className="bm-loading-text">{label}</div>}
+    </div>
+  )
+}
+
 // ── Barra de progresso ────────────────────────────────────────────────────
 export function ProgressBar({ pct, color = 'var(--success)' }: { pct: number; color?: string }) {
   const clamped = Math.max(0, Math.min(100, pct))

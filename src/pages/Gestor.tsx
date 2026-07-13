@@ -3,9 +3,9 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import type { ChartOptions } from 'chart.js'
 import { apiFetch } from '../api/client'
-import type { GestorMetrics, GestorFiltros } from '../types/api'
+import type { GestorMetrics, GestorResposta } from '../types/api'
 import Layout from '../components/Layout'
-import { KpiCard, Badge, OpAvatar } from '../components/ui'
+import { KpiCard, Badge, OpAvatar, LoadingState } from '../components/ui'
 import { Chart, Doughnut, Bar } from '../components/charts'
 import PacienteDrawer from '../components/PacienteDrawer'
 import Toast from '../components/Toast'
@@ -46,22 +46,20 @@ export default function Gestor() {
   const [drawerId, setDrawerId] = useState<number | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
-  const { data: filtros } = useQuery({
-    queryKey: ['gestor-filtros'],
-    queryFn: () => apiFetch<GestorFiltros>('/gestor/filtros'),
-    staleTime: 60_000,
-  })
-
   const qs = new URLSearchParams()
   if (fData) qs.set('data', fData)
   if (fOperadora) qs.set('operadora', fOperadora)
   if (fHospital) qs.set('hospital', fHospital)
   if (fRegiao) qs.set('regiao', fRegiao)
 
-  const { data: m, isLoading, isError } = useQuery({
+  // O backend devolve métricas e opções de filtro num único payload aninhado
+  // ({ metrics, filtros }) — não há rota /gestor/filtros separada.
+  const { data: payload, isLoading, isError } = useQuery({
     queryKey: ['gestor', fData, fOperadora, fHospital, fRegiao],
-    queryFn: () => apiFetch<GestorMetrics>(`/gestor?${qs.toString()}`),
+    queryFn: () => apiFetch<GestorResposta>(`/gestor?${qs.toString()}`),
   })
+  const m = payload?.metrics
+  const filtros = payload?.filtros
 
   // Atualiza um conjunto de query params de uma vez (equivale ao urlCom do template).
   function setFiltro(patch: Record<string, string>) {
@@ -136,7 +134,7 @@ export default function Gestor() {
         )}
       </div>
 
-      {isLoading && <div className="empty-state">Carregando painel…</div>}
+      {isLoading && <LoadingState label="Carregando painel…" />}
       {isError && <div className="empty-state t-danger">Erro ao carregar o painel.</div>}
 
       {m && (

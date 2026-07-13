@@ -7,6 +7,7 @@ import Layout from '../components/Layout'
 import { StatusBadge, rowFlagClass, LeitoTag } from '../components/StatusBadge'
 import PacienteDrawer from '../components/PacienteDrawer'
 import Toast from '../components/Toast'
+import { LoadingState, Spinner } from '../components/ui'
 
 const OP_INITIALS: Record<string, string> = {
   sulamerica: 'SU', bradesco: 'BR', careplus: 'CA', itau: 'IT',
@@ -14,6 +15,70 @@ const OP_INITIALS: Record<string, string> = {
 }
 function opInitial(key: string): string {
   return OP_INITIALS[key] || key.slice(0, 2).toUpperCase()
+}
+
+// Exibe uma contagem de dias como fração "valor / limite" (ex.: dias sem relatório
+// sobre a janela, ou dias internado sobre o gatilho). O valor recebe cor de alerta
+// via `tone`; o denominador fica discreto. Alinhado à direita, em fonte mono.
+type Tone = 'danger' | 'warning' | 'neutral'
+const TONE_COLOR: Record<Tone, string> = {
+  danger: 'var(--danger)',
+  warning: 'var(--warning)',
+  neutral: 'var(--ink)',
+}
+// Marcador de longa permanência. Mostra o limite REAL que o paciente atingiu (em
+// dias), configurado por operadora — não os rótulos fixos 10/30. "Avançada" tem
+// precedência sobre "prolongada"; sem marcador → traço.
+function Permanencia({ longa10, longa30, limiteLonga, limiteAvancada }: {
+  longa10?: boolean
+  longa30?: boolean
+  limiteLonga?: number | null
+  limiteAvancada?: number | null
+}) {
+  if (longa30) {
+    return (
+      <span className="mono fw-6 t-danger" title={`Permanência avançada: internado há ≥ ${limiteAvancada ?? '?'} dias`}>
+        {limiteAvancada != null ? `${limiteAvancada}d+` : '—'}
+      </span>
+    )
+  }
+  if (longa10) {
+    return (
+      <span className="mono fw-6 t-warning" title={`Permanência prolongada: internado há ≥ ${limiteLonga ?? '?'} dias`}>
+        {limiteLonga != null ? `${limiteLonga}d+` : '—'}
+      </span>
+    )
+  }
+  return <span style={{ color: 'var(--muted-2)' }}>—</span>
+}
+
+function DiasRatio({ value, limit, tone = 'neutral' }: {
+  value: number | null | undefined
+  limit: number | null | undefined
+  tone?: Tone
+}) {
+  if (value == null) return <span style={{ color: 'var(--muted-2)' }}>—</span>
+  const strong = tone !== 'neutral'
+  return (
+    <span
+      className="mono"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'baseline',
+        gap: 1,
+        justifyContent: 'flex-end',
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      <span style={{ fontSize: 'var(--t-md)', fontWeight: strong ? 700 : 600, color: TONE_COLOR[tone] }}>
+        {value}
+      </span>
+      <span style={{ fontSize: 10, color: 'var(--muted-3)', fontWeight: 500 }}>d</span>
+      {limit != null && (
+        <span style={{ fontSize: 11, color: 'var(--muted-2)', marginLeft: 2 }}>/&thinsp;{limit}</span>
+      )}
+    </span>
+  )
 }
 
 export default function Dashboard() {
@@ -94,6 +159,7 @@ export default function Dashboard() {
   const actions = (
     <>
       <button className="btn btn-outline btn-sm" onClick={() => refetch()} disabled={isFetching}>
+        {isFetching && <Spinner size={13} />}
         {isFetching ? 'Atualizando…' : 'Atualizar'}
       </button>
       <button className="btn btn-primary btn-sm" onClick={exportar}>
@@ -126,7 +192,7 @@ export default function Dashboard() {
         </select>
       </div>
 
-      {isLoading && <div className="empty-state">Carregando painel…</div>}
+      {isLoading && <LoadingState label="Carregando painel…" />}
       {isError && <div className="empty-state t-danger">Erro ao carregar o painel.</div>}
 
       {data && (
@@ -224,9 +290,15 @@ export default function Dashboard() {
                     <th style={{ width: 60 }}>Leito</th>
                     <th style={{ width: 96 }}>Internação</th>
                     <th>Última Visita</th>
-                    <th style={{ width: 72 }} className="t-right">s/Rel.</th>
-                    <th style={{ width: 58 }} className="t-right">Dias</th>
-                    <th style={{ width: 46 }} className="t-right">Pl.</th>
+                    <th style={{ width: 96 }} className="t-right" title="Dias desde o último relatório sobre a janela permitida (ex.: 5 / 7)">
+                      Sem relatório
+                    </th>
+                    <th style={{ width: 88 }} className="t-right" title="Dias de internação sobre o gatilho de alerta (ex.: 12 / 10)">
+                      Dias internado
+                    </th>
+                    <th style={{ width: 78 }} className="t-right" title="Marcador de longa permanência: 10 dias ou 30 dias">
+                      Permanência
+                    </th>
                     <th style={{ width: 40 }} />
                   </tr>
                 </thead>
@@ -243,25 +315,32 @@ export default function Dashboard() {
                         <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_entrada || '—'}</span></td>
                         <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_ultima_visita || '—'}</span></td>
                         <td className="t-right">
-                          {p.dias_sem_relatorio != null ? (
-                            <>
-                              <span className={`mono fw-6${sr === 'SEM_RELATORIO' || sr === 'ALTA_SEM_REL' ? ' t-danger' : sr === 'VENCIDO' || sr === 'ALTA_REL_VENCIDO' ? ' t-warning' : ''}`}>
-                                {p.dias_sem_relatorio}d
-                              </span>
-                              <div style={{ fontSize: 10, color: 'var(--muted-2)' }}>/{p.janela_relatorio || '—'}</div>
-                            </>
-                          ) : (
-                            <span style={{ color: 'var(--muted-2)' }}>—</span>
-                          )}
+                          <DiasRatio
+                            value={p.dias_sem_relatorio}
+                            limit={p.janela_relatorio}
+                            tone={
+                              sr === 'SEM_RELATORIO' || sr === 'ALTA_SEM_REL'
+                                ? 'danger'
+                                : sr === 'VENCIDO' || sr === 'ALTA_REL_VENCIDO'
+                                  ? 'warning'
+                                  : 'neutral'
+                            }
+                          />
                         </td>
                         <td className="t-right">
-                          <span className={`mono${p.longa_30 ? ' t-danger fw-6' : p.longa_10 ? ' t-warning fw-6' : ''}`}>
-                            {p.dias != null ? p.dias : '—'}
-                          </span>
-                          {p.gatilho ? <div style={{ fontSize: 10, color: 'var(--muted-2)' }}>/{p.gatilho}</div> : null}
+                          <DiasRatio
+                            value={p.dias}
+                            limit={p.gatilho}
+                            tone={p.longa_30 ? 'danger' : p.longa_10 ? 'warning' : 'neutral'}
+                          />
                         </td>
-                        <td className="t-right mono" style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
-                          {p.longa_30 ? 30 : p.longa_10 ? 10 : '—'}
+                        <td className="t-right">
+                          <Permanencia
+                            longa10={p.longa_10}
+                            longa30={p.longa_30}
+                            limiteLonga={p.limite_longa}
+                            limiteAvancada={p.limite_avancada}
+                          />
                         </td>
                         <td onClick={(e) => { e.stopPropagation(); setDrawerId(p.id) }}>
                           <button className="btn btn-ghost btn-sm" title="Registrar relatório" style={{ padding: 5, color: 'var(--accent)' }}>

@@ -4,13 +4,24 @@
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 const TOKEN_KEY = 'bmais_token'
 
+// "Manter conectado" define ONDE o token vive:
+//  - localStorage  → persiste entre sessões do navegador (fechar e reabrir mantém).
+//  - sessionStorage → some ao fechar a aba/navegador (sessão efêmera).
+// Ao ler o token buscamos nos dois; ao gravar escolhemos o storage conforme a opção.
+
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
+  return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY)
 }
 
-export function setToken(token: string | null) {
-  if (token) localStorage.setItem(TOKEN_KEY, token)
-  else localStorage.removeItem(TOKEN_KEY)
+// persist=true (padrão) usa localStorage; persist=false usa sessionStorage.
+export function setToken(token: string | null, persist = true) {
+  // Sempre limpa ambos para não deixar um token órfão no outro storage.
+  localStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(TOKEN_KEY)
+  if (token) {
+    const store = persist ? localStorage : sessionStorage
+    store.setItem(TOKEN_KEY, token)
+  }
 }
 
 export class ApiError extends Error {

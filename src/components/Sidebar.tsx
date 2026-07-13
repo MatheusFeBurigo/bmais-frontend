@@ -1,7 +1,14 @@
+import { useState } from 'react'
 import { NavLink, useSearchParams, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
 import type { SidebarData } from '../types/api'
+
+// Seta que gira 90° quando a lista de operadoras está aberta (via classe .open).
+const Caret = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+)
 
 const IconOperacional = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-7 9 7" /><path d="M5 9.5V20h14V9.5" /><path d="M9 20v-6h6v6" /></svg>
@@ -41,6 +48,18 @@ export default function Sidebar() {
   const noDashboard = location.pathname === '/'
 
   const sidebarOps = data?.sidebar_ops ?? []
+  // Lista de operadoras expansível. Começa SEMPRE aberta e persiste a preferência
+  // em localStorage, para não reiniciar fechada entre navegações/reloads.
+  const [opsOpen, setOpsOpen] = useState(() => {
+    return localStorage.getItem('bmais_ops_open') !== '0'
+  })
+  function toggleOps() {
+    setOpsOpen((v) => {
+      const next = !v
+      localStorage.setItem('bmais_ops_open', next ? '1' : '0')
+      return next
+    })
+  }
 
   return (
     <aside className="sidebar">
@@ -75,7 +94,22 @@ export default function Sidebar() {
             <span className="sb-item-icon"><IconGrid /></span>
             <span className="sb-item-label">Visão Geral</span>
             <span className="sb-item-badge">{sidebarOps.length}</span>
+            <button
+              type="button"
+              className={`sb-caret${opsOpen ? ' open' : ''}`}
+              aria-label={opsOpen ? 'Recolher operadoras' : 'Expandir operadoras'}
+              aria-expanded={opsOpen}
+              onClick={(e) => {
+                // Não navega ao clicar no chevron — só alterna a lista.
+                e.preventDefault()
+                e.stopPropagation()
+                toggleOps()
+              }}
+            >
+              <Caret />
+            </button>
           </NavLink>
+          {opsOpen && sidebarOps.length > 0 && (
           <div className="sb-sub">
             {sidebarOps.map((op) => {
               const urgente = Number(op.urgente ?? 0)
@@ -106,6 +140,7 @@ export default function Sidebar() {
               )
             })}
           </div>
+          )}
         </div>
 
         <div className="sb-section">

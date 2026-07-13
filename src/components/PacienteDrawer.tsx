@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
 import type { InternacaoDados } from '../types/api'
 import { StatusBadge, LeitoTag } from './StatusBadge'
+import { LoadingState } from './ui'
 
 function hojeISO(): string {
   // Data local em YYYY-MM-DD (sem depender de UTC).
@@ -86,7 +87,7 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
         </div>
 
         <div className="drawer-body" style={{ flex: 1, overflowY: 'auto', padding: '22px 24px' }}>
-          {isLoading && <div style={{ textAlign: 'center', padding: 48, color: 'var(--muted-2)' }}>Carregando…</div>}
+          {isLoading && <LoadingState />}
           {isError && <div className="empty-state">Não foi possível carregar os dados.</div>}
           {d && (
             <>

@@ -43,6 +43,9 @@ export interface Internacao {
   status_rvm?: string
   longa_10?: boolean
   longa_30?: boolean
+  // Limites reais de longa permanência (em dias), configurados por operadora.
+  limite_longa?: number | null
+  limite_avancada?: number | null
   alerta_relatorio?: boolean
   em_monitoramento?: boolean
   obs?: string | null
@@ -96,6 +99,17 @@ export interface LoginResponse {
   expires_in: number
 }
 
+// Resposta de POST /api/register. Quando o projeto exige confirmação de e-mail,
+// vem apenas { confirmacao_necessaria: true, email }; caso contrário já traz a sessão.
+export interface RegisterResponse {
+  confirmacao_necessaria: boolean
+  email?: string
+  token?: string
+  refresh_token?: string
+  username?: string
+  expires_in?: number
+}
+
 // ── Configurações (GET /api/configuracoes) ──────────────────────────────────
 export interface OperadoraRegras {
   dias_uti: number
@@ -105,6 +119,7 @@ export interface OperadoraRegras {
   alerta_antecipado_dias: number
   dias_longa_permanencia: number
   dias_longa_avancada: number
+  usar_longa_permanencia?: boolean
   fallback_sem_leito: string
   responsaveis?: string
   ativo: boolean
@@ -278,6 +293,12 @@ export interface GestorFiltros {
   operadoras: Array<{ key: string; nome: string }>
   hospitais: Array<{ key: string; nome: string; operadora_key?: string }>
   regioes: string[]
+}
+
+// GET /api/gestor devolve métricas e filtros juntos, num único payload aninhado.
+export interface GestorResposta {
+  metrics: GestorMetrics
+  filtros: GestorFiltros
 }
 
 // ── Diretoria (GET /api/diretoria) ──────────────────────────────────────────

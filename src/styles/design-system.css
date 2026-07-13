@@ -1,5 +1,5 @@
-/* Fontes Geist (portado de base.html) */
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap");
+/* Fontes Geist: carregadas via <link> no index.html (preconnect + stylesheet),
+   não mais por @import aqui — @import é render-blocking e serializa o download. */
 
 /* ── B+ Design System ─────────────────────────────────────────────────── */
 :root {
@@ -80,7 +80,13 @@ a{text-decoration:none;color:inherit}
 .sb-item-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sb-item-badge{font-family:var(--font-mono);font-size:10px;padding:1px 6px;border-radius:99px;background:rgba(255,255,255,.09);color:rgba(255,255,255,.68);font-weight:500;flex-shrink:0}
 .sb-item-badge.alert{background:var(--danger);color:#fff}
-.sb-sub{padding:2px 0 4px 0;margin-left:36px;margin-right:8px}
+/* Botão de expandir/recolher a sublista de operadoras na sidebar. */
+.sb-caret{flex-shrink:0;display:grid;place-items:center;width:20px;height:20px;margin:-4px -4px -4px 0;border:none;background:transparent;color:rgba(218,229,235,.5);border-radius:5px;cursor:pointer;transition:color .12s,background .12s}
+.sb-caret:hover{color:#fff;background:rgba(255,255,255,.08)}
+.sb-caret svg{transition:transform .2s cubic-bezier(.2,.7,.2,1)}
+.sb-caret.open svg{transform:rotate(90deg)}
+.sb-sub{padding:2px 0 4px 0;margin-left:36px;margin-right:8px;overflow:hidden;animation:sb-sub-in .22s cubic-bezier(.2,.7,.2,1)}
+@keyframes sb-sub-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 .sb-sub-item{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;margin:1px 0;border-radius:6px;font-size:var(--t-sm);color:rgba(218,229,235,.55);cursor:pointer;text-decoration:none;transition:background .12s,color .12s}
 .sb-sub-item:hover{background:rgba(255,255,255,.04);color:#fff}
 .sb-sub-item.active{color:#fff;background:rgba(255,255,255,.07)}
@@ -248,3 +254,111 @@ a{text-decoration:none;color:inherit}
 
 /* ── Utility ── */
 .uppercase{text-transform:uppercase}
+
+/* ── Spinner ── */
+.bm-spinner{display:inline-block;border-radius:50%;border-style:solid;border-color:var(--border-strong);border-top-color:var(--primary-3);animation:bm-spin .7s linear infinite;flex-shrink:0}
+@keyframes bm-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.bm-spinner{animation-duration:1.6s}}
+/* Estado de carregamento centralizado (spinner + texto) */
+.bm-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:56px 24px;color:var(--muted);text-align:center}
+.bm-loading-text{font-size:var(--t-sm);color:var(--muted)}
+
+/* ══ Auth (login / cadastro) ═══════════════════════════════════════════════ */
+.auth{min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:1.05fr .95fr;background:var(--bg);overflow:hidden}
+
+/* Painel esquerdo — hero da marca */
+.auth-hero{position:relative;overflow:hidden;background:linear-gradient(155deg,#041C3D 0%,#062E5C 45%,#0A3E78 100%);color:#EAF1FA;display:flex;flex-direction:column;justify-content:space-between;padding:44px 52px}
+.auth-hero::before{content:"";position:absolute;top:-18%;right:-12%;width:460px;height:460px;border-radius:50%;background:radial-gradient(circle,rgba(46,134,225,.42),transparent 68%);filter:blur(6px);animation:auth-float 14s ease-in-out infinite}
+.auth-hero::after{content:"";position:absolute;bottom:-22%;left:-14%;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(21,92,168,.34),transparent 70%);animation:auth-float 18s ease-in-out infinite reverse}
+.auth-hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(ellipse 90% 80% at 40% 30%,#000 40%,transparent 100%);pointer-events:none}
+.auth-hero-top{position:relative;display:flex;align-items:center;gap:13px}
+.auth-hero-mark{width:46px;height:46px;background:linear-gradient(135deg,#2E86E1,#0F4D9E);border-radius:12px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:19px;letter-spacing:-.02em;box-shadow:inset 0 -1px 0 rgba(0,0,0,.25),0 6px 18px rgba(4,28,61,.5)}
+.auth-hero-brand{font-weight:600;font-size:var(--t-lg);color:#fff;letter-spacing:-.01em;line-height:1.1}
+.auth-hero-brand-sub{font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:rgba(234,241,250,.5);margin-top:2px}
+.auth-hero-mid{position:relative;max-width:440px}
+.auth-hero-eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.14em;font-weight:600;color:rgba(234,241,250,.72);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);padding:5px 12px;border-radius:99px}
+.auth-hero-title{font-size:clamp(28px,3.4vw,40px);font-weight:700;line-height:1.1;letter-spacing:-.025em;margin:22px 0 14px;color:#fff}
+.auth-hero-title em{font-style:normal;background:linear-gradient(100deg,#7FB1E0,#2E86E1);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.auth-hero-lede{font-size:var(--t-md);line-height:1.6;color:rgba(234,241,250,.7);max-width:420px}
+.auth-hero-list{position:relative;display:flex;flex-direction:column;gap:14px;margin-top:30px}
+.auth-hero-feat{display:flex;align-items:flex-start;gap:12px;font-size:var(--t-md);color:rgba(234,241,250,.86)}
+.auth-hero-feat-ico{width:30px;height:30px;flex-shrink:0;border-radius:9px;background:rgba(46,134,225,.18);border:1px solid rgba(127,177,224,.28);display:grid;place-items:center;color:#9CC4EC}
+.auth-hero-feat b{font-weight:600;color:#fff}
+.auth-hero-feat span{color:rgba(234,241,250,.62)}
+.auth-hero-foot{position:relative;font-size:var(--t-sm);color:rgba(234,241,250,.42);display:flex;align-items:center;gap:8px}
+@keyframes auth-float{0%,100%{transform:translate(0,0)}50%{transform:translate(18px,-22px)}}
+
+/* Painel direito — formulário */
+.auth-panel{display:flex;align-items:center;justify-content:center;padding:40px 32px;overflow-y:auto}
+.auth-card{width:100%;max-width:400px;animation:auth-rise .5s cubic-bezier(.2,.7,.2,1)}
+.auth-mobile-brand{display:none;align-items:center;gap:11px;margin-bottom:26px}
+.auth-mobile-brand .sb-brand-mark{width:38px;height:38px}
+.auth-head{margin-bottom:26px}
+.auth-title{font-size:var(--t-2xl);font-weight:700;letter-spacing:-.03em;color:var(--ink);line-height:1.15}
+.auth-sub{font-size:var(--t-md);color:var(--muted);margin-top:6px}
+
+/* Alternador login / cadastro */
+.auth-switch{position:relative;display:grid;grid-template-columns:1fr 1fr;background:var(--surface-3);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:24px}
+.auth-switch-thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);background:var(--surface);border:1px solid var(--border);border-radius:7px;box-shadow:var(--shadow-xs);transition:transform .28s cubic-bezier(.2,.7,.2,1)}
+.auth-switch.is-register .auth-switch-thumb{transform:translateX(100%)}
+.auth-switch button{position:relative;z-index:1;background:transparent;border:0;padding:8px 0;font-size:var(--t-base);font-weight:600;color:var(--muted);transition:color .2s;border-radius:7px}
+.auth-switch button.active{color:var(--primary)}
+
+/* Campos com rótulo flutuante */
+.auth-form{display:flex;flex-direction:column;gap:14px}
+.auth-field{position:relative}
+.auth-field .bm-input{height:52px;padding:22px 14px 8px;border-radius:10px;font-size:var(--t-md)}
+.auth-field.has-icon .bm-input{padding-left:42px}
+.auth-field-ico{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted-2);pointer-events:none;transition:color .15s;display:grid;place-items:center}
+.auth-field .bm-input:focus~.auth-field-ico{color:var(--primary-3)}
+.auth-field-label{position:absolute;left:14px;top:14px;font-size:var(--t-md);color:var(--muted-2);pointer-events:none;transition:all .16s cubic-bezier(.2,.7,.2,1);transform-origin:left center}
+.auth-field.has-icon .auth-field-label{left:42px}
+/* Estado "repousado": rótulo centralizado sobre o campo vazio e sem foco. */
+.auth-field .bm-input:placeholder-shown:not(:focus)~.auth-field-label{top:50%;transform:translateY(-50%);font-size:var(--t-md);color:var(--muted-2);font-weight:400;letter-spacing:0}
+/* Estado "flutuante": campo com foco, com valor, com autofill ou marcado como preenchido. */
+.auth-field .bm-input:focus~.auth-field-label,
+.auth-field .bm-input:not(:placeholder-shown)~.auth-field-label,
+.auth-field .bm-input:-webkit-autofill~.auth-field-label,
+.auth-field.is-filled .auth-field-label{top:9px;transform:none;font-size:calc(var(--t-md) * .78);color:var(--primary-3);font-weight:600;letter-spacing:.01em}
+/* Autofill do Chrome não deve pintar o fundo de amarelo por cima do campo. */
+.auth-field .bm-input:-webkit-autofill{-webkit-text-fill-color:var(--ink);box-shadow:0 0 0 40px var(--surface) inset;transition:background-color 9999s ease-out 0s}
+.auth-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--muted-2);padding:8px;border-radius:7px;display:grid;place-items:center;transition:color .12s,background .12s}
+.auth-eye:hover{color:var(--ink-2);background:var(--surface-3)}
+
+/* Medidor de força de senha */
+.auth-meter{display:flex;gap:5px;margin-top:2px}
+.auth-meter-seg{flex:1;height:4px;border-radius:99px;background:var(--border);transition:background .25s}
+.auth-meter-seg.on-1{background:var(--danger)}
+.auth-meter-seg.on-2{background:var(--warning)}
+.auth-meter-seg.on-3{background:var(--caution)}
+.auth-meter-seg.on-4{background:var(--success)}
+.auth-meter-label{font-size:var(--t-xs);color:var(--muted);margin-top:6px}
+
+.auth-row-between{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:-2px}
+.auth-check{display:inline-flex;align-items:center;gap:8px;font-size:var(--t-sm);color:var(--ink-2);cursor:pointer;user-select:none}
+.auth-check input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
+.auth-link{font-size:var(--t-sm);color:var(--primary-3);font-weight:600;background:transparent;border:0;padding:0;cursor:pointer}
+.auth-link:hover{text-decoration:underline}
+
+.auth-submit{height:50px;justify-content:center;border-radius:10px;font-size:var(--t-md);font-weight:600;margin-top:4px}
+.auth-submit .spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:auth-spin .6s linear infinite}
+@keyframes auth-spin{to{transform:rotate(360deg)}}
+
+/* Mensagens */
+.auth-alert{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:9px;font-size:var(--t-sm);line-height:1.45;animation:auth-rise .25s}
+.auth-alert.error{background:var(--danger-bg);color:var(--danger-2);border:1px solid var(--danger-bg-2)}
+.auth-alert.success{background:var(--success-bg);color:var(--success-2);border:1px solid #BFE3CE}
+.auth-alert svg{flex-shrink:0;margin-top:1px}
+
+.auth-foot-note{text-align:center;font-size:var(--t-sm);color:var(--muted);margin-top:22px}
+.auth-foot-note button{font-weight:600;color:var(--primary-3);background:transparent;border:0;cursor:pointer}
+.auth-foot-note button:hover{text-decoration:underline}
+
+@keyframes auth-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+@media (max-width:900px){
+  .auth{grid-template-columns:1fr}
+  .auth-hero{display:none}
+  .auth-mobile-brand{display:flex}
+  .auth-panel{padding:32px 22px}
+}

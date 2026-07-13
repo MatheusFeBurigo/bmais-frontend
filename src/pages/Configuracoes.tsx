@@ -7,7 +7,7 @@ import type {
   HospitalSelected, Profissional,
 } from '../types/api'
 import Layout from '../components/Layout'
-import { KpiCard, Badge, OpAvatar, ProgressBar, Modal } from '../components/ui'
+import { Badge, OpAvatar, Modal, LoadingState } from '../components/ui'
 import { StatusBadge } from '../components/StatusBadge'
 import Toast from '../components/Toast'
 
@@ -15,6 +15,16 @@ const SERVICO_LABEL: Record<string, string> = {
   P: 'Análise de Conta', V: 'Auditoria Concorrente', AMB: 'Ambulatório', PS: 'Pronto Socorro',
 }
 const SERVICOS = ['P', 'V', 'AMB', 'PS']
+
+// Seta do accordion (rotaciona via CSS quando o item está aberto).
+function ChevronRight() {
+  return (
+    <svg className="op-acc-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  )
+}
 
 const localStyles = `
 .cfg-num-wrap{display:flex;align-items:stretch;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;background:var(--surface)}
@@ -34,6 +44,23 @@ const localStyles = `
 .stat-mini{background:var(--surface-3);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 14px;text-align:center}
 .stat-mini-val{font-family:var(--font-mono);font-size:22px;font-weight:700;color:var(--ink);line-height:1}
 .stat-mini-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:600;color:var(--muted);margin-top:3px}
+
+/* ── Accordion de operadoras (visão geral) ── */
+.op-acc{display:flex;flex-direction:column;gap:8px}
+.op-acc-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;transition:border-color .12s,box-shadow .12s}
+.op-acc-item.open{border-color:var(--border-strong);box-shadow:var(--shadow-sm)}
+.op-acc-item.alert{border-color:var(--danger)}
+.op-acc-head{display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer;user-select:none;width:100%;background:transparent;border:none;text-align:left}
+.op-acc-head:hover{background:var(--surface-3)}
+.op-acc-chevron{flex-shrink:0;color:var(--muted-2);transition:transform .2s cubic-bezier(.2,.7,.2,1)}
+.op-acc-item.open .op-acc-chevron{transform:rotate(90deg);color:var(--primary-3)}
+.op-acc-name{font-weight:600;font-size:var(--t-md);color:var(--ink);line-height:1.2}
+.op-acc-resp{font-size:var(--t-sm);color:var(--muted);margin-top:1px}
+.op-acc-body{padding:0 16px 16px 46px;display:flex;flex-direction:column;gap:14px;animation:op-acc-in .22s cubic-bezier(.2,.7,.2,1)}
+.op-acc-rules{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:var(--t-sm);color:var(--muted)}
+.op-acc-actions{display:flex;gap:8px;flex-wrap:wrap}
+@keyframes op-acc-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+@media (max-width:640px){.op-acc-body{padding-left:16px}}
 `
 
 export default function Configuracoes() {
@@ -62,7 +89,7 @@ export default function Configuracoes() {
   }
 
   if (isLoading || !data) {
-    return <Layout title="Operadoras"><div className="empty-state">Carregando…</div></Layout>
+    return <Layout title="Operadoras"><LoadingState /></Layout>
   }
 
   // ── Vista: detalhe de hospital ──────────────────────────────────────────
@@ -107,11 +134,17 @@ function OverviewView({ operadoras, onNav, onToast, onChanged, toast }: {
 }) {
   const [novaOpen, setNovaOpen] = useState(false)
   const [busy, setBusy] = useState<'demo' | 'limpar' | null>(null)
+  // Operadoras expandidas no accordion (várias podem ficar abertas ao mesmo tempo).
+  const [expandidas, setExpandidas] = useState<Set<string>>(new Set())
 
-  const totalPac = operadoras.reduce((s, o) => s + (o.internados || 0), 0)
-  const alertOps = operadoras.filter((o) => (o.urgente || 0) > 0).length
-  const slaVals = operadoras.map((o) => o.sla).filter((n) => typeof n === 'number')
-  const slaMed = slaVals.length ? Math.round(slaVals.reduce((a, b) => a + b, 0) / slaVals.length) : 0
+  function toggle(key: string) {
+    setExpandidas((cur) => {
+      const next = new Set(cur)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   async function popularDemo() {
     if (!confirm('Inserir dados de demonstração (pacientes, relatórios e altas)?')) return
@@ -144,57 +177,50 @@ function OverviewView({ operadoras, onNav, onToast, onChanged, toast }: {
   )
 
   return (
-    <Layout title="Operadoras de Saúde" subtitle="Visão geral · Clique em uma operadora para editar as regras" actions={actions}>
+    <Layout title="Operadoras de Saúde" subtitle="Configure as regras de monitoramento de cada operadora" actions={actions}>
       <style>{localStyles}</style>
 
-      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 16 }}>
-        <KpiCard variant="info" label="Operadoras Ativas" value={operadoras.length} meta={`de ${operadoras.length} cadastradas`} />
-        <KpiCard variant="primary-kpi" label="Pacientes Totais" value={totalPac} meta="somando todas as operadoras" />
-        <KpiCard variant="danger" label="Com Alerta" value={alertOps} meta="operadoras com alertas críticos" />
-        <KpiCard variant="success" label="SLA Médio" value={`${slaMed}%`} meta="média ponderada" />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+      <div className="op-acc">
         {operadoras.map((o) => {
-          const alert = (o.urgente || 0) > 0
-          const sla = o.sla || 0
-          const low = sla < 50
+          const ativa = o.regras?.ativo !== false
+          const open = expandidas.has(o.key)
           return (
-            <div key={o.key} className={`op-card${alert ? ' alert-card' : ''}`} onClick={() => onNav({ op: o.key })}>
-              <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div className="row" style={{ gap: 12 }}>
-                  <OpAvatar opKey={o.key} size={42} />
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 'var(--t-lg)' }}>{o.nome}</div>
-                    <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>{o.responsaveis || '—'}</div>
+            <div key={o.key} className={`op-acc-item${open ? ' open' : ''}`}>
+              <button
+                type="button"
+                className="op-acc-head"
+                onClick={() => toggle(o.key)}
+                aria-expanded={open}
+              >
+                <ChevronRight />
+                <OpAvatar opKey={o.key} size={38} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="op-acc-name truncate">{o.nome}</div>
+                  <div className="op-acc-resp truncate">{o.responsaveis || 'Sem responsável definido'}</div>
+                </div>
+                <span style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)', marginRight: 4 }}>
+                  {o.hospitais_count || 0} hosp.
+                </span>
+                {ativa
+                  ? <Badge variant="success" dot>Ativa</Badge>
+                  : <Badge variant="muted">Inativa</Badge>}
+              </button>
+
+              {open && (
+                <div className="op-acc-body">
+                  <div className="op-acc-rules" style={{ borderTop: 'none', paddingTop: 0 }}>
+                    <span>Gatilho UTI: <strong className="mono t-ink-2">{o.regras?.dias_uti ?? '—'}d</strong></span>
+                    <span>Apartamento: <strong className="mono t-ink-2">{o.regras?.dias_apartamento ?? '—'}d</strong></span>
+                    <span>Enfermaria: <strong className="mono t-ink-2">{o.regras?.dias_enfermaria ?? '—'}d</strong></span>
+                    <span>Janela relatório: <strong className="mono t-ink-2">{o.regras?.dias_entre_relatorios ?? '—'}d</strong></span>
+                    <span>Longa: <strong className="mono t-ink-2">{o.regras?.dias_longa_permanencia ?? '—'}d</strong> / <strong className="mono t-ink-2">{o.regras?.dias_longa_avancada ?? '—'}d</strong></span>
+                  </div>
+
+                  <div className="op-acc-actions">
+                    <button className="btn btn-primary btn-sm" onClick={() => onNav({ op: o.key })}>Configurar regras</button>
                   </div>
                 </div>
-                {alert ? <Badge variant="danger" dot>{o.urgente} alertas</Badge> : <Badge variant="success" dot>OK</Badge>}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
-                {([['Internados', o.internados || 0, 'var(--ink)'], ['Alertas', o.urgente || 0, (o.urgente || 0) > 0 ? 'var(--danger)' : 'var(--ink-3)'], ['Em Dia', o.em_dia || 0, (o.em_dia || 0) > 0 ? 'var(--success)' : 'var(--ink-3)'], ['SLA', `${sla}%`, low ? 'var(--danger)' : 'var(--success)']] as const).map(([lbl, val, color]) => (
-                  <div key={lbl} style={{ background: 'var(--surface-3)', borderRadius: 'var(--r-sm)', padding: 8, textAlign: 'center' }}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700, color }}>{val}</div>
-                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600, color: 'var(--muted)', marginTop: 2 }}>{lbl}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div>
-                <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)' }}>Taxa de Relatórios em Dia</span>
-                  <span className="mono fw-6" style={{ fontSize: 'var(--t-sm)', color: low ? 'var(--danger)' : 'var(--success)' }}>{sla}%</span>
-                </div>
-                <ProgressBar pct={sla} color={low ? 'var(--danger)' : 'var(--success)'} />
-              </div>
-
-              <div className="row" style={{ justifyContent: 'space-between', fontSize: 12, color: 'var(--muted)', paddingTop: 4, borderTop: '1px dashed var(--border)' }}>
-                <span>UTI: <strong className="mono t-ink-2">{o.regras?.dias_uti ?? '—'}d</strong></span>
-                <span>Apto: <strong className="mono t-ink-2">{o.regras?.dias_apartamento ?? '—'}d</strong></span>
-                <span>Rel: <strong className="mono t-ink-2">{o.regras?.dias_entre_relatorios ?? '—'}d</strong></span>
-                <span>{o.hospitais_count || 0} hosp.</span>
-              </div>
+              )}
             </div>
           )
         })}
@@ -307,6 +333,15 @@ function OperadoraView({ opSel, onNav, onToast, onChanged, toast }: {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
                 <NumField label="Longa Permanência (Pl.10)" value={regras.dias_longa_permanencia} onChange={(v) => upd('dias_longa_permanencia', v)} />
                 <NumField label="Longa Avançada (Pl.30)" value={regras.dias_longa_avancada} onChange={(v) => upd('dias_longa_avancada', v)} />
+              </div>
+              <div className="toggle-wrap">
+                <div>
+                  <div className="fw-6" style={{ fontSize: 'var(--t-base)' }}>Monitorar longa permanência</div>
+                  <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>Exibir alertas de Pl.10 / Pl.30 desta operadora</div>
+                </div>
+                <button type="button" className={`toggle${regras.usar_longa_permanencia ? ' on' : ''}`} onClick={() => upd('usar_longa_permanencia', !regras.usar_longa_permanencia)} title="Ativar/desativar monitoramento de longa permanência">
+                  <div className="toggle-knob" />
+                </button>
               </div>
             </div>
 

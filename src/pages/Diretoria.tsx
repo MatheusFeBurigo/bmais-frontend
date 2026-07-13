@@ -4,7 +4,7 @@ import { apiFetch, apiDownload } from '../api/client'
 import type { DiretoriaPayload } from '../types/api'
 import Layout from '../components/Layout'
 import Toast from '../components/Toast'
-import { KpiCard, Badge, OpAvatar, ProgressBar } from '../components/ui'
+import { KpiCard, Badge, OpAvatar, ProgressBar, LoadingState, Spinner } from '../components/ui'
 import { DonutChart, LineChart, BarChart } from '../components/charts'
 
 const DONUT_LABELS = ['Sem Rel.', 'Vencido', 'Próx. Vencer', 'Em Dia', 'Aguardando']
@@ -66,6 +66,7 @@ export default function Diretoria() {
         {seeding ? 'Inserindo…' : 'Seed Demo'}
       </button>
       <button className="btn btn-outline btn-sm" onClick={() => refetch()} disabled={isFetching}>
+        {isFetching && <Spinner size={13} />}
         {isFetching ? 'Atualizando…' : 'Atualizar'}
       </button>
     </>
@@ -75,7 +76,7 @@ export default function Diretoria() {
 
   return (
     <Layout title="Dashboard da Diretoria" subtitle={subtitle} actions={actions}>
-      {isLoading && <div className="empty-state">Carregando KPIs…</div>}
+      {isLoading && <LoadingState label="Carregando KPIs…" />}
       {isError && <div className="empty-state t-danger">Erro ao carregar o dashboard.</div>}
 
       {data && (

@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import Login from './pages/Login'
+import { LoadingState } from './components/ui'
 
 // Páginas carregadas sob demanda (code-splitting). Diretoria e Gestor arrastam
 // o Chart.js — mantê-las em lazy tira essa lib do bundle inicial.
@@ -13,11 +14,7 @@ const Configuracoes = lazy(() => import('./pages/Configuracoes'))
 const Upload = lazy(() => import('./pages/Upload'))
 
 function PageFallback() {
-  return (
-    <div className="empty-state" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
-      Carregando…
-    </div>
-  )
+  return <LoadingState style={{ minHeight: '100vh' }} />
 }
 
 function ProtectedRoutes() {
