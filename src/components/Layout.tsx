@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import Sidebar from './Sidebar'
 import { useAuth } from '../auth/AuthContext'
@@ -11,9 +12,20 @@ interface LayoutProps {
 
 export default function Layout({ title, subtitle, actions, children }: LayoutProps) {
   const { username, logout } = useAuth()
+  // Estado de recolhimento da sidebar, persistido para não reiniciar a cada navegação.
+  const [collapsed, setCollapsed] = useState(() => {
+    return localStorage.getItem('bmais_sidebar_collapsed') === '1'
+  })
+  function toggleCollapsed() {
+    setCollapsed((v) => {
+      const next = !v
+      localStorage.setItem('bmais_sidebar_collapsed', next ? '1' : '0')
+      return next
+    })
+  }
   return (
-    <div className="app">
-      <Sidebar />
+    <div className={'app' + (collapsed ? ' is-collapsed' : '')}>
+      <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapsed} />
       <main className="main">
         <div className="topbar">
           <div className="tb-title">

@@ -110,19 +110,12 @@ export default function Equipe() {
   const operadoresVis = data ? visiveisPorTipo(data.operadores) : []
   const mostrarOperadores = tipoFiltro === 'todos' || tipoFiltro === 'O'
 
-  const actions = (
-    <button className="btn btn-primary btn-sm" onClick={() => setAddOpen(true)}>
-      {IconPlus}
-      Adicionar
-    </button>
-  )
-
   const subtitle = data
     ? `${data.total_prof} ativos${data.total_todos > data.total_prof ? ` · ${data.total_todos - data.total_prof} inativos` : ''} · clique em um nome para editar`
     : undefined
 
   return (
-    <Layout title="Equipe B+ Auditoria" subtitle={subtitle} actions={actions}>
+    <Layout title="Equipe B+ Auditoria" subtitle={subtitle}>
       <style>{localStyles}</style>
 
       {isLoading && <LoadingState label="Carregando equipe…" />}
@@ -157,7 +150,13 @@ export default function Equipe() {
               )}
 
               {/* Profissionais de Saúde */}
-              <div className="section-label">Profissionais de Saúde</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div className="section-label" style={{ marginBottom: 0 }}>Profissionais de Saúde</div>
+                <button className="btn btn-primary btn-sm" onClick={() => setAddOpen(true)}>
+                  {IconPlus}
+                  Adicionar
+                </button>
+              </div>
               <div>
                 {enfermeirosMedicos.map((p) => (
                   <ProfItem key={p.id} p={p} active={selId === p.id} onClick={() => setSelId(p.id)} />

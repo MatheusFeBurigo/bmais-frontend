@@ -12,17 +12,14 @@ const Caret = () => (
     strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
 )
 
-const IconOperacional = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-7 9 7" /><path d="M5 9.5V20h14V9.5" /><path d="M9 20v-6h6v6" /></svg>
+const IconGrid = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
 )
 const IconDiretoria = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M22 20H2" /></svg>
 )
 const IconGestor = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M7 14l4-4 4 4 5-6" /><circle cx="7" cy="14" r="1.2" /><circle cx="11" cy="10" r="1.2" /><circle cx="15" cy="14" r="1.2" /><circle cx="20" cy="8" r="1.2" /></svg>
-)
-const IconGrid = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
 )
 const IconEquipe = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
@@ -33,12 +30,21 @@ const IconConfig = () => (
 const IconUpload = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M17 8l-5-5-5 5" /><path d="M12 3v12" /></svg>
 )
+// Chevrons duplos: apontam para a esquerda (recolher) ou direita (expandir).
+const IconCollapse = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 17-5-5 5-5" /><path d="m18 17-5-5 5-5" /></svg>
+)
 
 function itemClass({ isActive }: { isActive: boolean }) {
   return isActive ? 'sb-item active' : 'sb-item'
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  collapsed?: boolean
+  onToggleCollapse?: () => void
+}
+
+export default function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
   const { role } = useAuth()
   const { data } = useQuery({
     queryKey: ['sidebar'],
@@ -77,25 +83,9 @@ export default function Sidebar() {
       <nav className="sb-nav">
         <div className="sb-section">
           <div className="sb-section-label">Painel</div>
+          {/* "Visão Geral" leva ao Dashboard; o chevron aninha a lista de operadoras,
+              que é o recorte por foco de operadora DENTRO da própria Visão Geral. */}
           <NavLink to="/" end className={itemClass}>
-            <span className="sb-item-icon"><IconOperacional /></span>
-            <span className="sb-item-label">Operacional</span>
-          </NavLink>
-          {podeVer(role, 'diretoria') && (
-            <NavLink to="/diretoria" className={itemClass}>
-              <span className="sb-item-icon"><IconDiretoria /></span>
-              <span className="sb-item-label">Diretoria / KPIs</span>
-            </NavLink>
-          )}
-          <NavLink to="/gestor" className={itemClass}>
-            <span className="sb-item-icon"><IconGestor /></span>
-            <span className="sb-item-label">Gestor / Fluxo</span>
-          </NavLink>
-        </div>
-
-        <div className="sb-section">
-          <div className="sb-section-label">Operadoras</div>
-          <NavLink to="/configuracoes" end className={itemClass}>
             <span className="sb-item-icon"><IconGrid /></span>
             <span className="sb-item-label">Visão Geral</span>
             <span className="sb-item-badge">{sidebarOps.length}</span>
@@ -146,6 +136,16 @@ export default function Sidebar() {
             })}
           </div>
           )}
+          {podeVer(role, 'diretoria') && (
+            <NavLink to="/diretoria" className={itemClass}>
+              <span className="sb-item-icon"><IconDiretoria /></span>
+              <span className="sb-item-label">Diretoria / KPIs</span>
+            </NavLink>
+          )}
+          <NavLink to="/gestor" className={itemClass}>
+            <span className="sb-item-icon"><IconGestor /></span>
+            <span className="sb-item-label">Gestor / Fluxo</span>
+          </NavLink>
         </div>
 
         <div className="sb-section">
@@ -167,6 +167,18 @@ export default function Sidebar() {
           </NavLink>
         </div>
       </nav>
+
+      <button
+        type="button"
+        className="sb-collapse"
+        aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+        aria-expanded={!collapsed}
+        title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+        onClick={onToggleCollapse}
+      >
+        <span className="sb-collapse-icon"><IconCollapse /></span>
+        <span className="sb-collapse-label">Recolher menu</span>
+      </button>
 
       <div className="sb-foot">
         <div className="sb-foot-avatar">AU</div>
