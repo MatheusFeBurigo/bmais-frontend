@@ -6,6 +6,7 @@ import Layout from '../components/Layout'
 import Toast from '../components/Toast'
 import { KpiCard, Badge, OpAvatar, ProgressBar, LoadingState, Spinner } from '../components/ui'
 import { DonutChart, LineChart, BarChart } from '../components/charts'
+import { Deferred } from '../components/Deferred'
 
 const DONUT_LABELS = ['Sem Rel.', 'Vencido', 'Próx. Vencer', 'Em Dia', 'Aguardando']
 const DONUT_COLORS = ['#C8243C', '#D9690C', '#B58606', '#0E7A53', '#1F5DAA']
@@ -181,6 +182,13 @@ export default function Diretoria() {
             />
           </div>
 
+          {/* Blocos pesados (gráficos + listas) adiados para depois do primeiro
+              paint dos KPIs — o cliente vê o topo instantaneamente. */}
+          <Deferred
+            delaySteps={2}
+            minHeight={520}
+            placeholder={<LoadingState label="Carregando gráficos…" style={{ minHeight: 520 }} />}
+          >
           {/* Donut + Tendência */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 10, marginTop: 10 }}>
             <div className="card">
@@ -398,6 +406,7 @@ export default function Diretoria() {
               </div>
             </div>
           </div>
+          </Deferred>
         </>
       )}
 

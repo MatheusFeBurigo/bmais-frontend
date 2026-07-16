@@ -9,6 +9,7 @@ import { KpiCard, Badge, OpAvatar, LoadingState } from '../components/ui'
 import { Chart, Doughnut, Bar } from '../components/charts'
 import PacienteDrawer from '../components/PacienteDrawer'
 import Toast from '../components/Toast'
+import { Deferred } from '../components/Deferred'
 
 const GRID = '#EFF2F5'
 const AXIS = '#8595A6'
@@ -172,6 +173,13 @@ export default function Gestor() {
             ]} />
           </div>
 
+          {/* Gráficos + tabela adiados para depois do primeiro paint dos KPIs e
+              médias — o cliente vê os números do dia imediatamente. */}
+          <Deferred
+            delaySteps={2}
+            minHeight={560}
+            placeholder={<LoadingState label="Carregando gráficos…" style={{ minHeight: 560 }} />}
+          >
           {/* Fluxo 30 dias — clique muda o dia */}
           <div className="chart-card" style={{ marginBottom: 16 }}>
             <div className="chart-title">Fluxo dos últimos 30 dias</div>
@@ -275,6 +283,7 @@ export default function Gestor() {
               </table>
             </div>
           </div>
+          </Deferred>
         </>
       )}
 

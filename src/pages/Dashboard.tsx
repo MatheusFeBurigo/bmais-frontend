@@ -9,6 +9,7 @@ import { StatusBadge, rowFlagClass, LeitoTag } from '../components/StatusBadge'
 import PacienteDrawer from '../components/PacienteDrawer'
 import Toast from '../components/Toast'
 import { LoadingState, Spinner } from '../components/ui'
+import { Deferred } from '../components/Deferred'
 
 const OP_INITIALS: Record<string, string> = {
   sulamerica: 'SU', bradesco: 'BR', careplus: 'CA', itau: 'IT',
@@ -278,7 +279,13 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Tabela */}
+          {/* Tabela — bloco pesado adiado para depois do primeiro paint dos KPIs
+              e filtros; o cliente vê os números e controles imediatamente. */}
+          <Deferred
+            delaySteps={2}
+            minHeight={360}
+            placeholder={<LoadingState label="Carregando internados…" style={{ minHeight: 360 }} />}
+          >
           <div className="card" style={{ marginTop: 14 }}>
             <div className="card-header" style={{ alignItems: 'center', paddingBottom: 14 }}>
               <div>
@@ -413,6 +420,7 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+          </Deferred>
         </>
       )}
 
