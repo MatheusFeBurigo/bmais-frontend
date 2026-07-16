@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
 import type { UserRole } from '../types/api'
@@ -91,7 +92,7 @@ function IcoCrown() {
 // Papéis oferecidos no cadastro. A ordem parte do menos privilegiado.
 // ATENÇÃO: 'admin' aqui espelha o backend (ROLES_REGISTRO). Se o registro for
 // aberto ao público, remova 'admin' daqui e de ROLES_REGISTRO no backend.
-const ROLE_OPCOES: Array<{ value: UserRole; label: string; desc: string; ico: () => JSX.Element }> = [
+const ROLE_OPCOES: Array<{ value: UserRole; label: string; desc: string; ico: () => ReactNode }> = [
   { value: 'analista', label: 'Analista', desc: 'Dados operacionais: internações, relatórios e censos.', ico: IcoUser },
   { value: 'diretor', label: 'Diretor', desc: 'Tudo do analista + Diretoria, Gestor e Equipe.', ico: IcoBriefcase },
   { value: 'admin', label: 'Administrador', desc: 'Acesso total, incluindo ações destrutivas e gestão.', ico: IcoCrown },
