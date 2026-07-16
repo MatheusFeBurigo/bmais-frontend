@@ -1,10 +1,20 @@
 import { useState } from 'react'
 import { NavLink, useSearchParams, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { apiFetch } from '../api/client'
+import { sidebarQuery } from '../api/queries'
+import { prefetchPorRota } from '../routes'
 import { useAuth } from '../auth/AuthContext'
 import { podeVer } from '../auth/permissions'
-import type { SidebarData } from '../types/api'
+
+// Aquece o chunk da rota antes do clique (hover/foco), evitando o flash de
+// carregamento na navegação. Silencia falhas — é só otimização.
+function aquecer(rota: string) {
+  prefetchPorRota[rota]?.().catch(() => {})
+}
+const prefetchProps = (rota: string) => ({
+  onMouseEnter: () => aquecer(rota),
+  onFocus: () => aquecer(rota),
+})
 
 // Seta que gira 90° quando a lista de operadoras está aberta (via classe .open).
 const Caret = () => (
@@ -46,11 +56,7 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
   const { role } = useAuth()
-  const { data } = useQuery({
-    queryKey: ['sidebar'],
-    queryFn: () => apiFetch<SidebarData>('/sidebar'),
-    staleTime: 30_000,
-  })
+  const { data } = useQuery(sidebarQuery())
   const [params] = useSearchParams()
   const location = useLocation()
   const opAtual = params.get('operadora') || 'sulamerica'
@@ -85,7 +91,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
           <div className="sb-section-label">Painel</div>
           {/* "Visão Geral" leva ao Dashboard; o chevron aninha a lista de operadoras,
               que é o recorte por foco de operadora DENTRO da própria Visão Geral. */}
-          <NavLink to="/" end className={itemClass}>
+          <NavLink to="/" end className={itemClass} {...prefetchProps('/')}>
             <span className="sb-item-icon"><IconGrid /></span>
             <span className="sb-item-label">Visão Geral</span>
             <span className="sb-item-badge">{sidebarOps.length}</span>
@@ -119,6 +125,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
                   className={
                     'sb-sub-item' + (isAlert ? ' has-alert' : '') + (active ? ' active' : '')
                   }
+                  {...prefetchProps('/')}
                 >
                   <span className="sb-sub-name">{op.nome}</span>
                   {isAlert ? (
@@ -137,12 +144,12 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
           </div>
           )}
           {podeVer(role, 'diretoria') && (
-            <NavLink to="/diretoria" className={itemClass}>
+            <NavLink to="/diretoria" className={itemClass} {...prefetchProps('/diretoria')}>
               <span className="sb-item-icon"><IconDiretoria /></span>
               <span className="sb-item-label">Diretoria / KPIs</span>
             </NavLink>
           )}
-          <NavLink to="/gestor" className={itemClass}>
+          <NavLink to="/gestor" className={itemClass} {...prefetchProps('/gestor')}>
             <span className="sb-item-icon"><IconGestor /></span>
             <span className="sb-item-label">Gestor / Fluxo</span>
           </NavLink>
@@ -151,17 +158,17 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
         <div className="sb-section">
           <div className="sb-section-label">Sistema</div>
           {podeVer(role, 'equipe') && (
-            <NavLink to="/equipe" className={itemClass}>
+            <NavLink to="/equipe" className={itemClass} {...prefetchProps('/equipe')}>
               <span className="sb-item-icon"><IconEquipe /></span>
               <span className="sb-item-label">Equipe</span>
               <span className="sb-item-badge">{data?.sidebar_prof_count ?? 0}</span>
             </NavLink>
           )}
-          <NavLink to="/configuracoes" className={itemClass}>
+          <NavLink to="/configuracoes" className={itemClass} {...prefetchProps('/configuracoes')}>
             <span className="sb-item-icon"><IconConfig /></span>
             <span className="sb-item-label">Configurações</span>
           </NavLink>
-          <NavLink to="/upload" className={itemClass}>
+          <NavLink to="/upload" className={itemClass} {...prefetchProps('/upload')}>
             <span className="sb-item-icon"><IconUpload /></span>
             <span className="sb-item-label">Upload Censos</span>
           </NavLink>

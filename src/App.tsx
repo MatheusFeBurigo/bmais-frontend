@@ -6,15 +6,20 @@ import { podeVer, ROTA_FALLBACK } from './auth/permissions'
 import type { Screen } from './auth/permissions'
 import Login from './pages/Login'
 import { LoadingState } from './components/ui'
+import {
+  importDashboard, importDiretoria, importGestor,
+  importEquipe, importConfiguracoes, importUpload,
+} from './routes'
 
 // Páginas carregadas sob demanda (code-splitting). Diretoria e Gestor arrastam
-// o Chart.js — mantê-las em lazy tira essa lib do bundle inicial.
-const Dashboard = lazy(() => import('./pages/Dashboard'))
-const Diretoria = lazy(() => import('./pages/Diretoria'))
-const Gestor = lazy(() => import('./pages/Gestor'))
-const Equipe = lazy(() => import('./pages/Equipe'))
-const Configuracoes = lazy(() => import('./pages/Configuracoes'))
-const Upload = lazy(() => import('./pages/Upload'))
+// o Chart.js — mantê-las em lazy tira essa lib do bundle inicial. Os import()
+// vêm de ./routes para a Sidebar poder pré-carregá-los no hover (mesmo chunk).
+const Dashboard = lazy(importDashboard)
+const Diretoria = lazy(importDiretoria)
+const Gestor = lazy(importGestor)
+const Equipe = lazy(importEquipe)
+const Configuracoes = lazy(importConfiguracoes)
+const Upload = lazy(importUpload)
 
 function PageFallback() {
   return <LoadingState style={{ minHeight: '100vh' }} />
@@ -45,7 +50,9 @@ function ProtectedRoutes() {
     }
   }, [loading, authenticated, location.pathname, location.search, navigate])
 
-  if (loading) {
+  // Boot otimista: se já estamos autenticados (token válido) renderizamos o app
+  // sem esperar o /me — o loading só bloqueia quando ainda não sabemos se há sessão.
+  if (loading && !authenticated) {
     return <PageFallback />
   }
   if (!authenticated) {

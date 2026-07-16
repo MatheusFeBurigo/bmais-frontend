@@ -27,11 +27,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [username, setUsername] = useState<string | null>(null)
   const [role, setRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
+  // Boot otimista: se HÁ token salvo, já consideramos a sessão válida e renderizamos
+  // o app enquanto /me valida em background — evita a tela branca a cada refresh.
+  // Vira false se /me falhar (401): aí cai no Login.
+  const [tokenValido, setTokenValido] = useState(() => !!getToken())
 
   const logout = useCallback(() => {
     setToken(null)
     setUsername(null)
     setRole(null)
+    setTokenValido(false)
   }, [])
 
   // Ao carregar, se houver token guardado, valida com /api/me.
@@ -53,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setToken(null)
           setUsername(null)
           setRole(null)
+          setTokenValido(false)
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -69,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUnauthorizedHandler(() => {
       setUsername(null)
       setRole(null)
+      setTokenValido(false)
     })
     return () => setUnauthorizedHandler(null)
   }, [])
@@ -80,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       skipAuthRedirect: true,
     })
     setToken(res.token, remember)
+    setTokenValido(true)
     setUsername(res.username)
     // O login não devolve o papel; resolve-o via /me para o app já ter o role.
     try {
@@ -100,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Sessão imediata (sem confirmação de e-mail): já entra no app.
       if (!res.confirmacao_necessaria && res.token && res.username) {
         setToken(res.token, remember)
+        setTokenValido(true)
         setUsername(res.username)
         setRole(res.role ?? null)
       }
@@ -108,9 +117,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  // Autenticado se já temos username OU se há token tido como válido (boot otimista,
+  // antes do /me resolver). O 401 do /me zera tokenValido e derruba a sessão.
+  const authenticated = !!username || tokenValido
+
   const value = useMemo<AuthState>(
-    () => ({ username, role, authenticated: !!username, loading, login, register, logout }),
-    [username, role, loading, login, register, logout],
+    () => ({ username, role, authenticated, loading, login, register, logout }),
+    [username, role, authenticated, loading, login, register, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

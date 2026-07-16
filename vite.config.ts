@@ -15,4 +15,20 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Separa dependências pesadas em chunks próprios e estáveis (API de
+        // code-splitting do Rolldown, que substitui o manualChunks-objeto do Rollup):
+        //  - charts: Chart.js só é baixado ao abrir Diretoria/Gestor (telas lazy).
+        //  - vendor: React/Router/Query mudam pouco → melhor cache entre deploys.
+        codeSplitting: {
+          groups: [
+            { name: 'charts', test: /[\\/]node_modules[\\/](chart\.js|react-chartjs-2|@kurkle)[\\/]/ },
+            { name: 'vendor', test: /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|@tanstack)[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
 })

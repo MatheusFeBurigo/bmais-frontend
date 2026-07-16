@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { apiUpload } from '../api/client'
+import { CHAVES_DADOS } from '../api/queries'
 import type {
   UploadCensoResponse,
   RelatorioLoteResponse,
@@ -90,6 +92,16 @@ const IconDoc = (
 )
 
 export default function Upload() {
+  const qc = useQueryClient()
+  // Todo upload muda os dados de origem — marca os caches derivados como obsoletos
+  // para que Dashboard/Diretoria/Gestor/Sidebar refaçam o fetch ao serem abertos,
+  // em vez de esperar o staleTime de 60s ou depender de refresh manual.
+  function invalidarDados() {
+    for (const chave of CHAVES_DADOS) {
+      qc.invalidateQueries({ queryKey: [chave] })
+    }
+  }
+
   const [tab, setTab] = useState<TabKey>('censos')
   const [censosFiles, setCensosFiles] = useState<File[]>([])
   const [relFiles, setRelFiles] = useState<File[]>([])
@@ -107,6 +119,7 @@ export default function Upload() {
     try {
       const data = await apiUpload<UploadCensoResponse>('/upload', fd)
       setResult({ kind: 'censos', data })
+      invalidarDados()
       setToast('✓ Processamento concluído')
     } catch (err) {
       setToast(`Erro: ${(err as Error).message}`)
@@ -125,6 +138,7 @@ export default function Upload() {
     try {
       const data = await apiUpload<RelatorioLoteResponse>('/relatorios/upload', fd)
       setResult({ kind: 'relatorios', data })
+      invalidarDados()
       setToast('✓ Processamento concluído')
     } catch (err) {
       setToast(`Erro: ${(err as Error).message}`)
@@ -138,6 +152,7 @@ export default function Upload() {
     try {
       const data = await apiUpload<RelatorioRefreshResponse>('/relatorios/refresh', new FormData())
       setResult({ kind: 'relatorios', data })
+      invalidarDados()
       setToast('✓ Pasta processada')
     } catch (err) {
       setToast(`Erro: ${(err as Error).message}`)

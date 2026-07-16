@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch, apiDownload } from '../api/client'
-import type { DashboardPayload, SidebarData } from '../types/api'
+import { sidebarQuery } from '../api/queries'
+import type { DashboardPayload } from '../types/api'
 import Layout from '../components/Layout'
 import { StatusBadge, rowFlagClass, LeitoTag } from '../components/StatusBadge'
 import PacienteDrawer from '../components/PacienteDrawer'
@@ -93,6 +94,7 @@ export default function Dashboard() {
   const [d30On, setD30On] = useState(false)
   const [drawerId, setDrawerId] = useState<number | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [pagina, setPagina] = useState(1)
 
   async function exportar() {
     try {
@@ -112,11 +114,7 @@ export default function Dashboard() {
   })
 
   // Lista de operadoras para o seletor (reaproveita o cache do sidebar).
-  const { data: sidebar } = useQuery({
-    queryKey: ['sidebar'],
-    queryFn: () => apiFetch<SidebarData>('/sidebar'),
-    staleTime: 30_000,
-  })
+  const { data: sidebar } = useQuery(sidebarQuery())
   const operadorasLista = sidebar?.operadoras ?? []
 
   function setParam(key: string, value: string | null) {
@@ -147,6 +145,22 @@ export default function Dashboard() {
       return okBusca && okUti && ok30
     })
   }, [internacoes, busca, utiOn, d30On])
+
+  // Paginação client-side: renderizar todas as internações de uma vez trava a
+  // tabela em operadoras grandes (cada linha tem vários componentes). Fatiamos
+  // em páginas e a página some do DOM quando não está visível.
+  const POR_PAGINA = 50
+  const totalPaginas = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA))
+  // Se a página atual passou do total (filtro reduziu a lista), volta à última válida.
+  const paginaAtual = Math.min(pagina, totalPaginas)
+  const paginados = useMemo(
+    () => visiveis.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA),
+    [visiveis, paginaAtual],
+  )
+  // Qualquer mudança de filtro reinicia a paginação na primeira página.
+  useEffect(() => {
+    setPagina(1)
+  }, [busca, utiOn, d30On, operadora, filtro, hospital])
 
   const kpis: Array<[string, number, string, string, string]> = [
     ['sem_relatorio', Number(stats.sem_relatorio || 0), 'danger', 'Sem Relatório', 'nunca registrado'],
@@ -303,7 +317,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visiveis.map((p) => {
+                  {paginados.map((p) => {
                     const sr = p.status_relatorio || 'AGUARDANDO'
                     return (
                       <tr key={p.id} className={rowFlagClass(sr)} style={{ cursor: 'pointer' }} onClick={() => setDrawerId(p.id)}>
@@ -365,10 +379,38 @@ export default function Dashboard() {
               </table>
             </div>
 
-            <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
-                Mostrando {visiveis.length} de {stats.total_internados || internacoes.length}
+                {visiveis.length > 0 ? (
+                  <>
+                    Mostrando {(paginaAtual - 1) * POR_PAGINA + 1}–{Math.min(paginaAtual * POR_PAGINA, visiveis.length)} de {visiveis.length}
+                    {visiveis.length !== internacoes.length && ` (filtrados de ${internacoes.length})`}
+                  </>
+                ) : (
+                  <>Mostrando 0 de {stats.total_internados || internacoes.length}</>
+                )}
               </span>
+              {totalPaginas > 1 && (
+                <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    disabled={paginaAtual <= 1}
+                    onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                  >
+                    Anterior
+                  </button>
+                  <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
+                    {paginaAtual} / {totalPaginas}
+                  </span>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    disabled={paginaAtual >= totalPaginas}
+                    onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                  >
+                    Próxima
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </>
