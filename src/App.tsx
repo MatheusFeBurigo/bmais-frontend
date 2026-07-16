@@ -1,6 +1,9 @@
 import { lazy, Suspense } from 'react'
+import type { ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
+import { podeVer, ROTA_FALLBACK } from './auth/permissions'
+import type { Screen } from './auth/permissions'
 import Login from './pages/Login'
 import { LoadingState } from './components/ui'
 
@@ -17,6 +20,16 @@ function PageFallback() {
   return <LoadingState style={{ minHeight: '100vh' }} />
 }
 
+// Bloqueia a rota de uma tela quando o papel atual não pode vê-la: redireciona
+// ao fallback. Cobre o acesso direto por URL (o menu já esconde o item).
+function GatedRoute({ screen, children }: { screen: Screen; children: ReactNode }) {
+  const { role } = useAuth()
+  if (!podeVer(role, screen)) {
+    return <Navigate to={ROTA_FALLBACK} replace />
+  }
+  return <>{children}</>
+}
+
 function ProtectedRoutes() {
   const { authenticated, loading } = useAuth()
 
@@ -31,10 +44,24 @@ function ProtectedRoutes() {
     <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/diretoria" element={<Diretoria />} />
+        <Route
+          path="/diretoria"
+          element={
+            <GatedRoute screen="diretoria">
+              <Diretoria />
+            </GatedRoute>
+          }
+        />
         <Route path="/gestor" element={<Gestor />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
-        <Route path="/equipe" element={<Equipe />} />
+        <Route
+          path="/equipe"
+          element={
+            <GatedRoute screen="equipe">
+              <Equipe />
+            </GatedRoute>
+          }
+        />
         <Route path="/upload" element={<Upload />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { NavLink, useSearchParams, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
+import { podeVer } from '../auth/permissions'
 import type { SidebarData } from '../types/api'
 
 // Seta que gira 90° quando a lista de operadoras está aberta (via classe .open).
@@ -37,6 +39,7 @@ function itemClass({ isActive }: { isActive: boolean }) {
 }
 
 export default function Sidebar() {
+  const { role } = useAuth()
   const { data } = useQuery({
     queryKey: ['sidebar'],
     queryFn: () => apiFetch<SidebarData>('/sidebar'),
@@ -78,10 +81,12 @@ export default function Sidebar() {
             <span className="sb-item-icon"><IconOperacional /></span>
             <span className="sb-item-label">Operacional</span>
           </NavLink>
-          <NavLink to="/diretoria" className={itemClass}>
-            <span className="sb-item-icon"><IconDiretoria /></span>
-            <span className="sb-item-label">Diretoria / KPIs</span>
-          </NavLink>
+          {podeVer(role, 'diretoria') && (
+            <NavLink to="/diretoria" className={itemClass}>
+              <span className="sb-item-icon"><IconDiretoria /></span>
+              <span className="sb-item-label">Diretoria / KPIs</span>
+            </NavLink>
+          )}
           <NavLink to="/gestor" className={itemClass}>
             <span className="sb-item-icon"><IconGestor /></span>
             <span className="sb-item-label">Gestor / Fluxo</span>
@@ -145,11 +150,13 @@ export default function Sidebar() {
 
         <div className="sb-section">
           <div className="sb-section-label">Sistema</div>
-          <NavLink to="/equipe" className={itemClass}>
-            <span className="sb-item-icon"><IconEquipe /></span>
-            <span className="sb-item-label">Equipe</span>
-            <span className="sb-item-badge">{data?.sidebar_prof_count ?? 0}</span>
-          </NavLink>
+          {podeVer(role, 'equipe') && (
+            <NavLink to="/equipe" className={itemClass}>
+              <span className="sb-item-icon"><IconEquipe /></span>
+              <span className="sb-item-label">Equipe</span>
+              <span className="sb-item-badge">{data?.sidebar_prof_count ?? 0}</span>
+            </NavLink>
+          )}
           <NavLink to="/configuracoes" className={itemClass}>
             <span className="sb-item-icon"><IconConfig /></span>
             <span className="sb-item-label">Configurações</span>

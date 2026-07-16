@@ -7,6 +7,7 @@ import type {
 import Layout from '../components/Layout'
 import { KpiCard, Badge, Modal, LoadingState } from '../components/ui'
 import Toast from '../components/Toast'
+import UsuariosAcesso from '../components/UsuariosAcesso'
 
 const TIPO_LABEL: Record<ProfTipo, string> = {
   E: 'Enfermeiro(a)', M: 'Médico(a) Auditor(a)', O: 'Operador(a) Interno(a)',
@@ -210,6 +211,9 @@ export default function Equipe() {
               </div>
             </div>
           </div>
+
+          {/* Usuários de acesso (contas de login) — só admin vê */}
+          <UsuariosAcesso onToast={setToast} />
         </>
       )}
 

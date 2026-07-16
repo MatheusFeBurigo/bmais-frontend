@@ -1,10 +1,6 @@
-import { useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
-import type { UserRole } from '../types/api'
-
-type Mode = 'login' | 'register'
 
 // ── Ícones (inline, sem dependências) ───────────────────────────────────────
 function IcoMail() {
@@ -29,13 +25,6 @@ function IcoEye({ off }: { off?: boolean }) {
   ) : (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8Z" /><circle cx="12" cy="12" r="3" />
-    </svg>
-  )
-}
-function IcoCheck() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 6 9 17l-5-5" />
     </svg>
   )
 }
@@ -67,108 +56,32 @@ function IcoLayers() {
     </svg>
   )
 }
-function IcoUser() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" />
-    </svg>
-  )
-}
-function IcoBriefcase() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /><path d="M2 13h20" />
-    </svg>
-  )
-}
-function IcoCrown() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 6l4 5 5-7 5 7 4-5-2 13H5L3 6Z" />
-    </svg>
-  )
-}
-
-// Papéis oferecidos no cadastro. A ordem parte do menos privilegiado.
-// ATENÇÃO: 'admin' aqui espelha o backend (ROLES_REGISTRO). Se o registro for
-// aberto ao público, remova 'admin' daqui e de ROLES_REGISTRO no backend.
-const ROLE_OPCOES: Array<{ value: UserRole; label: string; desc: string; ico: () => ReactNode }> = [
-  { value: 'analista', label: 'Analista', desc: 'Dados operacionais: internações, relatórios e censos.', ico: IcoUser },
-  { value: 'diretor', label: 'Diretor', desc: 'Tudo do analista + Diretoria, Gestor e Equipe.', ico: IcoBriefcase },
-  { value: 'admin', label: 'Administrador', desc: 'Acesso total, incluindo ações destrutivas e gestão.', ico: IcoCrown },
-]
-
 const FEATURES = [
   { ico: <IcoPulse />, title: 'Alertas em tempo real', sub: 'Relatórios vencidos e gatilhos de longa permanência.' },
   { ico: <IcoLayers />, title: 'Visão por operadora', sub: 'SLA, censo e escala consolidados por convênio.' },
   { ico: <IcoShield />, title: 'Acesso seguro', sub: 'Autenticação por e-mail e sessão protegida.' },
 ]
 
-// Força de senha: 0–4 a partir de tamanho e diversidade de caracteres.
-function forcaSenha(pw: string): number {
-  if (!pw) return 0
-  let s = 0
-  if (pw.length >= 6) s++
-  if (pw.length >= 10) s++
-  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++
-  if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) s++
-  return Math.min(s, 4)
-}
-const FORCA_LABEL = ['', 'Fraca', 'Razoável', 'Boa', 'Forte']
-
 export default function Login() {
-  const { login, register } = useAuth()
-  const [mode, setMode] = useState<Mode>('login')
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<UserRole>('analista')
   const [showPw, setShowPw] = useState(false)
   const [remember, setRemember] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
-  const [sucesso, setSucesso] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
-  const isRegister = mode === 'register'
-  const forca = useMemo(() => forcaSenha(password), [password])
-  const podeEnviar =
-    !!email.trim() && !!password && (!isRegister || password.length >= 6)
-
-  function trocarModo(next: Mode) {
-    if (next === mode) return
-    setMode(next)
-    setErro(null)
-    setSucesso(null)
-  }
+  const podeEnviar = !!email.trim() && !!password
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setErro(null)
-    setSucesso(null)
     setEnviando(true)
     try {
-      if (isRegister) {
-        const res = await register(email.trim(), password, role, remember)
-        if (res.confirmacao_necessaria) {
-          // A sessão não é criada; o usuário precisa confirmar por e-mail.
-          setSucesso(
-            `Enviamos um link de confirmação para ${res.email || email.trim()}. Confirme o e-mail para acessar.`,
-          )
-          setPassword('')
-          setMode('login')
-        }
-        // Caso contrário a mudança de estado de auth já redireciona (ver App).
-      } else {
-        await login(email.trim(), password, remember)
-        // A troca de estado de auth redireciona automaticamente (ver App).
-      }
+      await login(email.trim(), password, remember)
+      // A troca de estado de auth redireciona automaticamente (ver App).
     } catch (err) {
-      setErro(
-        err instanceof ApiError
-          ? err.message
-          : isRegister
-            ? 'Falha ao criar conta'
-            : 'Falha ao entrar',
-      )
+      setErro(err instanceof ApiError ? err.message : 'Falha ao entrar')
     } finally {
       setEnviando(false)
     }
@@ -226,31 +139,9 @@ export default function Login() {
           </div>
 
           <div className="auth-head">
-            <div className="auth-title">{isRegister ? 'Criar sua conta' : 'Bem-vindo de volta'}</div>
-            <div className="auth-sub">
-              {isRegister
-                ? 'Preencha os dados abaixo para começar.'
-                : 'Entre com suas credenciais para continuar.'}
-            </div>
+            <div className="auth-title">Bem-vindo de volta</div>
+            <div className="auth-sub">Entre com suas credenciais para continuar.</div>
           </div>
-
-          {/* Alternador */}
-          <div className={`auth-switch${isRegister ? ' is-register' : ''}`}>
-            <div className="auth-switch-thumb" />
-            <button type="button" className={!isRegister ? 'active' : ''} onClick={() => trocarModo('login')}>
-              Entrar
-            </button>
-            <button type="button" className={isRegister ? 'active' : ''} onClick={() => trocarModo('register')}>
-              Cadastrar
-            </button>
-          </div>
-
-          {sucesso && (
-            <div className="auth-alert success" style={{ marginBottom: 16 }}>
-              <IcoCheck />
-              <span>{sucesso}</span>
-            </div>
-          )}
 
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className={`auth-field has-icon${email ? ' is-filled' : ''}`}>
@@ -262,7 +153,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder=" "
                 autoFocus
-                autoComplete={isRegister ? 'email' : 'username'}
+                autoComplete="username"
               />
               <span className="auth-field-ico"><IcoMail /></span>
               <label className="auth-field-label" htmlFor="auth-email">E-mail</label>
@@ -277,7 +168,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder=" "
-                  autoComplete={isRegister ? 'new-password' : 'current-password'}
+                  autoComplete="current-password"
                 />
                 <span className="auth-field-ico"><IcoLock /></span>
                 <label className="auth-field-label" htmlFor="auth-password">Senha</label>
@@ -291,74 +182,21 @@ export default function Login() {
                   <IcoEye off={showPw} />
                 </button>
               </div>
-
-              {isRegister && password.length > 0 && (
-                <>
-                  <div className="auth-meter">
-                    {[1, 2, 3, 4].map((n) => (
-                      <span key={n} className={`auth-meter-seg${forca >= n ? ` on-${forca}` : ''}`} />
-                    ))}
-                  </div>
-                  <div className="auth-meter-label">
-                    {password.length < 6
-                      ? 'Mínimo de 6 caracteres'
-                      : `Força da senha: ${FORCA_LABEL[forca]}`}
-                  </div>
-                </>
-              )}
             </div>
 
-            {isRegister && (
-              <fieldset className="auth-roles">
-                <legend className="auth-roles-legend">Tipo de conta</legend>
-                {ROLE_OPCOES.map((opt) => {
-                  const Ico = opt.ico
-                  const ativo = role === opt.value
-                  return (
-                    <label key={opt.value} className={`auth-role${ativo ? ' is-active' : ''}`}>
-                      <input
-                        type="radio"
-                        name="auth-role"
-                        value={opt.value}
-                        checked={ativo}
-                        onChange={() => setRole(opt.value)}
-                      />
-                      <span className="auth-role-radio" aria-hidden="true" />
-                      <span className="auth-role-ico"><Ico /></span>
-                      <span className="auth-role-body">
-                        <span className="auth-role-name">{opt.label}</span>
-                        <span className="auth-role-desc">{opt.desc}</span>
-                      </span>
-                    </label>
-                  )
-                })}
-                {role === 'admin' && (
-                  <div className="auth-role-warn">
-                    <IcoAlert />
-                    <span>
-                      O administrador tem acesso total, incluindo ações destrutivas.
-                      Escolha este nível apenas se for realmente necessário.
-                    </span>
-                  </div>
-                )}
-              </fieldset>
-            )}
-
-            {!isRegister && (
-              <div className="auth-row-between">
-                <label className="auth-check">
-                  <input
-                    type="checkbox"
-                    checked={remember}
-                    onChange={(e) => setRemember(e.target.checked)}
-                  />
-                  Manter conectado
-                </label>
-                <button type="button" className="auth-link" onClick={() => setErro('Contate o administrador para redefinir sua senha.')}>
-                  Esqueceu a senha?
-                </button>
-              </div>
-            )}
+            <div className="auth-row-between">
+              <label className="auth-check">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                />
+                Manter conectado
+              </label>
+              <button type="button" className="auth-link" onClick={() => setErro('Contate o administrador para redefinir sua senha.')}>
+                Esqueceu a senha?
+              </button>
+            </div>
 
             {erro && (
               <div className="auth-alert error">
@@ -371,10 +209,8 @@ export default function Login() {
               {enviando ? (
                 <>
                   <span className="spin" />
-                  {isRegister ? 'Criando conta…' : 'Entrando…'}
+                  Entrando…
                 </>
-              ) : isRegister ? (
-                'Criar conta'
               ) : (
                 'Entrar'
               )}
@@ -382,17 +218,7 @@ export default function Login() {
           </form>
 
           <div className="auth-foot-note">
-            {isRegister ? (
-              <>
-                Já tem uma conta?{' '}
-                <button type="button" onClick={() => trocarModo('login')}>Entrar</button>
-              </>
-            ) : (
-              <>
-                Ainda não tem conta?{' '}
-                <button type="button" onClick={() => trocarModo('register')}>Criar agora</button>
-              </>
-            )}
+            As contas são criadas pelo administrador. Não tem acesso? Solicite ao seu gestor.
           </div>
         </div>
       </main>

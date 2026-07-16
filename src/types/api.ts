@@ -121,6 +121,18 @@ export interface MeResponse {
   role: UserRole | null
 }
 
+// ── Gestão de usuários de acesso (contas de login) ──────────────────────────
+export interface Usuario {
+  user_id: string
+  email: string | null
+  role: UserRole
+  criado_em?: string
+}
+
+export interface UsuariosPayload {
+  usuarios: Usuario[]
+}
+
 // ── Configurações (GET /api/configuracoes) ──────────────────────────────────
 export interface OperadoraRegras {
   dias_uti: number
