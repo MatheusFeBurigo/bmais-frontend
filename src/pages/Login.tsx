@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
+import type { UserRole } from '../types/api'
 
 type Mode = 'login' | 'register'
 
@@ -65,6 +66,36 @@ function IcoLayers() {
     </svg>
   )
 }
+function IcoUser() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" />
+    </svg>
+  )
+}
+function IcoBriefcase() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /><path d="M2 13h20" />
+    </svg>
+  )
+}
+function IcoCrown() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6l4 5 5-7 5 7 4-5-2 13H5L3 6Z" />
+    </svg>
+  )
+}
+
+// Papéis oferecidos no cadastro. A ordem parte do menos privilegiado.
+// ATENÇÃO: 'admin' aqui espelha o backend (ROLES_REGISTRO). Se o registro for
+// aberto ao público, remova 'admin' daqui e de ROLES_REGISTRO no backend.
+const ROLE_OPCOES: Array<{ value: UserRole; label: string; desc: string; ico: () => JSX.Element }> = [
+  { value: 'analista', label: 'Analista', desc: 'Dados operacionais: internações, relatórios e censos.', ico: IcoUser },
+  { value: 'diretor', label: 'Diretor', desc: 'Tudo do analista + Diretoria, Gestor e Equipe.', ico: IcoBriefcase },
+  { value: 'admin', label: 'Administrador', desc: 'Acesso total, incluindo ações destrutivas e gestão.', ico: IcoCrown },
+]
 
 const FEATURES = [
   { ico: <IcoPulse />, title: 'Alertas em tempo real', sub: 'Relatórios vencidos e gatilhos de longa permanência.' },
@@ -89,6 +120,7 @@ export default function Login() {
   const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState<UserRole>('analista')
   const [showPw, setShowPw] = useState(false)
   const [remember, setRemember] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -114,7 +146,7 @@ export default function Login() {
     setEnviando(true)
     try {
       if (isRegister) {
-        const res = await register(email.trim(), password, remember)
+        const res = await register(email.trim(), password, role, remember)
         if (res.confirmacao_necessaria) {
           // A sessão não é criada; o usuário precisa confirmar por e-mail.
           setSucesso(
@@ -274,6 +306,42 @@ export default function Login() {
                 </>
               )}
             </div>
+
+            {isRegister && (
+              <fieldset className="auth-roles">
+                <legend className="auth-roles-legend">Tipo de conta</legend>
+                {ROLE_OPCOES.map((opt) => {
+                  const Ico = opt.ico
+                  const ativo = role === opt.value
+                  return (
+                    <label key={opt.value} className={`auth-role${ativo ? ' is-active' : ''}`}>
+                      <input
+                        type="radio"
+                        name="auth-role"
+                        value={opt.value}
+                        checked={ativo}
+                        onChange={() => setRole(opt.value)}
+                      />
+                      <span className="auth-role-radio" aria-hidden="true" />
+                      <span className="auth-role-ico"><Ico /></span>
+                      <span className="auth-role-body">
+                        <span className="auth-role-name">{opt.label}</span>
+                        <span className="auth-role-desc">{opt.desc}</span>
+                      </span>
+                    </label>
+                  )
+                })}
+                {role === 'admin' && (
+                  <div className="auth-role-warn">
+                    <IcoAlert />
+                    <span>
+                      O administrador tem acesso total, incluindo ações destrutivas.
+                      Escolha este nível apenas se for realmente necessário.
+                    </span>
+                  </div>
+                )}
+              </fieldset>
+            )}
 
             {!isRegister && (
               <div className="auth-row-between">

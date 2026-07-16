@@ -334,6 +334,26 @@ a{text-decoration:none;color:inherit}
 .auth-meter-seg.on-4{background:var(--success)}
 .auth-meter-label{font-size:var(--t-xs);color:var(--muted);margin-top:6px}
 
+/* Seletor de tipo de conta (radio-cards) no cadastro */
+.auth-roles{display:flex;flex-direction:column;gap:8px}
+.auth-roles-legend{font-size:calc(var(--t-md) * .78);font-weight:600;color:var(--primary-3);letter-spacing:.01em;margin-bottom:2px}
+.auth-role{position:relative;display:flex;align-items:flex-start;gap:11px;padding:11px 13px;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);cursor:pointer;transition:border-color .14s,background .14s,box-shadow .14s}
+.auth-role:hover{border-color:var(--ink-3)}
+.auth-role input{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.auth-role-radio{flex-shrink:0;width:18px;height:18px;margin-top:1px;border-radius:50%;border:2px solid var(--border-strong);display:grid;place-items:center;transition:border-color .14s}
+.auth-role-radio::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--primary);transform:scale(0);transition:transform .16s cubic-bezier(.2,.7,.2,1)}
+.auth-role-body{display:flex;flex-direction:column;gap:1px;min-width:0}
+.auth-role-name{font-size:var(--t-base);font-weight:600;color:var(--ink);display:flex;align-items:center;gap:7px}
+.auth-role-desc{font-size:var(--t-xs);color:var(--muted);line-height:1.4}
+.auth-role-ico{color:var(--muted-2);display:grid;place-items:center;transition:color .14s}
+.auth-role.is-active{border-color:var(--primary);background:var(--accent-soft);box-shadow:0 0 0 1px var(--primary)}
+.auth-role.is-active .auth-role-radio{border-color:var(--primary)}
+.auth-role.is-active .auth-role-radio::after{transform:scale(1)}
+.auth-role.is-active .auth-role-ico{color:var(--primary-3)}
+.auth-role input:focus-visible~.auth-role-radio{outline:2px solid var(--primary);outline-offset:2px}
+.auth-role-warn{display:flex;align-items:flex-start;gap:7px;font-size:var(--t-xs);color:var(--warning-2);background:var(--warning-bg);border:1px solid var(--caution-bg,transparent);border-radius:8px;padding:8px 10px;line-height:1.4}
+.auth-role-warn svg{flex-shrink:0;margin-top:1px}
+
 .auth-row-between{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:-2px}
 .auth-check{display:inline-flex;align-items:center;gap:8px;font-size:var(--t-sm);color:var(--ink-2);cursor:pointer;user-select:none}
 .auth-check input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}

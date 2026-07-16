@@ -93,6 +93,9 @@ export interface SidebarData {
   sidebar_prof_count: number
 }
 
+// Papel de acesso do usuário (espelha a tabela `profiles` do backend).
+export type UserRole = 'admin' | 'diretor' | 'analista'
+
 export interface LoginResponse {
   token: string
   username: string
@@ -101,13 +104,21 @@ export interface LoginResponse {
 
 // Resposta de POST /api/register. Quando o projeto exige confirmação de e-mail,
 // vem apenas { confirmacao_necessaria: true, email }; caso contrário já traz a sessão.
+// `role` ecoa o papel escolhido no cadastro.
 export interface RegisterResponse {
   confirmacao_necessaria: boolean
   email?: string
+  role?: UserRole
   token?: string
   refresh_token?: string
   username?: string
   expires_in?: number
+}
+
+// Resposta de GET /api/me (identidade + papel resolvido do profile).
+export interface MeResponse {
+  username: string
+  role: UserRole | null
 }
 
 // ── Configurações (GET /api/configuracoes) ──────────────────────────────────
