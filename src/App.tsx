@@ -1,6 +1,6 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import { podeVer, ROTA_FALLBACK } from './auth/permissions'
 import type { Screen } from './auth/permissions'
@@ -32,6 +32,18 @@ function GatedRoute({ screen, children }: { screen: Screen; children: ReactNode 
 
 function ProtectedRoutes() {
   const { authenticated, loading } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Ao perder a sessão (logout ou 401) fora da Visão Geral, zera a URL para "/"
+  // (sem filtros). Assim, ao relogar, o app abre em Visão Geral limpa e não na
+  // rota antiga — nem numa operadora específica — que o usuário via.
+  useEffect(() => {
+    const naVisaoGeral = location.pathname === '/' && location.search === ''
+    if (!loading && !authenticated && !naVisaoGeral) {
+      navigate('/', { replace: true })
+    }
+  }, [loading, authenticated, location.pathname, location.search, navigate])
 
   if (loading) {
     return <PageFallback />
