@@ -80,6 +80,21 @@ export interface DashboardPayload {
   q: string
 }
 
+// Panorama de TODAS as operadoras num disparo (stats + hospitais, SEM a lista
+// pesada de internados). Alimenta os KPIs e o seletor de qualquer operadora.
+export interface DashboardOverviewOperadora {
+  operadora: string
+  op_nome: string
+  stats: DashboardStats
+  hospitais: Hospital[]
+}
+
+export interface DashboardOverview {
+  operadoras: Record<string, DashboardOverviewOperadora>
+  lista: Array<{ key: string; nome: string }>
+  hoje_efetivo: string
+}
+
 export interface SidebarOp {
   key: string
   nome: string

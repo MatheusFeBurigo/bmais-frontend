@@ -6,7 +6,7 @@
 // contido aqui, sem tocar em componente nenhum.
 
 import { apiFetch, apiDownload } from '../api/client'
-import type { DashboardPayload, SidebarData } from '../types/api'
+import type { DashboardPayload, DashboardOverview, SidebarData } from '../types/api'
 
 export interface DashboardParams {
   operadora: string
@@ -23,6 +23,11 @@ export function fetchDashboard(params: DashboardParams): Promise<DashboardPayloa
   if (params.hospital) qs.set('hospital', params.hospital)
   if (params.q) qs.set('q', params.q)
   return apiFetch<DashboardPayload>(`/dashboard?${qs.toString()}`)
+}
+
+/** Panorama de TODAS as operadoras (stats + hospitais) num único disparo. */
+export function fetchDashboardOverview(): Promise<DashboardOverview> {
+  return apiFetch<DashboardOverview>('/dashboard/overview')
 }
 
 /** Contadores por operadora + data de referência (sidebar, reusado no Dashboard). */

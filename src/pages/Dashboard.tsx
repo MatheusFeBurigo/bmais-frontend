@@ -6,7 +6,7 @@ import Toast from '../components/Toast'
 import { LoadingState, Spinner, opInitial } from '../components/ui'
 import { Deferred } from '../components/Deferred'
 import InternadosTable from '../components/internados/InternadosTable'
-import { useDashboard, useSidebar } from '../hooks/useDashboard'
+import { useDashboard, useDashboardOverview } from '../hooks/useDashboard'
 import { exportarRvm } from '../services/dashboard.service'
 
 export default function Dashboard() {
@@ -31,11 +31,15 @@ export default function Dashboard() {
     }
   }
 
+  // Detalhe (lista de internados) da operadora aberta — dado pesado/específico.
   const { data, isLoading, isError, refetch, isFetching } = useDashboard({ operadora, filtro, hospital })
 
-  // Lista de operadoras para o seletor (reaproveita o cache do sidebar).
-  const { data: sidebar } = useSidebar()
-  const operadorasLista = sidebar?.operadoras ?? []
+  // Panorama de TODAS as operadoras num disparo: alimenta KPIs, hospitais e o
+  // seletor de QUALQUER operadora sem um novo round-trip ao trocar. A fatia da
+  // operadora atual sai daqui — instantânea assim que o overview está em cache.
+  const { data: overview } = useDashboardOverview()
+  const ovAtual = overview?.operadoras[operadora]
+  const operadorasLista = overview?.lista ?? []
 
   function setParam(key: string, value: string | null) {
     const next = new URLSearchParams(params)
@@ -51,7 +55,12 @@ export default function Dashboard() {
     setParams(next)
   }
 
-  const stats = data?.stats ?? {}
+  // Stats/hospitais/nome vêm do PANORAMA (instantâneo ao trocar de operadora);
+  // se o overview ainda não chegou, cai no detalhe. A lista de internados é sempre
+  // do detalhe (dado específico da operadora aberta).
+  const stats = ovAtual?.stats ?? data?.stats ?? {}
+  const opNome = ovAtual?.op_nome ?? data?.op_nome ?? operadora
+  const hospitaisPanorama = ovAtual?.hospitais ?? data?.hospitais ?? []
   const internacoes = data?.internacoes ?? []
 
   const visiveis = useMemo(() => {
@@ -105,7 +114,7 @@ export default function Dashboard() {
   return (
     <Layout
       title="Painel Operacional"
-      subtitle={data ? `${data.op_nome} · ${stats.total_internados || 0} internados · Ref: ${stats.hoje_efetivo || '—'}` : undefined}
+      subtitle={(ovAtual || data) ? `${opNome} · ${stats.total_internados || 0} internados · Ref: ${stats.hoje_efetivo || overview?.hoje_efetivo || '—'}` : undefined}
       actions={actions}
     >
       {/* Seletor de operadora */}
@@ -119,17 +128,18 @@ export default function Dashboard() {
           value={operadora}
           onChange={(e) => setParam('operadora', e.target.value)}
         >
-          {operadorasLista.length === 0 && <option value={operadora}>{data?.op_nome || operadora}</option>}
+          {operadorasLista.length === 0 && <option value={operadora}>{opNome}</option>}
           {operadorasLista.map((op) => (
             <option key={op.key} value={op.key}>{op.nome}</option>
           ))}
         </select>
       </div>
 
-      {isLoading && <LoadingState label="Carregando painel…" />}
-      {isError && <div className="empty-state t-danger">Erro ao carregar o painel.</div>}
+      {/* Só bloqueia com loading quando NEM o panorama NEM o detalhe chegaram. */}
+      {isLoading && !ovAtual && <LoadingState label="Carregando painel…" />}
+      {isError && !ovAtual && <div className="empty-state t-danger">Erro ao carregar o painel.</div>}
 
-      {data && (
+      {(ovAtual || data) && (
         <>
           {/* KPIs */}
           <div className="section-label">Controle de Relatórios de Auditoria</div>
@@ -150,7 +160,7 @@ export default function Dashboard() {
 
           {/* Seletor de hospital */}
           <div className="section-label" style={{ marginTop: 18 }}>
-            Hospital — {data.hospitais.length} unidades cadastradas
+            Hospital — {hospitaisPanorama.length} unidades cadastradas
           </div>
           <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', minWidth: 280, maxWidth: 420, flex: 1 }}>
@@ -160,7 +170,7 @@ export default function Dashboard() {
                 onChange={(e) => setParam('hospital', e.target.value || null)}
               >
                 <option value="">Todos os hospitais ({stats.total_internados || 0} internados)</option>
-                {data.hospitais.map((h) => (
+                {hospitaisPanorama.map((h) => (
                   <option key={h.key} value={h.key}>
                     {h.nome}
                     {h.internados ? ` — ${h.internados} internado${h.internados !== 1 ? 's' : ''}` : ''}

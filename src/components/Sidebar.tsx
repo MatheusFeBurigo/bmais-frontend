@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useSearchParams, useLocation } from 'react-router-dom'
-import { useSidebar } from '../hooks/useDashboard'
+import { useSidebar, usePrefetchDashboard } from '../hooks/useDashboard'
 import { prefetchPorRota } from '../routes'
 import { useAuth } from '../auth/AuthContext'
 import { podeVer } from '../auth/permissions'
@@ -56,6 +56,7 @@ interface SidebarProps {
 export default function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
   const { role } = useAuth()
   const { data } = useSidebar()
+  const prefetchDashboard = usePrefetchDashboard()
   const [params] = useSearchParams()
   const location = useLocation()
   const opAtual = params.get('operadora') || 'sulamerica'
@@ -124,7 +125,10 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
                   className={
                     'sb-sub-item' + (isAlert ? ' has-alert' : '') + (active ? ' active' : '')
                   }
-                  {...prefetchProps('/')}
+                  // Aquece o chunk da página E os dados do dashboard desta
+                  // operadora — ao clicar, a tela já vem do cache (sem round-trip).
+                  onMouseEnter={() => { aquecer('/'); prefetchDashboard(op.key) }}
+                  onFocus={() => { aquecer('/'); prefetchDashboard(op.key) }}
                 >
                   <span className="sb-sub-name">{op.nome}</span>
                   {isAlert ? (

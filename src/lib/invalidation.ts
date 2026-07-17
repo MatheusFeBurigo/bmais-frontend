@@ -12,9 +12,9 @@ import { queryRoots, type QueryRoot } from './queryKeys'
 // não caçar invalidateQueries pelas telas.
 const EVENTO_INVALIDA: Record<string, QueryRoot[]> = {
   // Upload de censo/relatório recomputa quase tudo que é agregado.
-  dadosAlterados: ['dashboard', 'diretoria', 'gestor', 'sidebar', 'equipe'],
+  dadosAlterados: ['dashboard', 'dashboardOverview', 'diretoria', 'gestor', 'sidebar', 'equipe'],
   // Mudança de configuração de operadora/hospital afeta stats e sidebar.
-  configuracaoAlterada: ['configuracoes', 'sidebar', 'dashboard', 'diretoria'],
+  configuracaoAlterada: ['configuracoes', 'sidebar', 'dashboard', 'dashboardOverview', 'diretoria'],
   // Mudança na equipe (profissionais/escala) afeta a contagem do sidebar.
   equipeAlterada: ['equipe', 'sidebar'],
   // Gestão de usuários.

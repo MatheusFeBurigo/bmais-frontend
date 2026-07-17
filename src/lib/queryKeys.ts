@@ -10,6 +10,8 @@ export const queryKeys = {
   dashboard: (operadora: string, filtro: string, hospital: string) =>
     ['dashboard', operadora, filtro, hospital] as const,
 
+  dashboardOverview: () => ['dashboard-overview'] as const,
+
   sidebar: () => ['sidebar'] as const,
 
   diretoria: () => ['diretoria'] as const,
@@ -34,6 +36,7 @@ export const queryKeys = {
 // filtros). O React Query casa por prefixo, então a raiz basta.
 export const queryRoots = {
   dashboard: ['dashboard'] as const,
+  dashboardOverview: ['dashboard-overview'] as const,
   sidebar: ['sidebar'] as const,
   diretoria: ['diretoria'] as const,
   gestor: ['gestor'] as const,
