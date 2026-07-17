@@ -1,15 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import type { ChartOptions } from 'chart.js'
-import { apiFetch } from '../api/client'
-import type { GestorMetrics, GestorResposta } from '../types/api'
+import type { GestorMetrics } from '../types/api'
 import Layout from '../components/Layout'
 import { KpiCard, Badge, OpAvatar, LoadingState } from '../components/ui'
 import { Chart, Doughnut, Bar } from '../components/charts'
 import PacienteDrawer from '../components/PacienteDrawer'
 import Toast from '../components/Toast'
 import { Deferred } from '../components/Deferred'
+import { useGestor } from '../hooks/useGestor'
 
 const GRID = '#EFF2F5'
 const AXIS = '#8595A6'
@@ -47,17 +46,10 @@ export default function Gestor() {
   const [drawerId, setDrawerId] = useState<number | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
-  const qs = new URLSearchParams()
-  if (fData) qs.set('data', fData)
-  if (fOperadora) qs.set('operadora', fOperadora)
-  if (fHospital) qs.set('hospital', fHospital)
-  if (fRegiao) qs.set('regiao', fRegiao)
-
   // O backend devolve métricas e opções de filtro num único payload aninhado
   // ({ metrics, filtros }) — não há rota /gestor/filtros separada.
-  const { data: payload, isLoading, isError } = useQuery({
-    queryKey: ['gestor', fData, fOperadora, fHospital, fRegiao],
-    queryFn: () => apiFetch<GestorResposta>(`/gestor?${qs.toString()}`),
+  const { data: payload, isLoading, isError } = useGestor({
+    data: fData, operadora: fOperadora, hospital: fHospital, regiao: fRegiao,
   })
   const m = payload?.metrics
   const filtros = payload?.filtros

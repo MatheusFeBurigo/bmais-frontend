@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { apiFetch } from '../api/client'
-import type { InternacaoDados } from '../types/api'
 import { StatusBadge, LeitoTag } from './StatusBadge'
 import { LoadingState } from './ui'
+import { useInternacaoDados } from '../hooks/useInternacao'
+import { registrarRelatorioRapido } from '../services/internacao.service'
 
 function hojeISO(): string {
   // Data local em YYYY-MM-DD (sem depender de UTC).
@@ -19,10 +18,7 @@ interface Props {
 }
 
 export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props) {
-  const { data: d, isLoading, isError } = useQuery({
-    queryKey: ['internacao-dados', internacaoId],
-    queryFn: () => apiFetch<InternacaoDados>(`/internacao/${internacaoId}/dados`),
-  })
+  const { data: d, isLoading, isError } = useInternacaoDados(internacaoId)
 
   const [dataVisita, setDataVisita] = useState(hojeISO())
   const [medico, setMedico] = useState('')
@@ -46,9 +42,8 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
     setSalvando(true)
     setErro(null)
     try {
-      await apiFetch(`/internacao/${internacaoId}/relatorio-rapido`, {
-        method: 'POST',
-        body: { data_visita: dataVisita, medico, descricao: obs, autor: 'operador' },
+      await registrarRelatorioRapido(internacaoId, {
+        data_visita: dataVisita, medico, descricao: obs,
       })
       onSaved('✓ Relatório registrado')
     } catch (e) {

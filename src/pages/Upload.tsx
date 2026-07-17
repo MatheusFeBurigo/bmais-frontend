@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { apiUpload } from '../api/client'
-import { CHAVES_DADOS } from '../api/queries'
+import { invalidarPorEvento } from '../lib/invalidation'
+import {
+  enviarCensos, enviarRelatorios, reprocessarPastaRelatorios,
+} from '../services/censos.service'
 import type {
   UploadCensoResponse,
   RelatorioLoteResponse,
@@ -93,13 +95,11 @@ const IconDoc = (
 
 export default function Upload() {
   const qc = useQueryClient()
-  // Todo upload muda os dados de origem — marca os caches derivados como obsoletos
-  // para que Dashboard/Diretoria/Gestor/Sidebar refaçam o fetch ao serem abertos,
-  // em vez de esperar o staleTime de 60s ou depender de refresh manual.
+  // Todo upload muda os dados de origem — o evento de domínio "dadosAlterados"
+  // invalida (centralizadamente) os caches derivados: Dashboard/Diretoria/Gestor/
+  // Sidebar/Equipe refazem o fetch ao serem abertos, sem esperar o staleTime.
   function invalidarDados() {
-    for (const chave of CHAVES_DADOS) {
-      qc.invalidateQueries({ queryKey: [chave] })
-    }
+    invalidarPorEvento(qc, 'dadosAlterados')
   }
 
   const [tab, setTab] = useState<TabKey>('censos')
@@ -113,11 +113,9 @@ export default function Upload() {
   async function processarCensos(e: React.FormEvent) {
     e.preventDefault()
     if (!censosFiles.length) return
-    const fd = new FormData()
-    censosFiles.forEach((f) => fd.append('files', f))
     setBusy('censos')
     try {
-      const data = await apiUpload<UploadCensoResponse>('/upload', fd)
+      const data = await enviarCensos(censosFiles)
       setResult({ kind: 'censos', data })
       invalidarDados()
       setToast('✓ Processamento concluído')
@@ -131,12 +129,9 @@ export default function Upload() {
   async function processarRelatorios(e: React.FormEvent) {
     e.preventDefault()
     if (!relFiles.length) return
-    const fd = new FormData()
-    relFiles.forEach((f) => fd.append('files', f))
-    fd.append('auto_apply', autoApply ? 'true' : 'false')
     setBusy('relatorios')
     try {
-      const data = await apiUpload<RelatorioLoteResponse>('/relatorios/upload', fd)
+      const data = await enviarRelatorios(relFiles, autoApply)
       setResult({ kind: 'relatorios', data })
       invalidarDados()
       setToast('✓ Processamento concluído')
@@ -150,7 +145,7 @@ export default function Upload() {
   async function processarPasta() {
     setBusy('refresh')
     try {
-      const data = await apiUpload<RelatorioRefreshResponse>('/relatorios/refresh', new FormData())
+      const data = await reprocessarPastaRelatorios()
       setResult({ kind: 'relatorios', data })
       invalidarDados()
       setToast('✓ Pasta processada')

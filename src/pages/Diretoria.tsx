@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { apiFetch, apiDownload } from '../api/client'
 import type { DiretoriaPayload } from '../types/api'
+import { useDiretoria } from '../hooks/useDiretoria'
+import { exportarRvmGeral, inserirSeedDemo } from '../services/diretoria.service'
 import Layout from '../components/Layout'
 import Toast from '../components/Toast'
 import { KpiCard, Badge, OpAvatar, ProgressBar, LoadingState, Spinner } from '../components/ui'
@@ -72,14 +72,11 @@ export default function Diretoria() {
   const [toast, setToast] = useState<string | null>(null)
   const [seeding, setSeeding] = useState(false)
 
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['diretoria'],
-    queryFn: () => apiFetch<DiretoriaPayload>('/diretoria'),
-  })
+  const { data, isLoading, isError, refetch, isFetching } = useDiretoria()
 
   async function exportar() {
     try {
-      await apiDownload('/export-rvm', 'CONTROLE_AUDITORIA.xlsx')
+      await exportarRvmGeral()
     } catch {
       setToast('Falha ao exportar')
     }
@@ -88,9 +85,7 @@ export default function Diretoria() {
   async function seedDemo() {
     setSeeding(true)
     try {
-      const d = await apiFetch<{ ok?: boolean; pacientes_inseridos?: number; relatorios_adicionados?: number }>(
-        '/seed-demo', { method: 'POST' },
-      )
+      const d = await inserirSeedDemo()
       if (d.ok) {
         setToast(`✓ Demo inserido — ${d.pacientes_inseridos} pacientes, ${d.relatorios_adicionados} relatórios`)
         refetch()

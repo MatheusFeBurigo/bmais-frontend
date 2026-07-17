@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiFetch } from '../api/client'
+import { useQueryClient } from '@tanstack/react-query'
 import type {
-  ConfiguracoesPayload, OperadoraCard, OperadoraSelected, OperadoraRegras,
+  OperadoraCard, OperadoraSelected, OperadoraRegras,
   HospitalSelected, Profissional,
 } from '../types/api'
 import Layout from '../components/Layout'
 import { Badge, OpAvatar, Modal, LoadingState } from '../components/ui'
 import { StatusBadge } from '../components/StatusBadge'
 import Toast from '../components/Toast'
+import { useConfiguracoes } from '../hooks/useConfiguracoes'
+import { invalidarPorEvento } from '../lib/invalidation'
+import {
+  salvarRegrasOperadora, criarOperadora, criarHospital,
+} from '../services/configuracoes.service'
+import { popularDemo as apiPopularDemo, limparDados as apiLimparDados } from '../services/admin.service'
+import { adicionarEscala, removerEscala } from '../services/escala.service'
 
 const SERVICO_LABEL: Record<string, string> = {
   P: 'Análise de Conta', V: 'Auditoria Concorrente', AMB: 'Ambulatório', PS: 'Pronto Socorro',
@@ -70,12 +76,7 @@ export default function Configuracoes() {
   const [toast, setToast] = useState<string | null>(null)
   const qc = useQueryClient()
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['configuracoes', op, hospital],
-    queryFn: () => apiFetch<ConfiguracoesPayload>(
-      `/configuracoes${op ? `?op=${op}${hospital ? `&hospital=${hospital}` : ''}` : ''}`,
-    ),
-  })
+  const { data, isLoading } = useConfiguracoes({ op, hospital })
 
   function go(next: Record<string, string>) {
     const p = new URLSearchParams()
@@ -84,8 +85,7 @@ export default function Configuracoes() {
   }
 
   function invalidar() {
-    qc.invalidateQueries({ queryKey: ['configuracoes'] })
-    qc.invalidateQueries({ queryKey: ['sidebar'] })
+    invalidarPorEvento(qc, 'configuracaoAlterada')
   }
 
   if (isLoading || !data) {
@@ -150,7 +150,7 @@ function OverviewView({ operadoras, onNav, onToast, onChanged, toast }: {
     if (!confirm('Inserir dados de demonstração (pacientes, relatórios e altas)?')) return
     setBusy('demo')
     try {
-      const d = await apiFetch<{ ok?: boolean; pacientes_inseridos?: number; altas_inseridas?: number }>('/seed-demo', { method: 'POST' })
+      const d = await apiPopularDemo()
       if (d.ok) { onToast(`✓ Demo: ${d.pacientes_inseridos || 0} pacientes e ${d.altas_inseridas || 0} altas`); onChanged() }
       else onToast('Erro ao popular demo')
     } catch (e) { onToast(`Erro: ${(e as Error).message}`) } finally { setBusy(null) }
@@ -162,7 +162,7 @@ function OverviewView({ operadoras, onNav, onToast, onChanged, toast }: {
     if (r.trim().toUpperCase() !== 'LIMPAR') { onToast('Confirmação incorreta — nada foi apagado'); return }
     setBusy('limpar')
     try {
-      const d = await apiFetch<{ ok?: boolean; removidos?: { internacoes?: number; relatorios?: number } }>('/limpar-dados', { method: 'POST' })
+      const d = await apiLimparDados()
       if (d.ok) { onToast(`✓ Base limpa: ${d.removidos?.internacoes || 0} internações removidas`); onChanged() }
       else onToast('Erro ao limpar dados')
     } catch (e) { onToast(`Erro: ${(e as Error).message}`) } finally { setBusy(null) }
@@ -261,10 +261,7 @@ function OperadoraView({ opSel, onNav, onToast, onChanged, toast }: {
   async function salvar() {
     setSaving(true)
     try {
-      const d = await apiFetch<{ ok?: boolean; salvo?: boolean }>(`/configuracoes/operadora/${opSel.key}`, {
-        method: 'POST',
-        body: { key: opSel.key, nome: opSel.nome, ...regras },
-      })
+      const d = await salvarRegrasOperadora(opSel.key, opSel.nome, regras)
       if (d.ok || d.salvo) { onToast('✓ Configuração salva'); setDirty(false); onChanged() }
       else onToast('Erro ao salvar')
     } catch (e) { onToast(`Erro: ${(e as Error).message}`) } finally { setSaving(false) }
@@ -456,7 +453,7 @@ function HospitalView({ opSel, hosp, profs, onNav, onToast, onChanged, toast }: 
   async function remover(id: number) {
     if (!confirm('Remover este profissional da escala do hospital?')) return
     try {
-      await apiFetch(`/hospital-escala/${id}`, { method: 'DELETE' })
+      await removerEscala(id)
       onToast('Removido da escala')
       onChanged()
     } catch (e) { onToast(`Erro: ${(e as Error).message}`) }
@@ -581,7 +578,7 @@ function AddHospitalForm({ opKey, onClose, onToast, onChanged }: { opKey: string
     setSaving(true)
     try {
       const key = n.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 30)
-      const d = await apiFetch<{ ok?: boolean; criado?: boolean }>('/configuracoes/hospital', { method: 'POST', body: { nome: n, operadora_key: opKey, key } })
+      const d = await criarHospital(n, opKey, key)
       if (d.ok || d.criado) { onToast('✓ Hospital adicionado'); onChanged(); onClose() }
       else onToast('Erro ao adicionar hospital')
     } catch (e) { onToast(`Erro: ${(e as Error).message}`) } finally { setSaving(false) }
@@ -616,9 +613,9 @@ function AddEscalaHospForm({ hosp, opKey, profs, onClose, onToast, onChanged }: 
     if (!prof) { onToast('Selecione o profissional'); return }
     setSaving(true)
     try {
-      await apiFetch('/hospital-escala', {
-        method: 'POST',
-        body: { hospital_key: hosp.key, hospital_nome: hosp.nome, operadora_key: opKey, servico, profissional_id: parseInt(prof) },
+      await adicionarEscala({
+        hospital_key: hosp.key, hospital_nome: hosp.nome, operadora_key: opKey,
+        servico, profissional_id: parseInt(prof),
       })
       onToast('✓ Profissional adicionado à escala')
       onChanged()
@@ -661,7 +658,7 @@ function NovaOperadoraModal({ onClose, onDone, onError }: { onClose: () => void;
     if (!nome.trim() || !key.trim()) { onError('Preencha nome e chave'); return }
     setSaving(true)
     try {
-      const d = await apiFetch<{ ok?: boolean; criado?: boolean }>('/configuracoes/operadora', { method: 'POST', body: { nome: nome.trim(), key: key.trim() } })
+      const d = await criarOperadora(nome, key)
       if (d.ok || d.criado) onDone(key.trim())
       else onError('Erro: chave já existe?')
     } catch (e) { onError(`Erro: ${(e as Error).message}`) } finally { setSaving(false) }

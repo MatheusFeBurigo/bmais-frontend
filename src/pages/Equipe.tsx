@@ -1,13 +1,19 @@
 import { useMemo, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiFetch } from '../api/client'
+import { useQueryClient } from '@tanstack/react-query'
 import type {
-  EquipePayload, Profissional, ProfissionalDetalhe, ProfTipo, Escala, Hospital,
+  Profissional, ProfTipo, Escala, ProfissionalDetalhe,
 } from '../types/api'
 import Layout from '../components/Layout'
 import { KpiCard, Badge, Modal, LoadingState } from '../components/ui'
 import Toast from '../components/Toast'
 import UsuariosAcesso from '../components/UsuariosAcesso'
+import { useEquipe, useProfissional, useHospitais } from '../hooks/useEquipe'
+import { queryKeys } from '../lib/queryKeys'
+import { invalidarPorEvento } from '../lib/invalidation'
+import {
+  criarProfissional, atualizarProfissional, definirAtivoProfissional,
+} from '../services/equipe.service'
+import { adicionarEscala, removerEscala } from '../services/escala.service'
 
 const TIPO_LABEL: Record<ProfTipo, string> = {
   E: 'Enfermeiro(a)', M: 'Médico(a) Auditor(a)', O: 'Operador(a) Interno(a)',
@@ -74,16 +80,8 @@ export default function Equipe() {
   const [addOpen, setAddOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['equipe'],
-    queryFn: () => apiFetch<EquipePayload>('/equipe'),
-  })
-
-  const { data: detalhe } = useQuery({
-    queryKey: ['prof', selId],
-    queryFn: () => apiFetch<ProfissionalDetalhe>(`/equipe/profissional/${selId}`),
-    enabled: selId != null,
-  })
+  const { data, isLoading } = useEquipe()
+  const { data: detalhe } = useProfissional(selId)
 
   const todos = useMemo<Profissional[]>(() => {
     if (!data) return []
@@ -101,9 +99,9 @@ export default function Equipe() {
   }
 
   function invalidar() {
-    qc.invalidateQueries({ queryKey: ['equipe'] })
-    qc.invalidateQueries({ queryKey: ['sidebar'] })
-    if (selId != null) qc.invalidateQueries({ queryKey: ['prof', selId] })
+    invalidarPorEvento(qc, 'equipeAlterada')
+    // Detalhe do profissional selecionado é granular por id — invalida à parte.
+    if (selId != null) qc.invalidateQueries({ queryKey: queryKeys.profissional(selId) })
   }
 
   const enfermeirosMedicos = data ? visiveisPorTipo([...data.enfermeiros, ...data.medicos]) : []
@@ -261,7 +259,7 @@ function DetalheProf({ detalhe, opsLista, onToast, onChanged }: {
     if (!n) { onToast('Nome não pode ser vazio'); return }
     setSaving(true)
     try {
-      await apiFetch(`/profissionais/${p.id}`, { method: 'PATCH', body: { nome: n, tipo } })
+      await atualizarProfissional(p.id, n, tipo)
       onToast('✓ Dados atualizados')
       onChanged()
     } catch (err) {
@@ -275,7 +273,7 @@ function DetalheProf({ detalhe, opsLista, onToast, onChanged }: {
     const novo = !ativo
     if (!confirm(`${novo ? 'Reativar' : 'Desativar'} este profissional?`)) return
     try {
-      await apiFetch(`/profissionais/${p.id}`, { method: 'PATCH', body: { ativo: novo ? 1 : 0 } })
+      await definirAtivoProfissional(p.id, novo)
       onToast(novo ? '✓ Profissional reativado' : 'Profissional desativado')
       onChanged()
     } catch (err) {
@@ -359,7 +357,7 @@ function EscalaList({ escala, onToast, onChanged }: { escala: Escala[]; onToast:
   async function remover(id: number) {
     if (!confirm('Remover este hospital da escala?')) return
     try {
-      await apiFetch(`/hospital-escala/${id}`, { method: 'DELETE' })
+      await removerEscala(id)
       onToast('Removido da escala')
       onChanged()
     } catch (err) {
@@ -408,12 +406,7 @@ function FormEscala({ profId, opsLista, onClose, onToast, onChanged }: {
   const [servico, setServico] = useState('P')
   const [saving, setSaving] = useState(false)
 
-  const { data: hospitais, isFetching } = useQuery({
-    queryKey: ['hospitais', op],
-    queryFn: () => apiFetch<Hospital[]>(`/hospitais?op=${op}`),
-    enabled: Boolean(op),
-    staleTime: 60_000,
-  })
+  const { data: hospitais, isFetching } = useHospitais(op)
 
   async function adicionar() {
     if (!op) { onToast('Selecione a operadora'); return }
@@ -421,9 +414,9 @@ function FormEscala({ profId, opsLista, onClose, onToast, onChanged }: {
     const [hospKey, hospNome] = hosp.split('|')
     setSaving(true)
     try {
-      await apiFetch('/hospital-escala', {
-        method: 'POST',
-        body: { hospital_key: hospKey, hospital_nome: hospNome, operadora_key: op, servico, profissional_id: profId },
+      await adicionarEscala({
+        hospital_key: hospKey, hospital_nome: hospNome, operadora_key: op,
+        servico, profissional_id: profId,
       })
       onToast('✓ Hospital adicionado à escala')
       onChanged()
@@ -484,7 +477,7 @@ function AddProfModal({ onClose, onDone, onError }: {
     if (!n) { onError('Informe o nome do profissional'); return }
     setSaving(true)
     try {
-      await apiFetch('/profissionais', { method: 'POST', body: { nome: n, tipo } })
+      await criarProfissional(n, tipo)
       onDone('✓ Profissional adicionado')
     } catch (err) {
       onError(`Erro: ${(err as Error).message}`)

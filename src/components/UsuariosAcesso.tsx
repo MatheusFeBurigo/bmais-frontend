@@ -2,11 +2,13 @@
 // Distinto dos profissionais (E/M/O): aqui são as contas que autenticam, com
 // papel admin/diretor/analista. Visível apenas para administradores.
 import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiFetch } from '../api/client'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../auth/AuthContext'
-import type { UserRole, UsuariosPayload } from '../types/api'
+import type { UserRole } from '../types/api'
 import { Badge, Modal } from './ui'
+import { useUsuarios } from '../hooks/useUsuarios'
+import { criarUsuario } from '../services/usuarios.service'
+import { queryKeys } from '../lib/queryKeys'
 
 const ROLE_LABEL: Record<UserRole, string> = {
   admin: 'Administrador',
@@ -34,11 +36,7 @@ export default function UsuariosAcesso({ onToast }: { onToast: (m: string) => vo
   const qc = useQueryClient()
 
   // Só admin gerencia usuários. Para os demais, a seção nem é renderizada.
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['usuarios'],
-    queryFn: () => apiFetch<UsuariosPayload>('/usuarios'),
-    enabled: role === 'admin',
-  })
+  const { data, isLoading, isError } = useUsuarios(role === 'admin')
 
   if (role !== 'admin') return null
 
@@ -104,7 +102,7 @@ export default function UsuariosAcesso({ onToast }: { onToast: (m: string) => vo
           onDone={(msg) => {
             setAddOpen(false)
             onToast(msg)
-            qc.invalidateQueries({ queryKey: ['usuarios'] })
+            qc.invalidateQueries({ queryKey: queryKeys.usuarios() })
           }}
           onError={onToast}
         />
@@ -132,7 +130,7 @@ function NovoUsuarioModal({ onClose, onDone, onError }: {
     if (password.length < 6) { onError('A senha deve ter ao menos 6 caracteres'); return }
     setSaving(true)
     try {
-      await apiFetch('/usuarios', { method: 'POST', body: { email: email.trim(), password, role } })
+      await criarUsuario(email, password, role)
       onDone(`✓ Usuário ${email.trim()} criado como ${ROLE_LABEL[role]}`)
     } catch (err) {
       onError(`Erro: ${(err as Error).message}`)

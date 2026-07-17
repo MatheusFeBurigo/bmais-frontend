@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useSearchParams, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { sidebarQuery } from '../api/queries'
+import { useSidebar } from '../hooks/useDashboard'
 import { prefetchPorRota } from '../routes'
 import { useAuth } from '../auth/AuthContext'
 import { podeVer } from '../auth/permissions'
@@ -56,7 +55,7 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
   const { role } = useAuth()
-  const { data } = useQuery(sidebarQuery())
+  const { data } = useSidebar()
   const [params] = useSearchParams()
   const location = useLocation()
   const opAtual = params.get('operadora') || 'sulamerica'

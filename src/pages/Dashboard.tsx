@@ -1,87 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { apiFetch, apiDownload } from '../api/client'
-import { sidebarQuery } from '../api/queries'
-import type { DashboardPayload } from '../types/api'
 import Layout from '../components/Layout'
-import { StatusBadge, rowFlagClass, LeitoTag } from '../components/StatusBadge'
 import PacienteDrawer from '../components/PacienteDrawer'
 import Toast from '../components/Toast'
-import { LoadingState, Spinner } from '../components/ui'
+import { LoadingState, Spinner, opInitial } from '../components/ui'
 import { Deferred } from '../components/Deferred'
-
-const OP_INITIALS: Record<string, string> = {
-  sulamerica: 'SU', bradesco: 'BR', careplus: 'CA', itau: 'IT',
-  porto: 'PO', allianz: 'AL', mediservic: 'MS', notredame: 'ND',
-}
-function opInitial(key: string): string {
-  return OP_INITIALS[key] || key.slice(0, 2).toUpperCase()
-}
-
-// Exibe uma contagem de dias como fração "valor / limite" (ex.: dias sem relatório
-// sobre a janela, ou dias internado sobre o gatilho). O valor recebe cor de alerta
-// via `tone`; o denominador fica discreto. Alinhado à direita, em fonte mono.
-type Tone = 'danger' | 'warning' | 'neutral'
-const TONE_COLOR: Record<Tone, string> = {
-  danger: 'var(--danger)',
-  warning: 'var(--warning)',
-  neutral: 'var(--ink)',
-}
-// Marcador de longa permanência. Mostra o limite REAL que o paciente atingiu (em
-// dias), configurado por operadora — não os rótulos fixos 10/30. "Avançada" tem
-// precedência sobre "prolongada"; sem marcador → traço.
-function Permanencia({ longa10, longa30, limiteLonga, limiteAvancada }: {
-  longa10?: boolean
-  longa30?: boolean
-  limiteLonga?: number | null
-  limiteAvancada?: number | null
-}) {
-  if (longa30) {
-    return (
-      <span className="mono fw-6 t-danger" title={`Permanência avançada: internado há ≥ ${limiteAvancada ?? '?'} dias`}>
-        {limiteAvancada != null ? `${limiteAvancada}d+` : '—'}
-      </span>
-    )
-  }
-  if (longa10) {
-    return (
-      <span className="mono fw-6 t-warning" title={`Permanência prolongada: internado há ≥ ${limiteLonga ?? '?'} dias`}>
-        {limiteLonga != null ? `${limiteLonga}d+` : '—'}
-      </span>
-    )
-  }
-  return <span style={{ color: 'var(--muted-2)' }}>—</span>
-}
-
-function DiasRatio({ value, limit, tone = 'neutral' }: {
-  value: number | null | undefined
-  limit: number | null | undefined
-  tone?: Tone
-}) {
-  if (value == null) return <span style={{ color: 'var(--muted-2)' }}>—</span>
-  const strong = tone !== 'neutral'
-  return (
-    <span
-      className="mono"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'baseline',
-        gap: 1,
-        justifyContent: 'flex-end',
-        fontVariantNumeric: 'tabular-nums',
-      }}
-    >
-      <span style={{ fontSize: 'var(--t-md)', fontWeight: strong ? 700 : 600, color: TONE_COLOR[tone] }}>
-        {value}
-      </span>
-      <span style={{ fontSize: 10, color: 'var(--muted-3)', fontWeight: 500 }}>d</span>
-      {limit != null && (
-        <span style={{ fontSize: 11, color: 'var(--muted-2)', marginLeft: 2 }}>/&thinsp;{limit}</span>
-      )}
-    </span>
-  )
-}
+import InternadosTable from '../components/internados/InternadosTable'
+import { useDashboard, useSidebar } from '../hooks/useDashboard'
+import { exportarRvm } from '../services/dashboard.service'
 
 export default function Dashboard() {
   const [params, setParams] = useSearchParams()
@@ -99,23 +25,16 @@ export default function Dashboard() {
 
   async function exportar() {
     try {
-      await apiDownload(`/export-rvm?operadora=${operadora}`, `CONTROLE_AUDITORIA_${operadora}.xlsx`)
+      await exportarRvm(operadora)
     } catch {
       setToast('Falha ao exportar')
     }
   }
 
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['dashboard', operadora, filtro, hospital],
-    queryFn: () =>
-      apiFetch<DashboardPayload>(
-        `/dashboard?operadora=${encodeURIComponent(operadora)}&filtro=${encodeURIComponent(filtro)}` +
-          (hospital ? `&hospital=${encodeURIComponent(hospital)}` : ''),
-      ),
-  })
+  const { data, isLoading, isError, refetch, isFetching } = useDashboard({ operadora, filtro, hospital })
 
   // Lista de operadoras para o seletor (reaproveita o cache do sidebar).
-  const { data: sidebar } = useQuery(sidebarQuery())
+  const { data: sidebar } = useSidebar()
   const operadorasLista = sidebar?.operadoras ?? []
 
   function setParam(key: string, value: string | null) {
@@ -286,140 +205,19 @@ export default function Dashboard() {
             minHeight={360}
             placeholder={<LoadingState label="Carregando internados…" style={{ minHeight: 360 }} />}
           >
-          <div className="card" style={{ marginTop: 14 }}>
-            <div className="card-header" style={{ alignItems: 'center', paddingBottom: 14 }}>
-              <div>
-                <div className="card-title">Todos os Internados</div>
-                <div className="card-sub">
-                  <span className="mono fw-6">{visiveis.length}</span> de{' '}
-                  <span className="mono fw-6">{stats.total_internados || internacoes.length}</span>
-                  <span className="dot-sep" />
-                  Clique na linha para detalhes
-                </div>
-              </div>
-              <button className="btn btn-outline btn-sm" onClick={exportar}>Exportar</button>
-            </div>
-
-            <div style={{ maxHeight: 560, overflowY: 'auto' }}>
-              <table className="bmais-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: 110 }}>Relatório</th>
-                    <th>Hospital</th>
-                    <th>Segurado</th>
-                    <th style={{ width: 86 }}>Atend.</th>
-                    <th style={{ width: 60 }}>Leito</th>
-                    <th style={{ width: 96 }}>Internação</th>
-                    <th>Última Visita</th>
-                    <th style={{ width: 96 }} className="t-right" title="Dias desde o último relatório sobre a janela permitida (ex.: 5 / 7)">
-                      Sem relatório
-                    </th>
-                    <th style={{ width: 88 }} className="t-right" title="Dias de internação sobre o gatilho de alerta (ex.: 12 / 10)">
-                      Dias internado
-                    </th>
-                    <th style={{ width: 78 }} className="t-right" title="Marcador de longa permanência: 10 dias ou 30 dias">
-                      Permanência
-                    </th>
-                    <th style={{ width: 40 }} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginados.map((p) => {
-                    const sr = p.status_relatorio || 'AGUARDANDO'
-                    return (
-                      <tr key={p.id} className={rowFlagClass(sr)} style={{ cursor: 'pointer' }} onClick={() => setDrawerId(p.id)}>
-                        <td><StatusBadge sr={sr} /></td>
-                        <td><span style={{ fontSize: 'var(--t-sm)' }}>{p.hospital_nome || '—'}</span></td>
-                        <td style={{ maxWidth: 240 }}><div className="truncate fw-5">{p.nome}</div></td>
-                        <td><span className="mono t-muted" style={{ fontSize: 'var(--t-sm)' }}>{p.atendimento || '—'}</span></td>
-                        <td><LeitoTag tipo={p.tipo_leito} /></td>
-                        <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_entrada || '—'}</span></td>
-                        <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_ultima_visita || '—'}</span></td>
-                        <td className="t-right">
-                          <DiasRatio
-                            value={p.dias_sem_relatorio}
-                            limit={p.janela_relatorio}
-                            tone={
-                              sr === 'SEM_RELATORIO' || sr === 'ALTA_SEM_REL'
-                                ? 'danger'
-                                : sr === 'VENCIDO' || sr === 'ALTA_REL_VENCIDO'
-                                  ? 'warning'
-                                  : 'neutral'
-                            }
-                          />
-                        </td>
-                        <td className="t-right">
-                          <DiasRatio
-                            value={p.dias}
-                            limit={p.gatilho}
-                            tone={p.longa_30 ? 'danger' : p.longa_10 ? 'warning' : 'neutral'}
-                          />
-                        </td>
-                        <td className="t-right">
-                          <Permanencia
-                            longa10={p.longa_10}
-                            longa30={p.longa_30}
-                            limiteLonga={p.limite_longa}
-                            limiteAvancada={p.limite_avancada}
-                          />
-                        </td>
-                        <td onClick={(e) => { e.stopPropagation(); setDrawerId(p.id) }}>
-                          <button className="btn btn-ghost btn-sm" title="Registrar relatório" style={{ padding: 5, color: 'var(--accent)' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                  {visiveis.length === 0 && (
-                    <tr>
-                      <td colSpan={11}>
-                        <div className="empty-state">
-                          <div style={{ fontSize: 32, opacity: 0.25, marginBottom: 8 }}>📋</div>
-                          <div style={{ fontWeight: 600, marginBottom: 4 }}>Nenhum internado encontrado</div>
-                          <div style={{ fontSize: 'var(--t-sm)' }}>Tente outro filtro ou operadora.</div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
-                {visiveis.length > 0 ? (
-                  <>
-                    Mostrando {(paginaAtual - 1) * POR_PAGINA + 1}–{Math.min(paginaAtual * POR_PAGINA, visiveis.length)} de {visiveis.length}
-                    {visiveis.length !== internacoes.length && ` (filtrados de ${internacoes.length})`}
-                  </>
-                ) : (
-                  <>Mostrando 0 de {stats.total_internados || internacoes.length}</>
-                )}
-              </span>
-              {totalPaginas > 1 && (
-                <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-                  <button
-                    className="btn btn-outline btn-sm"
-                    disabled={paginaAtual <= 1}
-                    onClick={() => setPagina((p) => Math.max(1, p - 1))}
-                  >
-                    Anterior
-                  </button>
-                  <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
-                    {paginaAtual} / {totalPaginas}
-                  </span>
-                  <button
-                    className="btn btn-outline btn-sm"
-                    disabled={paginaAtual >= totalPaginas}
-                    onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-                  >
-                    Próxima
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          <InternadosTable
+            paginados={paginados}
+            totalVisiveis={visiveis.length}
+            totalInternacoes={internacoes.length}
+            totalBackend={stats.total_internados || 0}
+            paginaAtual={paginaAtual}
+            totalPaginas={totalPaginas}
+            porPagina={POR_PAGINA}
+            onExportar={exportar}
+            onSelecionar={setDrawerId}
+            onPrev={() => setPagina((p) => Math.max(1, p - 1))}
+            onNext={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+          />
           </Deferred>
         </>
       )}
