@@ -29,6 +29,7 @@ export const queryKeys = {
   usuarios: () => ['usuarios'] as const,
 
   internacaoDados: (id: number) => ['internacao-dados', id] as const,
+  internacaoTimeline: (id: number) => ['internacao-timeline', id] as const,
 } as const
 
 // Raiz (primeiro segmento) de cada domínio — usada para invalidar TODAS as

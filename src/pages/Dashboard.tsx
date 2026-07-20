@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import Layout from '../components/Layout'
+import { usePageHeader } from '../components/PageHeader'
 import PacienteDrawer from '../components/PacienteDrawer'
 import Toast from '../components/Toast'
 import { LoadingState, Spinner, opInitial } from '../components/ui'
 import { Deferred } from '../components/Deferred'
 import InternadosTable from '../components/internados/InternadosTable'
+import MediasCards from '../components/MediasCards'
 import { useDashboard, useDashboardOverview } from '../hooks/useDashboard'
+import { usePrefetchInternacao } from '../hooks/useInternacao'
 import { exportarRvm } from '../services/dashboard.service'
 
 export default function Dashboard() {
@@ -22,6 +24,7 @@ export default function Dashboard() {
   const [drawerId, setDrawerId] = useState<number | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [pagina, setPagina] = useState(1)
+  const prefetchPaciente = usePrefetchInternacao()
 
   async function exportar() {
     try {
@@ -111,12 +114,14 @@ export default function Dashboard() {
     </>
   )
 
+  usePageHeader({
+    title: 'Painel Operacional',
+    subtitle: (ovAtual || data) ? `${opNome} · ${stats.total_internados || 0} internados · Ref: ${stats.hoje_efetivo || overview?.hoje_efetivo || '—'}` : undefined,
+    actions,
+  })
+
   return (
-    <Layout
-      title="Painel Operacional"
-      subtitle={(ovAtual || data) ? `${opNome} · ${stats.total_internados || 0} internados · Ref: ${stats.hoje_efetivo || overview?.hoje_efetivo || '—'}` : undefined}
-      actions={actions}
-    >
+    <>
       {/* Seletor de operadora */}
       <div className="row" style={{ gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
         <span className={`op-av ${operadora}`} style={{ width: 26, height: 26, borderRadius: 7, fontSize: 10 }}>
@@ -157,6 +162,13 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+
+          {/* Médias de fluxo (Mês/Semestral/Anual) — globais, vindas do overview. */}
+          {overview?.medias && (
+            <div style={{ marginTop: 16 }}>
+              <MediasCards medias={overview.medias} />
+            </div>
+          )}
 
           {/* Seletor de hospital */}
           <div className="section-label" style={{ marginTop: 18 }}>
@@ -225,6 +237,7 @@ export default function Dashboard() {
             porPagina={POR_PAGINA}
             onExportar={exportar}
             onSelecionar={setDrawerId}
+            onPrefetch={prefetchPaciente}
             onPrev={() => setPagina((p) => Math.max(1, p - 1))}
             onNext={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
           />
@@ -244,6 +257,6 @@ export default function Dashboard() {
         />
       )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
-    </Layout>
+    </>
   )
 }

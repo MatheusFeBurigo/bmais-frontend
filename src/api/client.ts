@@ -4,6 +4,11 @@
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 const TOKEN_KEY = 'bmais_token'
 
+// Timeout de rede das chamadas. Um timeout NÃO desloga o usuário — ele vira um
+// erro de rede (retentável), distinto de um 401 (sessão inválida). Sem um limite
+// explícito o fetch fica pendurado no default do navegador (minutos).
+const REQUEST_TIMEOUT_MS = 20_000
+
 // "Manter conectado" define ONDE o token vive:
 //  - localStorage  → persiste entre sessões do navegador (fechar e reabrir mantém).
 //  - sessionStorage → some ao fechar a aba/navegador (sessão efêmera).
@@ -29,6 +34,35 @@ export class ApiError extends Error {
   constructor(status: number, message: string) {
     super(message)
     this.status = status
+  }
+}
+
+// Erro de rede/timeout: a requisição não chegou a receber uma resposta HTTP.
+// Diferente de ApiError (que carrega um status do servidor, ex.: 401/500).
+// Nunca desloga a sessão — a UI trata como falha transitória (retentável).
+export class NetworkError extends Error {
+  readonly timeout: boolean
+  constructor(message: string, timeout = false) {
+    super(message)
+    this.name = 'NetworkError'
+    this.timeout = timeout
+  }
+}
+
+// fetch com timeout via AbortController. Traduz aborto por timeout e falha de
+// rede em NetworkError — assim o chamador nunca confunde timeout com 401.
+async function fetchComTimeout(url: string, init: RequestInit): Promise<Response> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS)
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal })
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new NetworkError('Tempo limite excedido. Verifique sua conexão e tente de novo.', true)
+    }
+    throw new NetworkError('Falha de conexão com o servidor.')
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -61,12 +95,18 @@ export async function apiFetch<T = unknown>(
     payload = JSON.stringify(body)
   }
 
-  const res = await fetch(`${API_BASE}/api${path}`, { method, headers, body: payload })
+  const res = await fetchComTimeout(`${API_BASE}/api${path}`, { method, headers, body: payload })
 
+  // Só um 401 real derruba a sessão. Um 503 do middleware significa que o
+  // serviço de autenticação não respondeu (timeout/rede) — a sessão pode estar
+  // perfeitamente válida, então NÃO deslogamos; tratamos como erro transitório.
   if (res.status === 401 && !skipAuthRedirect) {
     setToken(null)
     onUnauthorized?.()
     throw new ApiError(401, 'Não autenticado')
+  }
+  if (res.status === 503) {
+    throw new NetworkError('Serviço temporariamente indisponível. Tente de novo em instantes.')
   }
 
   if (!res.ok) {
@@ -98,12 +138,15 @@ export async function apiUpload<T = unknown>(path: string, form: FormData): Prom
   const token = getToken()
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetch(`${API_BASE}/api${path}`, { method: 'POST', headers, body: form })
+  const res = await fetchComTimeout(`${API_BASE}/api${path}`, { method: 'POST', headers, body: form })
 
   if (res.status === 401) {
     setToken(null)
     onUnauthorized?.()
     throw new ApiError(401, 'Não autenticado')
+  }
+  if (res.status === 503) {
+    throw new NetworkError('Serviço temporariamente indisponível. Tente de novo em instantes.')
   }
   if (!res.ok) {
     let detail = `Erro ${res.status}`
@@ -125,11 +168,14 @@ export async function apiDownload(path: string, filename: string): Promise<void>
   const headers: Record<string, string> = {}
   const token = getToken()
   if (token) headers['Authorization'] = `Bearer ${token}`
-  const res = await fetch(`${API_BASE}/api${path}`, { headers })
+  const res = await fetchComTimeout(`${API_BASE}/api${path}`, { headers })
   if (res.status === 401) {
     setToken(null)
     onUnauthorized?.()
     throw new ApiError(401, 'Não autenticado')
+  }
+  if (res.status === 503) {
+    throw new NetworkError('Serviço temporariamente indisponível. Tente de novo em instantes.')
   }
   if (!res.ok) throw new ApiError(res.status, `Falha no download (${res.status})`)
   const blob = await res.blob()

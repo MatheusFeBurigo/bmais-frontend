@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { DiretoriaPayload } from '../types/api'
 import { useDiretoria } from '../hooks/useDiretoria'
 import { exportarRvmGeral, inserirSeedDemo } from '../services/diretoria.service'
-import Layout from '../components/Layout'
+import { usePageHeader } from '../components/PageHeader'
 import Toast from '../components/Toast'
 import { KpiCard, Badge, OpAvatar, ProgressBar, LoadingState, Spinner } from '../components/ui'
 import { DonutChart, LineChart, BarChart } from '../components/charts'
@@ -113,8 +113,10 @@ export default function Diretoria() {
 
   const subtitle = data ? `KPIs consolidados de todas as operadoras · Ref: ${data.hoje_efetivo || '—'}` : undefined
 
+  usePageHeader({ title: 'Dashboard da Diretoria', subtitle, actions })
+
   return (
-    <Layout title="Dashboard da Diretoria" subtitle={subtitle} actions={actions}>
+    <>
       {isLoading && <LoadingState label="Carregando KPIs…" />}
       {isError && <div className="empty-state t-danger">Erro ao carregar o dashboard.</div>}
 
@@ -406,6 +408,6 @@ export default function Diretoria() {
       )}
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
-    </Layout>
+    </>
   )
 }

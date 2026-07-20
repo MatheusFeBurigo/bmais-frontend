@@ -1,11 +1,12 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy } from 'react'
 import type { ReactNode } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import { podeVer, ROTA_FALLBACK } from './auth/permissions'
 import type { Screen } from './auth/permissions'
 import Login from './pages/Login'
 import { LoadingState } from './components/ui'
+import AppLayout from './components/AppLayout'
 import {
   importDashboard, importDiretoria, importGestor,
   importEquipe, importConfiguracoes, importUpload,
@@ -35,56 +36,57 @@ function GatedRoute({ screen, children }: { screen: Screen; children: ReactNode 
   return <>{children}</>
 }
 
-function ProtectedRoutes() {
+// Guarda a área autenticada como layout de rota: sem sessão, navega para /login;
+// com sessão, renderiza o AppLayout persistente (Sidebar + topbar) e as rotas
+// filhas caem no <Outlet/> dele. Preserva a origem em location.state.
+function RequireAuth() {
   const { authenticated, loading } = useAuth()
   const location = useLocation()
-  const navigate = useNavigate()
 
-  // Ao perder a sessão (logout ou 401) fora da Visão Geral, zera a URL para "/"
-  // (sem filtros). Assim, ao relogar, o app abre em Visão Geral limpa e não na
-  // rota antiga — nem numa operadora específica — que o usuário via.
-  useEffect(() => {
-    const naVisaoGeral = location.pathname === '/' && location.search === ''
-    if (!loading && !authenticated && !naVisaoGeral) {
-      navigate('/', { replace: true })
-    }
-  }, [loading, authenticated, location.pathname, location.search, navigate])
-
-  // Boot otimista: se já estamos autenticados (token válido) renderizamos o app
-  // sem esperar o /me — o loading só bloqueia quando ainda não sabemos se há sessão.
+  // Boot otimista: com token tido como válido, renderiza o app sem esperar /me.
+  // O loading só bloqueia enquanto ainda não sabemos se há sessão.
   if (loading && !authenticated) {
     return <PageFallback />
   }
   if (!authenticated) {
-    return <Login />
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
   }
+  return <AppLayout />
+}
 
+// Rota /login: se já autenticado, sai do login e volta para a origem (ou "/").
+function LoginRoute() {
+  const { authenticated } = useAuth()
+  const location = useLocation()
+  if (authenticated) {
+    const from = (location.state as { from?: string } | null)?.from
+    return <Navigate to={from && from !== '/login' ? from : '/'} replace />
+  }
+  return <Login />
+}
+
+function ProtectedRoutes() {
   return (
-    <Suspense fallback={<PageFallback />}>
-      <Routes>
+    <Routes>
+      <Route path="/login" element={<LoginRoute />} />
+      {/* Área autenticada: o AppLayout (Sidebar + topbar) monta uma vez em
+          RequireAuth e persiste; as telas trocam apenas no <Outlet/>. */}
+      <Route element={<RequireAuth />}>
         <Route path="/" element={<Dashboard />} />
         <Route
           path="/diretoria"
-          element={
-            <GatedRoute screen="diretoria">
-              <Diretoria />
-            </GatedRoute>
-          }
+          element={<GatedRoute screen="diretoria"><Diretoria /></GatedRoute>}
         />
         <Route path="/gestor" element={<Gestor />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
         <Route
           path="/equipe"
-          element={
-            <GatedRoute screen="equipe">
-              <Equipe />
-            </GatedRoute>
-          }
+          element={<GatedRoute screen="equipe"><Equipe /></GatedRoute>}
         />
         <Route path="/upload" element={<Upload />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }
 

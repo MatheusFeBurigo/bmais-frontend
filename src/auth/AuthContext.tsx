@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { apiFetch, getToken, setToken, setUnauthorizedHandler } from '../api/client'
+import { ApiError, apiFetch, getToken, setToken, setUnauthorizedHandler } from '../api/client'
 import type { LoginResponse, MeResponse, RegisterResponse, UserRole } from '../types/api'
 
 interface AuthState {
@@ -53,8 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUsername(me.username)
           setRole(me.role ?? null)
         }
-      } catch {
-        if (!cancelled) {
+      } catch (e) {
+        // Só derruba a sessão se o /me disser explicitamente que o token é
+        // inválido (401). Timeout/rede/503 (NetworkError) NÃO deslogam: mantém o
+        // boot otimista (tokenValido) e o app segue com o token salvo.
+        if (!cancelled && e instanceof ApiError && e.status === 401) {
           setToken(null)
           setUsername(null)
           setRole(null)

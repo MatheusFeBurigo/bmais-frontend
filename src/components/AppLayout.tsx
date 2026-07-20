@@ -1,17 +1,19 @@
-import { useState } from 'react'
-import type { ReactNode } from 'react'
+import { useState, Suspense } from 'react'
+import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import { useAuth } from '../auth/AuthContext'
+import { usePageHeaderValue } from './PageHeader'
+import { LoadingState } from './ui'
 
-interface LayoutProps {
-  title: ReactNode
-  subtitle?: ReactNode
-  actions?: ReactNode
-  children: ReactNode
-}
-
-export default function Layout({ title, subtitle, actions, children }: LayoutProps) {
+// Layout persistente da área autenticada: Sidebar + topbar montam UMA vez e
+// permanecem montados entre navegações. Só o miolo (<Outlet/>) troca por rota,
+// então a barra lateral não pisca/reconstrói e o estado dela (scroll, listas
+// abertas) sobrevive à troca de tela. O título/ações do topbar vêm do
+// PageHeaderContext, alimentado por cada página via usePageHeader().
+export default function AppLayout() {
   const { username, logout } = useAuth()
+  const { title, subtitle, actions } = usePageHeaderValue()
+
   // Estado de recolhimento da sidebar, persistido para não reiniciar a cada navegação.
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem('bmais_sidebar_collapsed') === '1'
@@ -23,6 +25,7 @@ export default function Layout({ title, subtitle, actions, children }: LayoutPro
       return next
     })
   }
+
   return (
     <div className={'app' + (collapsed ? ' is-collapsed' : '')}>
       <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapsed} />
@@ -42,7 +45,14 @@ export default function Layout({ title, subtitle, actions, children }: LayoutPro
             Sair
           </button>
         </div>
-        <div className="scope">{children}</div>
+        {/* Suspense restrito à área de conteúdo: o fallback do chunk lazy aparece
+            só aqui, não cobrindo a Sidebar/topbar. minHeight sem 100vh para não
+            empurrar a tela inteira. */}
+        <div className="scope">
+          <Suspense fallback={<LoadingState style={{ minHeight: 360 }} />}>
+            <Outlet />
+          </Suspense>
+        </div>
       </main>
     </div>
   )

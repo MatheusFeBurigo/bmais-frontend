@@ -89,10 +89,17 @@ export interface DashboardOverviewOperadora {
   hospitais: Hospital[]
 }
 
+export interface DashboardMedias {
+  media_mes: MediaPeriodo
+  media_semestre: MediaPeriodo
+  media_ano: MediaPeriodo
+}
+
 export interface DashboardOverview {
   operadoras: Record<string, DashboardOverviewOperadora>
   lista: Array<{ key: string; nome: string }>
   hoje_efetivo: string
+  medias?: DashboardMedias
 }
 
 export interface SidebarOp {
@@ -480,4 +487,24 @@ export interface InternacaoDados {
   longa_30?: boolean
   obs?: string | null
   operadora_key?: string | null
+}
+
+export type TimelineVariante =
+  | 'info' | 'success' | 'warning' | 'danger' | 'neutral' | 'muted'
+
+export interface TimelineEvento {
+  tipo: string
+  titulo: string
+  descricao?: string | null
+  /** Data ISO (YYYY-MM-DD ou timestamp). Ausente nos marcos "Hoje". */
+  data?: string | null
+  /** Marco do estado atual (Pendente) — exibido como "Hoje", sem data. */
+  hoje?: boolean
+  variante: TimelineVariante
+}
+
+export interface InternacaoTimeline {
+  internacao_id: number
+  status_relatorio?: string | null
+  eventos: TimelineEvento[]
 }

@@ -5,7 +5,7 @@ import type {
   OperadoraCard, OperadoraSelected, OperadoraRegras,
   HospitalSelected, Profissional,
 } from '../types/api'
-import Layout from '../components/Layout'
+import { usePageHeader } from '../components/PageHeader'
 import { Badge, OpAvatar, Modal, LoadingState } from '../components/ui'
 import { StatusBadge } from '../components/StatusBadge'
 import Toast from '../components/Toast'
@@ -89,7 +89,7 @@ export default function Configuracoes() {
   }
 
   if (isLoading || !data) {
-    return <Layout title="Operadoras"><LoadingState /></Layout>
+    return <CfgLoading />
   }
 
   // ── Vista: detalhe de hospital ──────────────────────────────────────────
@@ -122,6 +122,12 @@ export default function Configuracoes() {
 
   // ── Vista: grid geral ───────────────────────────────────────────────────
   return <OverviewView operadoras={data.operadoras} onNav={go} onToast={setToast} onChanged={invalidar} toast={toast} />
+}
+
+// Estado de carregamento: registra o header e mostra o spinner no miolo.
+function CfgLoading() {
+  usePageHeader({ title: 'Operadoras' })
+  return <LoadingState />
 }
 
 // ═══════════════════════ VISTA 1 — GRID GERAL ═══════════════════════════════
@@ -176,8 +182,10 @@ function OverviewView({ operadoras, onNav, onToast, onChanged, toast }: {
     </>
   )
 
+  usePageHeader({ title: 'Operadoras de Saúde', subtitle: 'Configure as regras de monitoramento de cada operadora', actions })
+
   return (
-    <Layout title="Operadoras de Saúde" subtitle="Configure as regras de monitoramento de cada operadora" actions={actions}>
+    <>
       <style>{localStyles}</style>
 
       <div className="op-acc">
@@ -228,7 +236,7 @@ function OverviewView({ operadoras, onNav, onToast, onChanged, toast }: {
 
       {novaOpen && <NovaOperadoraModal onClose={() => setNovaOpen(false)} onDone={(key) => { setNovaOpen(false); onToast('✓ Operadora criada'); onNav({ op: key }) }} onError={onToast} />}
       {toast && <Toast message={toast} onDone={() => onToast('')} />}
-    </Layout>
+    </>
   )
 }
 
@@ -285,8 +293,14 @@ function OperadoraView({ opSel, onNav, onToast, onChanged, toast }: {
     </span>
   )
 
+  usePageHeader({
+    title,
+    subtitle: `${s.total_internados || 0} internados · SLA ${s.sla || 0}% · ${opSel.responsaveis || '—'}`,
+    actions,
+  })
+
   return (
-    <Layout title={title} subtitle={`${s.total_internados || 0} internados · SLA ${s.sla || 0}% · ${opSel.responsaveis || '—'}`} actions={actions}>
+    <>
       <style>{localStyles}</style>
 
       {/* Stat mini row */}
@@ -411,7 +425,7 @@ function OperadoraView({ opSel, onNav, onToast, onChanged, toast }: {
       </div>
 
       {toast && <Toast message={toast} onDone={() => onToast('')} />}
-    </Layout>
+    </>
   )
 }
 
@@ -459,8 +473,13 @@ function HospitalView({ opSel, hosp, profs, onNav, onToast, onChanged, toast }: 
     } catch (e) { onToast(`Erro: ${(e as Error).message}`) }
   }
 
+  usePageHeader({
+    title,
+    subtitle: `${hosp.internados} internados · ${hosp.escala.length} profissionais na escala${hosp.regiao ? ` · ${hosp.regiao}` : ''}`,
+  })
+
   return (
-    <Layout title={title} subtitle={`${hosp.internados} internados · ${hosp.escala.length} profissionais na escala${hosp.regiao ? ` · ${hosp.regiao}` : ''}`}>
+    <>
       <style>{localStyles}</style>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
@@ -542,7 +561,7 @@ function HospitalView({ opSel, hosp, profs, onNav, onToast, onChanged, toast }: 
       </div>
 
       {toast && <Toast message={toast} onDone={() => onToast('')} />}
-    </Layout>
+    </>
   )
 }
 

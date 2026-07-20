@@ -10,7 +10,7 @@ import type {
   RelatorioLoteResponse,
   RelatorioRefreshResponse,
 } from '../types/api'
-import Layout from '../components/Layout'
+import { usePageHeader } from '../components/PageHeader'
 import Toast from '../components/Toast'
 
 // Estilos específicos da tela (portados de upload.html — não pertencem ao design system global).
@@ -163,12 +163,14 @@ export default function Upload() {
     </button>
   )
 
+  usePageHeader({
+    title: 'Upload de Arquivos',
+    subtitle: 'Censos hospitalares (PDF) ou relatórios de auditoria em lote (DOCX/PDF)',
+    actions,
+  })
+
   return (
-    <Layout
-      title="Upload de Arquivos"
-      subtitle="Censos hospitalares (PDF) ou relatórios de auditoria em lote (DOCX/PDF)"
-      actions={actions}
-    >
+    <>
       <style>{localStyles}</style>
       <div style={{ maxWidth: 860 }}>
         {/* Tabs */}
@@ -257,7 +259,7 @@ export default function Upload() {
       </div>
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
-    </Layout>
+    </>
   )
 }
 

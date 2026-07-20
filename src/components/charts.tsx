@@ -22,7 +22,8 @@ ChartJS.register(
 )
 
 // Re-export para páginas que precisam de gráficos especializados (ex.: Gestor,
-// com eixos duplos e onClick). Importar daqui garante o register acima.
+// com datasets mistos linha+barra empilhada e onClick). Importar daqui garante
+// o register acima.
 export { Doughnut, Line, Bar, Chart } from 'react-chartjs-2'
 export { ChartJS }
 

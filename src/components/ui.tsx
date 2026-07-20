@@ -56,6 +56,23 @@ const OP_INITIALS: Record<string, string> = {
   porto: 'PO', allianz: 'AL', mediservic: 'MS', notredame: 'ND',
 }
 
+// Cor base de cada operadora (primeira cor do gradiente do avatar em
+// design-system.css). Usada por pills/marcadores que colorem por operadora.
+const OP_CORES: Record<string, string> = {
+  sulamerica: '#155CA8', bradesco: '#C8243C', careplus: '#6B4FB8', itau: '#D9690C',
+  porto: '#0E8A5F', allianz: '#1F6FBE', mediservic: '#1976D2', notredame: '#7B1FA2',
+}
+
+// Fallback determinístico p/ operadoras sem cor mapeada (hash do key → matiz).
+const OP_CORES_FALLBACK = ['#155CA8', '#0E7A53', '#C25E10', '#6B34B8', '#A01530', '#0F766E']
+
+export function opCor(key: string): string {
+  if (OP_CORES[key]) return OP_CORES[key]
+  let h = 0
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0
+  return OP_CORES_FALLBACK[h % OP_CORES_FALLBACK.length]
+}
+
 export function opInitial(key: string): string {
   return OP_INITIALS[key] || key.slice(0, 2).toUpperCase()
 }

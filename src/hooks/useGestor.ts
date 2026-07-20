@@ -1,5 +1,5 @@
 // Hook de estado de servidor do domínio "gestor".
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { queryKeys } from '../lib/queryKeys'
 import { fetchGestor, type GestorParams } from '../services/gestor.service'
 
@@ -9,5 +9,9 @@ export function useGestor(params: GestorParams) {
       params.data ?? '', params.operadora ?? '', params.hospital ?? '', params.regiao ?? '',
     ),
     queryFn: () => fetchGestor(params),
+    // Ao trocar o dia/filtros a queryKey muda; sem isto o react-query zera `data`
+    // e a tela "recarrega" (pisca o loading). keepPreviousData mantém o painel
+    // anterior visível durante o refetch — a troca vira uma transição suave.
+    placeholderData: keepPreviousData,
   })
 }

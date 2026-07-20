@@ -1,15 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { StatusBadge, LeitoTag } from './StatusBadge'
-import { LoadingState } from './ui'
-import { useInternacaoDados } from '../hooks/useInternacao'
+import { LoadingState, Spinner } from './ui'
+import { useInternacaoDados, useInternacaoTimeline } from '../hooks/useInternacao'
 import { registrarRelatorioRapido } from '../services/internacao.service'
-
-function hojeISO(): string {
-  // Data local em YYYY-MM-DD (sem depender de UTC).
-  const d = new Date()
-  const off = d.getTimezoneOffset() * 60000
-  return new Date(d.getTime() - off).toISOString().slice(0, 10)
-}
+import { queryKeys } from '../lib/queryKeys'
+import { hojeISO } from '../lib/datas'
+import type { TimelineEvento } from '../types/api'
 
 interface Props {
   internacaoId: number
@@ -19,6 +16,8 @@ interface Props {
 
 export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props) {
   const { data: d, isLoading, isError } = useInternacaoDados(internacaoId)
+  const { data: tl, isLoading: tlLoading, isError: tlError } = useInternacaoTimeline(internacaoId)
+  const queryClient = useQueryClient()
 
   const [dataVisita, setDataVisita] = useState(hojeISO())
   const [medico, setMedico] = useState('')
@@ -45,6 +44,9 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
       await registrarRelatorioRapido(internacaoId, {
         data_visita: dataVisita, medico, descricao: obs,
       })
+      // Invalida a timeline para o novo relatório aparecer ao reabrir o drawer.
+      queryClient.invalidateQueries({ queryKey: queryKeys.internacaoTimeline(internacaoId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.internacaoDados(internacaoId) })
       onSaved('✓ Relatório registrado')
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar')
@@ -106,30 +108,18 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
               </div>
 
               <div className="section-label" style={{ margin: '0 0 12px' }}>Timeline da internação</div>
-              <div className="tl">
-                <div className="tl-item">
-                  <div className="tl-dot" />
-                  <div className="tl-date">{d.data_entrada || '—'}</div>
-                  <div className="tl-label">Admissão</div>
-                  <div className="tl-desc">{d.hospital_nome || ''} · {d.tipo_leito || '—'}</div>
+              {tlLoading && <Spinner />}
+              {tlError && <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Não foi possível carregar a timeline.</div>}
+              {tl && tl.eventos.length === 0 && (
+                <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Sem eventos registrados.</div>
+              )}
+              {tl && tl.eventos.length > 0 && (
+                <div className="tl">
+                  {tl.eventos.map((ev, i) => (
+                    <TimelineItem key={i} ev={ev} />
+                  ))}
                 </div>
-                {d.data_ultima_visita && (
-                  <div className="tl-item">
-                    <div className="tl-dot" />
-                    <div className="tl-date">{d.data_ultima_visita}</div>
-                    <div className="tl-label">Última visita</div>
-                    <div className="tl-desc">Relatório registrado</div>
-                  </div>
-                )}
-                {(danger || warning) && (
-                  <div className="tl-item">
-                    <div className="tl-dot danger" />
-                    <div className="tl-date">Hoje</div>
-                    <div className="tl-label" style={{ color: 'var(--danger)' }}>Pendente</div>
-                    <div className="tl-desc">{d.dias_sem_relatorio ?? ''}d sem relatório</div>
-                  </div>
-                )}
-              </div>
+              )}
 
               <div className="section-label" style={{ marginTop: 22 }}>Registrar relatório</div>
               <div style={{ display: 'grid', gap: 10 }}>
@@ -161,5 +151,18 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
         </div>
       </div>
     </>
+  )
+}
+
+function TimelineItem({ ev }: { ev: TimelineEvento }) {
+  const dotClass = `tl-dot ${ev.variante}`
+  const labelStyle = ev.variante === 'danger' ? { color: 'var(--danger)' } : undefined
+  return (
+    <div className="tl-item">
+      <div className={dotClass} />
+      <div className="tl-date">{ev.hoje ? 'Hoje' : ev.data || '—'}</div>
+      <div className="tl-label" style={labelStyle}>{ev.titulo}</div>
+      {ev.descricao && <div className="tl-desc">{ev.descricao}</div>}
+    </div>
   )
 }

@@ -20,6 +20,8 @@ export interface InternadosTableProps {
   porPagina: number
   onExportar: () => void
   onSelecionar: (id: number) => void
+  /** Prefetch em background ao passar o mouse na linha (abre o drawer instantâneo). */
+  onPrefetch?: (id: number) => void
   onPrev: () => void
   onNext: () => void
 }
@@ -34,6 +36,7 @@ export default function InternadosTable({
   porPagina,
   onExportar,
   onSelecionar,
+  onPrefetch,
   onPrev,
   onNext,
 }: InternadosTableProps) {
@@ -79,7 +82,9 @@ export default function InternadosTable({
             {paginados.map((p) => {
               const sr = p.status_relatorio || 'AGUARDANDO'
               return (
-                <tr key={p.id} className={rowFlagClass(sr)} style={{ cursor: 'pointer' }} onClick={() => onSelecionar(p.id)}>
+                <tr key={p.id} className={rowFlagClass(sr)} style={{ cursor: 'pointer' }} onClick={() => onSelecionar(p.id)}
+                  onMouseEnter={onPrefetch ? () => onPrefetch(p.id) : undefined}
+                  onFocus={onPrefetch ? () => onPrefetch(p.id) : undefined}>
                   <td><StatusBadge sr={sr} /></td>
                   <td><span style={{ fontSize: 'var(--t-sm)' }}>{p.hospital_nome || '—'}</span></td>
                   <td style={{ maxWidth: 240 }}><div className="truncate fw-5">{p.nome}</div></td>

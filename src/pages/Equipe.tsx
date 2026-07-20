@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import type {
   Profissional, ProfTipo, Escala, ProfissionalDetalhe,
 } from '../types/api'
-import Layout from '../components/Layout'
+import { usePageHeader } from '../components/PageHeader'
 import { KpiCard, Badge, Modal, LoadingState } from '../components/ui'
 import Toast from '../components/Toast'
 import UsuariosAcesso from '../components/UsuariosAcesso'
@@ -112,8 +112,10 @@ export default function Equipe() {
     ? `${data.total_prof} ativos${data.total_todos > data.total_prof ? ` · ${data.total_todos - data.total_prof} inativos` : ''} · clique em um nome para editar`
     : undefined
 
+  usePageHeader({ title: 'Equipe B+ Auditoria', subtitle })
+
   return (
-    <Layout title="Equipe B+ Auditoria" subtitle={subtitle}>
+    <>
       <style>{localStyles}</style>
 
       {isLoading && <LoadingState label="Carregando equipe…" />}
@@ -222,7 +224,7 @@ export default function Equipe() {
         />
       )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
-    </Layout>
+    </>
   )
 }
 
