@@ -16,8 +16,8 @@ export const queryKeys = {
 
   diretoria: () => ['diretoria'] as const,
 
-  gestor: (data: string, operadora: string, hospital: string, regiao: string) =>
-    ['gestor', data, operadora, hospital, regiao] as const,
+  gestor: (data: string, operadora: string, hospital: string, regiao: string, janela: string) =>
+    ['gestor', data, operadora, hospital, regiao, janela] as const,
 
   configuracoes: (op: string, hospital: string) =>
     ['configuracoes', op, hospital] as const,

@@ -1,7 +1,6 @@
 import { useState, Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
-import { useAuth } from '../auth/AuthContext'
 import { usePageHeaderValue } from './PageHeader'
 import { LoadingState } from './ui'
 
@@ -11,7 +10,6 @@ import { LoadingState } from './ui'
 // abertas) sobrevive à troca de tela. O título/ações do topbar vêm do
 // PageHeaderContext, alimentado por cada página via usePageHeader().
 export default function AppLayout() {
-  const { username, logout } = useAuth()
   const { title, subtitle, actions } = usePageHeaderValue()
 
   // Estado de recolhimento da sidebar, persistido para não reiniciar a cada navegação.
@@ -37,13 +35,6 @@ export default function AppLayout() {
           </div>
           <div className="tb-spacer" />
           {actions}
-          <span className="tb-pill">
-            <span className="tb-dot" />
-            {username}
-          </span>
-          <button className="btn btn-ghost btn-sm" onClick={logout} title="Sair">
-            Sair
-          </button>
         </div>
         {/* Suspense restrito à área de conteúdo: o fallback do chunk lazy aparece
             só aqui, não cobrindo a Sidebar/topbar. minHeight sem 100vh para não

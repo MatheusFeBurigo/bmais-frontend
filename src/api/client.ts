@@ -8,6 +8,11 @@ const TOKEN_KEY = 'bmais_token'
 // erro de rede (retentável), distinto de um 401 (sessão inválida). Sem um limite
 // explícito o fetch fica pendurado no default do navegador (minutos).
 const REQUEST_TIMEOUT_MS = 20_000
+// Uploads processam vários PDFs em série no backend (parse + escrita no Supabase,
+// ~1.3s por arquivo): um lote grande passa fácil dos 20s das leituras. Damos um
+// teto bem mais folgado só para o upload, para o navegador não abortar antes de
+// o processamento terminar. (Em serverless, confira também o timeout da função.)
+const UPLOAD_TIMEOUT_MS = 120_000
 
 // "Manter conectado" define ONDE o token vive:
 //  - localStorage  → persiste entre sessões do navegador (fechar e reabrir mantém).
@@ -51,9 +56,11 @@ export class NetworkError extends Error {
 
 // fetch com timeout via AbortController. Traduz aborto por timeout e falha de
 // rede em NetworkError — assim o chamador nunca confunde timeout com 401.
-async function fetchComTimeout(url: string, init: RequestInit): Promise<Response> {
+async function fetchComTimeout(
+  url: string, init: RequestInit, timeoutMs: number = REQUEST_TIMEOUT_MS,
+): Promise<Response> {
   const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS)
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
     return await fetch(url, { ...init, signal: ctrl.signal })
   } catch (e) {
@@ -78,13 +85,16 @@ interface RequestOptions {
   body?: unknown
   // Não redirecionar para login em 401 (ex.: a própria chamada de login).
   skipAuthRedirect?: boolean
+  // Timeout específico (ms). Default REQUEST_TIMEOUT_MS. Use maior em rotas que
+  // fazem trabalho pesado no backend (ex.: processar censos: parse + Supabase).
+  timeoutMs?: number
 }
 
 export async function apiFetch<T = unknown>(
   path: string,
   opts: RequestOptions = {},
 ): Promise<T> {
-  const { method = 'GET', body, skipAuthRedirect } = opts
+  const { method = 'GET', body, skipAuthRedirect, timeoutMs } = opts
   const headers: Record<string, string> = {}
   const token = getToken()
   if (token) headers['Authorization'] = `Bearer ${token}`
@@ -95,7 +105,7 @@ export async function apiFetch<T = unknown>(
     payload = JSON.stringify(body)
   }
 
-  const res = await fetchComTimeout(`${API_BASE}/api${path}`, { method, headers, body: payload })
+  const res = await fetchComTimeout(`${API_BASE}/api${path}`, { method, headers, body: payload }, timeoutMs)
 
   // Só um 401 real derruba a sessão. Um 503 do middleware significa que o
   // serviço de autenticação não respondeu (timeout/rede) — a sessão pode estar
@@ -138,7 +148,9 @@ export async function apiUpload<T = unknown>(path: string, form: FormData): Prom
   const token = getToken()
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetchComTimeout(`${API_BASE}/api${path}`, { method: 'POST', headers, body: form })
+  const res = await fetchComTimeout(
+    `${API_BASE}/api${path}`, { method: 'POST', headers, body: form }, UPLOAD_TIMEOUT_MS,
+  )
 
   if (res.status === 401) {
     setToken(null)

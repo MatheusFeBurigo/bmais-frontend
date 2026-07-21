@@ -6,6 +6,7 @@ import { usePageHeader } from '../components/PageHeader'
 import { KpiCard, Badge, OpAvatar, LoadingState, opCor } from '../components/ui'
 import { Chart, Doughnut, Bar } from '../components/charts'
 import PacienteDrawer from '../components/PacienteDrawer'
+import MediasCards from '../components/MediasCards'
 import Toast from '../components/Toast'
 import { Deferred } from '../components/Deferred'
 import { useGestor } from '../hooks/useGestor'
@@ -42,6 +43,16 @@ const FAIXA_INFO: Record<'0_9' | '10_29' | '30p', { label: string; cor: string }
   '10_29': { label: '10 a 29 dias', cor: COR.laranja },
   '30p': { label: '30+ dias', cor: COR.vermelho },
 }
+
+// Janelas do gráfico de fluxo: rótulo por extenso (pill) + descrição p/ o título.
+const JANELAS = [
+  { key: '30d', pill: '30 dias', titulo: 'últimos 30 dias' },
+  { key: '90d', pill: '90 dias', titulo: 'últimos 90 dias' },
+  { key: '6m', pill: '6 meses', titulo: 'últimos 6 meses' },
+  { key: '1a', pill: '1 ano', titulo: 'último ano' },
+] as const
+// 6m/1a agrupam por semana/mês → o clique-num-dia não se aplica (desabilitado).
+const JANELA_AGRUPADA = new Set(['6m', '1a'])
 
 const localStyles = `
 /* Barra de filtro no topo (operadora como pills) */
@@ -81,6 +92,11 @@ const localStyles = `
 /* Título + dica na MESMA linha (dica ao lado do título) */
 .chart-head-inline{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .chart-head-inline .chart-head-sub{margin-top:0;padding-left:10px;border-left:1px solid var(--border)}
+/* Seletor de janela (30d/90d/6m/1a) — grupo segmentado compacto */
+.janela-pills{display:inline-flex;gap:2px;padding:2px;background:var(--surface-2);border:1px solid var(--border);border-radius:99px;flex-shrink:0}
+.pill-janela{padding:4px 14px;border-radius:99px;font-size:var(--t-sm);font-weight:600;cursor:pointer;border:0;background:transparent;color:var(--muted);transition:background .12s,color .12s;white-space:nowrap}
+.pill-janela:hover{color:var(--ink-2)}
+.pill-janela.active{background:var(--primary-3);color:#fff}
 .sub-chart-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--muted)}
 .sub-chart-sep{height:1px;background:var(--border);margin:26px 0 22px}
 .chart-date{width:auto;flex-shrink:0}
@@ -119,6 +135,7 @@ export default function Gestor() {
   const fOperadora = params.get('operadora') || ''
   const fHospital = params.get('hospital') || ''
   const fRegiao = params.get('regiao') || ''
+  const fJanela = params.get('janela') || '30d'
 
   const [faixa, setFaixa] = useState<FaixaFiltro>('')
   const [drawerId, setDrawerId] = useState<number | null>(null)
@@ -128,7 +145,7 @@ export default function Gestor() {
   // O backend devolve métricas e opções de filtro num único payload aninhado
   // ({ metrics, filtros }) — não há rota /gestor/filtros separada.
   const { data: payload, isLoading, isError, isFetching } = useGestor({
-    data: fData, operadora: fOperadora, hospital: fHospital, regiao: fRegiao,
+    data: fData, operadora: fOperadora, hospital: fHospital, regiao: fRegiao, janela: fJanela,
   })
   const m = payload?.metrics
   const filtros = payload?.filtros
@@ -146,6 +163,19 @@ export default function Gestor() {
     setParams(next)
   }
 
+  // Escopo de dados: `filtros.operadoras`/`filtros.hospitais` já vêm recortados
+  // ao que o usuário pode ver. Se a URL trouxer uma operadora/hospital fora do
+  // escopo (?operadora=X direto), limpa o filtro — não fica preso num recorte
+  // vazio de dados que não são dele (o backend já não retorna essas linhas).
+  useEffect(() => {
+    if (!filtros) return
+    const patch: Record<string, string> = {}
+    if (fOperadora && !filtros.operadoras.some((o) => o.key === fOperadora)) patch.operadora = ''
+    if (fHospital && !filtros.hospitais.some((h) => h.key === fHospital)) patch.hospital = ''
+    if (Object.keys(patch).length > 0) setFiltro(patch)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtros, fOperadora, fHospital])
+
   function toggleFaixa(f: FaixaFiltro) {
     setFaixa((cur) => (cur === f ? '' : f))
   }
@@ -161,6 +191,9 @@ export default function Gestor() {
   // Nome do hospital filtrado (via clique no gráfico de hospital ou chip) —
   // deixa explícito no título da lista que ela é só daquele hospital.
   const nomeHospFiltrado = fHospital ? (filtros?.hospitais.find((h) => h.key === fHospital)?.nome || fHospital) : ''
+  // Janela do gráfico de fluxo: título descritivo e se está agrupada (sem clique-dia).
+  const janelaTitulo = (JANELAS.find((j) => j.key === fJanela) ?? JANELAS[0]).titulo
+  const janelaAgrupada = JANELA_AGRUPADA.has(fJanela)
 
   // O gráfico de 30 dias funciona como acordeão: aberto por padrão (é por ele
   // que se escolhe o dia clicando); ao selecionar um dia específico ele colapsa
@@ -272,8 +305,13 @@ export default function Gestor() {
               meta={`${m.hoje.entradas} novas entradas`} active={faixa === 'altas'} onClick={() => toggleFaixa('altas')} />
           </div>
 
-          {/* (As médias de período — Mês/Semestral/Anual — foram movidas para a
-              Visão Geral, onde são globais e fazem mais sentido.) */}
+          {/* Médias de período (Mês/Semestral/Anual) — só no modo geral; ao
+              analisar um dia específico não se aplicam (agregados de período). */}
+          {!diaHistorico && (
+            <div className="chart-reveal">
+              <MediasCards medias={{ media_mes: m.media_mes, media_semestre: m.media_semestre, media_ano: m.media_ano }} />
+            </div>
+          )}
 
           {/* Gráficos + tabela adiados para depois do primeiro paint dos KPIs —
               o cliente vê os números do dia imediatamente. */}
@@ -291,8 +329,22 @@ export default function Gestor() {
             <div className="chart-card chart-reveal" key="aberto" style={{ marginBottom: 16 }}>
               <div className="chart-head-row">
                 <div className="chart-head-txt chart-head-inline">
-                  <span className="chart-title">Fluxo dos últimos 30 dias</span>
-                  <span className="chart-head-sub">Clique num dia no gráfico ou escolha a data ao lado</span>
+                  <span className="chart-title">Fluxo dos {janelaTitulo}</span>
+                  <span className="chart-head-sub">
+                    {janelaAgrupada
+                      ? 'Tendência do período (agrupada)'
+                      : 'Clique num dia no gráfico ou escolha a data ao lado'}
+                  </span>
+                </div>
+                {/* Seletor de janela: período/agrupamento do gráfico de fluxo. */}
+                <div className="janela-pills">
+                  {JANELAS.map((j) => (
+                    <button key={j.key} type="button"
+                      className={`pill-janela${fJanela === j.key ? ' active' : ''}`}
+                      onClick={() => setFiltro({ janela: j.key === '30d' ? '' : j.key })}>
+                      {j.pill}
+                    </button>
+                  ))}
                 </div>
                 {/* Volta ao período completo: limpa a data → sem dia destacado,
                     médias e KPIs voltam ao geral. Só aparece com um dia ativo. */}
@@ -320,7 +372,10 @@ export default function Gestor() {
               </div>
               {(() => {
                 const diaSel = diaHistorico ? m.dia : null
-                const onDia = (dia: string) => { setFiltro({ data: dia }); setGraficoAberto(false) }
+                // Em 6m/1a (agrupado por semana/mês) o clique-num-dia não se aplica.
+                const onDia = janelaAgrupada
+                  ? undefined
+                  : (dia: string) => { setFiltro({ data: dia }); setGraficoAberto(false) }
                 return (
                   <>
                     {/* Ocupação (ESTOQUE): quantos leitos ocupados por dia. */}
@@ -347,7 +402,7 @@ export default function Gestor() {
                 aria-expanded={false}
               >
                 <span className="chart-expand-txt">
-                  <b>Fluxo dos últimos 30 dias</b>
+                  <b>Fluxo dos {janelaTitulo}</b>
                   <span>Dia analisado abaixo · expandir para navegar pelo período</span>
                 </span>
                 <span className="chart-expand-cta">
@@ -527,12 +582,15 @@ function pointerCursor(evt: { native: Event | null }, els: unknown[]) {
 // Helpers compartilhados pelos dois gráficos do fluxo (ocupação e fluxo diário):
 // clique-no-dia por índice e ticks do eixo X com o dia selecionado em destaque.
 function usarSerieFluxo(serie: GestorMetrics['serie_30d'], diaSelecionado: string | null,
-                        onDia: (dia: string) => void) {
+                        onDia?: (dia: string) => void) {
   const idxSel = diaSelecionado ? serie.findIndex((s) => s.dia === diaSelecionado) : -1
-  const onClick = (evt: unknown, _els: unknown, chart: { getElementsAtEventForMode: (e: Event, m: string, o: object, u: boolean) => Array<{ index: number }> }) => {
-    const pts = chart.getElementsAtEventForMode(evt as Event, 'index', { intersect: false }, true)
-    if (pts.length) onDia(serie[pts[0].index].dia)
-  }
+  // Sem onDia (janela agrupada 6m/1a) o gráfico não é clicável para escolher dia.
+  const onClick = onDia
+    ? (evt: unknown, _els: unknown, chart: { getElementsAtEventForMode: (e: Event, m: string, o: object, u: boolean) => Array<{ index: number }> }) => {
+        const pts = chart.getElementsAtEventForMode(evt as Event, 'index', { intersect: false }, true)
+        if (pts.length) onDia(serie[pts[0].index].dia)
+      }
+    : undefined
   const xTicks = {
     maxRotation: 0, autoSkip: true, maxTicksLimit: 10,
     color: (c: { index: number }) => (c.index === idxSel ? COR.azul : AXIS),
@@ -545,14 +603,14 @@ function usarSerieFluxo(serie: GestorMetrics['serie_30d'], diaSelecionado: strin
 // dia". Eixo único, própria escala. Separado do fluxo diário porque é uma
 // grandeza distinta (nível acumulado, não movimento).
 function OcupacaoChart({ m, diaSelecionado, onDia }: {
-  m: GestorMetrics; diaSelecionado: string | null; onDia: (dia: string) => void
+  m: GestorMetrics; diaSelecionado: string | null; onDia?: (dia: string) => void
 }) {
   const serie = m.serie_30d
   const { idxSel, onClick, xTicks } = usarSerieFluxo(serie, diaSelecionado, onDia)
   const options: ChartOptions = {
     responsive: true, maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
-    onClick, onHover: pointerCursor,
+    onClick, onHover: onClick ? pointerCursor : undefined,
     plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, titleFont: { size: 13 }, bodyFont: { size: 13 } } },
     scales: {
       y: { beginAtZero: true, border: { display: false }, grid: { color: GRID }, ticks: { font: MONO, color: AXIS, maxTicksLimit: 6, precision: 0 } },
@@ -577,7 +635,7 @@ function OcupacaoChart({ m, diaSelecionado, onDia }: {
 // empilhadas — têm sinais opostos sobre a ocupação) + linha de SALDO líquido
 // (entradas − altas), que é o que de fato move a ocupação. Eixo próprio (0..~10).
 function FluxoDiarioChart({ m, diaSelecionado, onDia }: {
-  m: GestorMetrics; diaSelecionado: string | null; onDia: (dia: string) => void
+  m: GestorMetrics; diaSelecionado: string | null; onDia?: (dia: string) => void
 }) {
   const serie = m.serie_30d
   const { idxSel, onClick, xTicks } = usarSerieFluxo(serie, diaSelecionado, onDia)
@@ -596,7 +654,7 @@ function FluxoDiarioChart({ m, diaSelecionado, onDia }: {
   const options: ChartOptions = {
     responsive: true, maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
-    onClick, onHover: pointerCursor,
+    onClick, onHover: onClick ? pointerCursor : undefined,
     plugins: {
       legend: { position: 'bottom', labels: { boxWidth: 12, boxHeight: 12, padding: 14, usePointStyle: true, font: AXIS_TITLE } },
       tooltip: { mode: 'index', intersect: false, titleFont: { size: 13 }, bodyFont: { size: 13 } },

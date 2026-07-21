@@ -66,6 +66,7 @@ const localStyles = `
 .inativos-toggle:hover{border-color:var(--border-strong)}
 .escala-remove{background:none;border:none;cursor:pointer;color:var(--muted-2);padding:2px 4px;border-radius:4px;line-height:1;flex-shrink:0;display:grid;place-items:center;transition:color .12s}
 .escala-remove:hover{color:var(--danger)}
+.prof-lista-scroll{max-height:372px;overflow-y:auto;scrollbar-width:thin}
 `
 
 function isAtivo(p: Profissional): boolean {
@@ -105,8 +106,6 @@ export default function Equipe() {
   }
 
   const enfermeirosMedicos = data ? visiveisPorTipo([...data.enfermeiros, ...data.medicos]) : []
-  const operadoresVis = data ? visiveisPorTipo(data.operadores) : []
-  const mostrarOperadores = tipoFiltro === 'todos' || tipoFiltro === 'O'
 
   const subtitle = data
     ? `${data.total_prof} ativos${data.total_todos > data.total_prof ? ` · ${data.total_todos - data.total_prof} inativos` : ''} · clique em um nome para editar`
@@ -157,7 +156,10 @@ export default function Equipe() {
                   Adicionar
                 </button>
               </div>
-              <div>
+              {/* Bloco com scroll interno: limita a altura a ~6 itens (cada
+                  .prof-item ≈ 62px) para não empurrar o resto da página quando
+                  a lista é longa; abaixo disso o bloco encolhe naturalmente. */}
+              <div className="prof-lista-scroll">
                 {enfermeirosMedicos.map((p) => (
                   <ProfItem key={p.id} p={p} active={selId === p.id} onClick={() => setSelId(p.id)} />
                 ))}
@@ -170,22 +172,6 @@ export default function Equipe() {
                 )}
               </div>
 
-              {/* Operadores Internos B+ */}
-              {mostrarOperadores && (
-                <>
-                  <div className="section-label" style={{ marginTop: 20 }}>Operadores Internos B+</div>
-                  <div>
-                    {operadoresVis.map((p) => (
-                      <ProfItem key={p.id} p={p} active={selId === p.id} onClick={() => setSelId(p.id)} />
-                    ))}
-                    {operadoresVis.length === 0 && (
-                      <div className="empty-state" style={{ padding: '24px 16px' }}>
-                        <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>Nenhum operador interno cadastrado.</div>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
             </div>
 
             {/* Painel de detalhe / edição */}
@@ -212,7 +198,7 @@ export default function Equipe() {
           </div>
 
           {/* Usuários de acesso (contas de login) — só admin vê */}
-          <UsuariosAcesso onToast={setToast} />
+          <UsuariosAcesso />
         </>
       )}
 

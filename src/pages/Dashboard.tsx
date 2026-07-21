@@ -6,14 +6,15 @@ import Toast from '../components/Toast'
 import { LoadingState, Spinner, opInitial } from '../components/ui'
 import { Deferred } from '../components/Deferred'
 import InternadosTable from '../components/internados/InternadosTable'
-import MediasCards from '../components/MediasCards'
-import { useDashboard, useDashboardOverview } from '../hooks/useDashboard'
+import { useDashboard, useDashboardOverview, useAtualizarVisaoGeral } from '../hooks/useDashboard'
 import { usePrefetchInternacao } from '../hooks/useInternacao'
+import { useIsFetching } from '@tanstack/react-query'
+import { queryRoots } from '../lib/queryKeys'
 import { exportarRvm } from '../services/dashboard.service'
 
 export default function Dashboard() {
   const [params, setParams] = useSearchParams()
-  const operadora = params.get('operadora') || 'sulamerica'
+  const operadoraUrl = params.get('operadora') || ''
   const filtro = params.get('filtro') || 'todos'
   const hospital = params.get('hospital') || ''
 
@@ -26,6 +27,17 @@ export default function Dashboard() {
   const [pagina, setPagina] = useState(1)
   const prefetchPaciente = usePrefetchInternacao()
 
+  // Panorama de TODAS as operadoras (recortado ao escopo do usuário) num disparo:
+  // alimenta KPIs, hospitais e o seletor sem um round-trip por operadora.
+  const { data: overview } = useDashboardOverview()
+  const operadorasLista = useMemo(() => overview?.lista ?? [], [overview])
+
+  // Operadora EFETIVA: a da URL, se houver; senão a 1ª que o usuário pode ver
+  // (do escopo já recortado) — NÃO um hardcode "sulamerica", que apareceria no
+  // filtro de um analista até o redirecionamento. Vazio enquanto o overview não
+  // chegou, para não disparar o detalhe numa operadora fora de escopo.
+  const operadora = operadoraUrl || operadorasLista[0]?.key || ''
+
   async function exportar() {
     try {
       await exportarRvm(operadora)
@@ -35,14 +47,54 @@ export default function Dashboard() {
   }
 
   // Detalhe (lista de internados) da operadora aberta — dado pesado/específico.
-  const { data, isLoading, isError, refetch, isFetching } = useDashboard({ operadora, filtro, hospital })
+  // Só busca quando já há uma operadora efetiva (evita request "sulamerica").
+  const { data, isLoading, isError } = useDashboard(
+    { operadora, filtro, hospital }, { enabled: !!operadora },
+  )
 
-  // Panorama de TODAS as operadoras num disparo: alimenta KPIs, hospitais e o
-  // seletor de QUALQUER operadora sem um novo round-trip ao trocar. A fatia da
-  // operadora atual sai daqui — instantânea assim que o overview está em cache.
-  const { data: overview } = useDashboardOverview()
   const ovAtual = overview?.operadoras[operadora]
-  const operadorasLista = overview?.lista ?? []
+
+  // "Atualizar" refaz a Visão Geral INTEIRA (detalhe + KPIs/overview + sidebar),
+  // não só a lista — assim os cards do topo e o "N internados" não ficam parados.
+  const atualizarTudo = useAtualizarVisaoGeral()
+  // "Atualizando…" enquanto QUALQUER das queries da tela está em voo (detalhe,
+  // panorama ou sidebar) — reflete o refresh completo, não só o do detalhe.
+  const fetchingDetalhe = useIsFetching({ queryKey: queryRoots.dashboard })
+  const fetchingOverview = useIsFetching({ queryKey: queryRoots.dashboardOverview })
+  const fetchingSidebar = useIsFetching({ queryKey: queryRoots.sidebar })
+  const isFetching = fetchingDetalhe + fetchingOverview + fetchingSidebar > 0
+
+  // Escopo de dados: `overview.lista` já vem recortado às operadoras que o
+  // usuário pode ver. Se a operadora da URL (?operadora=X, inclusive digitada à
+  // mão) não estiver nesse recorte, redireciona à 1ª permitida — o usuário nunca
+  // fica numa operadora fora do escopo (o backend também zera o payload).
+  useEffect(() => {
+    if (!overview) return  // espera o recorte chegar para não redirecionar cedo
+    // Sem ?operadora na URL: fixa a 1ª permitida na URL (replace) para o resto do
+    // app (sidebar/export/links) ler a operadora efetiva do mesmo lugar.
+    if (!operadoraUrl && operadorasLista.length > 0) {
+      const next = new URLSearchParams(params)
+      next.set('operadora', operadorasLista[0].key)
+      setParams(next, { replace: true })
+      return
+    }
+    const permitida = operadorasLista.some((o) => o.key === operadoraUrl)
+    if (operadoraUrl && !permitida && operadorasLista.length > 0) {
+      const next = new URLSearchParams(params)
+      next.set('operadora', operadorasLista[0].key)
+      next.delete('hospital')  // hospital da operadora antiga não vale na nova
+      setParams(next, { replace: true })
+      return
+    }
+    // Hospital fora do escopo da operadora atual (?hospital=Y direto na URL):
+    // limpa o filtro em vez de mostrar vazio sem explicação.
+    if (permitida && hospital && ovAtual &&
+        !ovAtual.hospitais.some((h) => h.key === hospital)) {
+      const next = new URLSearchParams(params)
+      next.delete('hospital')
+      setParams(next, { replace: true })
+    }
+  }, [overview, operadorasLista, operadoraUrl, hospital, ovAtual, params, setParams])
 
   function setParam(key: string, value: string | null) {
     const next = new URLSearchParams(params)
@@ -104,7 +156,7 @@ export default function Dashboard() {
 
   const actions = (
     <>
-      <button className="btn btn-outline btn-sm" onClick={() => refetch()} disabled={isFetching}>
+      <button className="btn btn-outline btn-sm" onClick={() => atualizarTudo()} disabled={isFetching}>
         {isFetching && <Spinner size={13} />}
         {isFetching ? 'Atualizando…' : 'Atualizar'}
       </button>
@@ -162,13 +214,6 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-
-          {/* Médias de fluxo (Mês/Semestral/Anual) — globais, vindas do overview. */}
-          {overview?.medias && (
-            <div style={{ marginTop: 16 }}>
-              <MediasCards medias={overview.medias} />
-            </div>
-          )}
 
           {/* Seletor de hospital */}
           <div className="section-label" style={{ marginTop: 18 }}>
@@ -252,7 +297,9 @@ export default function Dashboard() {
           onSaved={(msg) => {
             setDrawerId(null)
             setToast(msg)
-            refetch()
+            // Salvar um relatório muda também os KPIs e as contagens da sidebar,
+            // não só a lista — atualiza a Visão Geral inteira.
+            atualizarTudo()
           }}
         />
       )}

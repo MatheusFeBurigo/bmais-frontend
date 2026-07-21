@@ -6,7 +6,7 @@
 
 import { useCallback } from 'react'
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { queryKeys } from '../lib/queryKeys'
+import { queryKeys, queryRoots } from '../lib/queryKeys'
 import {
   fetchDashboard,
   fetchDashboardOverview,
@@ -27,13 +27,16 @@ export function useDashboardOverview() {
   })
 }
 
-export function useDashboard(params: DashboardParams) {
+export function useDashboard(params: DashboardParams, opts?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.dashboard(params.operadora, params.filtro, params.hospital ?? ''),
     queryFn: () => fetchDashboard(params),
     // Ao trocar de operadora, mantém os dados da anterior visíveis enquanto a
     // nova carrega — evita o "flash" de tela vazia na navegação por operadora.
     placeholderData: keepPreviousData,
+    // Permite adiar o fetch até haver uma operadora efetiva (evita disparar com
+    // um valor de fallback fora do escopo do usuário).
+    enabled: opts?.enabled ?? true,
   })
 }
 
@@ -61,4 +64,23 @@ export function useSidebar() {
     queryFn: fetchSidebar,
     staleTime: 30_000,
   })
+}
+
+/**
+ * Atualiza a Visão Geral inteira: invalida (e refaz) as TRÊS queries que a
+ * compõem — o detalhe (`dashboard`), o panorama de KPIs/hospitais
+ * (`dashboard-overview`) e a sidebar (`sidebar`). O botão "Atualizar" antes só
+ * refazia o detalhe (`refetch` da lista), deixando KPIs e "N internados" com o
+ * valor cacheado. `refetchType: 'active'` refaz na hora só o que está montado.
+ * Devolve a Promise para a UI marcar "Atualizando…" até tudo voltar.
+ */
+export function useAtualizarVisaoGeral() {
+  const qc = useQueryClient()
+  return useCallback(() => {
+    return Promise.all([
+      qc.invalidateQueries({ queryKey: queryRoots.dashboard }),
+      qc.invalidateQueries({ queryKey: queryRoots.dashboardOverview }),
+      qc.invalidateQueries({ queryKey: queryRoots.sidebar }),
+    ])
+  }, [qc])
 }

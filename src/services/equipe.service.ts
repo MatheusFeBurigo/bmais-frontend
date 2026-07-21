@@ -17,6 +17,11 @@ export function fetchHospitais(operadora: string): Promise<Hospital[]> {
   return apiFetch<Hospital[]>(`/hospitais?op=${operadora}`)
 }
 
+/** TODOS os hospitais (sem filtro de operadora) — usado no multi-select de acesso. */
+export function fetchTodosHospitais(): Promise<Hospital[]> {
+  return apiFetch<Hospital[]>('/hospitais')
+}
+
 /** Cria um novo profissional. */
 export function criarProfissional(nome: string, tipo: ProfTipo): Promise<unknown> {
   return apiFetch('/profissionais', { method: 'POST', body: { nome, tipo } })

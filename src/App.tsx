@@ -2,14 +2,14 @@ import { lazy } from 'react'
 import type { ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
-import { podeVer, ROTA_FALLBACK } from './auth/permissions'
+import { podeVer, rotaFallback } from './auth/permissions'
 import type { Screen } from './auth/permissions'
 import Login from './pages/Login'
 import { LoadingState } from './components/ui'
 import AppLayout from './components/AppLayout'
 import {
   importDashboard, importDiretoria, importGestor,
-  importEquipe, importConfiguracoes, importUpload,
+  importEquipe, importConfiguracoes, importUpload, importPaciente, importUsuarioForm,
 } from './routes'
 
 // Páginas carregadas sob demanda (code-splitting). Diretoria e Gestor arrastam
@@ -21,6 +21,8 @@ const Gestor = lazy(importGestor)
 const Equipe = lazy(importEquipe)
 const Configuracoes = lazy(importConfiguracoes)
 const Upload = lazy(importUpload)
+const Paciente = lazy(importPaciente)
+const UsuarioForm = lazy(importUsuarioForm)
 
 function PageFallback() {
   return <LoadingState style={{ minHeight: '100vh' }} />
@@ -29,10 +31,24 @@ function PageFallback() {
 // Bloqueia a rota de uma tela quando o papel atual não pode vê-la: redireciona
 // ao fallback. Cobre o acesso direto por URL (o menu já esconde o item).
 function GatedRoute({ screen, children }: { screen: Screen; children: ReactNode }) {
-  const { role } = useAuth()
+  const { role, perfilCarregando } = useAuth()
+  // Boot/login: o papel chega DEPOIS do /me. Decidir com role=null liberaria a
+  // rota e a redirecionaria ao resolver o papel (flash de tela). Aguarda o perfil
+  // (perfilCarregando nunca trava: vira false mesmo se o /me falhar).
+  if (perfilCarregando) return <PageFallback />
   if (!podeVer(role, screen)) {
-    return <Navigate to={ROTA_FALLBACK} replace />
+    // Destino por papel: gestor barrado em "/" cai em "/gestor", não num loop.
+    return <Navigate to={rotaFallback(role)} replace />
   }
+  return <>{children}</>
+}
+
+// Restringe uma rota a administradores (gestão de usuários). Redireciona quem
+// não for admin — defesa por rota, além do gating de UI.
+function RequireAdmin({ children }: { children: ReactNode }) {
+  const { role, perfilCarregando } = useAuth()
+  if (perfilCarregando) return <PageFallback />
+  if (role !== 'admin') return <Navigate to={rotaFallback(role)} replace />
   return <>{children}</>
 }
 
@@ -72,18 +88,25 @@ function ProtectedRoutes() {
       {/* Área autenticada: o AppLayout (Sidebar + topbar) monta uma vez em
           RequireAuth e persiste; as telas trocam apenas no <Outlet/>. */}
       <Route element={<RequireAuth />}>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<GatedRoute screen="operacional"><Dashboard /></GatedRoute>} />
         <Route
           path="/diretoria"
           element={<GatedRoute screen="diretoria"><Diretoria /></GatedRoute>}
         />
-        <Route path="/gestor" element={<Gestor />} />
-        <Route path="/configuracoes" element={<Configuracoes />} />
+        <Route path="/gestor" element={<GatedRoute screen="gestor"><Gestor /></GatedRoute>} />
+        <Route
+          path="/configuracoes"
+          element={<GatedRoute screen="configuracoes"><Configuracoes /></GatedRoute>}
+        />
         <Route
           path="/equipe"
           element={<GatedRoute screen="equipe"><Equipe /></GatedRoute>}
         />
         <Route path="/upload" element={<Upload />} />
+        <Route path="/paciente/:id" element={<Paciente />} />
+        {/* Gestão de usuários (admin-only): /novo antes de /:id p/ o literal vencer. */}
+        <Route path="/usuarios/novo" element={<RequireAdmin><UsuarioForm /></RequireAdmin>} />
+        <Route path="/usuarios/:id" element={<RequireAdmin><UsuarioForm /></RequireAdmin>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

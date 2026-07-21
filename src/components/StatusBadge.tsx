@@ -38,3 +38,44 @@ export function LeitoTag({ tipo }: { tipo?: string | null }) {
   if (tipo === 'ENFERMARIA') return <span className="leito ENFERMARIA">ENF</span>
   return <span style={{ fontSize: 'var(--t-xs)', color: 'var(--muted-2)' }}>—</span>
 }
+
+// ── Cor por papel de quem registrou um relatório ─────────────────────────────
+// A timeline colore cada relatório pelo PAPEL do usuário que o adicionou. Cada
+// papel tem uma cor sólida (dot/borda) e um fundo suave (chip), reaproveitando
+// as variáveis do design-system. Papel ausente/desconhecido = neutro.
+export interface RoleVisual {
+  label: string
+  color: string
+  bg: string
+}
+
+const ROLE_VISUAL: Record<string, RoleVisual> = {
+  admin: { label: 'Admin', color: 'var(--accent-2)', bg: 'var(--accent-soft)' },
+  diretor: { label: 'Diretor', color: 'var(--info)', bg: 'var(--info-bg)' },
+  gestor: { label: 'Gestor', color: 'var(--caution)', bg: 'var(--caution-bg)' },
+  analista: { label: 'Analista', color: 'var(--success)', bg: 'var(--success-bg)' },
+}
+
+const ROLE_DESCONHECIDO: RoleVisual = {
+  label: 'Desconhecido', color: 'var(--muted-2)', bg: 'var(--surface-3)',
+}
+
+export function roleVisual(role?: string | null): RoleVisual {
+  if (!role) return ROLE_DESCONHECIDO
+  return ROLE_VISUAL[role] || { label: role, color: 'var(--muted-2)', bg: 'var(--surface-3)' }
+}
+
+/** Chip do autor de um relatório, colorido pelo papel. */
+export function AutorChip({ role, autor }: { role?: string | null; autor?: string | null }) {
+  const v = roleVisual(role)
+  return (
+    <span
+      className="badge"
+      style={{ background: v.bg, color: v.color, textTransform: 'none', letterSpacing: 0, gap: 5 }}
+      title={autor ? `${v.label} · ${autor}` : v.label}
+    >
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: v.color, flexShrink: 0 }} />
+      {v.label}
+    </span>
+  )
+}

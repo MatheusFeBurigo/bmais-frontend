@@ -7,6 +7,7 @@ export function useGestor(params: GestorParams) {
   return useQuery({
     queryKey: queryKeys.gestor(
       params.data ?? '', params.operadora ?? '', params.hospital ?? '', params.regiao ?? '',
+      params.janela ?? '30d',
     ),
     queryFn: () => fetchGestor(params),
     // Ao trocar o dia/filtros a queryKey muda; sem isto o react-query zera `data`

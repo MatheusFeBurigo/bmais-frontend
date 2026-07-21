@@ -11,6 +11,7 @@ export interface Hospital {
   key: string
   nome: string
   operadora_key?: string
+  operadora_nome?: string | null
   regiao?: string | null
   internados: number
   urgente: number
@@ -78,6 +79,9 @@ export interface DashboardPayload {
   filtro_atual: string
   hospital_atual: string | null
   q: string
+  // Operadora fora do escopo do usuário: payload zerado e sem nome. O front
+  // redireciona à 1ª operadora permitida (ver Dashboard.tsx).
+  sem_acesso?: boolean
 }
 
 // Panorama de TODAS as operadoras num disparo (stats + hospitais, SEM a lista
@@ -116,7 +120,7 @@ export interface SidebarData {
 }
 
 // Papel de acesso do usuário (espelha a tabela `profiles` do backend).
-export type UserRole = 'admin' | 'diretor' | 'analista'
+export type UserRole = 'admin' | 'diretor' | 'gestor' | 'analista'
 
 export interface LoginResponse {
   token: string
@@ -149,6 +153,8 @@ export interface Usuario {
   email: string | null
   role: UserRole
   criado_em?: string
+  /** Keys dos hospitais associados. Vazio = sem restrição (vê todos). */
+  hospitais?: string[]
 }
 
 export interface UsuariosPayload {
@@ -286,8 +292,8 @@ export interface DiaMetricas {
 }
 
 export interface SerieDia extends DiaMetricas {
-  dia: string      // ISO (para navegação)
-  label: string    // dd/mm
+  dia: string      // ISO — fim do bucket (clicável só nas janelas por dia: 30d/90d)
+  label: string    // dd/mm (dia/semana) ou mmm/aa (mês, nas janelas 6m/1a)
 }
 
 export interface MediaPeriodo {
@@ -501,6 +507,10 @@ export interface TimelineEvento {
   /** Marco do estado atual (Pendente) — exibido como "Hoje", sem data. */
   hoje?: boolean
   variante: TimelineVariante
+  /** Quem registrou (e-mail/identificador). Presente em eventos de relatório. */
+  autor?: string | null
+  /** Papel de quem registrou — colore o relatório na timeline. Null = histórico. */
+  autor_role?: UserRole | string | null
 }
 
 export interface InternacaoTimeline {

@@ -7,6 +7,8 @@ export interface GestorParams {
   operadora?: string
   hospital?: string
   regiao?: string
+  /** Janela do gráfico de fluxo: '30d' | '90d' | '6m' | '1a'. */
+  janela?: string
 }
 
 /** Métricas de fluxo + opções de filtro num único payload ({ metrics, filtros }). */
@@ -16,5 +18,6 @@ export function fetchGestor(params: GestorParams): Promise<GestorResposta> {
   if (params.operadora) qs.set('operadora', params.operadora)
   if (params.hospital) qs.set('hospital', params.hospital)
   if (params.regiao) qs.set('regiao', params.regiao)
+  if (params.janela) qs.set('janela', params.janela)
   return apiFetch<GestorResposta>(`/gestor?${qs.toString()}`)
 }

@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { StatusBadge, LeitoTag } from './StatusBadge'
+import { StatusBadge, LeitoTag, AutorChip, roleVisual } from './StatusBadge'
 import { LoadingState, Spinner } from './ui'
 import { useInternacaoDados, useInternacaoTimeline } from '../hooks/useInternacao'
+import { useEquipe } from '../hooks/useEquipe'
 import { registrarRelatorioRapido } from '../services/internacao.service'
 import { queryKeys } from '../lib/queryKeys'
 import { hojeISO } from '../lib/datas'
@@ -17,7 +19,11 @@ interface Props {
 export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props) {
   const { data: d, isLoading, isError } = useInternacaoDados(internacaoId)
   const { data: tl, isLoading: tlLoading, isError: tlError } = useInternacaoTimeline(internacaoId)
+  const { data: equipe } = useEquipe()
+  // Médicos auditores (tipo 'M') ativos, cadastrados na tela de Equipe.
+  const medicosAtivos = (equipe?.medicos ?? []).filter((m) => Boolean(m.ativo))
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   const [dataVisita, setDataVisita] = useState(hojeISO())
   const [medico, setMedico] = useState('')
@@ -78,6 +84,15 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
               )}
             </div>
           </div>
+          <button
+            className="btn btn-primary btn-sm"
+            style={{ flexShrink: 0, gap: 6 }}
+            onClick={() => navigate(`/paciente/${internacaoId}`)}
+            title="Abrir a ficha completa deste paciente"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M16 13H8M16 17H8M10 9H8" /></svg>
+            Ver completo
+          </button>
           <button className="btn btn-ghost btn-sm" onClick={onClose} style={{ padding: 6, flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
           </button>
@@ -130,7 +145,11 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
                   </div>
                   <div>
                     <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Médico auditor</div>
-                    <input type="text" className="bm-input" placeholder="nome do médico" value={medico} onChange={(e) => setMedico(e.target.value)} />
+                    <MedicoCombobox
+                      value={medico}
+                      onChange={setMedico}
+                      nomes={medicosAtivos.map((m) => m.nome)}
+                    />
                   </div>
                 </div>
                 <div>
@@ -155,14 +174,117 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
 }
 
 function TimelineItem({ ev }: { ev: TimelineEvento }) {
-  const dotClass = `tl-dot ${ev.variante}`
+  const relatorio = ev.tipo === 'RELATORIO' || /relat[óo]rio/i.test(ev.titulo)
   const labelStyle = ev.variante === 'danger' ? { color: 'var(--danger)' } : undefined
+  // Relatório: marcador colorido pelo papel de quem registrou.
+  const dotStyle = relatorio ? { background: roleVisual(ev.autor_role).color } : undefined
   return (
     <div className="tl-item">
-      <div className={dotClass} />
+      <div className={`tl-dot ${ev.variante}`} style={dotStyle} />
       <div className="tl-date">{ev.hoje ? 'Hoje' : ev.data || '—'}</div>
-      <div className="tl-label" style={labelStyle}>{ev.titulo}</div>
+      <div className="tl-label" style={labelStyle}>
+        {ev.titulo}
+        {relatorio && (
+          <span style={{ marginLeft: 8, verticalAlign: 'middle' }}>
+            <AutorChip role={ev.autor_role} autor={ev.autor} />
+          </span>
+        )}
+      </div>
       {ev.descricao && <div className="tl-desc">{ev.descricao}</div>}
+    </div>
+  )
+}
+
+// Normaliza para comparação: minúsculas e sem acentos, para o filtro casar
+// "joao" com "João".
+function normalizar(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+}
+
+const comboStyles = `
+.mc-wrap{position:relative}
+.mc-menu{position:absolute;z-index:20;left:0;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md,8px);box-shadow:0 8px 24px rgba(6,46,92,.12);max-height:200px;overflow-y:auto;padding:4px}
+.mc-opt{padding:7px 10px;font-size:var(--t-sm);color:var(--ink-2);border-radius:6px;cursor:pointer}
+.mc-opt:hover,.mc-opt.active{background:var(--primary-soft);color:var(--primary)}
+.mc-empty{padding:8px 10px;font-size:var(--t-sm);color:var(--muted)}
+`
+
+// Combobox de médico auditor: input filtrável + dropdown clicável, alimentado
+// pelos nomes cadastrados na tela de Equipe. Aceita valor livre (o que estiver
+// digitado) e também seleção via clique/teclado.
+function MedicoCombobox({ value, onChange, nomes }: {
+  value: string
+  onChange: (v: string) => void
+  nomes: string[]
+}) {
+  const [aberto, setAberto] = useState(false)
+  const [ativo, setAtivo] = useState(0)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  const filtrados = useMemo(() => {
+    const q = normalizar(value)
+    const base = q ? nomes.filter((n) => normalizar(n).includes(q)) : nomes
+    return base.slice(0, 50)
+  }, [value, nomes])
+
+  // Fecha ao clicar fora.
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setAberto(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [])
+
+  function selecionar(nome: string) {
+    onChange(nome)
+    setAberto(false)
+  }
+
+  function onKey(e: React.KeyboardEvent) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault(); setAberto(true); setAtivo((i) => Math.min(i + 1, filtrados.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault(); setAtivo((i) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter' && aberto && filtrados[ativo]) {
+      e.preventDefault(); selecionar(filtrados[ativo])
+    } else if (e.key === 'Escape') {
+      setAberto(false)
+    }
+  }
+
+  return (
+    <div className="mc-wrap" ref={wrapRef}>
+      <style>{comboStyles}</style>
+      <input
+        type="text"
+        className="bm-input"
+        placeholder="Digite ou selecione o médico…"
+        autoComplete="off"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setAberto(true); setAtivo(0) }}
+        onFocus={() => setAberto(true)}
+        onKeyDown={onKey}
+      />
+      {aberto && (
+        <div className="mc-menu">
+          {filtrados.length === 0 && (
+            <div className="mc-empty">
+              {nomes.length === 0 ? 'Nenhum médico cadastrado' : 'Nenhum médico encontrado'}
+            </div>
+          )}
+          {filtrados.map((n, i) => (
+            <div
+              key={n}
+              className={`mc-opt${i === ativo ? ' active' : ''}`}
+              onMouseEnter={() => setAtivo(i)}
+              onMouseDown={(e) => { e.preventDefault(); selecionar(n) }}
+            >
+              {n}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -43,6 +43,27 @@ const IconUpload = () => (
 const IconCollapse = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 17-5-5 5-5" /><path d="m18 17-5-5 5-5" /></svg>
 )
+// Sair (logout): porta com seta apontando para fora.
+const IconLogout = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></svg>
+)
+
+// Rótulo amigável do papel exibido no rodapé (perfil do usuário logado).
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'Administrador',
+  diretor: 'Diretor',
+  gestor: 'Gestor',
+  analista: 'Analista',
+}
+
+// Iniciais para o avatar: pega as 2 primeiras letras significativas do nome/e-mail.
+function iniciais(nome: string): string {
+  const base = (nome || '').split('@')[0].trim()
+  if (!base) return 'B+'
+  const partes = base.split(/[\s._-]+/).filter(Boolean)
+  const letras = partes.length >= 2 ? partes[0][0] + partes[1][0] : base.slice(0, 2)
+  return letras.toUpperCase()
+}
 
 function itemClass({ isActive }: { isActive: boolean }) {
   return isActive ? 'sb-item active' : 'sb-item'
@@ -54,13 +75,22 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
-  const { role } = useAuth()
+  const { username, role, perfilCarregando, logout } = useAuth()
   const { data } = useSidebar()
   const prefetchDashboard = usePrefetchDashboard()
   const [params] = useSearchParams()
   const location = useLocation()
-  const opAtual = params.get('operadora') || 'sulamerica'
+  // Sem ?operadora na URL, nenhuma fica marcada como ativa (não assume uma
+  // operadora fixa — o Dashboard fixa na URL a 1ª do escopo do usuário).
+  const opAtual = params.get('operadora') || ''
   const noDashboard = location.pathname === '/'
+
+  // No boot/login o `role` chega DEPOIS do /me. `podeVer(null, …)` libera tudo,
+  // então os itens gated apareceriam e sumiriam ao resolver o papel (flash). Até
+  // o perfil resolver, escondemos os itens que dependem de papel — o menu cresce
+  // ao completar, em vez de encolher. As operadoras (dado do backend recortado)
+  // seguem por `sidebarOps` normalmente. `perfilCarregando` nunca trava.
+  const mostrar = (screen: Parameters<typeof podeVer>[1]) => !perfilCarregando && podeVer(role, screen)
 
   const sidebarOps = data?.sidebar_ops ?? []
   // Lista de operadoras expansível. Começa SEMPRE aberta e persiste a preferência
@@ -91,6 +121,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
           <div className="sb-section-label">Painel</div>
           {/* "Visão Geral" leva ao Dashboard; o chevron aninha a lista de operadoras,
               que é o recorte por foco de operadora DENTRO da própria Visão Geral. */}
+          {mostrar('operacional') && (
           <NavLink to="/" end className={itemClass} {...prefetchProps('/')}>
             <span className="sb-item-icon"><IconGrid /></span>
             <span className="sb-item-label">Visão Geral</span>
@@ -110,7 +141,8 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
               <Caret />
             </button>
           </NavLink>
-          {opsOpen && sidebarOps.length > 0 && (
+          )}
+          {mostrar('operacional') && opsOpen && sidebarOps.length > 0 && (
           <div className="sb-sub">
             {sidebarOps.map((op) => {
               const urgente = Number(op.urgente ?? 0)
@@ -146,31 +178,34 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
             })}
           </div>
           )}
-          {podeVer(role, 'diretoria') && (
+          {mostrar('diretoria') && (
             <NavLink to="/diretoria" className={itemClass} {...prefetchProps('/diretoria')}>
               <span className="sb-item-icon"><IconDiretoria /></span>
               <span className="sb-item-label">Diretoria / KPIs</span>
             </NavLink>
           )}
-          <NavLink to="/gestor" className={itemClass} {...prefetchProps('/gestor')}>
-            <span className="sb-item-icon"><IconGestor /></span>
-            <span className="sb-item-label">Gestor / Fluxo</span>
-          </NavLink>
+          {mostrar('gestor') && (
+            <NavLink to="/gestor" className={itemClass} {...prefetchProps('/gestor')}>
+              <span className="sb-item-icon"><IconGestor /></span>
+              <span className="sb-item-label">Gestor / Fluxo</span>
+            </NavLink>
+          )}
         </div>
 
         <div className="sb-section">
           <div className="sb-section-label">Sistema</div>
-          {podeVer(role, 'equipe') && (
+          {mostrar('equipe') && (
             <NavLink to="/equipe" className={itemClass} {...prefetchProps('/equipe')}>
               <span className="sb-item-icon"><IconEquipe /></span>
               <span className="sb-item-label">Equipe</span>
-              <span className="sb-item-badge">{data?.sidebar_prof_count ?? 0}</span>
             </NavLink>
           )}
-          <NavLink to="/configuracoes" className={itemClass} {...prefetchProps('/configuracoes')}>
-            <span className="sb-item-icon"><IconConfig /></span>
-            <span className="sb-item-label">Configurações</span>
-          </NavLink>
+          {mostrar('configuracoes') && (
+            <NavLink to="/configuracoes" className={itemClass} {...prefetchProps('/configuracoes')}>
+              <span className="sb-item-icon"><IconConfig /></span>
+              <span className="sb-item-label">Configurações</span>
+            </NavLink>
+          )}
           <NavLink to="/upload" className={itemClass} {...prefetchProps('/upload')}>
             <span className="sb-item-icon"><IconUpload /></span>
             <span className="sb-item-label">Upload Censos</span>
@@ -190,12 +225,27 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
         <span className="sb-collapse-label">Recolher menu</span>
       </button>
 
+      {/* Rodapé = perfil do usuário logado + Sair (movidos da topbar para cá). */}
       <div className="sb-foot">
-        <div className="sb-foot-avatar">AU</div>
-        <div className="sb-foot-info flex-1">
-          <div style={{ color: '#fff', fontSize: 12, fontWeight: 500 }}>B+ Auditoria</div>
-          <div className="sb-foot-ref">Ref: {data?.hoje_efetivo ?? '—'}</div>
+        <div className="sb-foot-user">
+          <div className="sb-foot-avatar" title={username ?? undefined}>{iniciais(username ?? '')}</div>
+          <div className="sb-foot-info flex-1">
+            <div className="sb-foot-name" title={username ?? undefined}>{username ?? 'Usuário'}</div>
+            <div className="sb-foot-role">
+              {perfilCarregando ? '…' : (role ? (ROLE_LABEL[role] ?? role) : `Ref: ${data?.hoje_efetivo ?? '—'}`)}
+            </div>
+          </div>
         </div>
+        <button
+          type="button"
+          className="sb-logout"
+          onClick={logout}
+          aria-label="Sair"
+          title="Sair"
+        >
+          <span className="sb-logout-icon"><IconLogout /></span>
+          <span className="sb-logout-label">Sair</span>
+        </button>
       </div>
     </aside>
   )

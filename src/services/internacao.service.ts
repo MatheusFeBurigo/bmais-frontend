@@ -19,6 +19,38 @@ export function fetchInternacaoTimeline(id: number): Promise<InternacaoTimeline>
   return apiFetch<InternacaoTimeline>(`/internacao/${id}/timeline`)
 }
 
+// Campos que o backend aceita editar (espelha CAMPOS_EDITAVEIS no repositório).
+// Mantê-los tipados evita enviar chaves que o backend descartaria silenciosamente.
+export interface InternacaoEdicao {
+  nome?: string
+  atendimento?: string
+  data_entrada?: string
+  hora_entrada?: string
+  data_alta?: string
+  hora_alta?: string
+  tipo_leito?: string
+  leito_codigo?: string
+  especialidade?: string
+  convenio?: string
+  categoria?: string
+  diagnostico?: string
+  medico?: string
+  idade?: string
+  sexo?: string
+  rn?: string
+  status?: string
+  obs?: string
+}
+
+/** Edita os dados de uma internação. Autoria é derivada do usuário logado no backend. */
+export function editarInternacao(id: number, mudancas: InternacaoEdicao): Promise<{
+  atualizado?: boolean
+  campos_alterados?: string[]
+  mensagem?: string
+}> {
+  return apiFetch(`/internacao/${id}/editar`, { method: 'POST', body: mudancas })
+}
+
 /** Registra um relatório rápido a partir do drawer do paciente. */
 export function registrarRelatorioRapido(id: number, rel: RelatorioRapido): Promise<unknown> {
   return apiFetch(`/internacao/${id}/relatorio-rapido`, {

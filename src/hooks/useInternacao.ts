@@ -1,8 +1,13 @@
 // Hook de estado de servidor do domínio "internação".
 import { useCallback } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../lib/queryKeys'
-import { fetchInternacaoDados, fetchInternacaoTimeline } from '../services/internacao.service'
+import {
+  editarInternacao,
+  fetchInternacaoDados,
+  fetchInternacaoTimeline,
+  type InternacaoEdicao,
+} from '../services/internacao.service'
 
 // Reabrir o mesmo paciente (ou um já pré-carregado no hover) não deve refazer a
 // busca: mantém fresco por 1min.
@@ -21,6 +26,20 @@ export function useInternacaoTimeline(id: number) {
     queryKey: queryKeys.internacaoTimeline(id),
     queryFn: () => fetchInternacaoTimeline(id),
     staleTime: DRAWER_STALE,
+  })
+}
+
+// Edição dos dados da internação. Ao concluir, invalida dados + timeline: a
+// própria edição gera um evento EDIT que precisa aparecer na timeline, e os
+// KPIs derivados (status_relatorio etc.) podem mudar conforme os campos alterados.
+export function useEditarInternacao(id: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (mudancas: InternacaoEdicao) => editarInternacao(id, mudancas),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.internacaoDados(id) })
+      qc.invalidateQueries({ queryKey: queryKeys.internacaoTimeline(id) })
+    },
   })
 }
 

@@ -172,7 +172,7 @@ export default function Upload() {
   return (
     <>
       <style>{localStyles}</style>
-      <div style={{ maxWidth: 860 }}>
+      <div>
         {/* Tabs */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div className="up-tabnav">

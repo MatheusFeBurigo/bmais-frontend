@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { ApiError, apiFetch, getToken, setToken, setUnauthorizedHandler } from '../api/client'
 import type { LoginResponse, MeResponse, RegisterResponse, UserRole } from '../types/api'
 
@@ -8,6 +9,10 @@ interface AuthState {
   role: UserRole | null
   authenticated: boolean
   loading: boolean
+  // True enquanto o papel (/me) ainda está sendo resolvido — no boot com token
+  // salvo E logo após o login. Guards/Sidebar aguardam isto para não renderizar
+  // itens/telas com role=null (que liberaria tudo) e depois recolher (flash).
+  perfilCarregando: boolean
   // remember=true (padrão) mantém a sessão entre reinícios do navegador.
   login: (username: string, password: string, remember?: boolean) => Promise<void>
   // Devolve o resultado do registro: se exigir confirmação de e-mail, a UI mostra
@@ -24,9 +29,14 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const qc = useQueryClient()
   const [username, setUsername] = useState<string | null>(null)
   const [role, setRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
+  // Perfil (/me) em resolução. Inicia true SE há token salvo (o boot vai buscar
+  // /me); sem token, não há o que resolver. Vira false quando /me responde
+  // (com role ou com falha) — nunca fica preso, mesmo se o /me falhar.
+  const [perfilCarregando, setPerfilCarregando] = useState(() => !!getToken())
   // Boot otimista: se HÁ token salvo, já consideramos a sessão válida e renderizamos
   // o app enquanto /me valida em background — evita a tela branca a cada refresh.
   // Vira false se /me falhar (401): aí cai no Login.
@@ -37,7 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsername(null)
     setRole(null)
     setTokenValido(false)
-  }, [])
+    // Zera TODO o cache de dados: as respostas são recortadas ao escopo do usuário
+    // (overview/sidebar/dashboard). Sem limpar, o próximo login reusaria dados do
+    // usuário anterior (ex.: admin veria o recorte do analista). Segurança + UX.
+    qc.clear()
+  }, [qc])
 
   // Ao carregar, se houver token guardado, valida com /api/me.
   useEffect(() => {
@@ -64,7 +78,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTokenValido(false)
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+          setPerfilCarregando(false)  // /me resolveu (ou falhou): não travar guards
+        }
       }
     }
     check()
@@ -79,9 +96,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUsername(null)
       setRole(null)
       setTokenValido(false)
+      qc.clear()  // não deixa o cache recortado sobreviver à queda de sessão
     })
     return () => setUnauthorizedHandler(null)
-  }, [])
+  }, [qc])
 
   const login = useCallback(async (u: string, p: string, remember = true) => {
     const res = await apiFetch<LoginResponse>('/login', {
@@ -89,17 +107,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: { email: u, username: u, password: p },
       skipAuthRedirect: true,
     })
+    // Base limpa antes de carregar os dados do novo usuário — não herda o cache
+    // (recortado ao escopo) de quem estava logado antes nesta aba.
+    qc.clear()
     setToken(res.token, remember)
     setTokenValido(true)
     setUsername(res.username)
     // O login não devolve o papel; resolve-o via /me para o app já ter o role.
+    // Enquanto isso, perfilCarregando segura os guards/Sidebar (evita o flash de
+    // itens gated com role=null).
+    setPerfilCarregando(true)
     try {
       const me = await apiFetch<MeResponse>('/me', { skipAuthRedirect: true })
       setRole(me.role ?? null)
     } catch {
       setRole(null)
+    } finally {
+      setPerfilCarregando(false)
     }
-  }, [])
+  }, [qc])
 
   const register = useCallback(
     async (email: string, password: string, role: UserRole, remember = true) => {
@@ -125,8 +151,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const authenticated = !!username || tokenValido
 
   const value = useMemo<AuthState>(
-    () => ({ username, role, authenticated, loading, login, register, logout }),
-    [username, role, authenticated, loading, login, register, logout],
+    () => ({ username, role, authenticated, loading, perfilCarregando, login, register, logout }),
+    [username, role, authenticated, loading, perfilCarregando, login, register, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
