@@ -67,7 +67,7 @@ const COLUNAS_ADMIN = COLUNAS
 
 const localStyles = `
 /* grid-template-columns vem inline (nº de colunas depende do papel/board). */
-.kb-board{display:grid;gap:16px;align-items:start;transition:opacity .2s ease}
+.kb-board{display:grid;gap:12px;align-items:start;transition:opacity .2s ease}
 /* Refetch em andamento com dados anteriores em tela: esmaece o quadro (não bloqueia
    cliques), sinalizando "atualizando" sem piscar o loading — igual ao Gestor. */
 .kb-board.atualizando{opacity:.55}
@@ -75,16 +75,16 @@ const localStyles = `
 @media (max-width:1400px){.kb-board{grid-template-columns:repeat(2,1fr)!important}}
 @media (max-width:760px){.kb-board{grid-template-columns:1fr!important}}
 .kb-col{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);display:flex;flex-direction:column;min-height:200px}
-.kb-col-head{padding:14px 16px 12px;border-bottom:1px solid var(--border);border-top:3px solid var(--kb-cor);border-radius:var(--r-md) var(--r-md) 0 0;background:var(--surface)}
+.kb-col-head{padding:11px 13px 9px;border-bottom:1px solid var(--border);border-top:3px solid var(--kb-cor);border-radius:var(--r-md) var(--r-md) 0 0;background:var(--surface)}
 .kb-col-title-row{display:flex;align-items:center;gap:8px}
-.kb-col-title{font-size:var(--t-xl);font-weight:600;color:var(--ink)}
-.kb-col-count{margin-left:auto;font-family:var(--font-mono);font-size:var(--t-md);font-weight:700;color:#fff;background:var(--kb-cor);border-radius:99px;min-width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;padding:0 8px}
-.kb-col-desc{font-size:var(--t-md);color:var(--muted-2);margin-top:4px}
+.kb-col-title{font-size:var(--t-md);font-weight:600;color:var(--ink)}
+.kb-col-count{margin-left:auto;font-family:var(--font-mono);font-size:var(--t-sm);font-weight:700;color:#fff;background:var(--kb-cor);border-radius:99px;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;padding:0 7px}
+.kb-col-desc{font-size:var(--t-sm);color:var(--muted-2);margin-top:3px;line-height:1.4}
 /* Faixa de instrução no topo da coluna (board do técnico): diz o que fazer ali. */
 .kb-col-guia{margin:10px 12px 0;padding:9px 11px;background:var(--info-bg);border:1px solid var(--info);border-left:3px solid var(--info);border-radius:var(--r-sm);font-size:var(--t-md);color:var(--ink-2);line-height:1.4;display:flex;gap:8px;align-items:flex-start}
 .kb-col-guia svg{flex-shrink:0;margin-top:1px;color:var(--info)}
-.kb-col-body{padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;max-height:calc(100vh - 260px)}
-.kb-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 13px;transition:border-color .14s,box-shadow .14s,transform .14s;position:relative}
+.kb-col-body{padding:9px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;max-height:calc(100vh - 240px)}
+.kb-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 11px;transition:border-color .14s,box-shadow .14s,transform .14s;position:relative}
 .kb-card.clicavel{cursor:pointer}
 /* Hover evidente: eleva o card, borda na cor primária e sombra mais forte —
    comunica claramente que o card é clicável. */
@@ -93,37 +93,37 @@ const localStyles = `
 /* Seta que aparece no hover, no canto do card, reforçando "abrir". */
 .kb-card-abrir{position:absolute;top:11px;right:11px;opacity:0;color:var(--primary-3);transition:opacity .14s,transform .14s;transform:translateX(-3px)}
 .kb-card.clicavel:hover .kb-card-abrir{opacity:1;transform:translateX(0)}
-.kb-card-top{display:flex;align-items:flex-start;gap:8px}
-.kb-card-nome{font-weight:600;font-size:var(--t-lg);color:var(--ink-2);line-height:1.3;flex:1;min-width:0}
-.kb-card-meta{font-size:var(--t-md);color:var(--muted);margin-top:7px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.kb-card-top{display:flex;align-items:flex-start;gap:7px}
+.kb-card-nome{font-weight:600;font-size:var(--t-base);color:var(--ink-2);line-height:1.3;flex:1;min-width:0}
+.kb-card-meta{font-size:var(--t-sm);color:var(--muted);margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .kb-card-atend{font-family:var(--font-mono)}
-.kb-motivos{margin-top:8px;display:flex;flex-direction:column;gap:4px}
-.kb-motivo{font-size:var(--t-md);color:var(--danger);background:var(--danger-bg);border-radius:var(--r-sm);padding:5px 9px;line-height:1.35}
-.kb-card-actions{margin-top:10px;display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.kb-motivos{margin-top:6px;display:flex;flex-direction:column;gap:4px}
+.kb-motivo{font-size:var(--t-sm);color:var(--danger);background:var(--danger-bg);border-radius:var(--r-sm);padding:4px 8px;line-height:1.35}
+.kb-card-actions{margin-top:8px;display:flex;gap:8px;justify-content:flex-end;align-items:center}
 /* Card de relatório: chips suaves de "campo faltante" (não é erro grave como o parsing). */
-.kb-falta{margin-top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.kb-falta-lbl{font-size:var(--t-md);color:var(--muted)}
-.kb-falta-chip{font-size:var(--t-sm);color:var(--warning-2);background:var(--warning-bg);border-radius:99px;padding:2px 9px;line-height:1.5}
+.kb-falta{margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.kb-falta-lbl{font-size:var(--t-sm);color:var(--muted)}
+.kb-falta-chip{font-size:var(--t-xs);color:var(--warning-2);background:var(--warning-bg);border-radius:99px;padding:2px 8px;line-height:1.5}
 /* Link "documento" (abre o anexo em nova guia) — discreto, à esquerda do rodapé. */
 .kb-card-doc{margin-right:auto;display:inline-flex;align-items:center;gap:5px;font-size:var(--t-md);color:var(--accent);text-decoration:none}
 .kb-card-doc:hover{text-decoration:underline}
-.kb-empty{padding:26px 12px;text-align:center;color:var(--muted-2);font-size:var(--t-md)}
+.kb-empty{padding:22px 12px;text-align:center;color:var(--muted-2);font-size:var(--t-sm);line-height:1.5}
 /* ── Card de análise técnica (board do técnico) ── */
 /* Selo de status no topo do card: comunica de imediato que aguarda ação. */
 .kb-at-status{display:inline-flex;align-items:center;gap:5px;font-size:var(--t-sm);font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--info);background:var(--info-bg);border-radius:99px;padding:3px 9px}
 .kb-at-status .kb-at-dot{width:6px;height:6px;border-radius:50%;background:var(--info);flex-shrink:0}
 /* Linha rotulada (Auditor / Data / Médico): rótulo esmaecido + valor legível. */
-.kb-at-linha{display:flex;gap:6px;font-size:var(--t-md);line-height:1.5}
+.kb-at-linha{display:flex;gap:6px;font-size:var(--t-sm);line-height:1.5}
 .kb-at-linha-lbl{color:var(--muted-2);flex-shrink:0;min-width:52px}
 .kb-at-linha-val{color:var(--ink-2)}
 /* Bloco do texto do relatório do auditor: fundo suave + 3 linhas + rótulo. */
-.kb-at-relbox{margin-top:9px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px}
+.kb-at-relbox{margin-top:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-sm);padding:7px 9px}
 .kb-at-relbox-lbl{font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.07em;font-weight:700;color:var(--muted);margin-bottom:3px}
-.kb-analise-preview{color:var(--ink-2);font-size:var(--t-md);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;line-height:1.45}
-.kb-at-relbox-vazio{color:var(--muted-2);font-size:var(--t-md);font-style:italic}
+.kb-analise-preview{color:var(--ink-2);font-size:var(--t-sm);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;line-height:1.45}
+.kb-at-relbox-vazio{color:var(--muted-2);font-size:var(--t-sm);font-style:italic}
 /* Call-to-action no rodapé do card: deixa explícita a ação de dar parecer. */
-.kb-at-cta{margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:9px;border-top:1px dashed var(--border)}
-.kb-at-cta-txt{font-size:var(--t-md);font-weight:600;color:var(--info)}
+.kb-at-cta{margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:8px;border-top:1px dashed var(--border)}
+.kb-at-cta-txt{font-size:var(--t-sm);font-weight:600;color:var(--info)}
 .kb-at-cta-icon{display:inline-flex;color:var(--info)}
 .kb-dias{font-family:var(--font-mono);font-weight:600}
 /* Modal de pendência: detalhes + link para o PDF (abre em outra aba) */
@@ -425,7 +425,7 @@ const KanbanCard = memo(function KanbanCard({ tarefa, onAbrir, onAbrirPendencia,
       <div className="kb-card-top">
         {tarefa.operadora_key && (
           <span title={tarefa.hospital_nome ?? undefined}>
-            <OpAvatar opKey={tarefa.operadora_key} size={22} />
+            <OpAvatar opKey={tarefa.operadora_key} size={20} />
           </span>
         )}
         <span className="kb-card-nome">{tarefa.titulo}</span>
@@ -514,7 +514,7 @@ function CobrancaCard({ tarefa, onCobrar, cobrando }: {
       <div className="kb-card-top">
         {tarefa.operadora_key && (
           <span title={tarefa.operadora_key}>
-            <OpAvatar opKey={tarefa.operadora_key} size={22} />
+            <OpAvatar opKey={tarefa.operadora_key} size={20} />
           </span>
         )}
         <span className="kb-card-nome">{tarefa.titulo}</span>
@@ -569,7 +569,7 @@ function AnaliseCard({ tarefa, onAbrir }: { tarefa: KanbanTarefa; onAbrir: () =>
       <div className="kb-card-top" style={{ marginTop: 9 }}>
         {tarefa.operadora_key && (
           <span title={tarefa.hospital_nome ?? undefined}>
-            <OpAvatar opKey={tarefa.operadora_key} size={22} />
+            <OpAvatar opKey={tarefa.operadora_key} size={20} />
           </span>
         )}
         <span className="kb-card-nome">{tarefa.hospital_nome || tarefa.titulo}</span>
