@@ -3,12 +3,20 @@
 // "Ver relatório completo" no PacienteDrawer.
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { usePageHeader } from '../components/PageHeader'
 import { StatusBadge, AutorChip, MedicoChip, roleVisual } from '../components/StatusBadge'
+import MedicoCombobox from '../components/MedicoCombobox'
 import Toast from '../components/Toast'
-import { LoadingState, Spinner } from '../components/ui'
+import { LoadingState } from '../components/ui'
 import { useEditarInternacao, useInternacaoDados, useInternacaoRelatorios, useInternacaoTimeline } from '../hooks/useInternacao'
-import { baixarAnexoRelatorio, type InternacaoEdicao } from '../services/internacao.service'
+import { useEquipe } from '../hooks/useEquipe'
+import { useAuth } from '../auth/AuthContext'
+import { podeExecutar } from '../auth/permissions'
+import { baixarAnexoRelatorio, registrarRelatorioRapido, type InternacaoEdicao } from '../services/internacao.service'
+import { queryKeys } from '../lib/queryKeys'
+import { invalidarPorEvento } from '../lib/invalidation'
+import { hojeISO } from '../lib/datas'
 import type { InternacaoDados, RelatorioItem, TimelineEvento } from '../types/api'
 import { dataHora } from '../lib/datas'
 
@@ -22,6 +30,62 @@ export default function Paciente() {
   const { data: tl, isLoading: tlLoading, isError: tlError } = useInternacaoTimeline(internacaoId)
   const { data: rels, isLoading: relsLoading, isError: relsError } = useInternacaoRelatorios(internacaoId)
   const editar = useEditarInternacao(internacaoId)
+  const queryClient = useQueryClient()
+
+  // Registrar relatório: ação exclusiva do perfil técnico (admin supervisiona),
+  // mesma regra do PacienteDrawer. Demais papéis veem o card somente-leitura.
+  const { role } = useAuth()
+  const podeRegistrar = podeExecutar(role, 'registrarRelatorio')
+  const { data: equipe } = useEquipe()
+  const medicosAtivos = (equipe?.medicos ?? []).filter((m) => Boolean(m.ativo))
+
+  // Formulário inline de novo relatório dentro do card "Relatórios".
+  const [registrando, setRegistrando] = useState(false)
+  const [dataVisita, setDataVisita] = useState(hojeISO())
+  const [medicoRel, setMedicoRel] = useState('')
+  const [obsRel, setObsRel] = useState('')
+  const [salvandoRel, setSalvandoRel] = useState(false)
+  const [erroRel, setErroRel] = useState<string | null>(null)
+
+  function abrirRegistro() {
+    setDataVisita(hojeISO())
+    setMedicoRel('')
+    setObsRel('')
+    setErroRel(null)
+    setRegistrando(true)
+  }
+
+  function cancelarRegistro() {
+    setRegistrando(false)
+    setErroRel(null)
+  }
+
+  async function salvarRelatorio() {
+    if (!dataVisita) {
+      setErroRel('Informe a data da visita')
+      return
+    }
+    setSalvandoRel(true)
+    setErroRel(null)
+    try {
+      await registrarRelatorioRapido(internacaoId, {
+        data_visita: dataVisita, medico: medicoRel, descricao: obsRel,
+      })
+      // Atualiza o card de relatórios, a timeline e os dados deste paciente.
+      queryClient.invalidateQueries({ queryKey: queryKeys.internacaoRelatorios(internacaoId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.internacaoTimeline(internacaoId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.internacaoDados(internacaoId) })
+      // O relatório muda o status_relatorio do paciente: Kanban e agregados por
+      // status (Dashboard/Diretoria/Gestor/Sidebar) precisam refazer o fetch.
+      invalidarPorEvento(queryClient, 'relatorioAdicionado')
+      setRegistrando(false)
+      setToast('✓ Relatório registrado')
+    } catch (e) {
+      setErroRel(e instanceof Error ? e.message : 'Falha ao registrar')
+    } finally {
+      setSalvandoRel(false)
+    }
+  }
 
   // Edição do card "Dados do Paciente": rascunho local aplicado sobre `d`.
   const [editando, setEditando] = useState(false)
@@ -217,17 +281,59 @@ export default function Paciente() {
           <div className="card" style={{ flexShrink: 0 }}>
             <div className="card-header">
               <div className="card-title">Relatórios</div>
-              <span className="badge muted">{rels?.relatorios.length ?? 0}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="badge muted">{rels?.relatorios.length ?? 0}</span>
+                {podeRegistrar && !registrando && (
+                  <button className="btn btn-primary btn-sm" style={{ gap: 6 }} onClick={abrirRegistro}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+                    Registrar
+                  </button>
+                )}
+              </div>
             </div>
             <div className="card-body">
-              {relsLoading && <Spinner />}
+              {podeRegistrar && registrando && (
+                <div
+                  style={{
+                    border: '1px solid var(--border-strong)', borderRadius: 10,
+                    padding: '14px', marginBottom: 14, background: 'var(--surface)',
+                    display: 'grid', gap: 10,
+                  }}
+                >
+                  <div className="section-label" style={{ margin: 0 }}>Novo relatório</div>
+                  <div>
+                    <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Data da visita *</div>
+                    <input type="date" className="bm-input" value={dataVisita} onChange={(e) => setDataVisita(e.target.value)} />
+                  </div>
+                  <div>
+                    <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Médico auditor</div>
+                    <MedicoCombobox value={medicoRel} onChange={setMedicoRel} nomes={medicosAtivos.map((m) => m.nome)} />
+                  </div>
+                  <div>
+                    <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Observação</div>
+                    <textarea className="bm-input" rows={3} placeholder="Observações técnicas do auditor…" style={{ resize: 'vertical', fontFamily: 'inherit' }} value={obsRel} onChange={(e) => setObsRel(e.target.value)} />
+                  </div>
+                  {erroRel && (
+                    <div className="badge danger" style={{ padding: '8px 10px', textTransform: 'none', letterSpacing: 0 }}>{erroRel}</div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <button className="btn btn-outline btn-sm" onClick={cancelarRegistro} disabled={salvandoRel}>Cancelar</button>
+                    <button className="btn btn-primary btn-sm" onClick={salvarRelatorio} disabled={salvandoRel}>
+                      {salvandoRel ? 'Registrando…' : 'Registrar relatório'}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {relsLoading && <LoadingState label="Carregando relatórios…" size={22} style={{ padding: '24px 8px' }} />}
               {relsError && (
                 <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Não foi possível carregar os relatórios.</div>
               )}
-              {rels && rels.relatorios.length === 0 && (
+              {rels && rels.relatorios.length === 0 && !registrando && (
                 <div style={{ textAlign: 'center', padding: '24px 8px', color: 'var(--muted-2)' }}>
                   <div style={{ fontWeight: 600, color: 'var(--muted)' }}>Nenhum relatório</div>
-                  <div style={{ fontSize: 'var(--t-sm)', marginTop: 4 }}>Registre o primeiro no drawer.</div>
+                  <div style={{ fontSize: 'var(--t-sm)', marginTop: 4 }}>
+                    {podeRegistrar ? 'Use “Registrar” para adicionar o primeiro.' : 'Nenhum registro ainda.'}
+                  </div>
                 </div>
               )}
               {rels && rels.relatorios.length > 0 && (
@@ -246,7 +352,7 @@ export default function Paciente() {
               <span className="badge muted">{tl?.eventos.length ?? 0}</span>
             </div>
             <div className="card-body" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-              {tlLoading && <Spinner />}
+              {tlLoading && <LoadingState label="Carregando timeline…" size={22} style={{ padding: '24px 8px' }} />}
               {tlError && <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Não foi possível carregar a timeline.</div>}
               {tl && tl.eventos.length === 0 && (
                 <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Sem eventos registrados.</div>

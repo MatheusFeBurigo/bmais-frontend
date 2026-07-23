@@ -456,8 +456,9 @@ a{text-decoration:none;color:inherit}
 .auth-link:hover{text-decoration:underline}
 
 .auth-submit{height:50px;justify-content:center;border-radius:10px;font-size:var(--t-md);font-weight:600;margin-top:4px}
-.auth-submit .spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:auth-spin .6s linear infinite}
-@keyframes auth-spin{to{transform:rotate(360deg)}}
+/* O spinner do botão "Entrar" agora é o <Spinner> canônico em variante clara
+   (ver Login.tsx) — respeita prefers-reduced-motion, ao contrário do antigo
+   .auth-spin hard-coded que ficava aqui. */
 
 /* Mensagens */
 .auth-alert{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:9px;font-size:var(--t-sm);line-height:1.45;animation:auth-rise .25s}

@@ -597,6 +597,14 @@ export interface PacienteNovo {
   medico?: string | null
 }
 
+// Resposta de POST /api/internacoes (adicionar paciente manualmente na Visão Geral).
+// `ja_existia` = o (hospital, atendimento) já tinha internação; não duplicou.
+export interface CriarInternacaoResponse {
+  ok: boolean
+  internacao_id: number
+  ja_existia?: boolean
+}
+
 // Item do autocomplete de busca de internações (seletor de encaixe no Kanban).
 export interface InternacaoBusca {
   id: number

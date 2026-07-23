@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { usePageHeader } from '../components/PageHeader'
 import PacienteDrawer from '../components/PacienteDrawer'
+import AddPacienteModal from '../components/dashboard/AddPacienteModal'
+import ExportarModal from '../components/dashboard/ExportarModal'
 import Toast from '../components/Toast'
 import { LoadingState, Spinner, opInitial } from '../components/ui'
 import { Deferred } from '../components/Deferred'
@@ -10,7 +12,6 @@ import { useDashboard, useDashboardOverview, useAtualizarVisaoGeral } from '../h
 import { usePrefetchInternacao } from '../hooks/useInternacao'
 import { useIsFetching } from '@tanstack/react-query'
 import { queryRoots } from '../lib/queryKeys'
-import { exportarRvm } from '../services/dashboard.service'
 
 export default function Dashboard() {
   const [params, setParams] = useSearchParams()
@@ -23,6 +24,8 @@ export default function Dashboard() {
   const [utiOn, setUtiOn] = useState(false)
   const [d30On, setD30On] = useState(false)
   const [drawerId, setDrawerId] = useState<number | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [pagina, setPagina] = useState(1)
   const prefetchPaciente = usePrefetchInternacao()
@@ -37,14 +40,6 @@ export default function Dashboard() {
   // filtro de um analista até o redirecionamento. Vazio enquanto o overview não
   // chegou, para não disparar o detalhe numa operadora fora de escopo.
   const operadora = operadoraUrl || operadorasLista[0]?.key || ''
-
-  async function exportar() {
-    try {
-      await exportarRvm(operadora)
-    } catch {
-      setToast('Falha ao exportar')
-    }
-  }
 
   // Detalhe (lista de internados) da operadora aberta — dado pesado/específico.
   // Só busca quando já há uma operadora efetiva (evita request "sulamerica").
@@ -155,15 +150,10 @@ export default function Dashboard() {
   ]
 
   const actions = (
-    <>
-      <button className="btn btn-outline btn-sm" onClick={() => atualizarTudo()} disabled={isFetching}>
-        {isFetching && <Spinner size={13} />}
-        {isFetching ? 'Atualizando…' : 'Atualizar'}
-      </button>
-      <button className="btn btn-primary btn-sm" onClick={exportar}>
-        Exportar
-      </button>
-    </>
+    <button className="btn btn-outline btn-sm" onClick={() => atualizarTudo()} disabled={isFetching}>
+      {isFetching && <Spinner size={13} />}
+      {isFetching ? 'Atualizando…' : 'Atualizar'}
+    </button>
   )
 
   usePageHeader({
@@ -266,27 +256,39 @@ export default function Dashboard() {
           </div>
 
           {/* Tabela — bloco pesado adiado para depois do primeiro paint dos KPIs
-              e filtros; o cliente vê os números e controles imediatamente. */}
-          <Deferred
-            delaySteps={2}
-            minHeight={360}
-            placeholder={<LoadingState label="Carregando internados…" style={{ minHeight: 360 }} />}
-          >
-          <InternadosTable
-            paginados={paginados}
-            totalVisiveis={visiveis.length}
-            totalInternacoes={internacoes.length}
-            totalBackend={stats.total_internados || 0}
-            paginaAtual={paginaAtual}
-            totalPaginas={totalPaginas}
-            porPagina={POR_PAGINA}
-            onExportar={exportar}
-            onSelecionar={setDrawerId}
-            onPrefetch={prefetchPaciente}
-            onPrev={() => setPagina((p) => Math.max(1, p - 1))}
-            onNext={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-          />
-          </Deferred>
+              e filtros; o cliente vê os números e controles imediatamente.
+              Regra do carregamento: a tela tem UM só indicador ("Carregando
+              painel…" do topo). Quando o panorama (ovAtual) chega antes do detalhe
+              (data), os KPIs pintam e a tabela ainda não tem dados — nesse intervalo
+              mostramos um placeholder NEUTRO (só reserva altura, sem um segundo
+              spinner e sem o empty-state "nenhum internado" prematuro). A tabela só
+              renderiza com `data` presente; então o Deferred adia apenas o custo de
+              render. */}
+          {data ? (
+            <Deferred
+              delaySteps={2}
+              minHeight={360}
+              placeholder={<div style={{ minHeight: 360 }} aria-hidden />}
+            >
+              <InternadosTable
+                paginados={paginados}
+                totalVisiveis={visiveis.length}
+                totalInternacoes={internacoes.length}
+                totalBackend={stats.total_internados || 0}
+                paginaAtual={paginaAtual}
+                totalPaginas={totalPaginas}
+                porPagina={POR_PAGINA}
+                onExportar={() => setExportOpen(true)}
+                onAdicionarPaciente={() => setAddOpen(true)}
+                onSelecionar={setDrawerId}
+                onPrefetch={prefetchPaciente}
+                onPrev={() => setPagina((p) => Math.max(1, p - 1))}
+                onNext={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+              />
+            </Deferred>
+          ) : (
+            <div style={{ minHeight: 360 }} aria-hidden />
+          )}
         </>
       )}
 
@@ -301,6 +303,23 @@ export default function Dashboard() {
             // não só a lista — atualiza a Visão Geral inteira.
             atualizarTudo()
           }}
+        />
+      )}
+      {addOpen && (
+        <AddPacienteModal
+          hospitais={hospitaisPanorama}
+          hospitalInicial={hospital || undefined}
+          onClose={() => setAddOpen(false)}
+          onDone={(msg) => { setAddOpen(false); setToast(msg) }}
+          onError={(msg) => setToast(msg)}
+        />
+      )}
+      {exportOpen && (
+        <ExportarModal
+          operadora={operadora}
+          operadoraNome={opNome}
+          onClose={() => setExportOpen(false)}
+          onError={(msg) => setToast(msg)}
         />
       )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}

@@ -28,7 +28,7 @@ export function AddHospitalForm({ opKey, onClose, onToast, onChanged }: { opKey:
         <input type="text" className="bm-input" placeholder="Nome do hospital" value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
         <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
           <button className="btn btn-outline btn-sm" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary btn-sm" onClick={criar} disabled={saving}>Adicionar</button>
+          <button className="btn btn-primary btn-sm" onClick={criar} disabled={saving}>{saving ? 'Adicionando…' : 'Adicionar'}</button>
         </div>
       </div>
     </div>
@@ -80,7 +80,7 @@ export function AddEscalaHospForm({ hosp, opKey, profs, onClose, onToast, onChan
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary btn-sm" onClick={adicionar} disabled={saving}>Adicionar</button>
+          <button className="btn btn-primary btn-sm" onClick={adicionar} disabled={saving}>{saving ? 'Adicionando…' : 'Adicionar'}</button>
         </div>
       </div>
     </div>

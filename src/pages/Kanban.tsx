@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { KanbanColuna, KanbanTarefa, RelatorioRevisaoItem, HospitalCriacao, InternacaoBusca } from '../types/api'
 import { usePageHeader } from '../components/PageHeader'
@@ -67,7 +67,11 @@ const COLUNAS_ADMIN = COLUNAS
 
 const localStyles = `
 /* grid-template-columns vem inline (nº de colunas depende do papel/board). */
-.kb-board{display:grid;gap:16px;align-items:start}
+.kb-board{display:grid;gap:16px;align-items:start;transition:opacity .2s ease}
+/* Refetch em andamento com dados anteriores em tela: esmaece o quadro (não bloqueia
+   cliques), sinalizando "atualizando" sem piscar o loading — igual ao Gestor. */
+.kb-board.atualizando{opacity:.55}
+@media (prefers-reduced-motion:reduce){.kb-board{transition:none}}
 @media (max-width:1400px){.kb-board{grid-template-columns:repeat(2,1fr)!important}}
 @media (max-width:760px){.kb-board{grid-template-columns:1fr!important}}
 .kb-col{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);display:flex;flex-direction:column;min-height:200px}
@@ -177,7 +181,10 @@ const localStyles = `
 export default function Kanban() {
   // O quadro já vem recortado ao escopo de hospitais/operadoras do analista pelo
   // backend (get_hospitais_permitidos) — sem filtro manual na tela.
-  const { data, isLoading, isError } = useKanban()
+  const { data, isLoading, isError, isFetching } = useKanban()
+  // Refetch com dados anteriores em tela (staleTime venceu, ou pós-mutação): atenua
+  // o quadro em vez de piscar loading — mesmo padrão do Gestor (.atualizando).
+  const atualizando = isFetching && !isLoading
   const resolver = useResolverPendencia()
   const cobrar = useMarcarCobrado()
   const prefetch = usePrefetchInternacao()
@@ -208,14 +215,18 @@ export default function Kanban() {
         : `${total} tarefa${total > 1 ? 's' : ''} pendente${total > 1 ? 's' : ''}`,
   })
 
-  function abrirPaciente(t: KanbanTarefa) {
+  // Handlers estáveis (useCallback): identidade constante entre renders para que o
+  // React.memo do KanbanCard evite re-renderizar todos os cards a cada setState
+  // (abrir modal, mutação otimista). prefetch/resolver/cobrar e os setters de
+  // useState já são estáveis, então as deps não mudam entre renders.
+  const abrirPaciente = useCallback((t: KanbanTarefa) => {
     if (t.internacao_id) {
       prefetch(t.internacao_id)
       setDrawerId(t.internacao_id)
     }
-  }
+  }, [prefetch])
 
-  function onResolver(t: KanbanTarefa) {
+  const onResolver = useCallback((t: KanbanTarefa) => {
     if (t.pendencia_id == null) return
     resolver.mutate(t.pendencia_id, {
       onSuccess: () => {
@@ -225,15 +236,21 @@ export default function Kanban() {
       },
       onError: (e) => setToast(`Erro: ${(e as Error).message}`),
     })
-  }
+  }, [resolver])
 
-  function onCobrar(t: KanbanTarefa) {
+  const onCobrar = useCallback((t: KanbanTarefa) => {
     if (t.cobranca_id == null) return
     cobrar.mutate(t.cobranca_id, {
       onSuccess: () => setToast(`Cobrança de ${t.hospital_nome || 'hospital'} registrada`),
       onError: (e) => setToast(`Erro: ${(e as Error).message}`),
     })
-  }
+  }, [cobrar])
+
+  // Aberturas de modal via setter (estáveis) — encapsuladas para passar ao card
+  // como handlers que recebem a própria tarefa, sem arrow inline por render.
+  const abrirEncaixe = useCallback((t: KanbanTarefa) => {
+    if (t.relatorio) setEncaixeAberto(t.relatorio)
+  }, [])
 
   return (
     <>
@@ -254,7 +271,7 @@ export default function Kanban() {
 
       {tarefas && (
         <div
-          className="kb-board"
+          className={`kb-board${atualizando ? ' atualizando' : ''}`}
           style={{
             gridTemplateColumns: `repeat(${colunas.length}, 1fr)`,
             // Board do técnico tem 1 coluna só; limita a largura para uma coluna de
@@ -286,13 +303,13 @@ export default function Kanban() {
                       key={t.id}
                       tarefa={t}
                       corBg={col.corBg}
-                      onAbrir={() => abrirPaciente(t)}
-                      onAbrirPendencia={() => setPendenciaAberta(t)}
-                      onAbrirEncaixe={() => t.relatorio && setEncaixeAberto(t.relatorio)}
-                      onAbrirAnalise={() => setAnaliseAberta(t)}
-                      onPrefetch={() => t.internacao_id && prefetch(t.internacao_id)}
-                      onResolver={() => onResolver(t)}
-                      onCobrar={() => onCobrar(t)}
+                      onAbrir={abrirPaciente}
+                      onAbrirPendencia={setPendenciaAberta}
+                      onAbrirEncaixe={abrirEncaixe}
+                      onAbrirAnalise={setAnaliseAberta}
+                      onPrefetch={prefetch}
+                      onResolver={onResolver}
+                      onCobrar={onCobrar}
                       resolvendo={resolver.isPending}
                       cobrando={cobrar.isPending}
                     />
@@ -349,27 +366,31 @@ export default function Kanban() {
 }
 
 // ── Card de tarefa ────────────────────────────────────────────────────────────
-function KanbanCard({ tarefa, onAbrir, onAbrirPendencia, onAbrirEncaixe, onAbrirAnalise, onPrefetch, onResolver, onCobrar, resolvendo, cobrando }: {
+// memo: só re-renderiza quando SUA tarefa/props mudam. Os handlers recebem a
+// própria tarefa (bind interno), então o pai passa funções ESTÁVEIS (useCallback)
+// em vez de arrows inline — sem isso o memo nunca acertaria e todos os cards
+// re-renderizariam a cada setState do quadro.
+const KanbanCard = memo(function KanbanCard({ tarefa, onAbrir, onAbrirPendencia, onAbrirEncaixe, onAbrirAnalise, onPrefetch, onResolver, onCobrar, resolvendo, cobrando }: {
   tarefa: KanbanTarefa
   corBg: string
-  onAbrir: () => void
-  onAbrirPendencia: () => void
-  onAbrirEncaixe: () => void
-  onAbrirAnalise: () => void
-  onPrefetch: () => void
-  onResolver: () => void
-  onCobrar: () => void
+  onAbrir: (t: KanbanTarefa) => void
+  onAbrirPendencia: (t: KanbanTarefa) => void
+  onAbrirEncaixe: (t: KanbanTarefa) => void
+  onAbrirAnalise: (t: KanbanTarefa) => void
+  onPrefetch: (id: number) => void
+  onResolver: (t: KanbanTarefa) => void
+  onCobrar: (t: KanbanTarefa) => void
   resolvendo: boolean
   cobrando: boolean
 }) {
   // Card de ANÁLISE TÉCNICA (board do técnico) — clica para abrir a modal de parecer.
   if (tarefa.analise_id != null) {
-    return <AnaliseCard tarefa={tarefa} onAbrir={onAbrirAnalise} />
+    return <AnaliseCard tarefa={tarefa} onAbrir={() => onAbrirAnalise(tarefa)} />
   }
   // Card de COBRANÇA (coluna "Cobrar censo") — por hospital, não por paciente. Tem
   // layout próprio (sem drawer/modal), então retorna cedo.
   if (tarefa.cobranca_id != null) {
-    return <CobrancaCard tarefa={tarefa} onCobrar={onCobrar} cobrando={cobrando} />
+    return <CobrancaCard tarefa={tarefa} onCobrar={() => onCobrar(tarefa)} cobrando={cobrando} />
   }
 
   // Card de relatório (coluna "Revisão Relatório"): abre a modal de ENCAIXE.
@@ -380,17 +401,21 @@ function KanbanCard({ tarefa, onAbrir, onAbrirPendencia, onAbrirEncaixe, onAbrir
   const clicavel = ehRelatorio || ehPendencia || tarefa.internacao_id != null
 
   function onClickCard() {
-    if (ehRelatorio) onAbrirEncaixe()
-    else if (ehPendencia) onAbrirPendencia()
-    else if (tarefa.internacao_id != null) onAbrir()
+    if (ehRelatorio) onAbrirEncaixe(tarefa)
+    else if (ehPendencia) onAbrirPendencia(tarefa)
+    else if (tarefa.internacao_id != null) onAbrir(tarefa)
   }
+  // Prefetch dos dados do drawer no hover/foco (só quando há internação).
+  const prefetchAoFocar = tarefa.internacao_id != null
+    ? () => onPrefetch(tarefa.internacao_id as number)
+    : undefined
 
   return (
     <article
       className={`kb-card${clicavel ? ' clicavel' : ''}`}
       onClick={clicavel ? onClickCard : undefined}
-      onMouseEnter={tarefa.internacao_id != null ? onPrefetch : undefined}
-      onFocus={tarefa.internacao_id != null ? onPrefetch : undefined}
+      onMouseEnter={prefetchAoFocar}
+      onFocus={prefetchAoFocar}
     >
       {clicavel && (
         <span className="kb-card-abrir" aria-hidden>
@@ -466,7 +491,7 @@ function KanbanCard({ tarefa, onAbrir, onAbrirPendencia, onAbrirEncaixe, onAbrir
             type="button"
             className="btn btn-outline btn-sm"
             disabled={resolvendo}
-            onClick={(e) => { e.stopPropagation(); onResolver() }}
+            onClick={(e) => { e.stopPropagation(); onResolver(tarefa) }}
           >
             {resolvendo ? 'Resolvendo…' : 'Marcar resolvida'}
           </button>
@@ -474,7 +499,7 @@ function KanbanCard({ tarefa, onAbrir, onAbrirPendencia, onAbrirEncaixe, onAbrir
       )}
     </article>
   )
-}
+})
 
 // ── Card de cobrança de censo (coluna "Cobrar censo") ─────────────────────────
 // Um card por HOSPITAL que não enviou o censo do dia anterior. Não abre paciente;

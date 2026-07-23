@@ -19,6 +19,8 @@ export interface InternadosTableProps {
   totalPaginas: number
   porPagina: number
   onExportar: () => void
+  /** Abre o modal de adicionar paciente (ação ao lado do Exportar). */
+  onAdicionarPaciente: () => void
   onSelecionar: (id: number) => void
   /** Prefetch em background ao passar o mouse na linha (abre o drawer instantâneo). */
   onPrefetch?: (id: number) => void
@@ -35,6 +37,7 @@ export default function InternadosTable({
   totalPaginas,
   porPagina,
   onExportar,
+  onAdicionarPaciente,
   onSelecionar,
   onPrefetch,
   onPrev,
@@ -52,7 +55,14 @@ export default function InternadosTable({
             Clique na linha para detalhes
           </div>
         </div>
-        <button className="btn btn-outline btn-sm" onClick={onExportar}>Exportar</button>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <button className="btn btn-outline btn-sm" onClick={onExportar}>Exportar</button>
+          <button className="btn btn-primary btn-sm" onClick={onAdicionarPaciente}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+            Adicionar paciente
+          </button>
+        </div>
       </div>
 
       <div style={{ maxHeight: 560, overflowY: 'auto' }}>

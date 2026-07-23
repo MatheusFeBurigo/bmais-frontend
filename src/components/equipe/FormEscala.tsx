@@ -66,7 +66,7 @@ export default function FormEscala({ profId, opsLista, onClose, onToast, onChang
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary btn-sm" onClick={adicionar} disabled={saving}>Adicionar</button>
+          <button className="btn btn-primary btn-sm" onClick={adicionar} disabled={saving}>{saving ? 'Adicionando…' : 'Adicionar'}</button>
         </div>
       </div>
     </div>

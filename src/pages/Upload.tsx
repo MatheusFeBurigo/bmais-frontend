@@ -11,6 +11,7 @@ import type {
   RelatorioRefreshResponse,
 } from '../types/api'
 import { usePageHeader } from '../components/PageHeader'
+import { Spinner } from '../components/ui'
 import Toast from '../components/Toast'
 
 // Estilos específicos da tela (portados de upload.html — não pertencem ao design system global).
@@ -157,7 +158,9 @@ export default function Upload() {
 
   const actions = (
     <button className="btn btn-outline btn-sm" onClick={processarPasta} disabled={busy != null}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 1-15.4 6.3L3 16M3 12a9 9 0 0 1 15.4-6.3L21 8" /><path d="M21 3v5h-5M3 21v-5h5" /></svg>
+      {busy === 'refresh'
+        ? <Spinner size={13} />
+        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 1-15.4 6.3L3 16M3 12a9 9 0 0 1 15.4-6.3L21 8" /><path d="M21 3v5h-5M3 21v-5h5" /></svg>}
       {busy === 'refresh' ? 'Processando…' : 'Processar pasta de relatórios'}
     </button>
   )
@@ -203,8 +206,9 @@ export default function Upload() {
                     type="submit"
                     className="btn btn-primary"
                     disabled={!censosFiles.length || busy != null}
-                    style={{ opacity: censosFiles.length ? 1 : 0.4 }}
+                    style={{ opacity: censosFiles.length ? 1 : 0.4, display: 'inline-flex', alignItems: 'center', gap: 8 }}
                   >
+                    {busy === 'censos' && <Spinner size={14} style={{ borderTopColor: '#fff', borderColor: 'rgba(255,255,255,.4)' }} />}
                     {busy === 'censos' ? 'Processando…' : 'Processar censos'}
                   </button>
                 </div>
@@ -235,8 +239,9 @@ export default function Upload() {
                     type="submit"
                     className="btn btn-primary"
                     disabled={!relFiles.length || busy != null}
-                    style={{ opacity: relFiles.length ? 1 : 0.4 }}
+                    style={{ opacity: relFiles.length ? 1 : 0.4, display: 'inline-flex', alignItems: 'center', gap: 8 }}
                   >
+                    {busy === 'relatorios' && <Spinner size={14} style={{ borderTopColor: '#fff', borderColor: 'rgba(255,255,255,.4)' }} />}
                     {busy === 'relatorios' ? 'Enviando…' : 'Enviar para revisão'}
                   </button>
                 </div>

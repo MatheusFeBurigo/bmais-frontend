@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import type { Usuario, UserRole } from '../types/api'
-import { Badge } from './ui'
+import { Badge, LoadingState } from './ui'
 import Toast from './Toast'
 import ResetSenhaModal from './equipe/ResetSenhaModal'
 import { useUsuarios } from '../hooks/useUsuarios'
@@ -60,9 +60,7 @@ export default function UsuariosAcesso() {
         </button>
       </div>
 
-      {isLoading && (
-        <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', padding: '12px 0' }}>Carregando usuários…</div>
-      )}
+      {isLoading && <LoadingState label="Carregando usuários…" size={22} style={{ padding: '24px 8px' }} />}
       {isError && (
         <div style={{ fontSize: 'var(--t-sm)', color: 'var(--danger)', padding: '12px 0' }}>
           Não foi possível carregar os usuários.

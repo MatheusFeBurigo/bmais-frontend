@@ -19,6 +19,9 @@ const EVENTO_INVALIDA: Record<string, QueryRoot[]> = {
   relatorioAdicionado: ['kanban', 'dashboard', 'dashboardOverview', 'diretoria', 'gestor', 'sidebar'],
   // Mudança de configuração de operadora/hospital afeta stats e sidebar.
   configuracaoAlterada: ['configuracoes', 'sidebar', 'dashboard', 'dashboardOverview', 'diretoria'],
+  // Paciente adicionado manualmente entra na contagem de internados → recompõe os
+  // agregados operacionais (Visão Geral, panorama, gestor/diretoria) e a sidebar.
+  pacienteAdicionado: ['dashboard', 'dashboardOverview', 'gestor', 'diretoria', 'sidebar', 'kanban'],
   // Mudança na equipe (profissionais/escala) afeta a contagem do sidebar.
   equipeAlterada: ['equipe', 'sidebar'],
   // Gestão de usuários.

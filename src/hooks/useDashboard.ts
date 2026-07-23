@@ -34,6 +34,12 @@ export function useDashboard(params: DashboardParams, opts?: { enabled?: boolean
     // Ao trocar de operadora, mantém os dados da anterior visíveis enquanto a
     // nova carrega — evita o "flash" de tela vazia na navegação por operadora.
     placeholderData: keepPreviousData,
+    // `dashboard_payload` NÃO é cacheado no backend (~7 round-trips por request).
+    // Sem staleTime, cada remontagem (renavegar de volta à Visão Geral) refazia
+    // esses round-trips. 60s serve o cache instantaneamente ao renavegar, coerente
+    // com useDashboardOverview/usePrefetchDashboard; a invalidação por evento
+    // (dadosAlterados) continua refazendo o fetch quando um upload/edição ocorre.
+    staleTime: 60_000,
     // Permite adiar o fetch até haver uma operadora efetiva (evita disparar com
     // um valor de fallback fora do escopo do usuário).
     enabled: opts?.enabled ?? true,

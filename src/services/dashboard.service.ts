@@ -6,7 +6,9 @@
 // contido aqui, sem tocar em componente nenhum.
 
 import { apiFetch, apiDownload } from '../api/client'
-import type { DashboardPayload, DashboardOverview, SidebarData } from '../types/api'
+import type {
+  DashboardPayload, DashboardOverview, SidebarData, PacienteNovo, CriarInternacaoResponse,
+} from '../types/api'
 
 export interface DashboardParams {
   operadora: string
@@ -35,10 +37,21 @@ export function fetchSidebar(): Promise<SidebarData> {
   return apiFetch<SidebarData>('/sidebar')
 }
 
-/** Exporta a planilha de controle de auditoria de uma operadora (download). */
+/** Adiciona um paciente/internação manualmente (ação "Adicionar paciente" da Visão Geral).
+ *  Dedupe por (hospital_key, atendimento) no backend: `ja_existia` avisa se casou num já existente. */
+export function criarPacienteManual(paciente: PacienteNovo): Promise<CriarInternacaoResponse> {
+  return apiFetch<CriarInternacaoResponse>('/internacoes', { method: 'POST', body: paciente })
+}
+
+/** Sentinel de operadora: exporta TODAS as operadoras num único arquivo. */
+export const EXPORTAR_TODAS = '__todas__'
+
+/** Exporta a planilha de controle de auditoria (download).
+ *  `operadora` = EXPORTAR_TODAS gera um único xlsx com todas as operadoras. */
 export function exportarRvm(operadora: string): Promise<void> {
+  const nome = operadora === EXPORTAR_TODAS ? 'TODAS' : operadora
   return apiDownload(
     `/export-rvm?operadora=${encodeURIComponent(operadora)}`,
-    `CONTROLE_AUDITORIA_${operadora}.xlsx`,
+    `CONTROLE_AUDITORIA_${nome}.xlsx`,
   )
 }

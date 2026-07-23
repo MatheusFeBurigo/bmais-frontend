@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
+import { Spinner } from '../components/ui'
 
 // ── Ícones (inline, sem dependências) ───────────────────────────────────────
 function IcoMail() {
@@ -208,7 +209,10 @@ export default function Login() {
             <button className="btn btn-primary auth-submit" type="submit" disabled={enviando || !podeEnviar}>
               {enviando ? (
                 <>
-                  <span className="spin" />
+                  {/* Spinner canônico em variante clara (botão primário escuro).
+                      Unifica o antigo .auth-spin hard-coded e ganha o respeito a
+                      prefers-reduced-motion do <Spinner>. */}
+                  <Spinner size={16} style={{ borderColor: 'rgba(255,255,255,.35)', borderTopColor: '#fff' }} />
                   Entrando…
                 </>
               ) : (
