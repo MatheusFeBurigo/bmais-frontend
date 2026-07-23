@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ApiError, apiFetch, getToken, setToken, setUnauthorizedHandler } from '../api/client'
+import { ApiError, apiFetch, getToken, setToken, getPerfil, setPerfil, tokenPersistente, setUnauthorizedHandler } from '../api/client'
+import { clearSidebarCache } from '../services/dashboard.service'
 import type { LoginResponse, MeResponse, RegisterResponse, UserRole } from '../types/api'
 
 interface AuthState {
@@ -30,13 +31,17 @@ const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient()
-  const [username, setUsername] = useState<string | null>(null)
-  const [role, setRole] = useState<UserRole | null>(null)
+  // Hidrata username/role do storage no boot: se o usuário já logou antes (token
+  // salvo), o papel está disponível SÍNCRONO na 1ª pintura — a Sidebar/guards já
+  // renderizam o menu correto, sem esperar o /me. O /me revalida em background.
+  const perfilSalvo = getPerfil()
+  const [username, setUsername] = useState<string | null>(perfilSalvo?.username ?? null)
+  const [role, setRole] = useState<UserRole | null>((perfilSalvo?.role as UserRole | null) ?? null)
   const [loading, setLoading] = useState(true)
-  // Perfil (/me) em resolução. Inicia true SE há token salvo (o boot vai buscar
-  // /me); sem token, não há o que resolver. Vira false quando /me responde
-  // (com role ou com falha) — nunca fica preso, mesmo se o /me falhar.
-  const [perfilCarregando, setPerfilCarregando] = useState(() => !!getToken())
+  // Perfil (/me) em resolução. Só BLOQUEIA a UI quando há token MAS ainda não
+  // sabemos o papel (sem perfil salvo). Com perfil salvo, o papel já está
+  // hidratado → não trava a Sidebar/guards; o /me apenas revalida em background.
+  const [perfilCarregando, setPerfilCarregando] = useState(() => !!getToken() && !getPerfil()?.role)
   // Boot otimista: se HÁ token salvo, já consideramos a sessão válida e renderizamos
   // o app enquanto /me valida em background — evita a tela branca a cada refresh.
   // Vira false se /me falhar (401): aí cai no Login.
@@ -44,6 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setToken(null)
+    setPerfil(null)
+    clearSidebarCache()  // não vazar o recorte de operadoras ao próximo usuário
     setUsername(null)
     setRole(null)
     setTokenValido(false)
@@ -66,6 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setUsername(me.username)
           setRole(me.role ?? null)
+          // Atualiza o espelho para o próximo boot já hidratar o papel certo
+          // (o /me é a fonte de verdade; o papel pode ter mudado no servidor).
+          setPerfil({ username: me.username, role: me.role ?? null }, tokenPersistente())
         }
       } catch (e) {
         // Só derruba a sessão se o /me disser explicitamente que o token é
@@ -73,6 +83,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // boot otimista (tokenValido) e o app segue com o token salvo.
         if (!cancelled && e instanceof ApiError && e.status === 401) {
           setToken(null)
+          setPerfil(null)
+          clearSidebarCache()
           setUsername(null)
           setRole(null)
           setTokenValido(false)
@@ -93,6 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Qualquer 401 em chamadas subsequentes derruba a sessão.
   useEffect(() => {
     setUnauthorizedHandler(() => {
+      setPerfil(null)  // não hidratar uma sessão morta no próximo boot
+      clearSidebarCache()
       setUsername(null)
       setRole(null)
       setTokenValido(false)
@@ -110,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Base limpa antes de carregar os dados do novo usuário — não herda o cache
     // (recortado ao escopo) de quem estava logado antes nesta aba.
     qc.clear()
+    clearSidebarCache()  // idem para o snapshot persistente da Sidebar
     setToken(res.token, remember)
     setTokenValido(true)
     setUsername(res.username)
@@ -120,6 +135,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const me = await apiFetch<MeResponse>('/me', { skipAuthRedirect: true })
       setRole(me.role ?? null)
+      // Espelha o perfil no MESMO storage do token (remember) para o próximo
+      // boot hidratar o papel de forma síncrona — sem flash de menu na Sidebar.
+      setPerfil({ username: res.username, role: me.role ?? null }, remember)
     } catch {
       setRole(null)
     } finally {
@@ -140,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setTokenValido(true)
         setUsername(res.username)
         setRole(res.role ?? null)
+        setPerfil({ username: res.username, role: res.role ?? null }, remember)
       }
       return res
     },

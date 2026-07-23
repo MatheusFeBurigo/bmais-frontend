@@ -1,4 +1,4 @@
-import { lazy } from 'react'
+import { lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
@@ -6,6 +6,7 @@ import { podeVer, rotaFallback } from './auth/permissions'
 import type { Screen } from './auth/permissions'
 import Login from './pages/Login'
 import { LoadingState } from './components/ui'
+import DashboardSkeleton from './components/internados/DashboardSkeleton'
 import AppLayout from './components/AppLayout'
 import {
   importDashboard, importDiretoria, importGestor,
@@ -90,7 +91,19 @@ function ProtectedRoutes() {
       {/* Área autenticada: o AppLayout (Sidebar + topbar) monta uma vez em
           RequireAuth e persiste; as telas trocam apenas no <Outlet/>. */}
       <Route element={<RequireAuth />}>
-        <Route path="/" element={<GatedRoute screen="operacional"><Dashboard /></GatedRoute>} />
+        {/* Suspense próprio do Dashboard: durante o download do chunk, mostra o
+            MESMO esqueleto que a tela usa enquanto os dados chegam — carregamento
+            contínuo, sem o spinner genérico do boundary do AppLayout antes. */}
+        <Route
+          path="/"
+          element={
+            <GatedRoute screen="operacional">
+              <Suspense fallback={<DashboardSkeleton />}>
+                <Dashboard />
+              </Suspense>
+            </GatedRoute>
+          }
+        />
         <Route
           path="/diretoria"
           element={<GatedRoute screen="diretoria"><Diretoria /></GatedRoute>}

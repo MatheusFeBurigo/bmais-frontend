@@ -8,6 +8,7 @@ import Toast from '../components/Toast'
 import { Spinner, Skeleton, opInitial } from '../components/ui'
 import { Deferred } from '../components/Deferred'
 import InternadosTable from '../components/internados/InternadosTable'
+import { TabelaSkeleton } from '../components/internados/DashboardSkeleton'
 import { useDashboard, useDashboardOverview, useAtualizarVisaoGeral } from '../hooks/useDashboard'
 import { usePrefetchInternacao } from '../hooks/useInternacao'
 import { useIsFetching } from '@tanstack/react-query'
@@ -384,40 +385,5 @@ export default function Dashboard() {
       )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </>
-  )
-}
-
-// Skeleton da tabela de internados: mesma moldura (card + cabeçalho + linhas) do
-// InternadosTable, para o intervalo entre os KPIs pintarem e o detalhe chegar não
-// ter salto de layout nem um segundo spinner. Só reserva o espaço com shimmer.
-function TabelaSkeleton() {
-  return (
-    <div className="card" style={{ marginTop: 14 }} aria-busy="true">
-      <div className="card-header" style={{ alignItems: 'center', paddingBottom: 14 }}>
-        <div>
-          <div className="card-title">Todos os Internados</div>
-          <div className="card-sub"><Skeleton w={160} h={12} /></div>
-        </div>
-        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-          <Skeleton w={84} h={30} radius={8} />
-          <Skeleton w={150} h={30} radius={8} />
-        </div>
-      </div>
-      <div style={{ padding: '4px 20px 16px' }}>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div
-            key={i}
-            style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '11px 0', borderTop: i ? '1px solid var(--border)' : undefined }}
-          >
-            <Skeleton w={92} h={20} radius={999} />
-            <Skeleton w={140} h={13} />
-            <Skeleton w={200} h={13} style={{ flex: 1 }} />
-            <Skeleton w={70} h={13} />
-            <Skeleton w={46} h={20} radius={6} />
-            <Skeleton w={72} h={13} />
-          </div>
-        ))}
-      </div>
-    </div>
   )
 }

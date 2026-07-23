@@ -11,6 +11,7 @@ import {
   fetchDashboard,
   fetchDashboardOverview,
   fetchSidebar,
+  getSidebarCache,
   type DashboardParams,
 } from '../services/dashboard.service'
 
@@ -65,10 +66,16 @@ export function usePrefetchDashboard() {
 }
 
 export function useSidebar() {
+  // Hidrata da persistência (localStorage) para a Sidebar já pintar operadoras e
+  // badge na 1ª renderização após um reload — sem o "flash vazio". initialData
+  // fica disponível de imediato; initialDataUpdatedAt=0 marca-o como velho para
+  // o React Query revalidar em background (o /sidebar continua a fonte de verdade).
   return useQuery({
     queryKey: queryKeys.sidebar(),
     queryFn: fetchSidebar,
     staleTime: 30_000,
+    initialData: getSidebarCache() ?? undefined,
+    initialDataUpdatedAt: 0,
   })
 }
 

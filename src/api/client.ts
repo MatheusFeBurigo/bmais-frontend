@@ -23,6 +23,13 @@ export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY)
 }
 
+// True se o token vive em localStorage (sessão persistente, remember=true); false
+// se em sessionStorage ou ausente. Usado para o perfil espelhado acompanhar o
+// mesmo storage do token sem precisar repassar `remember` no boot.
+export function tokenPersistente(): boolean {
+  return !!localStorage.getItem(TOKEN_KEY)
+}
+
 // persist=true (padrão) usa localStorage; persist=false usa sessionStorage.
 export function setToken(token: string | null, persist = true) {
   // Sempre limpa ambos para não deixar um token órfão no outro storage.
@@ -31,6 +38,40 @@ export function setToken(token: string | null, persist = true) {
   if (token) {
     const store = persist ? localStorage : sessionStorage
     store.setItem(TOKEN_KEY, token)
+  } else {
+    // Sem token não pode sobrar perfil espelhado (hidrataria uma sessão morta).
+    setPerfil(null)
+  }
+}
+
+// Perfil (papel + username) espelhado no storage junto do token. Serve para o
+// boot HIDRATAR o AuthContext de forma síncrona — a Sidebar/guards já sabem o
+// papel na primeira pintura, sem esperar o /me (que revalida em background).
+// Sem isto, role=null no boot esconde os itens gated e eles "surgem" depois.
+const PERFIL_KEY = 'bmais_perfil'
+
+export interface PerfilSalvo {
+  username: string | null
+  role: string | null
+}
+
+export function getPerfil(): PerfilSalvo | null {
+  const raw = localStorage.getItem(PERFIL_KEY) || sessionStorage.getItem(PERFIL_KEY)
+  if (!raw) return null
+  try {
+    const p = JSON.parse(raw) as PerfilSalvo
+    return { username: p.username ?? null, role: p.role ?? null }
+  } catch {
+    return null
+  }
+}
+
+export function setPerfil(perfil: PerfilSalvo | null, persist = true) {
+  localStorage.removeItem(PERFIL_KEY)
+  sessionStorage.removeItem(PERFIL_KEY)
+  if (perfil) {
+    const store = persist ? localStorage : sessionStorage
+    store.setItem(PERFIL_KEY, JSON.stringify(perfil))
   }
 }
 

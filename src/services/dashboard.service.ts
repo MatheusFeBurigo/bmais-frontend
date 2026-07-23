@@ -32,9 +32,37 @@ export function fetchDashboardOverview(): Promise<DashboardOverview> {
   return apiFetch<DashboardOverview>('/dashboard/overview')
 }
 
+// Cache PERSISTENTE do sidebar. O cache do React Query é em memória e morre no
+// reload — por isso, após um refresh, a Sidebar refazia o fetch e mostrava as
+// operadoras/badge vazios até voltar. Espelhamos o último snapshot no
+// localStorage para hidratar a Sidebar na 1ª pintura (revalida em background).
+const SIDEBAR_CACHE_KEY = 'bmais_sidebar_cache'
+
+/** Último SidebarData salvo (para `initialData` do useSidebar). null se ausente/corrompido. */
+export function getSidebarCache(): SidebarData | null {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_CACHE_KEY)
+    return raw ? (JSON.parse(raw) as SidebarData) : null
+  } catch {
+    return null
+  }
+}
+
+/** Limpa o snapshot (chamado no logout — não vazar o recorte de um usuário ao próximo). */
+export function clearSidebarCache() {
+  localStorage.removeItem(SIDEBAR_CACHE_KEY)
+}
+
 /** Contadores por operadora + data de referência (sidebar, reusado no Dashboard). */
-export function fetchSidebar(): Promise<SidebarData> {
-  return apiFetch<SidebarData>('/sidebar')
+export async function fetchSidebar(): Promise<SidebarData> {
+  const data = await apiFetch<SidebarData>('/sidebar')
+  // Espelha o snapshot fresco para o próximo boot hidratar a Sidebar na hora.
+  try {
+    localStorage.setItem(SIDEBAR_CACHE_KEY, JSON.stringify(data))
+  } catch {
+    // storage cheio/indisponível: segue sem persistir (não quebra o fetch).
+  }
+  return data
 }
 
 /** Adiciona um paciente/internação manualmente (ação "Adicionar paciente" da Visão Geral).
