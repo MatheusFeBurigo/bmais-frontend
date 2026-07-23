@@ -5,8 +5,10 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import type { UserRole } from '../types/api'
+import type { Usuario, UserRole } from '../types/api'
 import { Badge } from './ui'
+import Toast from './Toast'
+import ResetSenhaModal from './equipe/ResetSenhaModal'
 import { useUsuarios } from '../hooks/useUsuarios'
 import { useTodosHospitais } from '../hooks/useEquipe'
 import { ROLE_LABEL, ROLE_VARIANT } from '../lib/usuarioRoles'
@@ -14,11 +16,18 @@ import { ROLE_LABEL, ROLE_VARIANT } from '../lib/usuarioRoles'
 const IconPlus = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
 )
+// Chave: redefinir a senha do usuário.
+const IconKey = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="7.5" cy="15.5" r="4.5" /><path d="m10.5 12.5 8.5-8.5" /><path d="m16 5 3 3" /><path d="m14 7 3 3" /></svg>
+)
 
 export default function UsuariosAcesso() {
   const { role } = useAuth()
   const navigate = useNavigate()
   const [roleFiltro, setRoleFiltro] = useState<'todos' | UserRole>('todos')
+  // Usuário cuja senha está sendo redefinida na modal (null = fechada).
+  const [resetAlvo, setResetAlvo] = useState<Usuario | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
   // Só admin gerencia usuários. Para os demais, a seção nem é renderizada.
   const { data, isLoading, isError } = useUsuarios(role === 'admin')
@@ -67,7 +76,8 @@ export default function UsuariosAcesso() {
             ['admin', `${ROLE_LABEL.admin} (${contagem('admin')})`],
             ['diretor', `${ROLE_LABEL.diretor} (${contagem('diretor')})`],
             ['gestor', `${ROLE_LABEL.gestor} (${contagem('gestor')})`],
-            ['analista', `${ROLE_LABEL.analista} (${contagem('analista')})`],
+            ['administrativo', `${ROLE_LABEL.administrativo} (${contagem('administrativo')})`],
+            ['tecnico', `${ROLE_LABEL.tecnico} (${contagem('tecnico')})`],
           ] as const).map(([r, lbl]) => (
             <button key={r} className={`tab-sec-btn${roleFiltro === r ? ' active' : ''}`} onClick={() => setRoleFiltro(r)}>{lbl}</button>
           ))}
@@ -79,9 +89,10 @@ export default function UsuariosAcesso() {
           {/* Rola internamente (vertical + horizontal) para não empurrar o resto da
               página quando há muitos usuários. Cabeçalho fixo no topo do scroll. */}
           <div style={{ overflow: 'auto', maxHeight: 340 }}>
-            <table className="bmais-table" style={{ minWidth: 480 }}>
+            <table className="bmais-table" style={{ minWidth: 560 }}>
               <thead>
                 <tr>
+                  <th>Nome</th>
                   <th>E-mail</th>
                   <th>Nível de acesso</th>
                   <th>Hospitais</th>
@@ -91,17 +102,29 @@ export default function UsuariosAcesso() {
               <tbody>
                 {usuariosVisiveis.map((u) => (
                   <tr key={u.user_id}>
-                    <td style={{ fontWeight: 500 }}>{u.email ?? '—'}</td>
+                    <td style={{ fontWeight: 500 }}>{u.nome || <span style={{ color: 'var(--muted-2)' }}>—</span>}</td>
+                    <td>{u.email ?? '—'}</td>
                     <td><Badge variant={ROLE_VARIANT[u.role]}>{ROLE_LABEL[u.role]}</Badge></td>
                     <td><HospitaisResumo keys={u.hospitais ?? []} nomePorKey={nomePorKey} /></td>
                     <td>
-                      <button className="btn btn-outline btn-sm" onClick={() => navigate('/usuarios/' + u.user_id)}>Editar</button>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={() => setResetAlvo(u)}
+                          title="Redefinir senha"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+                        >
+                          {IconKey}
+                          Senha
+                        </button>
+                        <button className="btn btn-outline btn-sm" onClick={() => navigate('/usuarios/' + u.user_id)}>Editar</button>
+                      </div>
                     </td>
                   </tr>
                 ))}
                 {usuariosVisiveis.length === 0 && (
                   <tr>
-                    <td colSpan={4} style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 12px' }}>
+                    <td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 12px' }}>
                       {usuarios.length === 0
                         ? 'Nenhum usuário cadastrado ainda.'
                         : `Nenhum usuário com o nível ${ROLE_LABEL[roleFiltro as UserRole]}.`}
@@ -113,6 +136,17 @@ export default function UsuariosAcesso() {
           </div>
         </div>
       )}
+
+      {resetAlvo && (
+        <ResetSenhaModal
+          userId={resetAlvo.user_id}
+          email={resetAlvo.email}
+          onClose={() => setResetAlvo(null)}
+          onDone={(msg) => { setResetAlvo(null); setToast(msg) }}
+          onError={(msg) => setToast(msg)}
+        />
+      )}
+      {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </div>
   )
 }

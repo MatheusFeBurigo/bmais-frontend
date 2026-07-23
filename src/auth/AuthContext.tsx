@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokenValido(false)
     // Zera TODO o cache de dados: as respostas são recortadas ao escopo do usuário
     // (overview/sidebar/dashboard). Sem limpar, o próximo login reusaria dados do
-    // usuário anterior (ex.: admin veria o recorte do analista). Segurança + UX.
+    // usuário anterior (ex.: admin veria o recorte do administrativo). Segurança + UX.
     qc.clear()
   }, [qc])
 

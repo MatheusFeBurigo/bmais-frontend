@@ -16,6 +16,7 @@ export type Screen =
   | 'configuracoes'
   | 'equipe'
   | 'upload'
+  | 'kanban'
 
 // Telas que cada papel NÃO pode ver. Ausência de entrada = vê tudo.
 const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
@@ -23,13 +24,25 @@ const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
   diretor: ['equipe'],
   // Gestor: só Gestor/Fluxo + Upload + Configurações (sem Diretoria, Operacional, Equipe).
   gestor: ['diretoria', 'operacional', 'equipe'],
-  // Analista: só Operacional + Upload (sem Diretoria, Gestor, Equipe, Configurações).
-  analista: ['diretoria', 'gestor', 'equipe', 'configuracoes'],
+  // Administrativo: Operacional + Upload + Kanban (suas tarefas). Sem Diretoria, Gestor, Equipe, Configurações.
+  administrativo: ['diretoria', 'gestor', 'equipe', 'configuracoes'],
+  // Técnico: mesmo recorte do administrativo (segundo papel operacional básico).
+  tecnico: ['diretoria', 'gestor', 'equipe', 'configuracoes'],
+}
+
+// Telas EXCLUSIVAS de papéis específicos (allowlist). Mais forte que a lista de
+// bloqueio: quem não estiver aqui NÃO vê. Use para telas que pertencem à visão de
+// papéis específicos — o Kanban é dos papéis operacionais (admin também vê, p/ supervisão).
+const EXCLUSIVAS: Partial<Record<Screen, readonly UserRole[]>> = {
+  kanban: ['administrativo', 'tecnico', 'admin'],
 }
 
 /** True se o papel pode ver a tela. `role` null/desconhecido não restringe. */
 export function podeVer(role: UserRole | null, screen: Screen): boolean {
   if (!role) return true
+  // Telas exclusivas: só os papéis listados veem (allowlist vence tudo).
+  const exclusiva = EXCLUSIVAS[screen]
+  if (exclusiva) return exclusiva.includes(role)
   const bloqueadas = BLOQUEADAS[role]
   return !bloqueadas?.includes(screen)
 }
@@ -42,12 +55,30 @@ const ROTA_DA_SCREEN: Record<Screen, string> = {
   equipe: '/equipe',
   configuracoes: '/configuracoes',
   upload: '/upload',
+  kanban: '/kanban',
 }
 
 // Ordem de preferência ao escolher a "tela inicial" de um papel barrado.
 const ORDEM_FALLBACK: readonly Screen[] = [
   'operacional', 'gestor', 'diretoria', 'upload', 'configuracoes', 'equipe',
 ]
+
+// Ações do domínio protegidas por papel (não são telas, mas operações dentro de
+// uma tela — ex.: um botão/formulário no drawer). Allowlist: só os papéis
+// listados podem executar. Este gating é de UI; a autorização final é do backend.
+const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
+  // Registrar relatório no drawer: exclusivo do perfil técnico (admin supervisiona).
+  registrarRelatorio: ['tecnico', 'admin'],
+}
+
+export type AcaoProtegida = 'registrarRelatorio'
+
+/** True se o papel pode executar a ação. `role` null/desconhecido NÃO libera:
+ *  ação sensível exige papel resolvido (diferente de `podeVer`, que é permissivo). */
+export function podeExecutar(role: UserRole | null, acao: AcaoProtegida): boolean {
+  if (!role) return false
+  return ACOES[acao].includes(role)
+}
 
 /** Rota de destino ao barrar o acesso: a 1ª tela que o papel PODE ver.
  *  Ex.: gestor não vê "/" (operacional) → cai em "/gestor". */

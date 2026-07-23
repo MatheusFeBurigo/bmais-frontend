@@ -1,5 +1,5 @@
 // Serviço de dados do domínio "diretoria" (KPIs consolidados de todas as operadoras).
-import { apiFetch, apiDownload } from '../api/client'
+import { apiFetch } from '../api/client'
 import type { DiretoriaPayload } from '../types/api'
 
 export interface SeedDemoResult {
@@ -13,10 +13,10 @@ export function fetchDiretoria(): Promise<DiretoriaPayload> {
   return apiFetch<DiretoriaPayload>('/diretoria')
 }
 
-/** Exporta a planilha consolidada (todas as operadoras). */
-export function exportarRvmGeral(): Promise<void> {
-  return apiDownload('/export-rvm', 'CONTROLE_AUDITORIA.xlsx')
-}
+// Export por operadora: reusa `exportarRvm` de dashboard.service (mesmo endpoint
+// /export-rvm). O backend gera por operadora, não consolidado — a Diretoria
+// exige a escolha explícita da operadora para não cair no default silencioso.
+export { exportarRvm } from './dashboard.service'
 
 /** Insere dados de demonstração (ambiente de avaliação). */
 export function inserirSeedDemo(): Promise<SeedDemoResult> {

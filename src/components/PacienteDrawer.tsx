@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { StatusBadge, LeitoTag, AutorChip, roleVisual } from './StatusBadge'
+import { StatusBadge, LeitoTag, AutorChip, MedicoChip, roleVisual } from './StatusBadge'
 import { LoadingState, Spinner } from './ui'
 import { useInternacaoDados, useInternacaoTimeline } from '../hooks/useInternacao'
 import { useEquipe } from '../hooks/useEquipe'
+import { useAuth } from '../auth/AuthContext'
+import { podeExecutar } from '../auth/permissions'
 import { registrarRelatorioRapido } from '../services/internacao.service'
 import { queryKeys } from '../lib/queryKeys'
+import { invalidarPorEvento } from '../lib/invalidation'
 import { hojeISO } from '../lib/datas'
 import type { TimelineEvento } from '../types/api'
 
@@ -20,6 +23,10 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
   const { data: d, isLoading, isError } = useInternacaoDados(internacaoId)
   const { data: tl, isLoading: tlLoading, isError: tlError } = useInternacaoTimeline(internacaoId)
   const { data: equipe } = useEquipe()
+  const { role } = useAuth()
+  // Registrar relatório é ação exclusiva do perfil técnico (admin supervisiona).
+  // Demais papéis veem o drawer somente-leitura (KPIs + timeline).
+  const podeRegistrar = podeExecutar(role, 'registrarRelatorio')
   // Médicos auditores (tipo 'M') ativos, cadastrados na tela de Equipe.
   const medicosAtivos = (equipe?.medicos ?? []).filter((m) => Boolean(m.ativo))
   const queryClient = useQueryClient()
@@ -50,9 +57,15 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
       await registrarRelatorioRapido(internacaoId, {
         data_visita: dataVisita, medico, descricao: obs,
       })
-      // Invalida a timeline para o novo relatório aparecer ao reabrir o drawer.
+      // Invalida a timeline/dados deste paciente para o novo relatório aparecer
+      // ao reabrir o drawer.
       queryClient.invalidateQueries({ queryKey: queryKeys.internacaoTimeline(internacaoId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.internacaoDados(internacaoId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.internacaoRelatorios(internacaoId) })
+      // Evento de domínio: o relatório muda o status_relatorio do paciente, então
+      // o Kanban (sai de "Sem relatório"/"Vencidos") e os agregados por status
+      // (Dashboard/Diretoria/Gestor/Sidebar) precisam refazer o fetch.
+      invalidarPorEvento(queryClient, 'relatorioAdicionado')
       onSaved('✓ Relatório registrado')
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar')
@@ -136,37 +149,43 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
                 </div>
               )}
 
-              <div className="section-label" style={{ marginTop: 22 }}>Registrar relatório</div>
-              <div style={{ display: 'grid', gap: 10 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div>
-                    <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Data da visita *</div>
-                    <input type="date" className="bm-input" value={dataVisita} onChange={(e) => setDataVisita(e.target.value)} />
+              {podeRegistrar && (
+                <>
+                  <div className="section-label" style={{ marginTop: 22 }}>Registrar relatório</div>
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div>
+                        <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Data da visita *</div>
+                        <input type="date" className="bm-input" value={dataVisita} onChange={(e) => setDataVisita(e.target.value)} />
+                      </div>
+                      <div>
+                        <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Médico auditor</div>
+                        <MedicoCombobox
+                          value={medico}
+                          onChange={setMedico}
+                          nomes={medicosAtivos.map((m) => m.nome)}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Observação</div>
+                      <textarea className="bm-input" rows={3} placeholder="Observações técnicas do auditor…" style={{ resize: 'vertical', fontFamily: 'inherit' }} value={obs} onChange={(e) => setObs(e.target.value)} />
+                    </div>
+                    {erro && <div className="badge danger" style={{ padding: '8px 10px', textTransform: 'none', letterSpacing: 0 }}>{erro}</div>}
                   </div>
-                  <div>
-                    <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Médico auditor</div>
-                    <MedicoCombobox
-                      value={medico}
-                      onChange={setMedico}
-                      nomes={medicosAtivos.map((m) => m.nome)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Observação</div>
-                  <textarea className="bm-input" rows={3} placeholder="Observações técnicas do auditor…" style={{ resize: 'vertical', fontFamily: 'inherit' }} value={obs} onChange={(e) => setObs(e.target.value)} />
-                </div>
-                {erro && <div className="badge danger" style={{ padding: '8px 10px', textTransform: 'none', letterSpacing: 0 }}>{erro}</div>}
-              </div>
+                </>
+              )}
             </>
           )}
         </div>
 
         <div className="drawer-footer" style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0 }}>
           <button className="btn btn-outline" onClick={onClose}>Fechar</button>
-          <button className="btn btn-primary" onClick={salvar} disabled={salvando || !d}>
-            {salvando ? 'Registrando…' : 'Registrar relatório'}
-          </button>
+          {podeRegistrar && (
+            <button className="btn btn-primary" onClick={salvar} disabled={salvando || !d}>
+              {salvando ? 'Registrando…' : 'Registrar relatório'}
+            </button>
+          )}
         </div>
       </div>
     </>
@@ -176,6 +195,11 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
 function TimelineItem({ ev }: { ev: TimelineEvento }) {
   const relatorio = ev.tipo === 'RELATORIO' || /relat[óo]rio/i.test(ev.titulo)
   const labelStyle = ev.variante === 'danger' ? { color: 'var(--danger)' } : undefined
+  // Relatório: mostra só o médico responsável. Demais eventos com autoria humana
+  // (edição manual, observação) mostram o usuário que registrou. Marcos sintéticos
+  // e eventos de sistema não têm autoria e não exibem chip.
+  const chipRelatorio = relatorio && Boolean(ev.medico)
+  const chipAutor = !relatorio && Boolean(ev.autor)
   // Relatório: marcador colorido pelo papel de quem registrou.
   const dotStyle = relatorio ? { background: roleVisual(ev.autor_role).color } : undefined
   return (
@@ -184,7 +208,12 @@ function TimelineItem({ ev }: { ev: TimelineEvento }) {
       <div className="tl-date">{ev.hoje ? 'Hoje' : ev.data || '—'}</div>
       <div className="tl-label" style={labelStyle}>
         {ev.titulo}
-        {relatorio && (
+        {chipRelatorio && (
+          <span style={{ marginLeft: 8, verticalAlign: 'middle' }}>
+            <MedicoChip nome={ev.medico!} role={ev.autor_role} />
+          </span>
+        )}
+        {chipAutor && (
           <span style={{ marginLeft: 8, verticalAlign: 'middle' }}>
             <AutorChip role={ev.autor_role} autor={ev.autor} />
           </span>

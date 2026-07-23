@@ -4,12 +4,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { usePageHeader } from '../components/PageHeader'
-import { StatusBadge, AutorChip, roleVisual } from '../components/StatusBadge'
+import { StatusBadge, AutorChip, MedicoChip, roleVisual } from '../components/StatusBadge'
 import Toast from '../components/Toast'
 import { LoadingState, Spinner } from '../components/ui'
-import { useEditarInternacao, useInternacaoDados, useInternacaoTimeline } from '../hooks/useInternacao'
-import type { InternacaoEdicao } from '../services/internacao.service'
-import type { InternacaoDados, TimelineEvento } from '../types/api'
+import { useEditarInternacao, useInternacaoDados, useInternacaoRelatorios, useInternacaoTimeline } from '../hooks/useInternacao'
+import { baixarAnexoRelatorio, type InternacaoEdicao } from '../services/internacao.service'
+import type { InternacaoDados, RelatorioItem, TimelineEvento } from '../types/api'
+import { dataHora } from '../lib/datas'
 
 export default function Paciente() {
   const { id } = useParams<{ id: string }>()
@@ -19,6 +20,7 @@ export default function Paciente() {
   const idInvalido = !id || Number.isNaN(internacaoId)
   const { data: d, isLoading, isError } = useInternacaoDados(internacaoId)
   const { data: tl, isLoading: tlLoading, isError: tlError } = useInternacaoTimeline(internacaoId)
+  const { data: rels, isLoading: relsLoading, isError: relsError } = useInternacaoRelatorios(internacaoId)
   const editar = useEditarInternacao(internacaoId)
 
   // Edição do card "Dados do Paciente": rascunho local aplicado sobre `d`.
@@ -154,8 +156,10 @@ export default function Paciente() {
         </div>
       </div>
 
-      {/* ── Grid: dados à esquerda, relatórios/timeline à direita ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(280px,1fr)', gap: 16, alignItems: 'start' }}>
+      {/* ── Grid: dados à esquerda, relatórios/timeline à direita ──
+          alignItems:stretch faz a coluna direita ter a mesma altura do card de
+          dados; a Timeline preenche o espaço restante e rola por dentro. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(280px,1fr)', gap: 16, alignItems: 'stretch' }}>
         {/* Dados do paciente */}
         <div className="card">
           <div className="card-header">
@@ -207,46 +211,49 @@ export default function Paciente() {
           </div>
         </div>
 
-        {/* Relatórios + Timeline */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="card">
+        {/* Relatórios + Timeline. min-height:0 permite o card Timeline encolher e
+            rolar por dentro em vez de esticar a coluna. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, minHeight: 0 }}>
+          <div className="card" style={{ flexShrink: 0 }}>
             <div className="card-header">
               <div className="card-title">Relatórios</div>
-              <span className="badge muted">{contarRelatorios(tl?.eventos)}</span>
+              <span className="badge muted">{rels?.relatorios.length ?? 0}</span>
             </div>
             <div className="card-body">
-              {tl && contarRelatorios(tl.eventos) === 0 ? (
+              {relsLoading && <Spinner />}
+              {relsError && (
+                <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Não foi possível carregar os relatórios.</div>
+              )}
+              {rels && rels.relatorios.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '24px 8px', color: 'var(--muted-2)' }}>
                   <div style={{ fontWeight: 600, color: 'var(--muted)' }}>Nenhum relatório</div>
                   <div style={{ fontSize: 'var(--t-sm)', marginTop: 4 }}>Registre o primeiro no drawer.</div>
                 </div>
-              ) : (
-                <>
-                  <div className="tl">
-                    {tl?.eventos.filter(isRelatorio).map((ev, i) => (
-                      <TimelineItem key={i} ev={ev} />
-                    ))}
-                  </div>
-                  <LegendaPapeis />
-                </>
+              )}
+              {rels && rels.relatorios.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {rels.relatorios.map((r) => (
+                    <RelatorioCard key={r.id} r={r} />
+                  ))}
+                </div>
               )}
             </div>
           </div>
 
-          <div className="card">
-            <div className="card-header">
+          <div className="card" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <div className="card-header" style={{ flexShrink: 0 }}>
               <div className="card-title">Timeline</div>
               <span className="badge muted">{tl?.eventos.length ?? 0}</span>
             </div>
-            <div className="card-body">
+            <div className="card-body" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               {tlLoading && <Spinner />}
               {tlError && <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Não foi possível carregar a timeline.</div>}
               {tl && tl.eventos.length === 0 && (
                 <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Sem eventos registrados.</div>
               )}
               {tl && tl.eventos.length > 0 && (
-                <div className="tl">
-                  {tl.eventos.map((ev, i) => (
+                <div className="tl tl-scroll">
+                  {ordenarRecentePrimeiro(tl.eventos).map((ev, i) => (
                     <TimelineItem key={i} ev={ev} />
                   ))}
                 </div>
@@ -273,12 +280,22 @@ function rnLabel(d: InternacaoDados): string {
   return 'NÃO'
 }
 
+// Evento de relatório na timeline (externo OU parecer interno). O tipo é a fonte
+// confiável — o backend envia RELATORIO/RELATORIO_INTERNO. O regex no título é só
+// um fallback para registros legados (e não casa "Parecer do técnico interno",
+// daí a checagem por tipo ser essencial para o card interno ganhar o destaque).
 function isRelatorio(ev: TimelineEvento): boolean {
-  return ev.tipo === 'relatorio' || /relat[óo]rio/i.test(ev.titulo)
+  return ev.tipo === 'RELATORIO' || ev.tipo === 'RELATORIO_INTERNO' || /relat[óo]rio/i.test(ev.titulo)
 }
 
-function contarRelatorios(eventos?: TimelineEvento[]): number {
-  return eventos ? eventos.filter(isRelatorio).length : 0
+// Timeline com o mais recente no topo. O backend entrega ascendente (admissão
+// primeiro) com o marco "Hoje/Pendente" — o estado atual, sem data — no fim.
+// Aqui o marco "Hoje" sobe para o topo (é o "agora") e os eventos datados vêm
+// logo abaixo, do mais recente ao mais antigo. Não muta o array original.
+function ordenarRecentePrimeiro(eventos: TimelineEvento[]): TimelineEvento[] {
+  const hoje = eventos.filter((e) => e.hoje)
+  const datados = eventos.filter((e) => !e.hoje).slice().reverse()
+  return [...hoje, ...datados]
 }
 
 function Campo({
@@ -356,21 +373,66 @@ function Campo({
   )
 }
 
-// Legenda do código de cores: cada papel de auditor tem uma cor no marcador do
-// relatório. Ajuda o usuário a ler a timeline de quem registrou o quê.
-function LegendaPapeis() {
-  const papeis: Array<'admin' | 'diretor' | 'gestor' | 'analista'> = ['admin', 'diretor', 'gestor', 'analista']
+// Um relatório no card lateral: documento anexado + quando/quem anexou.
+// Mostra a data-hora de registro (criado_em), o autor com o chip de papel, a
+// descrição e — quando há documento — o link para baixá-lo (signed URL).
+function RelatorioCard({ r }: { r: RelatorioItem }) {
+  const [baixando, setBaixando] = useState(false)
+  const [erroDownload, setErroDownload] = useState<string | null>(null)
+  const cor = roleVisual(r.autor_role).color
+  // Nome sugerido do arquivo no download; o backend serve o conteúdo real.
+  const nomeArquivo = `relatorio-${r.id}.pdf`
+
+  async function baixar() {
+    setErroDownload(null)
+    setBaixando(true)
+    try {
+      await baixarAnexoRelatorio(r.id, nomeArquivo)
+    } catch (e) {
+      setErroDownload(e instanceof Error ? e.message : 'Falha ao baixar o anexo')
+    } finally {
+      setBaixando(false)
+    }
+  }
+
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-      {papeis.map((p) => {
-        const v = roleVisual(p)
-        return (
-          <span key={p} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--t-xs)', color: 'var(--muted)' }}>
-            <span style={{ width: 9, height: 9, borderRadius: '50%', background: v.color, flexShrink: 0 }} />
-            {v.label}
-          </span>
-        )
-      })}
+    <div
+      style={{
+        border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px',
+        borderLeft: `3px solid ${cor}`, background: 'var(--surface)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 'var(--t-sm)', fontWeight: 600, color: 'var(--ink)' }}>
+          {dataHora(r.criado_em) || r.data_visita || '—'}
+        </span>
+        {r.autor && <AutorChip role={r.autor_role} autor={r.autor} />}
+      </div>
+      {r.data_visita && (
+        <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)', marginTop: 2 }}>
+          Visita: {r.data_visita}{r.medico ? ` · ${r.medico}` : ''}
+        </div>
+      )}
+      {r.tem_anexo ? (
+        <button
+          className="btn btn-outline btn-sm"
+          style={{ marginTop: 10, gap: 6 }}
+          onClick={baixar}
+          disabled={baixando}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
+          {baixando ? 'Baixando…' : 'Baixar documento'}
+        </button>
+      ) : (
+        <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted-2)', marginTop: 8 }}>
+          Sem documento anexado
+        </div>
+      )}
+      {erroDownload && (
+        <div className="badge danger" style={{ marginTop: 8, padding: '6px 9px', textTransform: 'none', letterSpacing: 0 }}>
+          {erroDownload}
+        </div>
+      )}
     </div>
   )
 }
@@ -382,21 +444,42 @@ function LeitoBig({ tipo }: { tipo?: string | null }) {
   return <span style={{ fontSize: 'var(--t-md)', color: 'var(--muted-2)' }}>—</span>
 }
 
+// Classe de cor por TIPO de evento — fonte única: nomeia tanto o marcador
+// (.tl-dot.tp-*) quanto o card (.tl-card.tp-*). Cada tipo tem sua cor padrão.
+const TIPO_CLASSE: Record<string, string> = {
+  ADMISSAO: 'tp-admissao',
+  RELATORIO: 'tp-relatorio',
+  RELATORIO_INTERNO: 'tp-relatorio-interno',
+  STATUS: 'tp-status',
+  ALTA_AUTO: 'tp-alta-auto',
+  EDIT: 'tp-edit',
+  PENDENTE: 'tp-pendente',
+}
+
 function TimelineItem({ ev }: { ev: TimelineEvento }) {
   const relatorio = isRelatorio(ev)
-  const labelStyle = ev.variante === 'danger' ? { color: 'var(--danger)' } : undefined
-  // Relatório: o marcador ganha a cor do papel de quem registrou (não a variante
-  // genérica). Demais eventos mantêm a variante padrão.
-  const dotStyle = relatorio ? { background: roleVisual(ev.autor_role).color } : undefined
+  // Classe de cor do tipo. Tipos conhecidos viram card colorido; um tipo sem
+  // mapeamento (evento legado) fica em linha simples com a variante do backend.
+  const tipoClasse = TIPO_CLASSE[ev.tipo]
+  const cardClass = tipoClasse ? ` tl-card ${tipoClasse}` : ''
+  // Marcador: a classe de tipo colore o dot; sem tipo mapeado, usa a variante.
+  const dotClass = tipoClasse || ev.variante
   return (
-    <div className="tl-item">
-      <div className={`tl-dot ${ev.variante}`} style={dotStyle} />
+    <div className={`tl-item${cardClass}`}>
+      <div className={`tl-dot ${dotClass}`} />
       <div className="tl-date">{ev.hoje ? 'Hoje' : ev.data || '—'}</div>
-      <div className="tl-label" style={labelStyle}>
+      <div className="tl-label">
         {ev.titulo}
-        {relatorio && (
+        {/* Relatório externo: médico responsável. Relatório interno: quem o fez
+            (autor/e-mail por enquanto). Cor do chip pelo papel de quem registrou. */}
+        {relatorio && ev.tipo === 'RELATORIO_INTERNO' && ev.autor && (
           <span style={{ marginLeft: 8, verticalAlign: 'middle' }}>
-            <AutorChip role={ev.autor_role} autor={ev.autor} />
+            <MedicoChip nome={ev.autor} role={ev.autor_role} titulo="Autor" />
+          </span>
+        )}
+        {relatorio && ev.tipo !== 'RELATORIO_INTERNO' && ev.medico && (
+          <span style={{ marginLeft: 8, verticalAlign: 'middle' }}>
+            <MedicoChip nome={ev.medico} role={ev.autor_role} />
           </span>
         )}
       </div>

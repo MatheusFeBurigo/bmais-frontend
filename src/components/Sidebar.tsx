@@ -39,6 +39,9 @@ const IconConfig = () => (
 const IconUpload = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M17 8l-5-5-5 5" /><path d="M12 3v12" /></svg>
 )
+const IconKanban = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="6" height="14" rx="1" /><rect x="9.5" y="3" width="6" height="9" rx="1" transform="translate(0.5 0)" /><rect x="15" y="3" width="6" height="11" rx="1" /></svg>
+)
 // Chevrons duplos: apontam para a esquerda (recolher) ou direita (expandir).
 const IconCollapse = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 17-5-5 5-5" /><path d="m18 17-5-5 5-5" /></svg>
@@ -53,7 +56,8 @@ const ROLE_LABEL: Record<string, string> = {
   admin: 'Administrador',
   diretor: 'Diretor',
   gestor: 'Gestor',
-  analista: 'Analista',
+  administrativo: 'Administrativo',
+  tecnico: 'Técnico',
 }
 
 // Iniciais para o avatar: pega as 2 primeiras letras significativas do nome/e-mail.
@@ -178,6 +182,12 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
             })}
           </div>
           )}
+          {mostrar('kanban') && (
+            <NavLink to="/kanban" className={itemClass} {...prefetchProps('/kanban')}>
+              <span className="sb-item-icon"><IconKanban /></span>
+              <span className="sb-item-label">Tarefas / Kanban</span>
+            </NavLink>
+          )}
           {mostrar('diretoria') && (
             <NavLink to="/diretoria" className={itemClass} {...prefetchProps('/diretoria')}>
               <span className="sb-item-icon"><IconDiretoria /></span>
@@ -208,7 +218,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
           )}
           <NavLink to="/upload" className={itemClass} {...prefetchProps('/upload')}>
             <span className="sb-item-icon"><IconUpload /></span>
-            <span className="sb-item-label">Upload Censos</span>
+            <span className="sb-item-label">Upload</span>
           </NavLink>
         </div>
       </nav>

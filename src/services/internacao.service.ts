@@ -1,6 +1,6 @@
 // Serviço de dados do domínio "internação" (detalhe do paciente no drawer).
-import { apiFetch } from '../api/client'
-import type { InternacaoDados, InternacaoTimeline } from '../types/api'
+import { apiDownload, apiFetch } from '../api/client'
+import type { InternacaoDados, InternacaoRelatorios, InternacaoTimeline } from '../types/api'
 
 export interface RelatorioRapido {
   data_visita: string
@@ -17,6 +17,17 @@ export function fetchInternacaoDados(id: number): Promise<InternacaoDados> {
 /** Timeline cronológica da internação (admissão, relatórios, alta, pendências). */
 export function fetchInternacaoTimeline(id: number): Promise<InternacaoTimeline> {
   return apiFetch<InternacaoTimeline>(`/internacao/${id}/timeline`)
+}
+
+/** Relatórios da internação (com anexo, autoria e data/hora do anexo). */
+export function fetchInternacaoRelatorios(id: number): Promise<InternacaoRelatorios> {
+  return apiFetch<InternacaoRelatorios>(`/internacao/${id}/relatorios`)
+}
+
+/** Baixa o documento anexado a um relatório. O backend redireciona (307) para uma
+ *  signed URL de vida curta no Storage; o fetch autenticado segue o redirect. */
+export function baixarAnexoRelatorio(relatorioId: number, nomeArquivo: string): Promise<void> {
+  return apiDownload(`/relatorio/${relatorioId}/arquivo`, nomeArquivo)
 }
 
 // Campos que o backend aceita editar (espelha CAMPOS_EDITAVEIS no repositório).

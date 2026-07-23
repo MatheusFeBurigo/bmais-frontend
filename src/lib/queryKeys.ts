@@ -16,8 +16,9 @@ export const queryKeys = {
 
   diretoria: () => ['diretoria'] as const,
 
-  gestor: (data: string, operadora: string, hospital: string, regiao: string, janela: string) =>
-    ['gestor', data, operadora, hospital, regiao, janela] as const,
+  gestor: (data: string, operadora: string, hospital: string, regiao: string, janela: string,
+           inicio: string, fim: string) =>
+    ['gestor', data, operadora, hospital, regiao, janela, inicio, fim] as const,
 
   configuracoes: (op: string, hospital: string) =>
     ['configuracoes', op, hospital] as const,
@@ -30,6 +31,9 @@ export const queryKeys = {
 
   internacaoDados: (id: number) => ['internacao-dados', id] as const,
   internacaoTimeline: (id: number) => ['internacao-timeline', id] as const,
+  internacaoRelatorios: (id: number) => ['internacao-relatorios', id] as const,
+
+  kanban: () => ['kanban'] as const,
 } as const
 
 // Raiz (primeiro segmento) de cada domínio — usada para invalidar TODAS as
@@ -44,6 +48,7 @@ export const queryRoots = {
   configuracoes: ['configuracoes'] as const,
   equipe: ['equipe'] as const,
   usuarios: ['usuarios'] as const,
+  kanban: ['kanban'] as const,
 } as const
 
 export type QueryRoot = keyof typeof queryRoots

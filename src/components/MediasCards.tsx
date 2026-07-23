@@ -19,7 +19,11 @@ const styles = `
 .avg-card.caution .avg-bar{background:var(--caution)}.avg-card.caution .avg-title{color:var(--caution)}
 `
 
-function AvgCard({ titulo, items, variant }: {
+// Estilos dos cards de média — exportados para telas que montam o próprio
+// conjunto de AvgCards (ex.: Gestor, com médias por janela) mantendo o visual.
+export const avgCardStyles = styles
+
+export function AvgCard({ titulo, items, variant }: {
   titulo: string
   items: Array<[number, string]>
   variant: 'primary-kpi' | 'info' | 'caution'

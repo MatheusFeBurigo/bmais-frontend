@@ -53,7 +53,13 @@ const ROLE_VISUAL: Record<string, RoleVisual> = {
   admin: { label: 'Admin', color: 'var(--accent-2)', bg: 'var(--accent-soft)' },
   diretor: { label: 'Diretor', color: 'var(--info)', bg: 'var(--info-bg)' },
   gestor: { label: 'Gestor', color: 'var(--caution)', bg: 'var(--caution-bg)' },
-  analista: { label: 'Analista', color: 'var(--success)', bg: 'var(--success-bg)' },
+  // Técnico e administrativo são os papéis que sobem relatório — cores distintas
+  // para diferenciá-los na legenda/chip: técnico verde, administrativo âmbar.
+  administrativo: { label: 'Administrativo', color: 'var(--caution)', bg: 'var(--caution-bg)' },
+  tecnico: { label: 'Técnico', color: 'var(--success)', bg: 'var(--success-bg)' },
+  // Alias defensivo: registros históricos com autor_role='analista' que escapem da
+  // migration 0012 ainda coloram corretamente (mesmo visual do administrativo).
+  analista: { label: 'Administrativo', color: 'var(--caution)', bg: 'var(--caution-bg)' },
 }
 
 const ROLE_DESCONHECIDO: RoleVisual = {
@@ -65,7 +71,24 @@ export function roleVisual(role?: string | null): RoleVisual {
   return ROLE_VISUAL[role] || { label: role, color: 'var(--muted-2)', bg: 'var(--surface-3)' }
 }
 
-/** Chip do autor de um relatório, colorido pelo papel. */
+// Chip de pessoa na timeline do relatório: só o nome (sem papel nem usuário que
+// anexou). Serve para o médico responsável (relatório externo) e para quem fez o
+// relatório interno (autor/e-mail) — o `titulo` do tooltip diferencia os dois. A
+// bolinha herda a cor do papel de quem registrou, mantendo coerência com o dot.
+export function MedicoChip({ nome, role, titulo = 'Médico' }: { nome: string; role?: string | null; titulo?: string }) {
+  const v = roleVisual(role)
+  return (
+    <span
+      className="badge"
+      style={{ background: 'transparent', color: 'var(--ink-2)', textTransform: 'none', letterSpacing: 0, gap: 5, border: '1px solid var(--border)' }}
+      title={`${titulo}: ${nome}`}
+    >
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: v.color, flexShrink: 0 }} />
+      {nome}
+    </span>
+  )
+}
+
 export function AutorChip({ role, autor }: { role?: string | null; autor?: string | null }) {
   const v = roleVisual(role)
   return (
@@ -76,6 +99,7 @@ export function AutorChip({ role, autor }: { role?: string | null; autor?: strin
     >
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: v.color, flexShrink: 0 }} />
       {v.label}
+      {autor && <span style={{ opacity: 0.75 }}>· {autor}</span>}
     </span>
   )
 }

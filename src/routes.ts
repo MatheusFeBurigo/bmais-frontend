@@ -8,6 +8,7 @@ export const importGestor = () => import('./pages/Gestor')
 export const importEquipe = () => import('./pages/Equipe')
 export const importConfiguracoes = () => import('./pages/Configuracoes')
 export const importUpload = () => import('./pages/Upload')
+export const importKanban = () => import('./pages/Kanban')
 export const importPaciente = () => import('./pages/Paciente')
 export const importUsuarioForm = () => import('./pages/UsuarioForm')
 
@@ -19,4 +20,5 @@ export const prefetchPorRota: Record<string, () => Promise<unknown>> = {
   '/equipe': importEquipe,
   '/configuracoes': importConfiguracoes,
   '/upload': importUpload,
+  '/kanban': importKanban,
 }

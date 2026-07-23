@@ -5,6 +5,7 @@ import { queryKeys } from '../lib/queryKeys'
 import {
   editarInternacao,
   fetchInternacaoDados,
+  fetchInternacaoRelatorios,
   fetchInternacaoTimeline,
   type InternacaoEdicao,
 } from '../services/internacao.service'
@@ -25,6 +26,14 @@ export function useInternacaoTimeline(id: number) {
   return useQuery({
     queryKey: queryKeys.internacaoTimeline(id),
     queryFn: () => fetchInternacaoTimeline(id),
+    staleTime: DRAWER_STALE,
+  })
+}
+
+export function useInternacaoRelatorios(id: number) {
+  return useQuery({
+    queryKey: queryKeys.internacaoRelatorios(id),
+    queryFn: () => fetchInternacaoRelatorios(id),
     staleTime: DRAWER_STALE,
   })
 }

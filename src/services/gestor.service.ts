@@ -9,6 +9,10 @@ export interface GestorParams {
   regiao?: string
   /** Janela do gráfico de fluxo: '30d' | '90d' | '6m' | '1a'. */
   janela?: string
+  /** Intervalo (ambos) — ancora o painel no período do bucket clicado no
+   *  gráfico. Tem precedência sobre `data` no backend. */
+  inicio?: string
+  fim?: string
 }
 
 /** Métricas de fluxo + opções de filtro num único payload ({ metrics, filtros }). */
@@ -19,5 +23,7 @@ export function fetchGestor(params: GestorParams): Promise<GestorResposta> {
   if (params.hospital) qs.set('hospital', params.hospital)
   if (params.regiao) qs.set('regiao', params.regiao)
   if (params.janela) qs.set('janela', params.janela)
+  if (params.inicio) qs.set('inicio', params.inicio)
+  if (params.fim) qs.set('fim', params.fim)
   return apiFetch<GestorResposta>(`/gestor?${qs.toString()}`)
 }

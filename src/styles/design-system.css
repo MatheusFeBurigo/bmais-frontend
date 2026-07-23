@@ -38,6 +38,10 @@
   --success-bg: #DDF0E5;
   --info: #1F5DAA;
   --info-bg: #DFE9F6;
+  /* Índigo: cor própria do parecer do técnico interno na timeline, para não
+     colidir com o azul (--info) da admissão. */
+  --indigo: #5B4CC4;
+  --indigo-bg: #E7E4F7;
   --sidebar-w: 248px;
   --font-sans: "Geist", system-ui, -apple-system, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
@@ -269,9 +273,44 @@ a{text-decoration:none;color:inherit}
 .tl-dot.danger{background:var(--danger)}
 .tl-dot.neutral{background:var(--ink-2)}
 .tl-dot.muted{background:var(--muted-2)}
+/* Cor do marcador por TIPO de evento — cada tipo tem a sua, sem colidir. Vence a
+   classe de variante genérica acima (mesma especificidade, declarada depois). */
+.tl-dot.tp-admissao{background:var(--info)}
+.tl-dot.tp-relatorio{background:var(--success)}
+.tl-dot.tp-relatorio-interno{background:var(--indigo)}
+.tl-dot.tp-status{background:var(--ink-2)}
+.tl-dot.tp-alta-auto{background:var(--warning)}
+.tl-dot.tp-edit{background:var(--muted-2)}
+.tl-dot.tp-pendente{background:var(--danger)}
 .tl-date{font-family:var(--font-mono);font-size:var(--t-xs);color:var(--muted);letter-spacing:.02em}
 .tl-label{font-size:var(--t-base);font-weight:600;color:var(--ink);margin-top:1px}
 .tl-desc{font-size:var(--t-sm);color:var(--muted);margin-top:1px}
+/* Card de evento na timeline: cada tipo é um card com fundo suave + borda lateral
+   na SUA cor (fonte única — as mesmas classes .tp-* do marcador). O card é deslocado
+   22px à direita (mesma indentação do texto dos itens simples), deixando a linha
+   vertical e a bolinha à sua esquerda, sobre o trilho. */
+.tl-item.tl-card{margin-left:22px;padding:10px 14px 12px;border-radius:10px;border:1px solid var(--border);border-left-width:3px;margin-bottom:14px}
+.tl-item.tl-card:last-child{margin-bottom:0}
+.tl-item.tl-card .tl-dot{left:-22px}
+/* Cor do card por tipo: fundo suave, borda lateral forte e título tingido. */
+.tl-item.tl-card.tp-admissao{background:var(--info-bg);border-color:rgba(31,93,170,.22);border-left-color:var(--info)}
+.tl-item.tl-card.tp-admissao .tl-label{color:var(--info)}
+.tl-item.tl-card.tp-relatorio{background:var(--success-bg);border-color:rgba(14,122,83,.25);border-left-color:var(--success)}
+.tl-item.tl-card.tp-relatorio .tl-label{color:var(--success-2)}
+.tl-item.tl-card.tp-relatorio-interno{background:var(--indigo-bg);border-color:rgba(91,76,196,.25);border-left-color:var(--indigo)}
+.tl-item.tl-card.tp-relatorio-interno .tl-label{color:var(--indigo)}
+.tl-item.tl-card.tp-alta-auto{background:var(--warning-bg);border-color:rgba(217,105,12,.25);border-left-color:var(--warning)}
+.tl-item.tl-card.tp-alta-auto .tl-label{color:var(--warning-2)}
+.tl-item.tl-card.tp-pendente{background:var(--danger-bg);border-color:rgba(200,36,60,.22);border-left-color:var(--danger)}
+.tl-item.tl-card.tp-pendente .tl-label{color:var(--danger)}
+/* Alta (STATUS) e Edição: sem cor de destaque própria — fundo neutro, borda na
+   cor do marcador. Mantêm o formato de card sem gritar visualmente. */
+.tl-item.tl-card.tp-status{background:var(--surface-3);border-color:var(--border);border-left-color:var(--ink-2)}
+.tl-item.tl-card.tp-edit{background:var(--surface-3);border-color:var(--border);border-left-color:var(--muted-2)}
+/* Timeline rolável: altura limitada pelo container flex do card; o histórico
+   cresce dentro do scroll em vez de esticar o card. padding-right dá respiro à
+   barra de rolagem para ela não cobrir os cards de relatório. */
+.tl-scroll{overflow-y:auto;min-height:0;flex:1;padding-right:6px}
 
 /* ── Toast ── */
 .bm-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:var(--t-sm);font-weight:500;box-shadow:var(--shadow-lg);z-index:200;animation:toastin .25s;display:flex;align-items:center;gap:8px;pointer-events:none;white-space:nowrap}

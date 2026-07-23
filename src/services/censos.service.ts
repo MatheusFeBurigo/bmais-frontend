@@ -3,6 +3,7 @@
 import { apiFetch, apiUpload } from '../api/client'
 import type {
   UploadCensoResponse, RelatorioLoteResponse, RelatorioRefreshResponse,
+  ConfirmarEncaixePayload, CriarEncaixePayload,
 } from '../types/api'
 
 function formDe(files: File[], extra?: Record<string, string>): FormData {
@@ -30,15 +31,37 @@ export async function enviarCensos(files: File[]): Promise<UploadCensoResponse> 
   })
 }
 
-/** Processa DOCX/PDF de relatórios em lote; autoApply casa matches ≥ 0.70. */
-export function enviarRelatorios(files: File[], autoApply: boolean): Promise<RelatorioLoteResponse> {
-  return apiUpload<RelatorioLoteResponse>(
-    '/relatorios/upload',
-    formDe(files, { auto_apply: autoApply ? 'true' : 'false' }),
-  )
+/** Lê DOCX/PDF de relatórios em lote e envia cada paciente para REVISÃO HUMANA.
+ *  Nada é aplicado automaticamente — o encaixe é confirmado na tela de revisão. */
+export function enviarRelatorios(files: File[]): Promise<RelatorioLoteResponse> {
+  return apiUpload<RelatorioLoteResponse>('/relatorios/upload', formDe(files))
 }
 
 /** Reprocessa a pasta de relatórios do servidor (sem upload de arquivos). */
 export function reprocessarPastaRelatorios(): Promise<RelatorioRefreshResponse> {
   return apiUpload<RelatorioRefreshResponse>('/relatorios/refresh', new FormData())
+}
+
+// ── Encaixe de relatórios (cards da coluna "Revisão Relatório" no Kanban) ─────
+// A listagem vem embutida no payload do Kanban (coluna revisao_relatorio); aqui
+// ficam só as ações de confirmar/descartar o encaixe de cada card.
+
+/** Confirma o encaixe de um relatório numa internação (grava + resolve a pendência). */
+export function confirmarEncaixeRelatorio(
+  pendenciaId: number, payload: ConfirmarEncaixePayload,
+): Promise<{ ok: boolean }> {
+  return apiFetch(`/relatorios/revisao/${pendenciaId}/confirmar`, { method: 'POST', body: payload })
+}
+
+/** Descarta uma entrada de relatório sem gravá-la (falso positivo / não aplicável). */
+export function descartarRevisaoRelatorio(pendenciaId: number): Promise<{ ok: boolean }> {
+  return apiFetch(`/relatorios/revisao/${pendenciaId}/descartar`, { method: 'POST', body: {} })
+}
+
+/** Cria a internação de um paciente não vinculado e encaixa o relatório nela (um passo).
+ *  `ja_existia=true` quando o (hospital, atendimento) já existia: encaixou no existente. */
+export function criarEncaixarRelatorio(
+  pendenciaId: number, payload: CriarEncaixePayload,
+): Promise<{ ok: boolean; internacao_id: number; ja_existia?: boolean }> {
+  return apiFetch(`/relatorios/revisao/${pendenciaId}/criar-encaixar`, { method: 'POST', body: payload })
 }

@@ -105,7 +105,6 @@ export default function Upload() {
   const [tab, setTab] = useState<TabKey>('censos')
   const [censosFiles, setCensosFiles] = useState<File[]>([])
   const [relFiles, setRelFiles] = useState<File[]>([])
-  const [autoApply, setAutoApply] = useState(true)
   const [busy, setBusy] = useState<Kind | 'refresh' | null>(null)
   const [result, setResult] = useState<{ kind: Kind; data: ResultData } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -131,10 +130,10 @@ export default function Upload() {
     if (!relFiles.length) return
     setBusy('relatorios')
     try {
-      const data = await enviarRelatorios(relFiles, autoApply)
+      const data = await enviarRelatorios(relFiles)
       setResult({ kind: 'relatorios', data })
       invalidarDados()
-      setToast('✓ Processamento concluído')
+      setToast('✓ Relatórios processados')
     } catch (err) {
       setToast(`Erro: ${(err as Error).message}`)
     } finally {
@@ -216,8 +215,11 @@ export default function Upload() {
           {tab === 'relatorios' && (
             <div style={{ padding: 24 }}>
               <p style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', marginBottom: 18 }}>
-                DOCX/PDF de relatórios em lote (um médico, vários pacientes). O sistema identifica cada
-                paciente pelo nome e anexa o trecho ao histórico de cada um.
+                DOCX/PDF de relatórios em lote (um médico, vários pacientes). O sistema extrai hospital,
+                pacientes, observações, médico e data. Quando <strong>todos os campos</strong> são capturados,
+                o relatório é gravado automaticamente na internação casada; se <strong>faltar algum dado</strong>,
+                vira um card na coluna <strong>Revisão Relatório</strong> do{' '}
+                <Link to="/kanban" style={{ color: 'var(--accent)' }}>Kanban</Link> para aprovação.
               </p>
               <form onSubmit={processarRelatorios}>
                 <DropZone
@@ -228,12 +230,6 @@ export default function Upload() {
                   files={relFiles}
                   onFiles={setRelFiles}
                 />
-                <div style={{ marginTop: 14 }}>
-                  <label className="row" style={{ gap: 8, cursor: 'pointer', fontSize: 'var(--t-sm)' }}>
-                    <input type="checkbox" checked={autoApply} onChange={(e) => setAutoApply(e.target.checked)} />
-                    <span>Aplicar matches automaticamente (score ≥ 0.70)</span>
-                  </label>
-                </div>
                 <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center' }}>
                   <button
                     type="submit"
@@ -241,7 +237,7 @@ export default function Upload() {
                     disabled={!relFiles.length || busy != null}
                     style={{ opacity: relFiles.length ? 1 : 0.4 }}
                   >
-                    {busy === 'relatorios' ? 'Processando…' : 'Processar relatórios'}
+                    {busy === 'relatorios' ? 'Enviando…' : 'Enviar para revisão'}
                   </button>
                 </div>
               </form>
@@ -280,7 +276,15 @@ function SucessoBanner({ kind, data }: { kind: Kind; data: ResultData }) {
     const resultados = d.resultados ?? []
     total = d.arquivos ?? resultados.length
     ok = resultados.filter((r) => !r.erro).length
-    detalhe = `${d.aplicados ?? 0} relatórios aplicados`
+    const aplicados = d.aplicados_auto
+      ?? resultados.reduce((s, r) => s + (r.aplicados_auto || 0), 0)
+    const enviados = d.enviados_revisao
+      ?? resultados.reduce((s, r) => s + (r.enviados_revisao || 0), 0)
+    // Aplicados automaticamente (completos) + enviados para revisão (incompletos).
+    const partes: string[] = []
+    if (aplicados > 0) partes.push(`${aplicados} gravado${aplicados === 1 ? '' : 's'} automaticamente`)
+    if (enviados > 0) partes.push(`${enviados} enviado${enviados === 1 ? '' : 's'} para revisão`)
+    detalhe = partes.join(' · ') || 'Nenhum paciente encontrado no documento'
   }
 
   const falhas = total - ok
@@ -333,18 +337,28 @@ function Resultados({ kind, data }: { kind: Kind; data: ResultData }) {
     )
   }
 
-  // relatórios (upload em lote ou refresh de pasta)
+  // relatórios: completos gravados automaticamente; incompletos para revisão no Kanban.
   const d = data as RelatorioRefreshResponse
   const resultados = d.resultados ?? []
   const arquivos = d.arquivos ?? resultados.length
+  const aplicados = d.aplicados_auto
+    ?? resultados.reduce((s, r) => s + (r.aplicados_auto || 0), 0)
+  const enviados = d.enviados_revisao
+    ?? resultados.reduce((s, r) => s + (r.enviados_revisao || 0), 0)
   return (
     <>
       <div className="card" style={{ background: 'var(--success-bg)', borderColor: 'rgba(14,122,83,.2)', padding: '14px 16px' }}>
         <div style={{ fontSize: 'var(--t-sm)' }}>
-          <strong>Resumo:</strong> {arquivos} arquivos &nbsp;·&nbsp;{' '}
-          <strong style={{ color: 'var(--success)' }}>{d.aplicados ?? 0} relatórios aplicados</strong> &nbsp;·&nbsp;{' '}
-          <span style={{ color: 'var(--warning)' }}>{d.baixa_confianca ?? 0} baixa confiança</span> &nbsp;·&nbsp;{' '}
-          <span style={{ color: 'var(--danger)' }}>{d.sem_match ?? 0} sem match</span>
+          <strong>Resumo:</strong> {arquivos} arquivo{arquivos === 1 ? '' : 's'}
+          {aplicados > 0 && (
+            <> &nbsp;·&nbsp; <strong style={{ color: 'var(--success)' }}>{aplicados} gravado{aplicados === 1 ? '' : 's'} automaticamente</strong></>
+          )}
+          {enviados > 0 && (
+            <>
+              &nbsp;·&nbsp; <strong style={{ color: 'var(--accent)' }}>{enviados} para revisão</strong>
+              &nbsp;·&nbsp; <Link to="/kanban" style={{ color: 'var(--accent)' }}>Revisar no Kanban →</Link>
+            </>
+          )}
         </div>
       </div>
 
@@ -354,57 +368,16 @@ function Resultados({ kind, data }: { kind: Kind; data: ResultData }) {
           {res.erro ? (
             <div style={{ color: 'var(--danger)', fontSize: 'var(--t-sm)' }}>{res.erro}</div>
           ) : (
-            <>
-              <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)', marginBottom: 10 }}>
-                Hospital: {res.hospital_key || '?'} · Médico: {res.medico || '?'} · Data: {res.data_relatorio || '?'}
-              </div>
-
-              {res.aplicados && res.aplicados.length > 0 && (
-                <>
-                  <div style={{ fontSize: 'var(--t-sm)', fontWeight: 600, color: 'var(--success)', marginBottom: 4 }}>
-                    ✓ {res.aplicados.length} aplicados:
-                  </div>
-                  <div style={{ display: 'grid', gap: 4 }}>
-                    {res.aplicados.map((a, j) => (
-                      <div key={j} style={{ fontSize: 'var(--t-xs)', display: 'flex', justifyContent: 'space-between' }}>
-                        <Link to={`/paciente/${a.match.internacao_id}`} style={{ color: 'var(--accent)' }}>
-                          {a.nome_raw} → {a.match.nome_db}
-                        </Link>
-                        <span style={{ color: 'var(--muted)' }}>score {a.match.score}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
+            <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)' }}>
+              Hospital: {res.hospital_nome || res.hospital_key || '?'} · Médico: {res.medico || '?'} ·
+              Data: {res.data_relatorio || '?'}
+              {(res.aplicados_auto ?? 0) > 0 && (
+                <> · <strong style={{ color: 'var(--success)' }}>{res.aplicados_auto} gravado{res.aplicados_auto === 1 ? '' : 's'}</strong></>
               )}
-
-              {res.baixa_confianca && res.baixa_confianca.length > 0 && (
-                <>
-                  <div style={{ fontSize: 'var(--t-sm)', fontWeight: 600, color: 'var(--warning)', margin: '10px 0 4px' }}>
-                    ⚠ {res.baixa_confianca.length} baixa confiança:
-                  </div>
-                  <div style={{ display: 'grid', gap: 2 }}>
-                    {res.baixa_confianca.map((b, j) => (
-                      <div key={j} style={{ fontSize: 'var(--t-xs)', color: 'var(--ink-3)' }}>
-                        {b.nome_raw} — {b.candidatos.map((c) => `${c.nome_db}(${c.score})`).join(', ')}
-                      </div>
-                    ))}
-                  </div>
-                </>
+              {(res.enviados_revisao ?? 0) > 0 && (
+                <> · <strong style={{ color: 'var(--accent)' }}>{res.enviados_revisao} para revisão</strong></>
               )}
-
-              {res.sem_match && res.sem_match.length > 0 && (
-                <>
-                  <div style={{ fontSize: 'var(--t-sm)', fontWeight: 600, color: 'var(--danger)', margin: '10px 0 4px' }}>
-                    ✗ {res.sem_match.length} sem match:
-                  </div>
-                  <div style={{ display: 'grid', gap: 2 }}>
-                    {res.sem_match.map((s, j) => (
-                      <div key={j} style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)' }}>{s.nome_raw}</div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
+            </div>
           )}
         </div>
       ))}

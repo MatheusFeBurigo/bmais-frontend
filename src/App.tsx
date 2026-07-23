@@ -9,7 +9,8 @@ import { LoadingState } from './components/ui'
 import AppLayout from './components/AppLayout'
 import {
   importDashboard, importDiretoria, importGestor,
-  importEquipe, importConfiguracoes, importUpload, importPaciente, importUsuarioForm,
+  importEquipe, importConfiguracoes, importUpload,
+  importKanban, importPaciente, importUsuarioForm,
 } from './routes'
 
 // Páginas carregadas sob demanda (code-splitting). Diretoria e Gestor arrastam
@@ -21,6 +22,7 @@ const Gestor = lazy(importGestor)
 const Equipe = lazy(importEquipe)
 const Configuracoes = lazy(importConfiguracoes)
 const Upload = lazy(importUpload)
+const Kanban = lazy(importKanban)
 const Paciente = lazy(importPaciente)
 const UsuarioForm = lazy(importUsuarioForm)
 
@@ -103,6 +105,7 @@ function ProtectedRoutes() {
           element={<GatedRoute screen="equipe"><Equipe /></GatedRoute>}
         />
         <Route path="/upload" element={<Upload />} />
+        <Route path="/kanban" element={<GatedRoute screen="kanban"><Kanban /></GatedRoute>} />
         <Route path="/paciente/:id" element={<Paciente />} />
         {/* Gestão de usuários (admin-only): /novo antes de /:id p/ o literal vencer. */}
         <Route path="/usuarios/novo" element={<RequireAdmin><UsuarioForm /></RequireAdmin>} />
