@@ -123,6 +123,31 @@ export function LoadingState({ label = 'Carregando…', size = 28, className, st
   )
 }
 
+// ── Skeleton ────────────────────────────────────────────────────────────────
+// Placeholder shimmer que reserva a altura do conteúdo real enquanto carrega.
+// `w`/`h` aceitam número (px) ou string CSS. Use no lugar de spinners quando a
+// forma do conteúdo é conhecida (KPIs, linhas de tabela), para um carregamento
+// contínuo e sem salto de layout.
+export function Skeleton({ w = '100%', h = 14, radius, style }: {
+  w?: number | string
+  h?: number | string
+  radius?: number | string
+  style?: React.CSSProperties
+}) {
+  return (
+    <span
+      className="bm-skel"
+      aria-hidden="true"
+      style={{
+        width: typeof w === 'number' ? `${w}px` : w,
+        height: typeof h === 'number' ? `${h}px` : h,
+        borderRadius: radius,
+        ...style,
+      }}
+    />
+  )
+}
+
 // ── Barra de progresso ────────────────────────────────────────────────────
 export function ProgressBar({ pct, color = 'var(--success)' }: { pct: number; color?: string }) {
   const clamped = Math.max(0, Math.min(100, pct))

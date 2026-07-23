@@ -5,13 +5,14 @@ import PacienteDrawer from '../components/PacienteDrawer'
 import AddPacienteModal from '../components/dashboard/AddPacienteModal'
 import ExportarModal from '../components/dashboard/ExportarModal'
 import Toast from '../components/Toast'
-import { LoadingState, Spinner, opInitial } from '../components/ui'
+import { Spinner, Skeleton, opInitial } from '../components/ui'
 import { Deferred } from '../components/Deferred'
 import InternadosTable from '../components/internados/InternadosTable'
 import { useDashboard, useDashboardOverview, useAtualizarVisaoGeral } from '../hooks/useDashboard'
 import { usePrefetchInternacao } from '../hooks/useInternacao'
 import { useIsFetching } from '@tanstack/react-query'
 import { queryRoots } from '../lib/queryKeys'
+import type { Hospital } from '../types/api'
 
 export default function Dashboard() {
   const [params, setParams] = useSearchParams()
@@ -43,7 +44,7 @@ export default function Dashboard() {
 
   // Detalhe (lista de internados) da operadora aberta — dado pesado/específico.
   // Só busca quando já há uma operadora efetiva (evita request "sulamerica").
-  const { data, isLoading, isError } = useDashboard(
+  const { data, isError } = useDashboard(
     { operadora, filtro, hospital }, { enabled: !!operadora },
   )
 
@@ -112,6 +113,18 @@ export default function Dashboard() {
   const opNome = ovAtual?.op_nome ?? data?.op_nome ?? operadora
   const hospitaisPanorama = ovAtual?.hospitais ?? data?.hospitais ?? []
   const internacoes = data?.internacoes ?? []
+  // Um dos dois já chegou? Governa se KPIs/hospital mostram valor ou skeleton.
+  const temPanorama = Boolean(ovAtual || data)
+
+  // Mapa operadora → hospitais (do panorama, já recortado ao escopo do usuário):
+  // alimenta o fluxo operadora→hospital do modal "Adicionar paciente".
+  const hospitaisPorOperadora = useMemo(() => {
+    const m: Record<string, Hospital[]> = {}
+    for (const [key, op] of Object.entries(overview?.operadoras ?? {})) {
+      m[key] = op.hospitais
+    }
+    return m
+  }, [overview])
 
   const visiveis = useMemo(() => {
     const q = busca.toLowerCase().trim()
@@ -182,32 +195,45 @@ export default function Dashboard() {
         </select>
       </div>
 
-      {/* Só bloqueia com loading quando NEM o panorama NEM o detalhe chegaram. */}
-      {isLoading && !ovAtual && <LoadingState label="Carregando painel…" />}
-      {isError && !ovAtual && <div className="empty-state t-danger">Erro ao carregar o painel.</div>}
-
-      {(ovAtual || data) && (
+      {/* Carregamento COESO: a tela renderiza o layout inteiro desde o 1º paint.
+          Cada bloco mostra seu próprio skeleton até o dado dele chegar — sem
+          spinner de tela cheia no meio nem corpo em branco. Só o erro real
+          (sem nenhum dado para exibir) troca o layout por uma mensagem. */}
+      {isError && !ovAtual && !data ? (
+        <div className="empty-state t-danger">Erro ao carregar o painel.</div>
+      ) : (
         <>
-          {/* KPIs */}
+          {/* KPIs — valores viram skeleton enquanto o panorama não chegou. */}
           <div className="section-label">Controle de Relatórios de Auditoria</div>
           <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(5,1fr)' }}>
             {kpis.map(([fkey, val, cls, lbl, meta]) => (
               <div
                 key={fkey}
-                className={`kpi ${cls} kpi-clickable${filtro === fkey ? ' active-filter' : ''}`}
-                onClick={() => applyFilter(fkey)}
+                className={`kpi ${cls}${temPanorama ? ' kpi-clickable' : ''}${filtro === fkey ? ' active-filter' : ''}`}
+                onClick={temPanorama ? () => applyFilter(fkey) : undefined}
+                aria-busy={!temPanorama}
               >
                 <div className="kpi-bar" />
                 <div className="kpi-label">{lbl}</div>
-                <div className="kpi-value">{val}</div>
-                <div className="kpi-meta">{meta}</div>
+                {temPanorama ? (
+                  <div className="kpi-value">{val}</div>
+                ) : (
+                  <div className="kpi-value"><Skeleton w={44} h={26} /></div>
+                )}
+                {temPanorama ? (
+                  <div className="kpi-meta">{meta}</div>
+                ) : (
+                  <div className="kpi-meta"><Skeleton w={90} h={10} /></div>
+                )}
               </div>
             ))}
           </div>
 
           {/* Seletor de hospital */}
           <div className="section-label" style={{ marginTop: 18 }}>
-            Hospital — {hospitaisPanorama.length} unidades cadastradas
+            {temPanorama
+              ? `Hospital — ${hospitaisPanorama.length} unidades cadastradas`
+              : 'Hospital'}
           </div>
           <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', minWidth: 280, maxWidth: 420, flex: 1 }}>
@@ -215,8 +241,11 @@ export default function Dashboard() {
                 className="bm-input bm-select"
                 value={hospital}
                 onChange={(e) => setParam('hospital', e.target.value || null)}
+                disabled={!temPanorama}
               >
-                <option value="">Todos os hospitais ({stats.total_internados || 0} internados)</option>
+                <option value="">
+                  {temPanorama ? `Todos os hospitais (${stats.total_internados || 0} internados)` : 'Carregando hospitais…'}
+                </option>
                 {hospitaisPanorama.map((h) => (
                   <option key={h.key} value={h.key}>
                     {h.nome}
@@ -256,19 +285,14 @@ export default function Dashboard() {
           </div>
 
           {/* Tabela — bloco pesado adiado para depois do primeiro paint dos KPIs
-              e filtros; o cliente vê os números e controles imediatamente.
-              Regra do carregamento: a tela tem UM só indicador ("Carregando
-              painel…" do topo). Quando o panorama (ovAtual) chega antes do detalhe
-              (data), os KPIs pintam e a tabela ainda não tem dados — nesse intervalo
-              mostramos um placeholder NEUTRO (só reserva altura, sem um segundo
-              spinner e sem o empty-state "nenhum internado" prematuro). A tabela só
-              renderiza com `data` presente; então o Deferred adia apenas o custo de
-              render. */}
+              e filtros. Enquanto o detalhe (data) não chegou, mostra um skeleton
+              de tabela com a MESMA moldura (card + linhas) do conteúdo real, para
+              não haver salto de layout nem um segundo spinner. */}
           {data ? (
             <Deferred
               delaySteps={2}
               minHeight={360}
-              placeholder={<div style={{ minHeight: 360 }} aria-hidden />}
+              placeholder={<TabelaSkeleton />}
             >
               <InternadosTable
                 paginados={paginados}
@@ -287,7 +311,7 @@ export default function Dashboard() {
               />
             </Deferred>
           ) : (
-            <div style={{ minHeight: 360 }} aria-hidden />
+            <TabelaSkeleton />
           )}
         </>
       )}
@@ -307,7 +331,9 @@ export default function Dashboard() {
       )}
       {addOpen && (
         <AddPacienteModal
-          hospitais={hospitaisPanorama}
+          operadoras={operadorasLista}
+          hospitaisPorOperadora={hospitaisPorOperadora}
+          operadoraInicial={operadora || undefined}
           hospitalInicial={hospital || undefined}
           onClose={() => setAddOpen(false)}
           onDone={(msg) => { setAddOpen(false); setToast(msg) }}
@@ -324,5 +350,40 @@ export default function Dashboard() {
       )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </>
+  )
+}
+
+// Skeleton da tabela de internados: mesma moldura (card + cabeçalho + linhas) do
+// InternadosTable, para o intervalo entre os KPIs pintarem e o detalhe chegar não
+// ter salto de layout nem um segundo spinner. Só reserva o espaço com shimmer.
+function TabelaSkeleton() {
+  return (
+    <div className="card" style={{ marginTop: 14 }} aria-busy="true">
+      <div className="card-header" style={{ alignItems: 'center', paddingBottom: 14 }}>
+        <div>
+          <div className="card-title">Todos os Internados</div>
+          <div className="card-sub"><Skeleton w={160} h={12} /></div>
+        </div>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <Skeleton w={84} h={30} radius={8} />
+          <Skeleton w={150} h={30} radius={8} />
+        </div>
+      </div>
+      <div style={{ padding: '4px 20px 16px' }}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '11px 0', borderTop: i ? '1px solid var(--border)' : undefined }}
+          >
+            <Skeleton w={92} h={20} radius={999} />
+            <Skeleton w={140} h={13} />
+            <Skeleton w={200} h={13} style={{ flex: 1 }} />
+            <Skeleton w={70} h={13} />
+            <Skeleton w={46} h={20} radius={6} />
+            <Skeleton w={72} h={13} />
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }

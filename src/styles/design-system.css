@@ -358,6 +358,13 @@ a{text-decoration:none;color:inherit}
 .bm-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:56px 24px;color:var(--muted);text-align:center}
 .bm-loading-text{font-size:var(--t-sm);color:var(--muted)}
 
+/* ── Skeleton (placeholder shimmer) ──
+   Preenche o layout enquanto o dado não chegou, sem salto de layout. Reserva a
+   mesma altura do conteúdo real; a animação sinaliza "carregando" sem spinner. */
+.bm-skel{display:block;border-radius:6px;background:linear-gradient(90deg,var(--surface-2) 25%,var(--border) 37%,var(--surface-2) 63%);background-size:400% 100%;animation:bm-skel 1.4s ease-in-out infinite}
+@keyframes bm-skel{0%{background-position:100% 50%}100%{background-position:0 50%}}
+@media (prefers-reduced-motion:reduce){.bm-skel{animation-duration:2.8s}}
+
 /* ══ Auth (login / cadastro) ═══════════════════════════════════════════════ */
 .auth{min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:1.05fr .95fr;background:var(--bg);overflow:hidden}
 
