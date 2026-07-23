@@ -44,9 +44,14 @@ export default function Dashboard() {
 
   // Detalhe (lista de internados) da operadora aberta — dado pesado/específico.
   // Só busca quando já há uma operadora efetiva (evita request "sulamerica").
-  const { data, isError } = useDashboard(
+  const { data, isError, isPlaceholderData, isFetching: detalheFetching } = useDashboard(
     { operadora, filtro, hospital }, { enabled: !!operadora },
   )
+  // Troca de operadora/filtro: com keepPreviousData, os dados ANTERIORES seguem
+  // na tela enquanto o novo detalhe carrega (isPlaceholderData). Sem sinal visual,
+  // a lista "troca do nada". `trocando` liga um overlay sutil sobre a tabela — o
+  // conteúdo atual permanece legível, mas fica claro que há um fetch em curso.
+  const trocando = isPlaceholderData && detalheFetching
 
   const ovAtual = overview?.operadoras[operadora]
 
@@ -294,21 +299,50 @@ export default function Dashboard() {
               minHeight={360}
               placeholder={<TabelaSkeleton />}
             >
-              <InternadosTable
-                paginados={paginados}
-                totalVisiveis={visiveis.length}
-                totalInternacoes={internacoes.length}
-                totalBackend={stats.total_internados || 0}
-                paginaAtual={paginaAtual}
-                totalPaginas={totalPaginas}
-                porPagina={POR_PAGINA}
-                onExportar={() => setExportOpen(true)}
-                onAdicionarPaciente={() => setAddOpen(true)}
-                onSelecionar={setDrawerId}
-                onPrefetch={prefetchPaciente}
-                onPrev={() => setPagina((p) => Math.max(1, p - 1))}
-                onNext={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-              />
+              {/* Wrapper com overlay de troca: durante a troca de operadora/filtro,
+                  os dados anteriores seguem visíveis (esmaecidos) sob um overlay
+                  com spinner, em vez de trocarem "do nada". */}
+              <div style={{ position: 'relative' }} aria-busy={trocando}>
+                <div style={trocando ? { opacity: 0.45, transition: 'opacity .15s', pointerEvents: 'none' } : undefined}>
+                  <InternadosTable
+                    paginados={paginados}
+                    totalVisiveis={visiveis.length}
+                    totalInternacoes={internacoes.length}
+                    totalBackend={stats.total_internados || 0}
+                    paginaAtual={paginaAtual}
+                    totalPaginas={totalPaginas}
+                    porPagina={POR_PAGINA}
+                    onExportar={() => setExportOpen(true)}
+                    onAdicionarPaciente={() => setAddOpen(true)}
+                    onSelecionar={setDrawerId}
+                    onPrefetch={prefetchPaciente}
+                    onPrev={() => setPagina((p) => Math.max(1, p - 1))}
+                    onNext={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                  />
+                </div>
+                {trocando && (
+                  <div
+                    style={{
+                      position: 'absolute', inset: 0, display: 'flex',
+                      alignItems: 'flex-start', justifyContent: 'center',
+                      paddingTop: 120, pointerEvents: 'none',
+                    }}
+                  >
+                    <div
+                      className="row"
+                      style={{
+                        gap: 10, alignItems: 'center', background: 'var(--surface)',
+                        border: '1px solid var(--border)', borderRadius: 999,
+                        padding: '8px 16px', boxShadow: '0 4px 16px rgba(6,46,92,.12)',
+                        fontSize: 'var(--t-sm)', color: 'var(--muted)',
+                      }}
+                    >
+                      <Spinner size={15} />
+                      Carregando {opNome}…
+                    </div>
+                  </div>
+                )}
+              </div>
             </Deferred>
           ) : (
             <TabelaSkeleton />
