@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Profissional, ProfTipo } from '../types/api'
 import { usePageHeader } from '../components/PageHeader'
-import { KpiCard, LoadingState } from '../components/ui'
+import { KpiCard, LoadingState, Modal } from '../components/ui'
 import Toast from '../components/Toast'
 import UsuariosAcesso from '../components/UsuariosAcesso'
 import { useEquipe, useProfissional } from '../hooks/useEquipe'
@@ -27,7 +27,7 @@ export default function Equipe() {
 
   const todos = useMemo<Profissional[]>(() => {
     if (!data) return []
-    return [...data.enfermeiros, ...data.medicos, ...data.operadores]
+    return [...data.enfermeiros, ...data.medicos]
   }, [data])
 
   const totalInativos = todos.filter((p) => !isAtivo(p)).length
@@ -63,84 +63,72 @@ export default function Equipe() {
       {data && (
         <>
           {/* KPIs */}
-          <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 20 }}>
+          <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)', marginBottom: 20 }}>
             <KpiCard variant="success" label="Enfermeiros" value={data.enfermeiros.filter(isAtivo).length}
               meta={`${data.enfermeiros.filter((p) => !isAtivo(p)).length > 0 ? `${data.enfermeiros.filter((p) => !isAtivo(p)).length} inativos · ` : ''}ativos no sistema`} />
             <KpiCard variant="info" label="Médicos Auditores" value={data.medicos.filter(isAtivo).length}
               meta={`${data.medicos.filter((p) => !isAtivo(p)).length > 0 ? `${data.medicos.filter((p) => !isAtivo(p)).length} inativos · ` : ''}ativos no sistema`} />
-            <KpiCard variant="warning" label="Operadores Internos" value={data.operadores.filter(isAtivo).length} meta="equipe B+" />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 16, alignItems: 'start' }}>
-            {/* Lista */}
-            <div>
-              {/* Filtro por tipo */}
-              <div className="tab-section">
-                {([['todos', `Todos (${data.total_todos})`], ['E', `Enfermeiros (${data.enfermeiros.length})`], ['M', `Médicos Auditores (${data.medicos.length})`], ['O', `Operadores (${data.operadores.length})`]] as const).map(([t, lbl]) => (
-                  <button key={t} className={`tab-sec-btn${tipoFiltro === t ? ' active' : ''}`} onClick={() => setTipoFiltro(t)}>{lbl}</button>
-                ))}
-              </div>
-
-              {/* Toggle mostrar/ocultar inativos */}
-              {totalInativos > 0 && (
-                <div className="inativos-toggle" onClick={() => setShowInativos((v) => !v)}>
-                  {IconEyeOff}
-                  <span>{showInativos ? 'Ocultar desativados' : `Mostrar ${totalInativos} desativado${totalInativos > 1 ? 's' : ''}`}</span>
-                </div>
-              )}
-
-              {/* Profissionais de Saúde */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div className="section-label" style={{ marginBottom: 0 }}>Profissionais de Saúde</div>
-                <button className="btn btn-primary btn-sm" onClick={() => setAddOpen(true)}>
-                  {IconPlus}
-                  Adicionar
-                </button>
-              </div>
-              {/* Bloco com scroll interno: limita a altura a ~6 itens (cada
-                  .prof-item ≈ 62px) para não empurrar o resto da página quando
-                  a lista é longa; abaixo disso o bloco encolhe naturalmente. */}
-              <div className="prof-lista-scroll">
-                {enfermeirosMedicos.map((p) => (
-                  <ProfItem key={p.id} p={p} active={selId === p.id} onClick={() => setSelId(p.id)} />
-                ))}
-                {enfermeirosMedicos.length === 0 && (
-                  <div className="empty-state" style={{ padding: '36px 16px' }}>
-                    <div style={{ marginBottom: 8, opacity: 0.4, display: 'flex', justifyContent: 'center' }}><IconUsers /></div>
-                    <div className="fw-6">Nenhum profissional cadastrado</div>
-                    <div style={{ fontSize: 'var(--t-sm)', marginTop: 4 }}>Use o botão "+ Adicionar" para cadastrar.</div>
-                  </div>
-                )}
-              </div>
-
+          {/* Lista (largura total) — o detalhe/edição de um profissional abre numa
+              modal ao clicar no nome (antes era um painel lateral fixo). */}
+          <div>
+            {/* Filtro por tipo */}
+            <div className="tab-section">
+              {([['todos', `Todos (${data.enfermeiros.length + data.medicos.length})`], ['E', `Enfermeiros (${data.enfermeiros.length})`], ['M', `Médicos Auditores (${data.medicos.length})`]] as const).map(([t, lbl]) => (
+                <button key={t} className={`tab-sec-btn${tipoFiltro === t ? ' active' : ''}`} onClick={() => setTipoFiltro(t)}>{lbl}</button>
+              ))}
             </div>
 
-            {/* Painel de detalhe / edição */}
-            <div>
-              <div className="detail-panel">
-                {selId == null && (
-                  <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                    <div style={{ opacity: 0.3, marginBottom: 12, display: 'flex', justifyContent: 'center' }}><IconUsers size={48} /></div>
-                    <div className="fw-6" style={{ color: 'var(--ink-2)', marginBottom: 4 }}>Selecione um profissional</div>
-                    <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>Clique em um nome na lista para ver e editar os detalhes.</div>
-                  </div>
-                )}
-                {selId != null && detalhe && (
-                  <DetalheProf
-                    key={detalhe.profissional.id}
-                    detalhe={detalhe}
-                    opsLista={data.ops_lista}
-                    onToast={setToast}
-                    onChanged={invalidar}
-                  />
-                )}
+            {/* Toggle mostrar/ocultar inativos */}
+            {totalInativos > 0 && (
+              <div className="inativos-toggle" onClick={() => setShowInativos((v) => !v)}>
+                {IconEyeOff}
+                <span>{showInativos ? 'Ocultar desativados' : `Mostrar ${totalInativos} desativado${totalInativos > 1 ? 's' : ''}`}</span>
               </div>
+            )}
+
+            {/* Profissionais de Saúde */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div className="section-label" style={{ marginBottom: 0 }}>Profissionais de Saúde</div>
+              <button className="btn btn-primary btn-sm" onClick={() => setAddOpen(true)}>
+                {IconPlus}
+                Adicionar
+              </button>
+            </div>
+            {/* Bloco com scroll interno: limita a altura a ~6 itens (cada
+                .prof-item ≈ 62px) para não empurrar o resto da página quando
+                a lista é longa; abaixo disso o bloco encolhe naturalmente. */}
+            <div className="prof-lista-scroll">
+              {enfermeirosMedicos.map((p) => (
+                <ProfItem key={p.id} p={p} active={selId === p.id} onClick={() => setSelId(p.id)} />
+              ))}
+              {enfermeirosMedicos.length === 0 && (
+                <div className="empty-state" style={{ padding: '36px 16px' }}>
+                  <div style={{ marginBottom: 8, opacity: 0.4, display: 'flex', justifyContent: 'center' }}><IconUsers /></div>
+                  <div className="fw-6">Nenhum profissional cadastrado</div>
+                  <div style={{ fontSize: 'var(--t-sm)', marginTop: 4 }}>Use o botão "+ Adicionar" para cadastrar.</div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Usuários de acesso (contas de login) — só admin vê */}
           <UsuariosAcesso />
         </>
+      )}
+
+      {/* Detalhe/edição do profissional numa modal (abre ao clicar no nome). */}
+      {selId != null && detalhe && (
+        <Modal title="Detalhes do profissional" onClose={() => setSelId(null)}>
+          <DetalheProf
+            key={detalhe.profissional.id}
+            detalhe={detalhe}
+            opsLista={data?.ops_lista ?? []}
+            onToast={setToast}
+            onChanged={invalidar}
+          />
+        </Modal>
       )}
 
       {addOpen && (

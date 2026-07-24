@@ -72,7 +72,6 @@ export default function DetalheProf({ detalhe, opsLista, onToast, onChanged }: {
           <select className="bm-input bm-select" style={{ fontSize: 'var(--t-sm)' }} value={tipo} onChange={(e) => setTipo(e.target.value as ProfTipo)}>
             <option value="E">Enfermeiro(a)</option>
             <option value="M">Médico(a) Auditor(a)</option>
-            <option value="O">Operador(a) Interno(a)</option>
           </select>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

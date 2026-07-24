@@ -25,6 +25,12 @@ export default function Dashboard() {
   const [busca, setBusca] = useState('')
   const [utiOn, setUtiOn] = useState(false)
   const [d30On, setD30On] = useState(false)
+  // Permanência: '' (todas), '10' (≥10d, campo longa_10) ou '30' (≥30d, longa_30).
+  // Usa os campos reais (limites por operadora) — coerente com a coluna Permanência.
+  const [permanencia, setPermanencia] = useState<'' | '10' | '30'>('')
+  // Ordenação da lista: '' (padrão do backend), 'sem_rel' (mais dias sem relatório
+  // primeiro) ou 'dias' (mais dias internado primeiro). Ajuda a priorizar.
+  const [ordenar, setOrdenar] = useState<'' | 'sem_rel' | 'dias'>('')
   const [drawerId, setDrawerId] = useState<number | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -134,15 +140,30 @@ export default function Dashboard() {
 
   const visiveis = useMemo(() => {
     const q = busca.toLowerCase().trim()
-    return internacoes.filter((p) => {
+    const filtrados = internacoes.filter((p) => {
       const nome = (p.nome || '').toLowerCase()
       const atend = String(p.atendimento || '').toLowerCase()
       const okBusca = !q || nome.includes(q) || atend.includes(q)
       const okUti = !utiOn || (p.tipo_leito || '').toUpperCase() === 'UTI'
       const ok30 = !d30On || Number(p.dias || 0) > 30
-      return okBusca && okUti && ok30
+      // Permanência pelos campos reais (limites por operadora), não por dias>N:
+      // '30' = longa_30; '10' = longa_10 (que já inclui os 30+, é o piso).
+      const okPerm =
+        permanencia === '' ||
+        (permanencia === '30' ? Boolean(p.longa_30) : Boolean(p.longa_10))
+      return okBusca && okUti && ok30 && okPerm
     })
-  }, [internacoes, busca, utiOn, d30On])
+    if (ordenar === 'sem_rel') {
+      // Mais dias sem relatório primeiro; sem relatório (null) vai ao topo.
+      return [...filtrados].sort(
+        (a, b) => (b.dias_sem_relatorio ?? Infinity) - (a.dias_sem_relatorio ?? Infinity),
+      )
+    }
+    if (ordenar === 'dias') {
+      return [...filtrados].sort((a, b) => (b.dias ?? 0) - (a.dias ?? 0))
+    }
+    return filtrados
+  }, [internacoes, busca, utiOn, d30On, permanencia, ordenar])
 
   // Paginação client-side: renderizar todas as internações de uma vez trava a
   // tabela em operadoras grandes (cada linha tem vários componentes). Fatiamos
@@ -158,7 +179,7 @@ export default function Dashboard() {
   // Qualquer mudança de filtro reinicia a paginação na primeira página.
   useEffect(() => {
     setPagina(1)
-  }, [busca, utiOn, d30On, operadora, filtro, hospital])
+  }, [busca, utiOn, d30On, permanencia, ordenar, operadora, filtro, hospital])
 
   const kpis: Array<[string, number, string, string, string]> = [
     ['sem_relatorio', Number(stats.sem_relatorio || 0), 'danger', 'Sem Relatório', 'nunca registrado'],
@@ -268,17 +289,40 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Quick filters */}
+          {/* Quick filters — os status (Sem relatório/Vencidos) saíram daqui: os
+              cards KPI do topo já são o atalho clicável desses status. Estes chips
+              cobrem o que a tabela mostra mas o topo não filtra: leito, permanência
+              (campos reais longa_10/30) e ordenação por urgência. */}
           <div className="quick-filters" style={{ marginTop: 14 }}>
             <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', flexShrink: 0 }}>Filtros rápidos:</span>
-            <span className={`qf-chip${filtro === 'sem_relatorio' ? ' active' : ''}`} onClick={() => applyFilter('sem_relatorio')}>
-              Sem relatório{filtro === 'sem_relatorio' && ' ×'}
-            </span>
-            <span className={`qf-chip${filtro === 'vencido' ? ' active' : ''}`} onClick={() => applyFilter('vencido')}>
-              Vencidos{filtro === 'vencido' && ' ×'}
-            </span>
             <span className={`qf-chip${utiOn ? ' active' : ''}`} onClick={() => setUtiOn((v) => !v)}>UTI / CTI</span>
+            <span className={`qf-chip${permanencia === '10' ? ' active' : ''}`} onClick={() => setPermanencia((v) => (v === '10' ? '' : '10'))}>
+              Longa 10d+
+            </span>
+            <span className={`qf-chip${permanencia === '30' ? ' active' : ''}`} onClick={() => setPermanencia((v) => (v === '30' ? '' : '30'))}>
+              Longa 30d+
+            </span>
             <span className={`qf-chip${d30On ? ' active' : ''}`} onClick={() => setD30On((v) => !v)}>&gt; 30 dias</span>
+            <select
+              className="bm-input bm-select"
+              style={{ width: 'auto', minWidth: 180 }}
+              value={ordenar}
+              onChange={(e) => setOrdenar(e.target.value as '' | 'sem_rel' | 'dias')}
+              title="Ordenar a lista"
+            >
+              <option value="">Ordenar: padrão</option>
+              <option value="sem_rel">Mais dias sem relatório</option>
+              <option value="dias">Mais dias internado</option>
+            </select>
+            {(utiOn || d30On || permanencia !== '' || ordenar !== '') && (
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ color: 'var(--muted)' }}
+                onClick={() => { setUtiOn(false); setD30On(false); setPermanencia(''); setOrdenar('') }}
+              >
+                Limpar
+              </button>
+            )}
             <div style={{ flex: 1 }} />
             <input
               type="text"

@@ -3,6 +3,7 @@
 import type { GestorMetrics } from '../../types/api'
 import { Badge, OpAvatar } from '../ui'
 import { COR } from './gestor.styles'
+import { nomeProprio } from '../../lib/texto'
 
 export default function TabelaPacientes({ pacientes, onSelecionar, onPrefetch, vazio, maxHeight = 480 }: {
   pacientes: GestorMetrics['pacientes_dia']
@@ -30,7 +31,7 @@ export default function TabelaPacientes({ pacientes, onSelecionar, onPrefetch, v
               onMouseEnter={onPrefetch ? () => onPrefetch(p.id) : undefined}
               onFocus={onPrefetch ? () => onPrefetch(p.id) : undefined}>
               <td>
-                <div className="fw-6 truncate" style={{ maxWidth: 220 }}>{p.nome}</div>
+                <div className="fw-6 truncate" style={{ maxWidth: 220 }}>{nomeProprio(p.nome)}</div>
                 <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }} className="mono">{p.atendimento}</div>
               </td>
               <td className="truncate" style={{ maxWidth: 200, fontSize: 'var(--t-base)' }}>{p.hospital_nome}</td>

@@ -17,6 +17,7 @@ import { baixarAnexoRelatorio, registrarRelatorioRapido, type InternacaoEdicao }
 import { queryKeys } from '../lib/queryKeys'
 import { invalidarPorEvento } from '../lib/invalidation'
 import { hojeISO } from '../lib/datas'
+import { nomeProprio } from '../lib/texto'
 import type { InternacaoDados, RelatorioItem, TimelineEvento } from '../types/api'
 import { dataHora } from '../lib/datas'
 
@@ -149,7 +150,7 @@ export default function Paciente() {
       () => ({
         title: (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-            {d?.nome || (isLoading ? '—' : 'Paciente')}
+            {nomeProprio(d?.nome) || (isLoading ? '—' : 'Paciente')}
             {sr && <StatusBadge sr={sr} />}
           </span>
         ),
@@ -256,7 +257,7 @@ export default function Paciente() {
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
-              <Campo label="Nome do segurado" valor={d.nome} span={2} edit={editando} campo="nome" rascunho={rascunho} onChange={setCampo} />
+              <Campo label="Nome do segurado" valor={editando ? d.nome : nomeProprio(d.nome)} span={2} edit={editando} campo="nome" rascunho={rascunho} onChange={setCampo} />
               <Campo label="Status" valor={d.status || 'INTERNADO'} edit={editando} campo="status" rascunho={rascunho} onChange={setCampo} opcoes={STATUS_OPCOES} />
               <Campo label="RN" valor={rnLabel(d)} />
 

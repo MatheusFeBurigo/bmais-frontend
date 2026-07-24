@@ -28,7 +28,6 @@ export const localStyles = `
 .prof-avatar.E{background:linear-gradient(135deg,#0E7A53,#065A3D)}
 .prof-avatar.M{background:linear-gradient(135deg,#1F6FBE,#0F4D9E)}
 .prof-avatar.O{background:linear-gradient(135deg,#D9690C,#A84F09)}
-.detail-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:24px;position:sticky;top:80px;max-height:calc(100vh - 110px);overflow-y:auto}
 .escala-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface-3);border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:6px}
 .servico-badge{font-family:var(--font-mono);font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;background:var(--info-bg);color:var(--info);border:1px solid rgba(30,120,200,.2)}
 .tab-section{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}

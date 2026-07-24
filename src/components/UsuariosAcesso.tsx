@@ -4,13 +4,16 @@
 // Criar/editar acontecem em PÁGINAS dedicadas (/usuarios/novo, /usuarios/:id).
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../auth/AuthContext'
 import type { Usuario, UserRole } from '../types/api'
-import { Badge, LoadingState } from './ui'
+import { Badge, LoadingState, Modal } from './ui'
 import Toast from './Toast'
 import ResetSenhaModal from './equipe/ResetSenhaModal'
 import { useUsuarios } from '../hooks/useUsuarios'
 import { useTodosHospitais } from '../hooks/useEquipe'
+import { apagarUsuario } from '../services/usuarios.service'
+import { queryKeys } from '../lib/queryKeys'
 import { ROLE_LABEL, ROLE_VARIANT } from '../lib/usuarioRoles'
 
 const IconPlus = (
@@ -22,12 +25,19 @@ const IconKey = (
 )
 
 export default function UsuariosAcesso() {
-  const { role } = useAuth()
+  const { role, username } = useAuth()
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [roleFiltro, setRoleFiltro] = useState<'todos' | UserRole>('todos')
   // Usuário cuja senha está sendo redefinida na modal (null = fechada).
   const [resetAlvo, setResetAlvo] = useState<Usuario | null>(null)
+  // Usuário a ser apagado (modal de confirmação). null = fechada.
+  const [apagarAlvo, setApagarAlvo] = useState<Usuario | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+
+  // E-mail do admin logado: a UI oculta o "Apagar" da própria conta (o backend
+  // também bloqueia por user_id; aqui só evita oferecer a ação sem sentido).
+  const meuEmail = (username || '').trim().toLowerCase()
 
   // Só admin gerencia usuários. Para os demais, a seção nem é renderizada.
   const { data, isLoading, isError } = useUsuarios(role === 'admin')
@@ -116,6 +126,16 @@ export default function UsuariosAcesso() {
                           Senha
                         </button>
                         <button className="btn btn-outline btn-sm" onClick={() => navigate('/usuarios/' + u.user_id)}>Editar</button>
+                        {(u.email || '').trim().toLowerCase() !== meuEmail && (
+                          <button
+                            className="btn btn-outline btn-sm"
+                            onClick={() => setApagarAlvo(u)}
+                            title="Apagar usuário"
+                            style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                          >
+                            Apagar
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -144,8 +164,74 @@ export default function UsuariosAcesso() {
           onError={(msg) => setToast(msg)}
         />
       )}
+      {apagarAlvo && (
+        <ApagarUsuarioModal
+          usuario={apagarAlvo}
+          onClose={() => setApagarAlvo(null)}
+          onDone={(msg) => {
+            setApagarAlvo(null)
+            setToast(msg)
+            qc.invalidateQueries({ queryKey: queryKeys.usuarios() })
+          }}
+          onError={(msg) => setToast(msg)}
+        />
+      )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </div>
+  )
+}
+
+// Modal de confirmação para apagar uma conta de acesso. Ação irreversível: exige
+// um clique de confirmação explícito (não usa window.confirm, seguindo o padrão
+// de modais próprios do app). O backend ainda barra apagar a si mesmo/último admin.
+function ApagarUsuarioModal({ usuario, onClose, onDone, onError }: {
+  usuario: Usuario
+  onClose: () => void
+  onDone: (msg: string) => void
+  onError: (msg: string) => void
+}) {
+  const [apagando, setApagando] = useState(false)
+  const quem = usuario.nome || usuario.email || 'este usuário'
+
+  async function confirmar() {
+    setApagando(true)
+    try {
+      await apagarUsuario(usuario.user_id)
+      onDone(`Usuário ${quem} apagado`)
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Não foi possível apagar o usuário.')
+    } finally {
+      setApagando(false)
+    }
+  }
+
+  return (
+    <Modal
+      title="Apagar usuário"
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn btn-outline" onClick={onClose} disabled={apagando}>Cancelar</button>
+          <button
+            className="btn btn-primary"
+            onClick={confirmar}
+            disabled={apagando}
+            style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}
+          >
+            {apagando ? 'Apagando…' : 'Apagar definitivamente'}
+          </button>
+        </>
+      }
+    >
+      <div style={{ fontSize: 'var(--t-base)', lineHeight: 1.5 }}>
+        Tem certeza que deseja apagar <strong>{quem}</strong>
+        {usuario.email && usuario.nome ? <> (<span className="mono">{usuario.email}</span>)</> : null}?
+        <div style={{ marginTop: 10, color: 'var(--muted)', fontSize: 'var(--t-sm)' }}>
+          A conta perde o acesso imediatamente e é removida do sistema e do login.
+          Esta ação é <strong>irreversível</strong>.
+        </div>
+      </div>
+    </Modal>
   )
 }
 

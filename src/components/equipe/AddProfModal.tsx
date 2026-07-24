@@ -44,7 +44,6 @@ export default function AddProfModal({ onClose, onDone, onError }: {
           <select className="bm-input bm-select" value={tipo} onChange={(e) => setTipo(e.target.value as ProfTipo)}>
             <option value="E">Enfermeiro(a)</option>
             <option value="M">Médico(a) Auditor(a)</option>
-            <option value="O">Operador(a) Interno(a)</option>
           </select>
         </div>
         <div>

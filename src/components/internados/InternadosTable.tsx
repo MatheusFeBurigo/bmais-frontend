@@ -5,6 +5,7 @@
 import type { Internacao } from '../../types/api'
 import { StatusBadge, rowFlagClass, LeitoTag } from '../StatusBadge'
 import { DiasRatio, Permanencia } from './cells'
+import { nomeProprio } from '../../lib/texto'
 
 export interface InternadosTableProps {
   /** Linhas da página atual (já filtradas e fatiadas). */
@@ -97,7 +98,7 @@ export default function InternadosTable({
                   onFocus={onPrefetch ? () => onPrefetch(p.id) : undefined}>
                   <td><StatusBadge sr={sr} /></td>
                   <td><span style={{ fontSize: 'var(--t-sm)' }}>{p.hospital_nome || '—'}</span></td>
-                  <td style={{ maxWidth: 240 }}><div className="truncate fw-5">{p.nome}</div></td>
+                  <td style={{ maxWidth: 240 }}><div className="truncate fw-5">{nomeProprio(p.nome)}</div></td>
                   <td><span className="mono t-muted" style={{ fontSize: 'var(--t-sm)' }}>{p.atendimento || '—'}</span></td>
                   <td><LeitoTag tipo={p.tipo_leito} /></td>
                   <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_entrada || '—'}</span></td>

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { KanbanColuna, KanbanTarefa, RelatorioRevisaoItem, HospitalCriacao, InternacaoBusca } from '../types/api'
 import { usePageHeader } from '../components/PageHeader'
@@ -12,6 +12,7 @@ import { apiUrl } from '../api/client'
 import { usePrefetchInternacao } from '../hooks/useInternacao'
 import { campoFaltanteInfo, motivoCensoTexto } from '../lib/pendenciaLabels'
 import { labelCurto } from '../lib/datas'
+import { nomeProprio } from '../lib/texto'
 
 // Definição de cada coluna: chave do payload, rótulo, cor de destaque e descrição.
 // Colunas são CATEGORIAS de tarefa (não estágios de progresso).
@@ -67,6 +68,11 @@ const COLUNAS_ADMIN = COLUNAS
 
 const localStyles = `
 /* grid-template-columns vem inline (nº de colunas depende do papel/board). */
+.kb-busca-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.kb-busca-wrap{position:relative;display:inline-flex;align-items:center}
+.kb-busca-icon{position:absolute;left:10px;color:var(--muted-2);pointer-events:none}
+.kb-busca-clear{position:absolute;right:8px;border:none;background:transparent;color:var(--muted);font-size:13px;line-height:1;padding:4px;border-radius:5px;cursor:pointer}
+.kb-busca-clear:hover{background:var(--surface-3);color:var(--ink)}
 .kb-board{display:grid;gap:12px;align-items:start;transition:opacity .2s ease}
 /* Refetch em andamento com dados anteriores em tela: esmaece o quadro (não bloqueia
    cliques), sinalizando "atualizando" sem piscar o loading — igual ao Gestor. */
@@ -178,6 +184,11 @@ const localStyles = `
 .kb-modal-foot.split{justify-content:space-between}
 `
 
+// Normaliza para busca: minúsculas e sem acentos, para "joao" casar com "João".
+function normalizarBusca(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+}
+
 export default function Kanban() {
   // O quadro já vem recortado ao escopo de hospitais/operadoras do analista pelo
   // backend (get_hospitais_permitidos) — sem filtro manual na tela.
@@ -196,8 +207,26 @@ export default function Kanban() {
   // Análise aberta na modal de parecer (card de "Análise técnica", board do técnico).
   const [analiseAberta, setAnaliseAberta] = useState<KanbanTarefa | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  // Busca de card: filtra por nome do paciente (titulo), atendimento e hospital,
+  // em todas as colunas de uma vez. Sem acento e minúsculo para casar "joao"↔"João".
+  const [busca, setBusca] = useState('')
 
-  const tarefas = data?.tarefas
+  const tarefasRaw = data?.tarefas
+  // Aplica a busca a cada coluna, preservando a estrutura por coluna do payload.
+  const tarefas = useMemo(() => {
+    if (!tarefasRaw) return tarefasRaw
+    const q = normalizarBusca(busca)
+    if (!q) return tarefasRaw
+    const filtrado = {} as NonNullable<typeof tarefasRaw>
+    for (const key of Object.keys(tarefasRaw) as Array<keyof typeof tarefasRaw>) {
+      filtrado[key] = (tarefasRaw[key] ?? []).filter((t) =>
+        normalizarBusca(
+          `${t.titulo ?? ''} ${t.atendimento ?? ''} ${t.hospital_nome ?? ''}`,
+        ).includes(q),
+      )
+    }
+    return filtrado
+  }, [tarefasRaw, busca])
   const ehTecnico = data?.papel === 'tecnico'
   const ehAdmin = data?.papel === 'admin'
   // Admin vê o quadro completo (5 colunas); técnico só a análise; demais, as 4 operacionais.
@@ -269,6 +298,35 @@ export default function Kanban() {
         </div>
       )}
 
+      {/* Busca de card: filtra todas as colunas por paciente/atendimento/hospital. */}
+      {tarefasRaw && (
+        <div className="kb-busca-row">
+          <div className="kb-busca-wrap">
+            <svg className="kb-busca-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+            <input
+              type="text"
+              className="bm-input"
+              style={{ paddingLeft: 32, width: 300 }}
+              placeholder="Buscar card por paciente, atendimento, hospital…"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+            />
+            {busca && (
+              <button className="kb-busca-clear" onClick={() => setBusca('')} aria-label="Limpar busca" title="Limpar">✕</button>
+            )}
+          </div>
+          {busca && (
+            <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
+              {total} resultado{total !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      )}
+
+      {tarefas && busca && total === 0 && (
+        <div className="empty-state">Nenhum card encontrado para “{busca}”.</div>
+      )}
+
       {tarefas && (
         <div
           className={`kb-board${atualizando ? ' atualizando' : ''}`}
@@ -317,7 +375,7 @@ export default function Kanban() {
                   {itens.length === 0 && (
                     <div className="kb-empty">
                       {col.key === 'analise_tecnica'
-                        ? 'Tudo em dia — nenhum relatório do auditor aguardando seu parecer.'
+                        ? 'Tudo em dia. Nenhum relatório do auditor aguardando seu parecer.'
                         : 'Nenhuma tarefa aqui'}
                     </div>
                   )}
@@ -428,7 +486,7 @@ const KanbanCard = memo(function KanbanCard({ tarefa, onAbrir, onAbrirPendencia,
             <OpAvatar opKey={tarefa.operadora_key} size={20} />
           </span>
         )}
-        <span className="kb-card-nome">{tarefa.titulo}</span>
+        <span className="kb-card-nome">{nomeProprio(tarefa.titulo)}</span>
         {tarefa.dias_sem_relatorio != null && (
           <Badge variant={tarefa.dias_sem_relatorio > 7 ? 'danger' : 'warning'}>
             <span className="kb-dias">{tarefa.dias_sem_relatorio}d</span>
@@ -517,7 +575,7 @@ function CobrancaCard({ tarefa, onCobrar, cobrando }: {
             <OpAvatar opKey={tarefa.operadora_key} size={20} />
           </span>
         )}
-        <span className="kb-card-nome">{tarefa.titulo}</span>
+        <span className="kb-card-nome">{nomeProprio(tarefa.titulo)}</span>
         {tarefa.dias_sem_censo != null && (
           <Badge variant={tarefa.dias_sem_censo > 3 ? 'danger' : 'warning'}>
             <span className="kb-dias">{tarefa.dias_sem_censo}d</span>
@@ -528,7 +586,7 @@ function CobrancaCard({ tarefa, onCobrar, cobrando }: {
       <div className="kb-card-meta" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
         <span>
           <span style={{ color: 'var(--muted-2)' }}>Censo faltante de </span>
-          {labelCurto(tarefa.data_ref) || '—'}
+          {labelCurto(tarefa.data_ref) || '-'}
         </span>
         <span>
           <span style={{ color: 'var(--muted-2)' }}>Último censo </span>
@@ -592,7 +650,7 @@ function AnaliseCard({ tarefa, onAbrir }: { tarefa: KanbanTarefa; onAbrir: () =>
         <div className="kb-at-relbox-lbl">Relatório do auditor</div>
         {rel?.descricao
           ? <div className="kb-analise-preview">{rel.descricao}</div>
-          : <div className="kb-at-relbox-vazio">Sem texto — baixe o documento anexado ao abrir o card.</div>}
+          : <div className="kb-at-relbox-vazio">Sem texto. Baixe o documento anexado ao abrir o card.</div>}
       </div>
 
       {/* Ação explícita: não deixa dúvida do que fazer com o card. */}
@@ -728,7 +786,7 @@ function AnaliseModal({ tarefa, onClose, onToast, onDone }: {
             <textarea
               value={comentario}
               onChange={(e) => setComentario(e.target.value)}
-              placeholder="Descreva o que foi analisado — obrigatório para aprovar ou rejeitar"
+              placeholder="Descreva o que foi analisado (obrigatório para aprovar ou rejeitar)"
               style={{ minHeight: 96 }}
               autoFocus
             />
@@ -799,7 +857,7 @@ function PendenciaModal({ tarefa, onClose, onResolver, resolvendo }: {
       <div className="kb-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="kb-modal-head">
           <div>
-            <div className="kb-modal-title">{tarefa.titulo}</div>
+            <div className="kb-modal-title">{nomeProprio(tarefa.titulo)}</div>
             <div className="kb-modal-sub">
               {tarefa.hospital_nome && <span>{tarefa.hospital_nome}</span>}
               {tarefa.arquivo && (
@@ -970,7 +1028,7 @@ function EncaixeModal({ item, hospitais, onClose, onToast, onDone }: {
       // Se o (hospital, atendimento) já existia, o backend encaixou no existente
       // em vez de duplicar — avisa para o analista não achar que criou um paciente novo.
       onToast(res.ja_existia
-        ? '✓ Paciente já existia — relatório encaixado nele'
+        ? '✓ Paciente já existia. Relatório encaixado nele'
         : '✓ Paciente cadastrado e relatório encaixado')
       onDone()
     } catch (e) {
@@ -1177,7 +1235,7 @@ function BuscaInternacao({ selecionada, onSelecionar, nomeSugerido }: {
     return (
       <div className="rr-sel">
         <div className="rr-sel-info">
-          <span className="rr-sel-nome">{selecionada.nome || `Internação #${selecionada.id}`}</span>
+          <span className="rr-sel-nome">{nomeProprio(selecionada.nome) || `Internação #${selecionada.id}`}</span>
           <span className="rr-sel-meta">
             {selecionada.hospital_nome && <>{selecionada.hospital_nome} · </>}
             #{selecionada.id}
@@ -1207,7 +1265,7 @@ function BuscaInternacao({ selecionada, onSelecionar, nomeSugerido }: {
           )}
           {!isFetching && itens.map((i) => (
             <button type="button" key={i.id} className="rr-busca-item" onClick={() => onSelecionar(i)}>
-              <span className="rr-busca-item-nome">{i.nome || `Internação #${i.id}`}</span>
+              <span className="rr-busca-item-nome">{nomeProprio(i.nome) || `Internação #${i.id}`}</span>
               <span className="rr-busca-item-meta">
                 {i.hospital_nome && <>{i.hospital_nome} · </>}
                 {i.atendimento && <>at. {i.atendimento} · </>}

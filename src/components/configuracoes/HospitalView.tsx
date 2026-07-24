@@ -6,6 +6,7 @@ import { usePageHeader } from '../PageHeader'
 import { StatusBadge } from '../StatusBadge'
 import Toast from '../Toast'
 import { removerEscala } from '../../services/escala.service'
+import { nomeProprio } from '../../lib/texto'
 import { localStyles, SERVICO_LABEL } from './configuracoes.styles'
 import { StatMini } from './shared'
 import { AddEscalaHospForm } from './forms'
@@ -79,7 +80,7 @@ export default function HospitalView({ opSel, hosp, profs, onNav, onToast, onCha
                 {hosp.internacoes.slice(0, 15).map((p, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
                     <div className="flex-1 truncate">
-                      <div className="fw-6 truncate" style={{ fontSize: 'var(--t-sm)' }}>{p.nome || `Paciente #${p.atendimento}`}</div>
+                      <div className="fw-6 truncate" style={{ fontSize: 'var(--t-sm)' }}>{nomeProprio(p.nome) || `Paciente #${p.atendimento}`}</div>
                       <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)' }}>{p.leito || '—'} · {p.dias || 0}d internado</div>
                     </div>
                     {p.status_relatorio && <StatusBadge sr={p.status_relatorio} />}

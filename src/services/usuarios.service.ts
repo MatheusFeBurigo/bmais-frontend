@@ -30,6 +30,12 @@ export function redefinirSenhaUsuario(userId: string, password: string): Promise
   return apiFetch(`/usuarios/${userId}/senha`, { method: 'PATCH', body: { password } })
 }
 
+/** Admin apaga uma conta de acesso (profile + vínculos + Auth). Irreversível.
+ *  O backend impede apagar a própria conta e o último admin. */
+export function apagarUsuario(userId: string): Promise<unknown> {
+  return apiFetch(`/usuarios/${userId}`, { method: 'DELETE' })
+}
+
 /** O usuário logado troca a própria senha. */
 export function alterarMinhaSenha(password: string): Promise<unknown> {
   return apiFetch('/me/senha', { method: 'POST', body: { password } })
