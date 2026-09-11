@@ -7,15 +7,18 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../auth/AuthContext'
 import type { Usuario, UserRole } from '../types/api'
-import { Badge, LoadingState, Modal } from './ui'
+import { Badge, LoadingState } from './ui'
 import Toast from './Toast'
 import ResetSenhaModal from './equipe/ResetSenhaModal'
+import ApagarUsuarioModal from './equipe/ApagarUsuarioModal'
 import { useUsuarios } from '../hooks/useUsuarios'
 import { useTodosHospitais } from '../hooks/useEquipe'
-import { apagarUsuario } from '../services/usuarios.service'
-import { queryKeys } from '../lib/queryKeys'
-import { ROLE_LABEL, ROLE_VARIANT } from '../lib/usuarioRoles'
+import { invalidarPorEvento } from '../lib/invalidation'
+import { ROLE_LABEL, ROLE_VARIANT, ROLES_ORDEM } from '../lib/usuarioRoles'
 
+const IconSearch = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+)
 const IconPlus = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
 )
@@ -29,6 +32,7 @@ export default function UsuariosAcesso() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [roleFiltro, setRoleFiltro] = useState<'todos' | UserRole>('todos')
+  const [busca, setBusca] = useState('')
   // Usuário cuja senha está sendo redefinida na modal (null = fechada).
   const [resetAlvo, setResetAlvo] = useState<Usuario | null>(null)
   // Usuário a ser apagado (modal de confirmação). null = fechada.
@@ -51,20 +55,46 @@ export default function UsuariosAcesso() {
 
   const usuarios = data?.usuarios ?? []
   const contagem = (r: UserRole) => usuarios.filter((u) => u.role === r).length
-  const usuariosVisiveis = roleFiltro === 'todos'
-    ? usuarios
-    : usuarios.filter((u) => u.role === roleFiltro)
+  const q = busca.trim().toLowerCase()
+  const usuariosVisiveis = usuarios.filter((u) => {
+    if (roleFiltro !== 'todos' && u.role !== roleFiltro) return false
+    if (!q) return true
+    return (u.nome || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)
+  })
 
   return (
-    <div style={{ marginTop: 28 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div>
-          <div className="section-label" style={{ marginBottom: 2 }}>Usuários de acesso</div>
-          <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
-            Contas que fazem login na plataforma. Você define e-mail, senha e nível de acesso.
-          </div>
+    // Sem marginTop/título próprios: isto é uma ABA da tela Operações, e o
+    // cabeçalho da página já diz o que é (antes era uma seção empilhada).
+    <div>
+      {/* Barra unica: busca + papel + acao. Antes eram 7 pilulas de papel numa
+          fileira que quebrava em duas linhas — com nomes longos ("Administrativo",
+          "Analista interno") viravam um amontoado de tags sem hierarquia. Um
+          select diz "isto e UM filtro com opcoes" no lugar de 7 botoes soltos. */}
+      <div className="ops-toolbar">
+        <div className="ops-search">
+          {IconSearch}
+          <input
+            className="bm-input"
+            placeholder="Buscar por nome ou e-mail…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
         </div>
-        <button className="btn btn-primary btn-sm" onClick={() => navigate('/usuarios/novo')}>
+        <select
+          className="bm-input"
+          value={roleFiltro}
+          onChange={(e) => setRoleFiltro(e.target.value as 'todos' | UserRole)}
+          style={{ width: 'auto', flexShrink: 0 }}
+          aria-label="Filtrar por nível de acesso"
+        >
+          <option value="todos">Todos os níveis ({usuarios.length})</option>
+          {ROLES_ORDEM.map((r) => (
+            <option key={r} value={r} disabled={contagem(r) === 0}>
+              {ROLE_LABEL[r]} ({contagem(r)})
+            </option>
+          ))}
+        </select>
+        <button className="btn btn-primary btn-sm" onClick={() => navigate('/usuarios/novo')} style={{ flexShrink: 0 }}>
           {IconPlus}
           Novo usuário
         </button>
@@ -74,21 +104,6 @@ export default function UsuariosAcesso() {
       {isError && (
         <div style={{ fontSize: 'var(--t-sm)', color: 'var(--danger)', padding: '12px 0' }}>
           Não foi possível carregar os usuários.
-        </div>
-      )}
-
-      {data && usuarios.length > 0 && (
-        <div className="tab-section" style={{ marginBottom: 10 }}>
-          {([
-            ['todos', `Todos (${usuarios.length})`],
-            ['admin', `${ROLE_LABEL.admin} (${contagem('admin')})`],
-            ['diretor', `${ROLE_LABEL.diretor} (${contagem('diretor')})`],
-            ['gestor', `${ROLE_LABEL.gestor} (${contagem('gestor')})`],
-            ['administrativo', `${ROLE_LABEL.administrativo} (${contagem('administrativo')})`],
-            ['tecnico', `${ROLE_LABEL.tecnico} (${contagem('tecnico')})`],
-          ] as const).map(([r, lbl]) => (
-            <button key={r} className={`tab-sec-btn${roleFiltro === r ? ' active' : ''}`} onClick={() => setRoleFiltro(r)}>{lbl}</button>
-          ))}
         </div>
       )}
 
@@ -112,7 +127,10 @@ export default function UsuariosAcesso() {
                   <tr key={u.user_id}>
                     <td style={{ fontWeight: 500 }}>{u.nome || <span style={{ color: 'var(--muted-2)' }}>—</span>}</td>
                     <td>{u.email ?? '—'}</td>
-                    <td><Badge variant={ROLE_VARIANT[u.role]}>{ROLE_LABEL[u.role]}</Badge></td>
+                    <td>
+                      <Badge variant={ROLE_VARIANT[u.role]}>{ROLE_LABEL[u.role]}</Badge>
+                      {u.ativo === false && <> <Badge variant="warning" dot>Suspenso</Badge></>}
+                    </td>
                     <td><HospitaisResumo keys={u.hospitais ?? []} nomePorKey={nomePorKey} /></td>
                     <td>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
@@ -143,9 +161,14 @@ export default function UsuariosAcesso() {
                 {usuariosVisiveis.length === 0 && (
                   <tr>
                     <td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 12px' }}>
+                      {/* A mensagem tem de citar o filtro que de fato esvaziou a
+                          lista: com busca ativa e nivel "todos", falar do nivel
+                          seria enganoso (e ROLE_LABEL['todos'] nem existe). */}
                       {usuarios.length === 0
                         ? 'Nenhum usuário cadastrado ainda.'
-                        : `Nenhum usuário com o nível ${ROLE_LABEL[roleFiltro as UserRole]}.`}
+                        : busca.trim()
+                          ? `Nenhum usuário corresponde a “${busca.trim()}”${roleFiltro !== 'todos' ? ` no nível ${ROLE_LABEL[roleFiltro]}` : ''}.`
+                          : `Nenhum usuário com o nível ${ROLE_LABEL[roleFiltro as UserRole]}.`}
                     </td>
                   </tr>
                 )}
@@ -171,67 +194,13 @@ export default function UsuariosAcesso() {
           onDone={(msg) => {
             setApagarAlvo(null)
             setToast(msg)
-            qc.invalidateQueries({ queryKey: queryKeys.usuarios() })
+            invalidarPorEvento(qc, 'usuariosAlterados')
           }}
           onError={(msg) => setToast(msg)}
         />
       )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </div>
-  )
-}
-
-// Modal de confirmação para apagar uma conta de acesso. Ação irreversível: exige
-// um clique de confirmação explícito (não usa window.confirm, seguindo o padrão
-// de modais próprios do app). O backend ainda barra apagar a si mesmo/último admin.
-function ApagarUsuarioModal({ usuario, onClose, onDone, onError }: {
-  usuario: Usuario
-  onClose: () => void
-  onDone: (msg: string) => void
-  onError: (msg: string) => void
-}) {
-  const [apagando, setApagando] = useState(false)
-  const quem = usuario.nome || usuario.email || 'este usuário'
-
-  async function confirmar() {
-    setApagando(true)
-    try {
-      await apagarUsuario(usuario.user_id)
-      onDone(`Usuário ${quem} apagado`)
-    } catch (e) {
-      onError(e instanceof Error ? e.message : 'Não foi possível apagar o usuário.')
-    } finally {
-      setApagando(false)
-    }
-  }
-
-  return (
-    <Modal
-      title="Apagar usuário"
-      onClose={onClose}
-      footer={
-        <>
-          <button className="btn btn-outline" onClick={onClose} disabled={apagando}>Cancelar</button>
-          <button
-            className="btn btn-primary"
-            onClick={confirmar}
-            disabled={apagando}
-            style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}
-          >
-            {apagando ? 'Apagando…' : 'Apagar definitivamente'}
-          </button>
-        </>
-      }
-    >
-      <div style={{ fontSize: 'var(--t-base)', lineHeight: 1.5 }}>
-        Tem certeza que deseja apagar <strong>{quem}</strong>
-        {usuario.email && usuario.nome ? <> (<span className="mono">{usuario.email}</span>)</> : null}?
-        <div style={{ marginTop: 10, color: 'var(--muted)', fontSize: 'var(--t-sm)' }}>
-          A conta perde o acesso imediatamente e é removida do sistema e do login.
-          Esta ação é <strong>irreversível</strong>.
-        </div>
-      </div>
-    </Modal>
   )
 }
 

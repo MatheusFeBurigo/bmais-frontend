@@ -19,7 +19,7 @@ export default function Configuracoes() {
   const [toast, setToast] = useState<string | null>(null)
   const qc = useQueryClient()
 
-  const { data, isLoading } = useConfiguracoes({ op, hospital })
+  const { data, isLoading, isError } = useConfiguracoes({ op, hospital })
 
   function go(next: Record<string, string>) {
     const p = new URLSearchParams()
@@ -31,16 +31,25 @@ export default function Configuracoes() {
     invalidarPorEvento(qc, 'configuracaoAlterada')
   }
 
+  // Erro ANTES do loading: sem esta checagem uma falha de rede cai no `!data` e
+  // a tela fica num spinner eterno, indistinguível de "carregando".
+  if (isError) {
+    return <div className="empty-state t-danger">Erro ao carregar as configurações.</div>
+  }
+
   if (isLoading || !data) {
     return <CfgLoading />
   }
 
-  if (data.hospital_selected && data.op_selected) {
+  // A ficha do hospital nao depende mais de uma operadora selecionada: um
+  // hospital atende varias (N-N), entao a key do hospital basta para abri-la.
+  if (data.hospital_selected) {
     return (
       <HospitalView
         opSel={data.op_selected}
         hosp={data.hospital_selected}
         profs={data.profs_ativos}
+        operadoras={data.operadoras}
         onNav={go}
         onToast={setToast}
         onChanged={invalidar}

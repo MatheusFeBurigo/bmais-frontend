@@ -123,6 +123,11 @@ a{text-decoration:none;color:inherit}
 .sb-sub-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sb-sub-mark{font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;color:rgba(218,229,235,.38);flex-shrink:0;margin-left:6px}
 .sb-sub-item.has-alert .sb-sub-mark{color:var(--danger);font-weight:600}
+/* Pacientes NOVOS: agora o numero e o unico sinal da linha (o ponto pulsante
+   saiu junto com a contagem de internados), entao ele mesmo precisa carregar o
+   destaque — pilula solida em vez de texto tenue que se perderia. */
+.sb-sub-mark.novos{font-family:var(--font-mono);font-size:10px;font-weight:700;min-width:17px;text-align:center;padding:1px 5px;border-radius:99px;background:var(--danger);color:#fff;letter-spacing:0}
+.sb-sub-item.has-alert .sb-sub-mark.novos{color:#fff}
 .sb-dot{width:6px;height:6px;border-radius:50%;background:var(--danger);animation:sb-pulse 1.6s ease-in-out infinite;display:inline-block;flex-shrink:0;margin-right:2px}
 .sb-foot{margin-top:auto;padding:12px 12px 14px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:8px;color:rgba(218,229,235,.65);font-size:var(--t-sm);flex-shrink:0}
 .sb-foot-user{display:flex;align-items:center;gap:10px;padding:0 4px;min-width:0}
@@ -205,6 +210,11 @@ a{text-decoration:none;color:inherit}
 .bmais-table tbody tr.flag-success td:first-child{box-shadow:inset 3px 0 0 var(--success)}
 .bmais-table tbody tr:hover td{background:var(--surface-3)}
 .bmais-table tbody tr.flag-danger:hover td{background:var(--danger-bg-2)}
+/* Celula que e um atalho proprio dentro de uma linha ja clicavel (ex.: o
+   nome do hospital, que abre a ficha em vez do paciente). Discreta ate o
+   hover, para nao competir com o clique principal da linha. */
+.link-cell{background:none;border:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer;border-bottom:1px dashed var(--border-strong)}
+.link-cell:hover,.link-cell:focus-visible{color:var(--accent);border-bottom-color:currentColor}
 
 /* ── Leito tags ── */
 .leito{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.06em;font-family:var(--font-mono);border:1px solid}
@@ -223,6 +233,8 @@ a{text-decoration:none;color:inherit}
 .op-av.allianz,.op-av.AL{background:linear-gradient(135deg,#1F6FBE,#0F4D9E)}
 .op-av.mediservic,.op-av.MS{background:linear-gradient(135deg,#1976D2,#0D47A1)}
 .op-av.notredame,.op-av.ND{background:linear-gradient(135deg,#7B1FA2,#4A148C)}
+/* Visão consolidada (todas as operadoras): neutro escuro, sem cor de marca. */
+.op-av.todas{background:linear-gradient(135deg,#475569,#1E293B)}
 
 /* ── Section label ── */
 .section-label{font-size:10px;text-transform:uppercase;letter-spacing:.14em;font-weight:700;color:var(--muted);margin:22px 0 10px;display:flex;align-items:center;gap:10px}
@@ -242,11 +254,121 @@ a{text-decoration:none;color:inherit}
 .tab-count.zero{background:var(--surface-3);color:var(--muted);border:1px solid var(--border)}
 .tab-pill.active .tab-count.zero{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.7)}
 
+/* ── Tab section (pilulas de filtro) ──
+   Usadas pela tela de Logs (periodos). Moraram no CSS local da Equipe ate o
+   redesenho de Operacoes; como Logs tambem as usa, o lugar delas e aqui. */
+.tab-section{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.tab-sec-btn{padding:5px 14px;border-radius:99px;border:1px solid var(--border);background:var(--surface);font-size:var(--t-sm);font-weight:500;color:var(--ink-2);cursor:pointer;transition:background .12s,border-color .12s}
+.tab-sec-btn:hover{border-color:var(--ink-3)}
+.tab-sec-btn.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* ── Navegação da tela (nível 1) ──────────────────────────────────────────
+   Sublinhado, não pílula: as abas trocam de SEÇÃO, enquanto pílulas na mesma
+   tela filtram uma lista. Quando as duas coisas usavam o mesmo desenho (era o
+   caso aqui), a tela virava uma fileira dupla de tags sem hierarquia. */
+.ops-nav{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:18px}
+.ops-nav-btn{position:relative;padding:9px 14px;border:0;background:none;cursor:pointer;font-size:var(--t-md);font-weight:600;color:var(--muted);transition:color .12s;white-space:nowrap;display:inline-flex;align-items:center;gap:7px}
+.ops-nav-btn:hover{color:var(--ink-2)}
+.ops-nav-btn.active{color:var(--ink)}
+.ops-nav-btn.active::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;background:var(--primary);border-radius:2px 2px 0 0}
+.ops-nav-count{font-family:var(--font-mono);font-size:10px;padding:1px 6px;border-radius:99px;background:var(--surface-3);border:1px solid var(--border);color:var(--muted);font-weight:600}
+.ops-nav-btn.active .ops-nav-count{background:var(--primary-soft);border-color:var(--primary-3);color:var(--primary)}
+
+/* ── Barra de ferramentas da lista (nível 2) ──────────────────────────────
+   Busca + segmentado + ação, numa linha só. Substitui as pílulas soltas. */
+.ops-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.ops-search{position:relative;flex:1;min-width:180px}
+.ops-search svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted-2);pointer-events:none}
+.ops-search input{padding-left:29px}
+
+/* Segmentado: um controle único (fundo comum, botões dentro), que se lê como
+   UM filtro com opções — diferente de N pílulas independentes. */
+.ops-seg{display:inline-flex;background:var(--surface-3);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px}
+.ops-seg-btn{padding:4px 11px;border:0;background:none;border-radius:6px;font-size:var(--t-sm);font-weight:500;color:var(--muted);cursor:pointer;transition:background .12s,color .12s;white-space:nowrap}
+.ops-seg-btn:hover:not(:disabled){color:var(--ink-2)}
+.ops-seg-btn.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(11,26,38,.08);font-weight:600}
+/* Categoria vazia: visível (a contagem informa) mas não clicável — filtrar por
+   ela só levaria a um vazio. */
+.ops-seg-btn:disabled{opacity:.4;cursor:default}
+
+/* Resumo enxuto no lugar dos KPIs gigantes: números pequenos numa linha. */
+.ops-resumo{display:flex;align-items:baseline;gap:6px;font-size:var(--t-sm);color:var(--muted)}
+.ops-resumo b{font-size:var(--t-md);color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+.ops-resumo-sep{color:var(--border-strong)}
+
+/* Hospital dentro da operadora (tela Operacoes): nome abre a ficha, X exclui.
+   A lista e densa (uma operadora tem ~100 hospitais), entao o item nao ganha
+   borda propria — o afford e o hover, e o X so aparece na linha sob o cursor
+   para nao poluir a grade com 100 icones de perigo. */
+.malha-hosp-row{position:relative;display:flex;align-items:center;gap:2px;border-radius:6px;min-width:0;transition:background .12s}
+.malha-hosp-row:hover{background:var(--primary-soft)}
+.malha-hosp-nome{flex:1;min-width:0;text-align:left;font-size:var(--t-sm);padding:4px 6px;color:var(--ink);background:none;border:0;border-radius:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:inherit}
+.malha-hosp-nome.botao{cursor:pointer}
+.malha-hosp-row:hover .malha-hosp-nome.botao{color:var(--primary)}
+
+/* Acao de excluir: lixeira, nao "x" — o x da linha se confundia com o de fechar
+   a modal logo acima. Fica oculta ate o hover para a grade de ~100 hospitais
+   nao virar um mural de icones de perigo. */
+.malha-hosp-x{flex-shrink:0;display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;background:none;border-radius:5px;color:var(--muted-2);cursor:pointer;opacity:0;transition:opacity .12s,color .12s,background .12s}
+.malha-hosp-row:hover .malha-hosp-x{opacity:1}
+.malha-hosp-x:hover{color:var(--danger);background:var(--danger-bg)}
+/* Teclado: sem hover, a acao precisa aparecer ao receber foco. */
+.malha-hosp-x:focus-visible{opacity:1;color:var(--danger)}
+
+/* ── Confirmacao inline ──
+   Faixa lateral + fundo tenue no lugar do vermelho pleno: o item ainda e um
+   registro de cadastro, nao um alerta. O estado se le pela barra e pelo par de
+   botoes de acao, sem precisar gritar. */
+.malha-hosp-row.confirmando{background:var(--surface-3);box-shadow:inset 2px 0 0 var(--danger);padding-left:4px}
+.malha-hosp-row.confirmando .malha-hosp-nome{color:var(--ink-2);font-weight:600}
+
+/* A acao destrutiva leva RoTULO, nao icone: um "check" vermelho e ambiguo —
+   vermelho le-se como "parar", entao o botao que confirma a exclusao podia ser
+   lido como o que a cancela. Numa acao irreversivel essa duvida nao pode
+   existir. "Excluir" escrito nao tem como ser confundido; o cancelar, que e o
+   caminho seguro, fica como "x" discreto ao lado. */
+.malha-hosp-acao{flex-shrink:0;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border:1px solid var(--danger);background:var(--danger);color:#fff;border-radius:5px;cursor:pointer;font-size:var(--t-xs);font-weight:700;font-family:inherit;letter-spacing:.01em;transition:filter .12s}
+.malha-hosp-acao:hover:not(:disabled){filter:brightness(1.12)}
+.malha-hosp-acao:disabled{opacity:.6;cursor:default}
+.malha-hosp-cancelar{flex-shrink:0;display:grid;place-items:center;width:22px;height:22px;padding:0;border:1px solid transparent;background:none;border-radius:5px;color:var(--muted);cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+.malha-hosp-cancelar:hover:not(:disabled){background:var(--surface);color:var(--ink-2);border-color:var(--border-strong)}
+.malha-hosp-cancelar:disabled{opacity:.5;cursor:default}
+
+/* Erro do 409: quebra em DUAS linhas dentro do item. Em coluna estreita a
+   mensagem competia com o nome do hospital pela mesma faixa e as duas saiam
+   truncadas ("Hospital Co..." + "O hospital tem 8 pac...") — justo quando o
+   texto e o que explica a recusa. */
+.malha-hosp-row.confirmando.com-erro{flex-wrap:wrap;padding-bottom:6px;background:var(--danger-bg)}
+.malha-hosp-row.confirmando.com-erro .malha-hosp-nome{flex:1 0 100%;color:var(--danger-2)}
+.malha-hosp-erro{flex:1;min-width:0;font-size:var(--t-xs);line-height:1.35;color:var(--danger-2);padding:0 6px;white-space:normal}
+.malha-hosp-btn{flex-shrink:0;font-size:var(--t-xs);font-weight:600;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--ink-2);cursor:pointer;font-family:inherit}
+.malha-hosp-btn:hover:not(:disabled){border-color:var(--ink-3)}
+.malha-hosp-btn:disabled{opacity:.6;cursor:default}
+
 /* ── Quick filters ── */
 .quick-filters{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);flex-wrap:wrap}
 .qf-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;background:var(--surface-3);border:1px solid var(--border);font-size:var(--t-sm);color:var(--ink-2);cursor:pointer;transition:background .12s,border-color .12s,color .12s;white-space:nowrap}
 .qf-chip:hover{border-color:var(--ink-3)}
 .qf-chip.active{background:var(--primary-soft);border-color:var(--primary-3);color:var(--primary)}
+
+/* ── Modal ──
+   Flex no backdrop centraliza nos dois eixos e o gap do padding garante folga
+   na tela pequena. O card tem TETO de altura (nunca ultrapassa a viewport) e
+   divide-se em cabecalho fixo / corpo rolante / rodape fixo — antes o card
+   crescia livre e o rodape com os botoes saia da tela. */
+.modal-backdrop{position:fixed;inset:0;background:rgba(11,26,38,.35);backdrop-filter:blur(2px);z-index:50;animation:fadein .2s;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.modal-card{width:100%;max-width:440px;max-height:calc(100vh - 40px);display:flex;flex-direction:column;position:relative;margin:auto}
+.modal-head{flex-shrink:0;align-items:center}
+.modal-body{overflow-y:auto;overscroll-behavior:contain;flex:1;min-height:0}
+/* Modal aberta POR CIMA de outra camada (ex.: a ficha do hospital chamada de
+   dentro do drawer do paciente, z-index 51). Sem isto ela abriria atras. */
+.modal-backdrop.modal-sobreposta{z-index:60}
+.modal-foot{flex-shrink:0;padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+/* Telas baixas/estreitas: a modal encosta nas bordas para ganhar area util. */
+@media (max-width:560px),(max-height:560px){
+  .modal-backdrop{padding:10px}
+  .modal-card{max-height:calc(100vh - 20px)}
+}
 
 /* ── Drawer ── */
 .drawer-backdrop{position:fixed;inset:0;background:rgba(11,26,38,.35);backdrop-filter:blur(2px);z-index:50;animation:fadein .2s}

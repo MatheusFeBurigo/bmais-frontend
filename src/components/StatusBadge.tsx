@@ -6,7 +6,6 @@ const BADGE: Record<string, { cls: string; label: string; dot: boolean }> = {
   VENCIDO: { cls: 'warning', label: 'Vencido', dot: true },
   PROXIMO_VENCER: { cls: 'caution', label: 'Próx. Vencer', dot: true },
   EM_DIA: { cls: 'success', label: 'Em Dia', dot: true },
-  AGUARDANDO: { cls: 'info', label: 'Aguardando', dot: true },
   ALTA_SEM_REL: { cls: 'danger', label: 'Alta s/Rel', dot: true },
   ALTA_REL_VENCIDO: { cls: 'warning', label: 'Alta Venc.', dot: true },
   ALTA_OK: { cls: 'success', label: 'Alta OK', dot: true },

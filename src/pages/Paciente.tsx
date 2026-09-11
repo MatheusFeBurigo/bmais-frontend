@@ -9,10 +9,11 @@ import { StatusBadge, AutorChip, MedicoChip, roleVisual } from '../components/St
 import MedicoCombobox from '../components/MedicoCombobox'
 import Toast from '../components/Toast'
 import { LoadingState } from '../components/ui'
+import HospitalDetalhesModal from '../components/HospitalDetalhesModal'
 import { useEditarInternacao, useInternacaoDados, useInternacaoRelatorios, useInternacaoTimeline } from '../hooks/useInternacao'
 import { useEquipe } from '../hooks/useEquipe'
 import { useAuth } from '../auth/AuthContext'
-import { podeExecutar } from '../auth/permissions'
+import { podeExecutar, podeVer } from '../auth/permissions'
 import { baixarAnexoRelatorio, registrarRelatorioRapido, type InternacaoEdicao } from '../services/internacao.service'
 import { queryKeys } from '../lib/queryKeys'
 import { invalidarPorEvento } from '../lib/invalidation'
@@ -47,6 +48,8 @@ export default function Paciente() {
   const [obsRel, setObsRel] = useState('')
   const [salvandoRel, setSalvandoRel] = useState(false)
   const [erroRel, setErroRel] = useState<string | null>(null)
+  // Ficha do hospital, aberta pelo nome no subtítulo da página.
+  const [hospitalAberto, setHospitalAberto] = useState(false)
 
   function abrirRegistro() {
     setDataVisita(hojeISO())
@@ -156,7 +159,19 @@ export default function Paciente() {
         ),
         subtitle: d ? (
           <>
-            Atend. <span className="mono">{d.atendimento || '—'}</span> · {d.hospital_nome || '—'}
+            Atend. <span className="mono">{d.atendimento || '—'}</span> ·{' '}
+            {d.hospital_key && d.hospital_nome ? (
+              <button
+                type="button"
+                className="link-cell"
+                title={`Ver detalhes de ${d.hospital_nome}`}
+                onClick={() => setHospitalAberto(true)}
+              >
+                {d.hospital_nome}
+              </button>
+            ) : (
+              d.hospital_nome || '—'
+            )}
             {d.dias != null && <> · {d.dias}d internado</>}
             {d.gatilho != null && <> (gatilho: {d.gatilho}d)</>}
           </>
@@ -369,6 +384,20 @@ export default function Paciente() {
           </div>
         </div>
       </div>
+
+      {hospitalAberto && d.hospital_key && (
+        <HospitalDetalhesModal
+          hospital={{ key: d.hospital_key, nome: d.hospital_nome || d.hospital_key }}
+          onClose={() => setHospitalAberto(false)}
+          // Mesma regra do painel: o atalho para a ficha editável só existe para
+          // quem tem a tela de Configurações.
+          onAbrirCadastro={
+            podeVer(role, 'configuracoes')
+              ? (key) => { setHospitalAberto(false); navigate(`/configuracoes?hospital=${encodeURIComponent(key)}`) }
+              : undefined
+          }
+        />
+      )}
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </div>

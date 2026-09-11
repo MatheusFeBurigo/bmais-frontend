@@ -11,7 +11,7 @@ import AppLayout from './components/AppLayout'
 import {
   importDashboard, importDiretoria, importGestor,
   importEquipe, importConfiguracoes, importUpload,
-  importKanban, importPaciente, importUsuarioForm,
+  importKanban, importPaciente, importUsuarioForm, importLogs,
 } from './routes'
 
 // Páginas carregadas sob demanda (code-splitting). Diretoria e Gestor arrastam
@@ -26,6 +26,7 @@ const Upload = lazy(importUpload)
 const Kanban = lazy(importKanban)
 const Paciente = lazy(importPaciente)
 const UsuarioForm = lazy(importUsuarioForm)
+const Logs = lazy(importLogs)
 
 function PageFallback() {
   return <LoadingState style={{ minHeight: '100vh' }} />
@@ -117,8 +118,10 @@ function ProtectedRoutes() {
           path="/equipe"
           element={<GatedRoute screen="equipe"><Equipe /></GatedRoute>}
         />
-        <Route path="/upload" element={<Upload />} />
+        <Route path="/upload" element={<GatedRoute screen="upload"><Upload /></GatedRoute>} />
         <Route path="/kanban" element={<GatedRoute screen="kanban"><Kanban /></GatedRoute>} />
+        {/* Movimentações (auditoria): analista interno e admin (EXCLUSIVAS.logs). */}
+        <Route path="/logs" element={<GatedRoute screen="logs"><Logs /></GatedRoute>} />
         <Route path="/paciente/:id" element={<Paciente />} />
         {/* Gestão de usuários (admin-only): /novo antes de /:id p/ o literal vencer. */}
         <Route path="/usuarios/novo" element={<RequireAdmin><UsuarioForm /></RequireAdmin>} />

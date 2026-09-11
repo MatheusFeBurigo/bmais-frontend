@@ -2,28 +2,15 @@
 // Reusa o endpoint de criação manual (dedupe por hospital+atendimento no backend).
 // Fluxo de dois níveis: escolhe-se a operadora e então o hospital dela (via um
 // combobox pesquisável de valor fechado — digita para filtrar, seleciona um item real).
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Modal } from '../ui'
+import { HospitalCombobox } from '../HospitalCombobox'
 import { criarPacienteManual } from '../../services/dashboard.service'
 import { invalidarPorEvento } from '../../lib/invalidation'
 import type { Hospital, PacienteNovo } from '../../types/api'
 
 const labelStyle = { display: 'block', marginBottom: 5, fontSize: 10, letterSpacing: '.1em', fontWeight: 600 as const }
-
-// Normaliza para comparação: minúsculas e sem acentos, para "sao" casar com "São".
-function normalizar(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
-}
-
-// Estilos do combobox de hospital (mesmo visual do MedicoCombobox).
-const comboStyles = `
-.mc-wrap{position:relative}
-.mc-menu{position:absolute;z-index:20;left:0;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md,8px);box-shadow:0 8px 24px rgba(6,46,92,.12);max-height:200px;overflow-y:auto;padding:4px}
-.mc-opt{padding:7px 10px;font-size:var(--t-sm);color:var(--ink-2);border-radius:6px;cursor:pointer}
-.mc-opt:hover,.mc-opt.active{background:var(--primary-soft);color:var(--primary)}
-.mc-empty{padding:8px 10px;font-size:var(--t-sm);color:var(--muted)}
-`
 
 // Domínio fechado do tipo de leito (mesmo vocabulário de Paciente.tsx / LeitoTag).
 const LEITO_OPCOES = [
@@ -59,72 +46,17 @@ export default function AddPacienteModal({
   const [medico, setMedico] = useState('')
   const [saving, setSaving] = useState(false)
 
-  // Combobox de hospital: texto digitado (buscaHospital) + valor fechado (hospital).
-  const [buscaHospital, setBuscaHospital] = useState(() =>
-    (hospitaisPorOperadora[operadoraInicial ?? ''] ?? []).find((h) => h.key === hospitalInicial)?.nome ?? '',
-  )
-  const [comboAberto, setComboAberto] = useState(false)
-  const [comboAtivo, setComboAtivo] = useState(0)
-  const comboRef = useRef<HTMLDivElement>(null)
-
   // Hospitais da operadora escolhida (1º nível). Ordenados por nome para a busca.
   const hospitaisDaOperadora = useMemo(() => {
     const lista = hospitaisPorOperadora[operadora] ?? []
     return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
   }, [hospitaisPorOperadora, operadora])
 
-  const hospitaisFiltrados = useMemo(() => {
-    const q = normalizar(buscaHospital)
-    // Só filtra quando o texto ainda não corresponde exatamente ao hospital escolhido
-    // (senão a lista sumiria para "1 resultado" logo após selecionar).
-    const jaSelecionado = hospitaisDaOperadora.some((h) => h.key === hospital && h.nome === buscaHospital)
-    const base = q && !jaSelecionado
-      ? hospitaisDaOperadora.filter((h) => normalizar(h.nome).includes(q))
-      : hospitaisDaOperadora
-    return base.slice(0, 50)
-  }, [buscaHospital, hospitaisDaOperadora, hospital])
-
   // Trocar de operadora invalida o hospital antes escolhido (era de outra operadora).
   function trocarOperadora(nova: string) {
     setOperadora(nova)
     setHospital('')
-    setBuscaHospital('')
-    setComboAberto(false)
   }
-
-  function selecionarHospital(h: Hospital) {
-    setHospital(h.key)
-    setBuscaHospital(h.nome)
-    setComboAberto(false)
-  }
-
-  function onBuscaChange(texto: string) {
-    setBuscaHospital(texto)
-    setHospital('')       // digitar reabre a escolha: valor fechado só volta ao selecionar
-    setComboAberto(true)
-    setComboAtivo(0)
-  }
-
-  function onComboKey(e: React.KeyboardEvent) {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault(); setComboAberto(true); setComboAtivo((i) => Math.min(i + 1, hospitaisFiltrados.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault(); setComboAtivo((i) => Math.max(i - 1, 0))
-    } else if (e.key === 'Enter' && comboAberto && hospitaisFiltrados[comboAtivo]) {
-      e.preventDefault(); selecionarHospital(hospitaisFiltrados[comboAtivo])
-    } else if (e.key === 'Escape') {
-      setComboAberto(false)
-    }
-  }
-
-  // Fecha o menu ao clicar fora.
-  useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (comboRef.current && !comboRef.current.contains(e.target as Node)) setComboAberto(false)
-    }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [])
 
   const podeSalvar = hospital.trim() !== '' && nome.trim() !== ''
     && atendimento.trim() !== '' && dataEntrada.trim() !== ''
@@ -172,7 +104,6 @@ export default function AddPacienteModal({
         </>
       }
     >
-      <style>{comboStyles}</style>
       <div style={{ display: 'grid', gap: 12 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
@@ -187,40 +118,13 @@ export default function AddPacienteModal({
           </div>
           <div>
             <label className="uppercase t-muted" style={labelStyle}>Hospital *</label>
-            <div className="mc-wrap" ref={comboRef}>
-              <input
-                type="text"
-                className="bm-input"
-                placeholder={operadora ? 'Digite ou selecione…' : 'Escolha a operadora primeiro'}
-                autoComplete="off"
-                disabled={!operadora}
-                value={buscaHospital}
-                onChange={(e) => onBuscaChange(e.target.value)}
-                onFocus={() => operadora && setComboAberto(true)}
-                onKeyDown={onComboKey}
-              />
-              {comboAberto && operadora && (
-                <div className="mc-menu">
-                  {hospitaisFiltrados.length === 0 && (
-                    <div className="mc-empty">
-                      {hospitaisDaOperadora.length === 0
-                        ? 'Nenhum hospital nesta operadora'
-                        : 'Nenhum hospital encontrado'}
-                    </div>
-                  )}
-                  {hospitaisFiltrados.map((h, i) => (
-                    <div
-                      key={h.key}
-                      className={`mc-opt${i === comboAtivo ? ' active' : ''}`}
-                      onMouseEnter={() => setComboAtivo(i)}
-                      onMouseDown={(e) => { e.preventDefault(); selecionarHospital(h) }}
-                    >
-                      {h.nome}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <HospitalCombobox
+              hospitais={hospitaisDaOperadora}
+              value={hospital}
+              disabled={!operadora}
+              placeholder={operadora ? 'Digite o nome do hospital…' : 'Escolha a operadora primeiro'}
+              onChange={setHospital}
+            />
           </div>
         </div>
         <div>

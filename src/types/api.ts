@@ -4,19 +4,40 @@ export interface Operadora {
   key: string
   nome: string
   ativo?: boolean
-  [k: string]: unknown
 }
 
-export interface Hospital {
+/** Operadora vinculada a um hospital (vinculo N-N). */
+export interface OperadoraVinculo {
   key: string
   nome: string
+}
+
+/** Campos cadastrais da ficha do hospital (migration 0015). Todos opcionais. */
+export interface HospitalFicha {
+  telefone?: string | null
+  email?: string | null
+  cnpj?: string | null
+  endereco?: string | null
+  cidade?: string | null
+  uf?: string | null
+  cep?: string | null
+  observacoes?: string | null
+}
+
+export interface Hospital extends HospitalFicha {
+  key: string
+  nome: string
+  /** Operadora principal (legado 1:N). Preferir `operadoras`. */
   operadora_key?: string
   operadora_nome?: string | null
+  /** Keys de TODAS as operadoras que o hospital atende. */
+  operadoras?: string[]
+  /** As mesmas, ja com nome amigavel para exibicao. */
+  operadoras_nomes?: OperadoraVinculo[]
   regiao?: string | null
   internados: number
   urgente: number
   altas: number
-  [k: string]: unknown
 }
 
 export interface Internacao {
@@ -50,10 +71,33 @@ export interface Internacao {
   alerta_relatorio?: boolean
   em_monitoramento?: boolean
   obs?: string | null
+  // Etiqueta da operadora dona do hospital — preenchida na Visão Geral
+  // consolidada (todas as operadoras), para a tabela dizer de quem é cada linha.
   operadora_key?: string
-  [k: string]: unknown
+  operadora_nome?: string | null
 }
 
+/** Contagens por hospital dentro de `DashboardStats.por_hospital`.
+ *  Espelha `_zero_hosp` em application/internacoes.py. */
+export interface StatsPorHospital {
+  key: string
+  nome: string
+  internados: number
+  altas: number
+  urgente: number
+  sem_relatorio: number
+  relatorio_vencido: number
+  proximo_vencer: number
+  relatorio_em_dia: number
+  longa_10: number
+  longa_30: number
+  altas_sem_relatorio: number
+  /** Presente só no consolidado (todas as operadoras). */
+  operadora_key?: string
+}
+
+/** Stats agregados de uma operadora. Espelha `_STATS_ZERADO` +
+ *  `dashboard_stats` em application/internacoes.py. */
 export interface DashboardStats {
   hoje_efetivo?: string
   total_internados?: number
@@ -62,12 +106,16 @@ export interface DashboardStats {
   proximo_vencer?: number
   relatorio_em_dia?: number
   em_monitoramento?: number
-  aguardando_gatilho?: number
-  longa_permanencia?: number
-  longa_avancada?: number
+  total_urgente?: number
+  total_atencao?: number
+  /** Permanência ≥ 10 e ≥ 30 dias (nomes do backend; não `longa_permanencia`). */
+  longa_10?: number
+  longa_30?: number
+  altas_recentes?: number
+  altas_sem_relatorio?: number
+  alerta_relatorio?: number
   total_altas?: number
-  por_hospital?: Array<Record<string, unknown>>
-  [k: string]: unknown
+  por_hospital?: StatsPorHospital[]
 }
 
 export interface DashboardPayload {
@@ -80,8 +128,11 @@ export interface DashboardPayload {
   hospital_atual: string | null
   q: string
   // Operadora fora do escopo do usuário: payload zerado e sem nome. O front
-  // redireciona à 1ª operadora permitida (ver Dashboard.tsx).
+  // volta à visão consolidada (ver Dashboard.tsx).
   sem_acesso?: boolean
+  // Visão CONSOLIDADA (sem operadora): stats somados de todas as operadoras do
+  // escopo; cada internação/hospital traz operadora_key/operadora_nome.
+  todas?: boolean
 }
 
 // Panorama de TODAS as operadoras num disparo (stats + hospitais, SEM a lista
@@ -106,10 +157,16 @@ export interface DashboardOverview {
   medias?: DashboardMedias
 }
 
+/** Operadora no sidebar. Espelha `sidebar_data` em application/internacoes.py. */
 export interface SidebarOp {
   key: string
   nome: string
-  [k: string]: unknown
+  internados?: number
+  urgente?: number
+  alertas?: number
+  /** Pacientes internados que ainda não têm nenhum relatório — os "novos".
+   *  É o marcador da sidebar; `urgente` soma estes aos de relatório vencido. */
+  novos?: number
 }
 
 export interface SidebarData {
@@ -120,12 +177,19 @@ export interface SidebarData {
 }
 
 // Papel de acesso do usuário (espelha a tabela `profiles` do backend).
-export type UserRole = 'admin' | 'diretor' | 'gestor' | 'administrativo' | 'tecnico'
+export type UserRole =
+  | 'admin' | 'diretor' | 'gestor' | 'administrativo' | 'tecnico'
+  /** Analista interno: LÊ os dados operacionais e a trilha de Movimentações, sem escrever
+   *  nada. Não vê Diretoria nem Gestor. */
+  | 'analista'
 
+// Resposta de POST /api/login (e de POST /api/sessao/renovar). `refresh_token`
+// só vem no modo Supabase; `expires_in` (s) é a validade do token de acesso.
 export interface LoginResponse {
   token: string
+  refresh_token?: string | null
   username: string
-  expires_in: number
+  expires_in: number | null
 }
 
 // Resposta de POST /api/register. Quando o projeto exige confirmação de e-mail,
@@ -155,12 +219,89 @@ export interface Usuario {
   nome?: string | null
   role: UserRole
   criado_em?: string
+  /** false = conta SUSPENSA pelo analista (403 em toda a API, sem apagar).
+   *  Ausente/true = ativa. */
+  ativo?: boolean
   /** Keys dos hospitais associados. Vazio = sem restrição (vê todos). */
   hospitais?: string[]
 }
 
 export interface UsuariosPayload {
   usuarios: Usuario[]
+}
+
+// ── Auditoria / Movimentações (GET /api/auditoria*) ────────────────────────
+// Um registro por ação feita na plataforma: quem (snapshot do usuário no
+// momento), o quê (ação/entidade/alvo), quando e o resultado HTTP.
+
+/** Família da ação. Espelha ENTIDADES do backend (application/auditoria.py). */
+export type AuditEntidade =
+  | 'relatorio' | 'paciente' | 'censo' | 'hospital' | 'operadora' | 'profissional'
+  | 'escala' | 'usuario' | 'sessao' | 'kanban' | 'sistema' | 'outro'
+
+export interface AuditLog {
+  id: number
+  /** Timestamp ISO (timestamptz do banco). */
+  criado_em: string
+  user_id?: string | null
+  user_email?: string | null
+  user_nome?: string | null
+  user_role?: UserRole | string | null
+  /** "entidade.verbo", ex.: relatorio.registrar. */
+  acao: string
+  entidade: AuditEntidade | string
+  /** Id/chave do alvo (relatório, sessão de upload, key do hospital…). */
+  entidade_id?: string | null
+  /** Frase humana já montada pelo backend. */
+  resumo: string
+  /** Contexto de negócio livre (paciente, arquivos, campos alterados…). */
+  detalhes?: Record<string, unknown> | null
+  metodo?: string | null
+  rota?: string | null
+  status?: number | null
+  resultado: 'ok' | 'erro'
+  ip?: string | null
+}
+
+export interface AuditoriaPayload {
+  itens: AuditLog[]
+  total: number
+  pagina: number
+  limite: number
+}
+
+export interface AuditoriaOpcoes {
+  entidades: Array<{ key: string; label: string }>
+  acoes: Array<{ key: string; label: string; entidade: string }>
+}
+
+export interface AuditoriaTotais {
+  acoes: number
+  ok: number
+  erros: number
+  /** Tentativas barradas por permissão (403). */
+  negados: number
+  hoje: number
+  por_entidade: Record<string, number>
+}
+
+/** Conta de acesso + sua atividade no período. `existe=false` = a conta foi
+ *  apagada mas a trilha dela permanece. */
+export interface AuditoriaUsuario extends Omit<Usuario, 'role'> {
+  role: UserRole | string | null
+  existe: boolean
+  total: number
+  ok: number
+  erros: number
+  por_entidade: Record<string, number>
+  ultimo_em?: string | null
+  ultimo_resumo?: string | null
+}
+
+export interface AuditoriaResumo {
+  de: string
+  totais: AuditoriaTotais
+  usuarios: AuditoriaUsuario[]
 }
 
 // ── Configurações (GET /api/configuracoes) ──────────────────────────────────
@@ -189,7 +330,6 @@ export interface OperadoraCard {
   regras: Partial<OperadoraRegras>
   responsaveis?: string
   hospitais_count: number
-  [k: string]: unknown
 }
 
 export interface OperadoraStats {
@@ -207,7 +347,6 @@ export interface OperadoraHospital {
   internados?: number
   urgente?: number
   operadora_key?: string
-  [k: string]: unknown
 }
 
 export interface OperadoraSelected {
@@ -226,17 +365,18 @@ export interface HospitalInternacao {
   leito?: string | null
   dias?: number
   status_relatorio?: string
-  [k: string]: unknown
 }
 
-export interface HospitalSelected {
+export interface HospitalSelected extends HospitalFicha {
   key: string
   nome: string
   regiao?: string | null
+  operadora_key?: string
+  operadoras?: string[]
+  operadoras_nomes?: OperadoraVinculo[]
   internados: number
   escala: Escala[]
   internacoes: HospitalInternacao[]
-  [k: string]: unknown
 }
 
 export interface ConfiguracoesPayload {
@@ -366,12 +506,14 @@ export interface GestorResposta {
 }
 
 // ── Kanban de tarefas do analista ─────────────────────────────────────────────
-// Quadro por TIPO/categoria (não por progresso). Três colunas, cada uma com sua
-// fonte: pendências de parsing (persistidas) + pacientes sem relatório/vencido
-// (derivados de status_relatorio, sempre atuais).
+// Quadro por TIPO/categoria (não por progresso). Cada coluna tem sua fonte:
+// pacientes sem relatório (derivados de status_relatorio, sempre atuais),
+// cobranças de censo e análise técnica.
+// A coluna "Analisar censo" saiu: a revisão da extração passou a acontecer na
+// própria tela de upload, onde o usuário completa ou descarta cada registro.
 
 /** Coluna do kanban = categoria de tarefa. */
-export type KanbanColuna = 'refazer_analise' | 'revisao_relatorio' | 'sem_relatorio' | 'cobrancas' | 'analise_tecnica'
+export type KanbanColuna = 'sem_relatorio' | 'cobrancas' | 'analise_tecnica'
 
 /** Relatório do auditor externo a analisar (card da coluna analise_tecnica). */
 export interface RelatorioExterno {
@@ -383,9 +525,7 @@ export interface RelatorioExterno {
   tem_arquivo?: boolean
 }
 
-/** Um card de tarefa. `internacao_id` presente → abre o drawer do paciente.
- *  `pendencia_id` presente → é pendência de parsing (resolúvel).
- *  `relatorio` presente → é pendência de relatório (abre a modal de encaixe). */
+/** Um card de tarefa. `internacao_id` presente → abre o drawer do paciente. */
 export interface KanbanTarefa {
   /** id da tarefa na sua fonte (pendência ou internação); estável p/ key React. */
   id: number | string
@@ -398,18 +538,8 @@ export interface KanbanTarefa {
   atendimento?: string | null
   /** Internação associada (colunas sem_relatorio/vencidos, e pendência já casada). */
   internacao_id?: number | null
-  /** Pendência de parsing (só coluna refazer_analise) — habilita "resolver". */
-  pendencia_id?: number | null
-  /** Motivos da pendência (refazer_analise) — por que a extração falhou. */
-  motivos?: string[]
   /** Dias sem relatório (sem_relatorio/vencidos), para priorização. */
   dias_sem_relatorio?: number | null
-  arquivo?: string | null        // arquivo de origem (pendência)
-  /** True se há PDF anexado no Storage — habilita o link "Ver PDF" no card. */
-  tem_pdf?: boolean
-  /** Pendência de relatório (coluna revisao_relatorio): payload completo do card
-   *  de revisão, consumido pela modal de encaixe (sugestões, campos, documento). */
-  relatorio?: RelatorioRevisaoItem
   /** Cobrança de censo (coluna cobrancas) — habilita "marcar cobrado". */
   cobranca_id?: number | null
   /** Dia cujo censo faltou (YYYY-MM-DD). */
@@ -427,30 +557,19 @@ export interface KanbanTarefa {
 /** Colunas de tarefas. O board do técnico traz só `analise_tecnica`; o do
  *  administrativo, as operacionais. Todas opcionais para cobrir os dois papéis. */
 export interface KanbanColunas {
-  refazer_analise?: KanbanTarefa[]
-  revisao_relatorio?: KanbanTarefa[]
   sem_relatorio?: KanbanTarefa[]
   cobrancas?: KanbanTarefa[]
   analise_tecnica?: KanbanTarefa[]
-}
-
-/** Hospital para o dropdown de "criar paciente" (cadastro completo do escopo). */
-export interface HospitalCriacao {
-  key: string
-  nome: string
-  operadora_key?: string | null
 }
 
 /** Payload do GET /api/kanban — tarefas + opções de filtro (recortadas ao escopo).
  *  `filtros` reusa o mesmo formato do Gestor (operadoras/hospitais do escopo). */
 export interface KanbanPayload {
   /** Qual board o backend montou: 'tecnico' (só análise técnica), 'administrativo'
-   *  (4 operacionais) ou 'admin' (quadro completo: operacionais + análise técnica). */
+   *  (2 operacionais) ou 'admin' (quadro completo: operacionais + análise técnica). */
   papel?: 'tecnico' | 'administrativo' | 'admin'
   tarefas: KanbanColunas
   filtros: GestorFiltros
-  /** Hospitais do escopo para cadastrar um paciente não vinculado na modal de encaixe. */
-  hospitais_criacao?: HospitalCriacao[]
 }
 
 /** Corpo de POST /api/kanban/analise/{id}/concluir — o parecer do técnico interno. */
@@ -475,7 +594,6 @@ export interface DiretoriaOperadora {
   longa_avancada: number
   total_altas: number
   sla: number
-  [k: string]: unknown
 }
 
 export interface TopHospital {
@@ -493,7 +611,6 @@ export interface DiretoriaPayload {
   relatorio_vencido: number
   proximo_vencer: number
   relatorio_em_dia: number
-  aguardando_gatilho: number
   em_monitoramento: number
   longa_permanencia: number
   longa_avancada: number
@@ -505,16 +622,91 @@ export interface DiretoriaPayload {
   trend_semanal: number[]
   trend_labels: string[]
   top_hospitais: TopHospital[]
-  [k: string]: unknown
 }
 
-// ── Upload de censos (POST /api/upload) ─────────────────────────────────────
+// ── Upload de censos (POST /api/upload/stage → /api/upload/processar) ───────
+// O parser extrai os pacientes; os válidos entram no banco. Os que não validaram
+// voltam em `pendentes_detalhe` (já persistidos como pendência do Kanban) para o
+// usuário completar na hora via POST /api/upload/pendencia/{id}/completar.
+
+/** Campo da ficha que o parser não capturou (ou capturou inválido) e a tela pede. */
+export type CampoCenso = 'atendimento' | 'nome' | 'data_entrada' | 'data_alta'
+
+/** Paciente extraído do censo que NÃO passou na validação. */
+export interface PendenteCenso {
+  /** Id da pendência persistida (null só se o backend não devolveu o id). */
+  pendencia_id: number | null
+  arquivo?: string
+  hospital_key?: string | null
+  hospital_nome?: string | null
+  /** Frases do validador (contexto para o usuário). */
+  motivos: string[]
+  /** Campos que o usuário precisa informar/corrigir para gravar. */
+  campos_faltantes: CampoCenso[]
+  // Ficha extraída — os 4 primeiros são editáveis; o resto é contexto.
+  atendimento?: string | null
+  nome?: string | null
+  data_entrada?: string | null
+  data_alta?: string | null
+  situacao?: string | null
+  data_nascimento?: string | null
+  setor?: string | null
+  leito_codigo?: string | null
+  tipo_leito?: string | null
+  especialidade?: string | null
+  medico?: string | null
+  convenio?: string | null
+  categoria?: string | null
+}
+
+/** Um paciente gravado por um arquivo do censo (conferência na tela de upload). */
+export interface PacienteGravado {
+  nome?: string | null
+  atendimento?: string | null
+  situacao: 'INTERNADO' | 'ALTA'
+  leito_codigo?: string | null
+  /** Convênio lido do próprio censo — o mesmo hospital atende várias operadoras. */
+  convenio?: string | null
+  data_entrada?: string | null
+  data_alta?: string | null
+}
+
 export interface UploadCensoResult {
   arquivo: string
   hospital?: string
   hospital_nome?: string
   tipo?: string
+  /** Pacientes válidos gravados. */
   total?: number
+  /** Pacientes que este envio CRIOU (o desfazer remove exatamente estes). */
+  criados?: number
+  /** Atendimentos que JÁ existiam e foram atualizados — o desfazer NÃO os remove. */
+  atualizados?: string[]
+  /** Quebra de `total` por situação. Os censos desta safra são MISTOS (o mesmo PDF
+   *  traz internados e as altas do dia) e a classificação é por paciente: quem tem
+   *  data_alta vira ALTA. Mostrar a quebra evita a leitura de que um arquivo de
+   *  altas teria cadastrado gente em leito. */
+  altas?: number
+  internados?: number
+  /** Quem entrou, nominalmente — a tela lista para conferência na hora. */
+  gravados_detalhe?: PacienteGravado[]
+  /** Telemetria do parser: divergência entre linhas extraídas e o total impresso no PDF. */
+  avisos?: string[]
+  /** Altas de pacientes sem entrada no sistema — ignoradas. */
+  descartados?: number
+  pendentes?: number
+  pendentes_detalhe?: PendenteCenso[]
+  /** O layout foi lido, mas o hospital não está no cadastro: nada foi gravado.
+   *  A tela pede o hospital e reprocessa o arquivo (mesma sessão). */
+  precisa_hospital?: boolean
+  /** Nome do hospital lido do PDF — sugestão para cadastrar/casar. */
+  hospital_sugerido?: string | null
+  /** Operadora lida do PDF: key do cadastro, ou null quando nenhuma casou
+   *  (nunca uma key inventada — a tela pede a escolha ao usuário). */
+  operadora?: string | null
+  operadora_nome?: string | null
+  /** Pacientes que o parser extraiu e ficaram aguardando o hospital. */
+  pacientes_extraidos?: number
   erro?: string
 }
 
@@ -523,68 +715,37 @@ export interface UploadCensoResponse {
   resultados: UploadCensoResult[]
 }
 
-// ── Upload de relatórios em lote (POST /api/relatorios/upload) ───────────────
-// Relatório completo é gravado direto na internação casada; incompleto vai ao Kanban.
-
-export interface RelatorioLoteResult {
-  arquivo: string
-  hospital_key?: string
-  hospital_nome?: string | null
-  medico?: string | null
-  data_relatorio?: string | null
-  total_entries?: number
-  // Entradas completas gravadas automaticamente na internação casada.
-  aplicados_auto?: number
-  // Entradas incompletas enviadas para revisão humana (card no Kanban).
-  enviados_revisao?: number
-  erro?: string
+/** Hospital informado pelo usuário para um arquivo cujo hospital o PDF não trouxe
+ *  no cadastro: um hospital cadastrado (`key`) OU um novo (`nome` + `operadora_key`,
+ *  auto-cadastrado ao processar). */
+export interface HospitalManual {
+  key?: string
+  nome?: string
+  operadora_key?: string
 }
 
-export interface RelatorioLoteResponse {
-  resultados: RelatorioLoteResult[]
-}
-
-// Resposta de POST /api/relatorios/refresh (pasta local, totais agregados).
-export interface RelatorioRefreshResponse {
-  arquivos: number
-  aplicados_auto?: number
-  enviados_revisao: number
-  resultados: RelatorioLoteResult[]
-  erro?: string
-}
-
-// ── Encaixe de relatório (coluna "Revisão Relatório" do Kanban) ─────────────
-// Payload de um card de relatório a encaixar numa internação (revisão humana).
-// Chega aninhado em KanbanTarefa.relatorio e alimenta a modal de encaixe.
-export interface RelatorioRevisaoItem {
-  pendencia_id: number
+// Corpo de POST /api/upload/pendencia/{id}/completar — só os campos enviados
+// sobrepõem o que o parser extraiu.
+export interface CompletarPendenciaPayload {
   hospital_key?: string | null
-  hospital_nome?: string | null
-  operadora_key?: string | null
-  nome_raw?: string | null
-  descricao?: string | null
-  medico?: string | null
-  data_relatorio?: string | null
-  status_indicado?: string | null
-  // Campos que o parser NÃO conseguiu capturar (badges): hospital|paciente|observações|médico|data.
-  campos_faltantes: string[]
-  // Internação (paciente) casada pelo nome (determinístico), pré-preenchendo o encaixe.
-  // null quando o nome não casou ('paciente' em campos_faltantes) — revisor escolhe à mão.
-  internacao_id?: number | null
-  arquivo?: string | null
-  tem_arquivo?: boolean
-  criado_em?: string | null
+  atendimento?: string | null
+  nome?: string | null
+  data_entrada?: string | null
+  data_alta?: string | null
 }
 
-// Corpo de POST /api/relatorios/revisao/{id}/confirmar — campos possivelmente editados.
-export interface ConfirmarEncaixePayload {
-  internacao_id: number
-  data_visita?: string | null
-  medico?: string | null
-  descricao?: string | null
+/** `ok=false` com 200 = ainda falta algo: `campos_faltantes` diz o quê. */
+export interface CompletarPendenciaResponse {
+  ok: boolean
+  pendencia_id?: number
+  /** Situação com que o paciente entrou — soma na coluna certa do placar do upload. */
+  situacao?: 'INTERNADO' | 'ALTA' 
+  erro?: string
+  motivos?: string[]
+  campos_faltantes?: CampoCenso[]
 }
 
-// Dados do paciente novo a cadastrar (modal de encaixe → "Criar paciente").
+// Dados do paciente novo a cadastrar (Visão Geral → "Adicionar paciente").
 // hospital_key/atendimento/nome/data_entrada são obrigatórios; o resto é opcional.
 export interface PacienteNovo {
   hospital_key: string
@@ -603,25 +764,6 @@ export interface CriarInternacaoResponse {
   ok: boolean
   internacao_id: number
   ja_existia?: boolean
-}
-
-// Item do autocomplete de busca de internações (seletor de encaixe no Kanban).
-export interface InternacaoBusca {
-  id: number
-  nome: string
-  atendimento?: string | null
-  hospital_key?: string | null
-  hospital_nome?: string | null
-  status?: string | null
-  data_entrada?: string | null
-}
-
-// Corpo de POST /api/relatorios/revisao/{id}/criar-encaixar — cria a internação e encaixa.
-export interface CriarEncaixePayload {
-  paciente: PacienteNovo
-  data_visita?: string | null
-  medico?: string | null
-  descricao?: string | null
 }
 
 export interface InternacaoDados {

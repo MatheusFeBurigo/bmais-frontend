@@ -1,7 +1,7 @@
 // Vista 3 — detalhe de hospital: pacientes internados + escala de auditores.
 // Extraída de pages/Configuracoes.tsx.
 import { useState } from 'react'
-import type { OperadoraSelected, HospitalSelected, Profissional } from '../../types/api'
+import type { OperadoraSelected, OperadoraCard, HospitalSelected, Profissional } from '../../types/api'
 import { usePageHeader } from '../PageHeader'
 import { StatusBadge } from '../StatusBadge'
 import Toast from '../Toast'
@@ -10,11 +10,15 @@ import { nomeProprio } from '../../lib/texto'
 import { localStyles, SERVICO_LABEL } from './configuracoes.styles'
 import { StatMini } from './shared'
 import { AddEscalaHospForm } from './forms'
+import FichaHospital from './FichaHospital'
 
-export default function HospitalView({ opSel, hosp, profs, onNav, onToast, onChanged, toast }: {
-  opSel: OperadoraSelected
+export default function HospitalView({ opSel, hosp, profs, operadoras, onNav, onToast, onChanged, toast }: {
+  // Opcional: a ficha do hospital abre sem operadora selecionada (um hospital
+  // atende varias, entao nenhuma delas o identifica). Quando vem, so recorta.
+  opSel: OperadoraSelected | null
   hosp: HospitalSelected
   profs: Profissional[]
+  operadoras: OperadoraCard[]
   onNav: (n: Record<string, string>) => void
   onToast: (m: string) => void
   onChanged: () => void
@@ -30,8 +34,12 @@ export default function HospitalView({ opSel, hosp, profs, onNav, onToast, onCha
       <span style={{ fontSize: 'var(--t-md)', color: 'var(--muted)', fontWeight: 400 }}>
         <span style={{ cursor: 'pointer' }} onClick={() => onNav({})}>Operadoras</span>
         {' / '}
-        <span style={{ cursor: 'pointer' }} onClick={() => onNav({ op: opSel.key })}>{opSel.nome}</span>
-        {' / '}
+        {opSel && (
+          <>
+            <span style={{ cursor: 'pointer' }} onClick={() => onNav({ op: opSel.key })}>{opSel.nome}</span>
+            {' / '}
+          </>
+        )}
       </span>
       {hosp.nome}
     </span>
@@ -62,6 +70,8 @@ export default function HospitalView({ opSel, hosp, profs, onNav, onToast, onCha
   return (
     <>
       <style>{localStyles}</style>
+
+      <FichaHospital hosp={hosp} operadoras={operadoras} onToast={onToast} onChanged={onChanged} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
         <StatMini label="Internados" value={hosp.internados} />
@@ -102,13 +112,15 @@ export default function HospitalView({ opSel, hosp, profs, onNav, onToast, onCha
         <div className="card">
           <div className="card-header">
             <div className="card-title">Escala de Auditores</div>
-            <button className="btn btn-outline btn-sm" onClick={() => setAddForm((v) => !v)}>Adicionar</button>
+            {(opSel || (hosp.operadoras?.length ?? 0) > 0) && (
+              <button className="btn btn-outline btn-sm" onClick={() => setAddForm((v) => !v)}>Adicionar</button>
+            )}
           </div>
           <div className="card-body">
             {addForm && (
               <AddEscalaHospForm
                 hosp={hosp}
-                opKey={opSel.key}
+                opKey={opSel?.key ?? hosp.operadoras?.[0] ?? ''}
                 profs={profs}
                 onClose={() => setAddForm(false)}
                 onToast={onToast}

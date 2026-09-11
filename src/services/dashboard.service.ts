@@ -17,10 +17,17 @@ export interface DashboardParams {
   q?: string
 }
 
-/** Payload da Visão Geral para uma operadora/filtro/hospital. */
+/** Sentinel de operadora: TODAS as operadoras (mesmo valor que o backend usa).
+ *  Na Visão Geral, operadora vazia ('') também significa "todas": o parâmetro é
+ *  omitido e o backend devolve o consolidado. */
+export const OPERADORA_TODAS = '__todas__'
+export const NOME_TODAS = 'Todas as operadoras'
+
+/** Payload da Visão Geral para uma operadora/filtro/hospital.
+ *  `operadora` vazia → visão CONSOLIDADA (todas as operadoras do escopo do usuário). */
 export function fetchDashboard(params: DashboardParams): Promise<DashboardPayload> {
   const qs = new URLSearchParams()
-  qs.set('operadora', params.operadora)
+  if (params.operadora) qs.set('operadora', params.operadora)
   qs.set('filtro', params.filtro)
   if (params.hospital) qs.set('hospital', params.hospital)
   if (params.q) qs.set('q', params.q)
@@ -72,7 +79,7 @@ export function criarPacienteManual(paciente: PacienteNovo): Promise<CriarIntern
 }
 
 /** Sentinel de operadora: exporta TODAS as operadoras num único arquivo. */
-export const EXPORTAR_TODAS = '__todas__'
+export const EXPORTAR_TODAS = OPERADORA_TODAS
 
 /** Exporta a planilha de controle de auditoria (download).
  *  `operadora` = EXPORTAR_TODAS gera um único xlsx com todas as operadoras. */

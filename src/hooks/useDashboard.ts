@@ -7,6 +7,7 @@
 import { useCallback } from 'react'
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { queryKeys, queryRoots } from '../lib/queryKeys'
+import { opcoesAutoRefresh } from '../lib/autoRefresh'
 import {
   fetchDashboard,
   fetchDashboardOverview,
@@ -17,14 +18,16 @@ import {
 
 /**
  * Panorama de TODAS as operadoras num único disparo (stats + hospitais). Alimenta
- * os KPIs e o seletor de qualquer operadora sem 1 request por operadora. staleTime
- * generoso: é dado de panorama, muda só com upload/config (que invalidam o cache).
+ * os KPIs e o seletor de qualquer operadora sem 1 request por operadora.
+ * Revalida sozinho (polling com a aba visível + foco/reconexão — lib/autoRefresh)
+ * para refletir ajustes feitos FORA desta aba: upload de outro analista, relatório
+ * do técnico, cron. Mutações locais seguem pela invalidação por evento.
  */
 export function useDashboardOverview() {
   return useQuery({
     queryKey: queryKeys.dashboardOverview(),
     queryFn: fetchDashboardOverview,
-    staleTime: 60_000,
+    ...opcoesAutoRefresh,
   })
 }
 
@@ -35,14 +38,14 @@ export function useDashboard(params: DashboardParams, opts?: { enabled?: boolean
     // Ao trocar de operadora, mantém os dados da anterior visíveis enquanto a
     // nova carrega — evita o "flash" de tela vazia na navegação por operadora.
     placeholderData: keepPreviousData,
-    // `dashboard_payload` NÃO é cacheado no backend (~7 round-trips por request).
-    // Sem staleTime, cada remontagem (renavegar de volta à Visão Geral) refazia
-    // esses round-trips. 60s serve o cache instantaneamente ao renavegar, coerente
-    // com useDashboardOverview/usePrefetchDashboard; a invalidação por evento
-    // (dadosAlterados) continua refazendo o fetch quando um upload/edição ocorre.
-    staleTime: 60_000,
+    // Mesma política de revalidação automática do panorama (staleTime incluído):
+    // renavegar dentro do intervalo serve o cache na hora; o polling e o foco da
+    // aba trazem ajustes feitos por fora; a invalidação por evento (dadosAlterados,
+    // relatorioAdicionado…) segue refazendo o fetch nas mutações desta aba.
+    ...opcoesAutoRefresh,
     // Permite adiar o fetch até haver uma operadora efetiva (evita disparar com
-    // um valor de fallback fora do escopo do usuário).
+    // um valor de fallback fora do escopo do usuário). Com enabled=false o
+    // polling também fica parado.
     enabled: opts?.enabled ?? true,
   })
 }
@@ -60,7 +63,7 @@ export function usePrefetchDashboard() {
     qc.prefetchQuery({
       queryKey: queryKeys.dashboard(operadora, filtro, hospital),
       queryFn: () => fetchDashboard(params),
-      staleTime: 60_000,
+      staleTime: opcoesAutoRefresh.staleTime,
     })
   }, [qc])
 }
@@ -73,7 +76,10 @@ export function useSidebar() {
   return useQuery({
     queryKey: queryKeys.sidebar(),
     queryFn: fetchSidebar,
-    staleTime: 30_000,
+    // A Sidebar fica montada em todas as telas: o polling daqui mantém as
+    // contagens/alertas por operadora acompanhando o backend no app inteiro
+    // (é o payload mais barato — cacheado globalmente no servidor).
+    ...opcoesAutoRefresh,
     initialData: getSidebarCache() ?? undefined,
     initialDataUpdatedAt: 0,
   })

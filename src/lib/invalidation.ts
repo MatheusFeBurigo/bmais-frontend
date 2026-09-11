@@ -24,8 +24,8 @@ const EVENTO_INVALIDA: Record<string, QueryRoot[]> = {
   pacienteAdicionado: ['dashboard', 'dashboardOverview', 'gestor', 'diretoria', 'sidebar', 'kanban'],
   // Mudança na equipe (profissionais/escala) afeta a contagem do sidebar.
   equipeAlterada: ['equipe', 'sidebar'],
-  // Gestão de usuários.
-  usuariosAlterados: ['usuarios'],
+  // Gestão de usuários (a trilha de auditoria também muda: criar/suspender/apagar).
+  usuariosAlterados: ['usuarios', 'auditoria', 'auditoriaResumo'],
 }
 
 export type EventoDominio = keyof typeof EVENTO_INVALIDA

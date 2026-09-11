@@ -13,6 +13,8 @@ import { queryKeys } from '../lib/queryKeys'
 import { invalidarPorEvento } from '../lib/invalidation'
 import { hojeISO } from '../lib/datas'
 import { nomeProprio } from '../lib/texto'
+import { useTravarScroll } from '../lib/travarScroll'
+import HospitalDetalhesModal from './HospitalDetalhesModal'
 import type { TimelineEvento } from '../types/api'
 
 interface Props {
@@ -39,14 +41,25 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
   const [obs, setObs] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // Ficha do hospital sobre o drawer: quem lê a timeline muitas vezes precisa do
+  // contato da casa (ligar para a enfermagem) sem perder o paciente aberto.
+  const [hospitalAberto, setHospitalAberto] = useState(false)
+
+  // O drawer cobre a tela com backdrop: a lista de trás fica congelada no ponto
+  // em que estava, para o paciente aberto continuar sendo o mesmo ao fechar.
+  useTravarScroll()
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      // Com a ficha do hospital por cima, o Escape fecha só ela: fechar as duas
+      // camadas de uma vez tiraria o paciente da frente sem o usuário pedir.
+      if (e.key !== 'Escape') return
+      if (hospitalAberto) setHospitalAberto(false)
+      else onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, hospitalAberto])
 
   async function salvar() {
     if (!dataVisita) {
@@ -94,7 +107,19 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
             <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
               {d && (
                 <>
-                  Atend. <span className="mono">{d.atendimento || '—'}</span> · {d.hospital_nome || '—'}
+                  Atend. <span className="mono">{d.atendimento || '—'}</span> ·{' '}
+                  {d.hospital_key && d.hospital_nome ? (
+                    <button
+                      type="button"
+                      className="link-cell"
+                      title={`Ver detalhes de ${d.hospital_nome}`}
+                      onClick={() => setHospitalAberto(true)}
+                    >
+                      {d.hospital_nome}
+                    </button>
+                  ) : (
+                    d.hospital_nome || '—'
+                  )}
                 </>
               )}
             </div>
@@ -190,6 +215,14 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
           )}
         </div>
       </div>
+
+      {hospitalAberto && d?.hospital_key && (
+        <HospitalDetalhesModal
+          hospital={{ key: d.hospital_key, nome: d.hospital_nome || d.hospital_key }}
+          onClose={() => setHospitalAberto(false)}
+          sobreposta
+        />
+      )}
     </>
   )
 }

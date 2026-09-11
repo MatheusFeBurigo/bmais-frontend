@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ApiError, apiFetch, getToken, setToken, getPerfil, setPerfil, tokenPersistente, setUnauthorizedHandler } from '../api/client'
+import { ApiError, apiFetch, getToken, iniciarSessao, encerrarSessao, getPerfil, setPerfil, tokenPersistente, setUnauthorizedHandler } from '../api/client'
 import { clearSidebarCache } from '../services/dashboard.service'
 import type { LoginResponse, MeResponse, RegisterResponse, UserRole } from '../types/api'
 
@@ -48,8 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [tokenValido, setTokenValido] = useState(() => !!getToken())
 
   const logout = useCallback(() => {
-    setToken(null)
-    setPerfil(null)
+    encerrarSessao()  // token + refresh_token + perfil espelhado
     clearSidebarCache()  // não vazar o recorte de operadoras ao próximo usuário
     setUsername(null)
     setRole(null)
@@ -82,8 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // inválido (401). Timeout/rede/503 (NetworkError) NÃO deslogam: mantém o
         // boot otimista (tokenValido) e o app segue com o token salvo.
         if (!cancelled && e instanceof ApiError && e.status === 401) {
-          setToken(null)
-          setPerfil(null)
+          encerrarSessao()
           clearSidebarCache()
           setUsername(null)
           setRole(null)
@@ -125,7 +123,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // (recortado ao escopo) de quem estava logado antes nesta aba.
     qc.clear()
     clearSidebarCache()  // idem para o snapshot persistente da Sidebar
-    setToken(res.token, remember)
+    // Grava token + refresh_token e inicia a contagem do teto da sessão (1 dia).
+    iniciarSessao(res, remember)
     setTokenValido(true)
     setUsername(res.username)
     // O login não devolve o papel; resolve-o via /me para o app já ter o role.
@@ -154,7 +153,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       // Sessão imediata (sem confirmação de e-mail): já entra no app.
       if (!res.confirmacao_necessaria && res.token && res.username) {
-        setToken(res.token, remember)
+        iniciarSessao(
+          { token: res.token, refresh_token: res.refresh_token, expires_in: res.expires_in },
+          remember,
+        )
         setTokenValido(true)
         setUsername(res.username)
         setRole(res.role ?? null)

@@ -4,6 +4,7 @@ import { useSidebar, usePrefetchDashboard } from '../hooks/useDashboard'
 import { prefetchPorRota } from '../routes'
 import { useAuth } from '../auth/AuthContext'
 import { podeVer } from '../auth/permissions'
+import { ROLE_LABEL as ROTULO_PAPEL } from '../lib/usuarioRoles'
 
 // Aquece o chunk da rota antes do clique (hover/foco), evitando o flash de
 // carregamento na navegação. Silencia falhas — é só otimização.
@@ -42,6 +43,10 @@ const IconUpload = () => (
 const IconKanban = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="6" height="14" rx="1" /><rect x="9.5" y="3" width="6" height="9" rx="1" transform="translate(0.5 0)" /><rect x="15" y="3" width="6" height="11" rx="1" /></svg>
 )
+// Movimentações: lista com marcador de verificação (trilha validada pelo analista).
+const IconLogs = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><path d="M14 3v5h5" /><path d="M8 13h5" /><path d="M8 17h8" /><path d="m16 5 2 2 4-4" /></svg>
+)
 // Chevrons duplos: apontam para a esquerda (recolher) ou direita (expandir).
 const IconCollapse = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 17-5-5 5-5" /><path d="m18 17-5-5 5-5" /></svg>
@@ -52,13 +57,9 @@ const IconLogout = () => (
 )
 
 // Rótulo amigável do papel exibido no rodapé (perfil do usuário logado).
-const ROLE_LABEL: Record<string, string> = {
-  admin: 'Administrador',
-  diretor: 'Diretor',
-  gestor: 'Gestor',
-  administrativo: 'Administrativo',
-  tecnico: 'Técnico',
-}
+// Reusa a fonte única de lib/usuarioRoles para não divergir da lista/formulário
+// de usuários quando um papel novo entra.
+const ROLE_LABEL = ROTULO_PAPEL as Record<string, string>
 
 // Iniciais para o avatar: pega as 2 primeiras letras significativas do nome/e-mail.
 function iniciais(nome: string): string {
@@ -84,8 +85,8 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
   const prefetchDashboard = usePrefetchDashboard()
   const [params] = useSearchParams()
   const location = useLocation()
-  // Sem ?operadora na URL, nenhuma fica marcada como ativa (não assume uma
-  // operadora fixa — o Dashboard fixa na URL a 1ª do escopo do usuário).
+  // Sem ?operadora na URL a Visão Geral está no modo CONSOLIDADO (todas as
+  // operadoras): nenhuma sub-item fica ativa — o próprio "Visão Geral" é o ativo.
   const opAtual = params.get('operadora') || ''
   const noDashboard = location.pathname === '/'
 
@@ -115,21 +116,21 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
       <div className="sb-brand">
         <div className="sb-brand-mark">B+</div>
         <div className="sb-brand-text" style={{ flex: 1, minWidth: 0 }}>
-          <div className="sb-brand-name">B+ Auditoria</div>
-          <div className="sb-brand-sub">Censos Control</div>
+          <div className="sb-brand-name">BMais</div>
+          <div className="sb-brand-sub">Intelligence System</div>
         </div>
       </div>
 
       <nav className="sb-nav">
         <div className="sb-section">
           <div className="sb-section-label">Painel</div>
-          {/* "Visão Geral" leva ao Dashboard; o chevron aninha a lista de operadoras,
-              que é o recorte por foco de operadora DENTRO da própria Visão Geral. */}
+          {/* "Visão Geral" leva ao Dashboard CONSOLIDADO (todas as operadoras); o
+              chevron aninha a lista de operadoras, que é o recorte por foco de
+              operadora DENTRO da própria Visão Geral. */}
           {mostrar('operacional') && (
           <NavLink to="/" end className={itemClass} {...prefetchProps('/')}>
             <span className="sb-item-icon"><IconGrid /></span>
             <span className="sb-item-label">Visão Geral</span>
-            <span className="sb-item-badge">{sidebarOps.length}</span>
             <button
               type="button"
               className={`sb-caret${opsOpen ? ' open' : ''}`}
@@ -149,15 +150,17 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
           {mostrar('operacional') && opsOpen && sidebarOps.length > 0 && (
           <div className="sb-sub">
             {sidebarOps.map((op) => {
-              const urgente = Number(op.urgente ?? 0)
-              const internados = Number(op.internados ?? 0)
-              const isAlert = urgente > 0
+              // Só PACIENTES NOVOS (sem nenhum relatório) marcam a operadora.
+              // Antes vinha o total de internados — um número constante, que não
+              // dizia se havia algo a fazer. Sem novos, a linha fica só com o nome.
+              const novos = Number(op.novos ?? 0)
+              const isAlert = novos > 0
               const active = noDashboard && opAtual === op.key
               return (
                 <NavLink
                   key={op.key}
                   to={`/?operadora=${op.key}`}
-                  title={op.nome}
+                  title={isAlert ? `${op.nome} — ${novos} novo${novos > 1 ? 's' : ''}` : op.nome}
                   className={
                     'sb-sub-item' + (isAlert ? ' has-alert' : '') + (active ? ' active' : '')
                   }
@@ -167,15 +170,11 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
                   onFocus={() => { aquecer('/'); prefetchDashboard(op.key) }}
                 >
                   <span className="sb-sub-name">{op.nome}</span>
-                  {isAlert ? (
-                    <>
-                      <span className="sb-dot" />
-                      <span className="sb-sub-mark">{urgente}</span>
-                    </>
-                  ) : internados > 0 ? (
-                    <span className="sb-sub-mark">{internados}</span>
-                  ) : (
-                    <span className="sb-sub-mark">—</span>
+                  {isAlert && (
+                    <span className="sb-sub-mark novos"
+                      title={`${novos} paciente${novos > 1 ? 's' : ''} novo${novos > 1 ? 's' : ''} sem relatório`}>
+                      {novos}
+                    </span>
                   )}
                 </NavLink>
               )
@@ -207,7 +206,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
           {mostrar('equipe') && (
             <NavLink to="/equipe" className={itemClass} {...prefetchProps('/equipe')}>
               <span className="sb-item-icon"><IconEquipe /></span>
-              <span className="sb-item-label">Equipe</span>
+              <span className="sb-item-label">Operações</span>
             </NavLink>
           )}
           {mostrar('configuracoes') && (
@@ -216,10 +215,18 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
               <span className="sb-item-label">Configurações</span>
             </NavLink>
           )}
-          <NavLink to="/upload" className={itemClass} {...prefetchProps('/upload')}>
-            <span className="sb-item-icon"><IconUpload /></span>
-            <span className="sb-item-label">Upload</span>
-          </NavLink>
+          {mostrar('upload') && (
+            <NavLink to="/upload" className={itemClass} {...prefetchProps('/upload')}>
+              <span className="sb-item-icon"><IconUpload /></span>
+              <span className="sb-item-label">Envio de Censos</span>
+            </NavLink>
+          )}
+          {mostrar('logs') && (
+            <NavLink to="/logs" className={itemClass} {...prefetchProps('/logs')}>
+              <span className="sb-item-icon"><IconLogs /></span>
+              <span className="sb-item-label">Movimentações</span>
+            </NavLink>
+          )}
         </div>
       </nav>
 

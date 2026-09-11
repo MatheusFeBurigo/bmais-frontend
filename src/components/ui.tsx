@@ -2,6 +2,7 @@
 // Reusados pelas telas migradas (Diretoria, Gestor, Equipe, Configurações, Upload).
 
 import type { ReactNode } from 'react'
+import { useTravarScroll } from '../lib/travarScroll'
 
 // ── KPI card ──────────────────────────────────────────────────────────────
 type KpiVariant =
@@ -169,29 +170,40 @@ export function StatMini({ label, value }: { label: string; value: ReactNode }) 
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────
-export function Modal({ title, onClose, children, footer }: {
+export function Modal({ title, onClose, children, footer, largura, sobreposta }: {
   title: string
   onClose: () => void
   children: ReactNode
   footer?: ReactNode
+  /** Largura máxima do card, em px. Omitida = 440 do design system (formulários
+   *  de uma coluna). Fichas em duas colunas pedem mais espaço. */
+  largura?: number
+  /** Aberta por cima de outra camada (drawer/modal): sobe o z-index para não
+   *  ficar atrás dela. */
+  sobreposta?: boolean
 }) {
+  // Enquanto a modal está aberta a página de trás não rola: o backdrop cobre a
+  // tela, e rolar o que está atrás dele só desalinha o contexto de quem lê.
+  useTravarScroll()
   return (
-    <div className="drawer-backdrop" onClick={onClose}>
+    // O backdrop centraliza e limita a altura; o CARD nunca passa da viewport.
+    // Antes era `margin:10vh auto` sem teto: conteudo alto (a ficha do hospital,
+    // por exemplo) transbordava para fora da tela e o rodape com os botoes ficava
+    // inalcancavel. Agora cabecalho e rodape sao fixos e SO o corpo rola.
+    <div className={`modal-backdrop${sobreposta ? ' modal-sobreposta' : ''}`} onClick={onClose}>
       <div
-        className="card"
-        style={{ maxWidth: 440, width: '90%', margin: '10vh auto', position: 'relative' }}
+        className="card modal-card"
+        style={largura ? { maxWidth: largura } : undefined}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
       >
-        <div className="card-header" style={{ alignItems: 'center' }}>
+        <div className="card-header modal-head">
           <div className="card-title">{title}</div>
           <button className="btn btn-ghost btn-sm" onClick={onClose} title="Fechar" type="button">✕</button>
         </div>
-        <div className="card-body">{children}</div>
-        {footer && (
-          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            {footer}
-          </div>
-        )}
+        <div className="card-body modal-body">{children}</div>
+        {footer && <div className="modal-foot">{footer}</div>}
       </div>
     </div>
   )

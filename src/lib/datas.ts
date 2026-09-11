@@ -36,3 +36,16 @@ export function dataHora(iso: string | null | undefined): string {
   const mm = String(dt.getMinutes()).padStart(2, '0')
   return `${dia}/${mes}/${ano} ${hh}:${mm}`
 }
+
+/** Converte uma data extraída de censo ("DD/MM/AAAA" ou ISO) para "AAAA-MM-DD",
+ *  o formato do <input type="date">. Devolve '' se vazia ou irreconhecível (ex.:
+ *  ano com 2 dígitos) — o valor cru continua válido para o backend, que aceita
+ *  os formatos mistos. */
+export function paraISO(s: string | null | undefined): string {
+  if (!s) return ''
+  const t = s.trim()
+  const br = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(t)
+  if (br) return `${br[3]}-${br[2]}-${br[1]}`
+  const iso = /^(\d{4}-\d{2}-\d{2})/.exec(t)
+  return iso ? iso[1] : ''
+}

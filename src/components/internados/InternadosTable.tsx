@@ -4,6 +4,7 @@
 
 import type { Internacao } from '../../types/api'
 import { StatusBadge, rowFlagClass, LeitoTag } from '../StatusBadge'
+import { OpAvatar } from '../ui'
 import { DiasRatio, Permanencia } from './cells'
 import { nomeProprio } from '../../lib/texto'
 
@@ -21,12 +22,18 @@ export interface InternadosTableProps {
   porPagina: number
   onExportar: () => void
   /** Abre o modal de adicionar paciente (ação ao lado do Exportar). */
-  onAdicionarPaciente: () => void
+  /** Ausente = perfil somente leitura: o botão "Adicionar paciente" não aparece. */
+  onAdicionarPaciente?: () => void
   onSelecionar: (id: number) => void
+  /** Clique no nome do hospital: abre a ficha dele, sem abrir o paciente. */
+  onSelecionarHospital?: (hospital: { key: string; nome: string }) => void
   /** Prefetch em background ao passar o mouse na linha (abre o drawer instantâneo). */
   onPrefetch?: (id: number) => void
   onPrev: () => void
   onNext: () => void
+  /** Visão consolidada (todas as operadoras): mostra a coluna "Operadora" para
+   *  dizer de quem é cada paciente. Numa operadora só, a coluna é redundante. */
+  mostrarOperadora?: boolean
 }
 
 export default function InternadosTable({
@@ -40,10 +47,13 @@ export default function InternadosTable({
   onExportar,
   onAdicionarPaciente,
   onSelecionar,
+  onSelecionarHospital,
   onPrefetch,
   onPrev,
   onNext,
+  mostrarOperadora = false,
 }: InternadosTableProps) {
+  const colunas = mostrarOperadora ? 12 : 11
   return (
     <div className="card" style={{ marginTop: 14 }}>
       <div className="card-header" style={{ alignItems: 'center', paddingBottom: 14 }}>
@@ -58,11 +68,13 @@ export default function InternadosTable({
         </div>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
           <button className="btn btn-outline btn-sm" onClick={onExportar}>Exportar</button>
-          <button className="btn btn-primary btn-sm" onClick={onAdicionarPaciente}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-            Adicionar paciente
-          </button>
+          {onAdicionarPaciente && (
+            <button className="btn btn-primary btn-sm" onClick={onAdicionarPaciente}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+              Adicionar paciente
+            </button>
+          )}
         </div>
       </div>
 
@@ -71,6 +83,7 @@ export default function InternadosTable({
           <thead>
             <tr>
               <th style={{ width: 110 }}>Relatório</th>
+              {mostrarOperadora && <th style={{ width: 130 }}>Operadora</th>}
               <th>Hospital</th>
               <th>Segurado</th>
               <th style={{ width: 86 }}>Atend.</th>
@@ -91,13 +104,43 @@ export default function InternadosTable({
           </thead>
           <tbody>
             {paginados.map((p) => {
-              const sr = p.status_relatorio || 'AGUARDANDO'
+              const sr = p.status_relatorio || 'EM_DIA'
               return (
                 <tr key={p.id} className={rowFlagClass(sr)} style={{ cursor: 'pointer' }} onClick={() => onSelecionar(p.id)}
                   onMouseEnter={onPrefetch ? () => onPrefetch(p.id) : undefined}
                   onFocus={onPrefetch ? () => onPrefetch(p.id) : undefined}>
                   <td><StatusBadge sr={sr} /></td>
-                  <td><span style={{ fontSize: 'var(--t-sm)' }}>{p.hospital_nome || '—'}</span></td>
+                  {mostrarOperadora && (
+                    <td>
+                      <span className="row" style={{ gap: 6, alignItems: 'center' }} title={p.operadora_nome || p.operadora_key || undefined}>
+                        <OpAvatar opKey={p.operadora_key || ''} size={18} />
+                        <span className="truncate" style={{ fontSize: 'var(--t-sm)', maxWidth: 100 }}>
+                          {p.operadora_nome || p.operadora_key || '—'}
+                        </span>
+                      </span>
+                    </td>
+                  )}
+                  <td>
+                    {/* A linha inteira abre o paciente; o nome do hospital é a
+                        exceção — abre a ficha dele, e por isso para o clique
+                        antes de subir para a <tr>. */}
+                    {onSelecionarHospital && p.hospital_key && p.hospital_nome ? (
+                      <button
+                        type="button"
+                        className="link-cell"
+                        style={{ fontSize: 'var(--t-sm)' }}
+                        title={`Ver detalhes de ${p.hospital_nome}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onSelecionarHospital({ key: p.hospital_key as string, nome: p.hospital_nome as string })
+                        }}
+                      >
+                        {p.hospital_nome}
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: 'var(--t-sm)' }}>{p.hospital_nome || '—'}</span>
+                    )}
+                  </td>
                   <td style={{ maxWidth: 240 }}><div className="truncate fw-5">{nomeProprio(p.nome)}</div></td>
                   <td><span className="mono t-muted" style={{ fontSize: 'var(--t-sm)' }}>{p.atendimento || '—'}</span></td>
                   <td><LeitoTag tipo={p.tipo_leito} /></td>
@@ -141,7 +184,7 @@ export default function InternadosTable({
             })}
             {totalVisiveis === 0 && (
               <tr>
-                <td colSpan={11}>
+                <td colSpan={colunas}>
                   <div className="empty-state">
                     <div style={{ fontSize: 32, opacity: 0.25, marginBottom: 8 }}>📋</div>
                     <div style={{ fontWeight: 600, marginBottom: 4 }}>Nenhum internado encontrado</div>

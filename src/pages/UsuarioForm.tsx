@@ -13,7 +13,7 @@ import MultiSelectHospitais from '../components/MultiSelectHospitais'
 import { useUsuarios } from '../hooks/useUsuarios'
 import { useTodosHospitais } from '../hooks/useEquipe'
 import { criarUsuario, atualizarUsuario, redefinirSenhaUsuario } from '../services/usuarios.service'
-import { queryKeys } from '../lib/queryKeys'
+import { invalidarPorEvento } from '../lib/invalidation'
 import { ROLE_LABEL, ROLE_DESC, ROLES_ORDEM, temEscopoHospital } from '../lib/usuarioRoles'
 import type { UserRole } from '../types/api'
 
@@ -91,7 +91,9 @@ export default function UsuarioForm() {
       } else {
         await criarUsuario(email, password, role, escopo, nome)
       }
-      qc.invalidateQueries({ queryKey: queryKeys.usuarios() })
+      // Evento de domínio (não a key crua): criar/editar usuário também muda a
+      // trilha de auditoria, e o evento já invalida `auditoria`+`auditoriaResumo`.
+      invalidarPorEvento(qc, 'usuariosAlterados')
       navigate('/equipe')  // volta à Equipe com a lista atualizada
     } catch (err) {
       setToast(`Erro: ${(err as Error).message}`)
@@ -177,7 +179,7 @@ export default function UsuarioForm() {
             {/* Escopo de dados — só para papéis operacionais (gestor/diretor/admin veem tudo). */}
             {temEscopoHospital(role) && (
               <div>
-                <label className="uppercase t-muted" style={labelStyle}>Hospitais (escopo de dados)</label>
+                <label className="uppercase t-muted" style={labelStyle}>Operadoras e hospitais (escopo de dados)</label>
                 <MultiSelectHospitais hospitais={hospitais ?? []} selecionados={hospitaisSel} onChange={setHospitaisSel} />
               </div>
             )}

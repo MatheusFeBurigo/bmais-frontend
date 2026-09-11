@@ -18,9 +18,10 @@ export function criarUsuario(
   })
 }
 
-/** Atualiza nome, papel e/ou hospitais de um usuário existente. */
+/** Atualiza nome, papel, hospitais e/ou estado (ativo) de um usuário existente.
+ *  `ativo: false` SUSPENDE a conta (403 em toda a API, sem apagar); `true` reativa. */
 export function atualizarUsuario(
-  userId: string, patch: { role?: UserRole; hospitais?: string[]; nome?: string },
+  userId: string, patch: { role?: UserRole; hospitais?: string[]; nome?: string; ativo?: boolean },
 ): Promise<unknown> {
   return apiFetch(`/usuarios/${userId}`, { method: 'PATCH', body: patch })
 }

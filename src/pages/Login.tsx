@@ -96,8 +96,8 @@ export default function Login() {
         <div className="auth-hero-top">
           <div className="auth-hero-mark">B+</div>
           <div>
-            <div className="auth-hero-brand">B+ Auditoria</div>
-            <div className="auth-hero-brand-sub">Auditoria hospitalar</div>
+            <div className="auth-hero-brand">BMais</div>
+            <div className="auth-hero-brand-sub">Intelligence System</div>
           </div>
         </div>
 
@@ -125,7 +125,7 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="auth-hero-foot">© {new Date().getFullYear()} B+ Auditoria · Todos os direitos reservados</div>
+        <div className="auth-hero-foot">© {new Date().getFullYear()} BMais Intelligence System · Todos os direitos reservados</div>
       </aside>
 
       {/* Painel direito — formulário */}
@@ -134,8 +134,8 @@ export default function Login() {
           <div className="auth-mobile-brand">
             <div className="sb-brand-mark">B+</div>
             <div>
-              <div className="fw-6 t-ink" style={{ fontSize: 'var(--t-lg)' }}>B+ Auditoria</div>
-              <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Auditoria hospitalar</div>
+              <div className="fw-6 t-ink" style={{ fontSize: 'var(--t-lg)' }}>BMais</div>
+              <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Intelligence System</div>
             </div>
           </div>
 

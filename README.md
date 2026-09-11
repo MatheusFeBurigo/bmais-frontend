@@ -65,6 +65,7 @@ estiver na raiz do repo, defina **Root Directory** como `bmais-frontend`. O fram
 | Variável | Valor | Ambiente |
 |---|---|---|
 | `VITE_API_URL` | URL pública do backend, ex. `https://bmais-api.up.railway.app` (sem barra final) | Production (e Preview, se houver API de staging) |
+| `VITE_AUTO_REFRESH_MS` | (opcional) intervalo em ms do polling da Visão Geral (detalhe/panorama/sidebar) enquanto a aba está visível. Padrão `30000` (= TTL do cache do backend); `0` desliga o polling (foco da aba, invalidação por evento e botão "Atualizar" continuam) | qualquer |
 
 > `VITE_API_URL` é lida em build-time. Após alterá-la, **refaça o deploy**.
 

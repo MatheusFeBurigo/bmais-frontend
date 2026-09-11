@@ -17,6 +17,7 @@ export type Screen =
   | 'equipe'
   | 'upload'
   | 'kanban'
+  | 'logs'
 
 // Telas que cada papel NÃO pode ver. Ausência de entrada = vê tudo.
 const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
@@ -28,13 +29,35 @@ const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
   administrativo: ['diretoria', 'gestor', 'equipe', 'configuracoes'],
   // Técnico: mesmo recorte do administrativo (segundo papel operacional básico).
   tecnico: ['diretoria', 'gestor', 'equipe', 'configuracoes'],
+  // Analista interno: observa o Operacional, o Kanban e as Movimentações, e mantém
+  // o cadastro da malha de atendimento em Operações (hospitais e operadoras) —
+  // a exceção do papel, espelhada em ROLES_ESCRITA_CADASTRO no backend. Fora:
+  // Diretoria e Gestor (decisão do produto), Upload e Configurações — telas cujo
+  // conteúdo É a escrita que ele não pode executar (subir censo, regras da operadora).
+  analista: ['diretoria', 'gestor', 'upload', 'configuracoes'],
 }
 
 // Telas EXCLUSIVAS de papéis específicos (allowlist). Mais forte que a lista de
 // bloqueio: quem não estiver aqui NÃO vê. Use para telas que pertencem à visão de
 // papéis específicos — o Kanban é dos papéis operacionais (admin também vê, p/ supervisão).
 const EXCLUSIVAS: Partial<Record<Screen, readonly UserRole[]>> = {
-  kanban: ['administrativo', 'tecnico', 'admin'],
+  kanban: ['administrativo', 'tecnico', 'admin', 'analista'],
+  // Operações (ex-Equipe): administrador e analista interno. Nem o diretor entra
+  // — allowlist, para o papel novo não herdar a tela por omissão.
+  equipe: ['admin', 'analista'],
+  // Movimentações (auditoria): administrador e analista interno. Nem o diretor vê.
+  // Espelha ROLES_AUDITORIA do backend (interface/authz.py).
+  logs: ['admin', 'analista'],
+}
+
+// Papéis SOMENTE LEITURA: veem as telas, mas nenhuma ação que altera dados.
+// Espelha ROLES_SOMENTE_LEITURA do backend, que é quem de fato barra (403) —
+// aqui só escondemos os controles para não oferecer o que vai falhar.
+const SOMENTE_LEITURA: ReadonlySet<UserRole> = new Set<UserRole>(['analista'])
+
+/** True se o papel não pode alterar dado nenhum (perfil de observação). */
+export function ehSomenteLeitura(role: UserRole | null): boolean {
+  return !!role && SOMENTE_LEITURA.has(role)
 }
 
 /** True se o papel pode ver a tela. `role` null/desconhecido não restringe. */
@@ -56,11 +79,12 @@ const ROTA_DA_SCREEN: Record<Screen, string> = {
   configuracoes: '/configuracoes',
   upload: '/upload',
   kanban: '/kanban',
+  logs: '/logs',
 }
 
 // Ordem de preferência ao escolher a "tela inicial" de um papel barrado.
 const ORDEM_FALLBACK: readonly Screen[] = [
-  'operacional', 'gestor', 'diretoria', 'upload', 'configuracoes', 'equipe',
+  'operacional', 'gestor', 'diretoria', 'kanban', 'logs', 'upload', 'configuracoes', 'equipe',
 ]
 
 // Ações do domínio protegidas por papel (não são telas, mas operações dentro de
@@ -77,6 +101,9 @@ export type AcaoProtegida = 'registrarRelatorio'
  *  ação sensível exige papel resolvido (diferente de `podeVer`, que é permissivo). */
 export function podeExecutar(role: UserRole | null, acao: AcaoProtegida): boolean {
   if (!role) return false
+  // Perfil de observação não executa ação alguma — vale para as ações atuais e
+  // para as futuras, sem precisar excluí-lo de cada allowlist.
+  if (SOMENTE_LEITURA.has(role)) return false
   return ACOES[acao].includes(role)
 }
 

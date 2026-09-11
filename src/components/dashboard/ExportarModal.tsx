@@ -6,15 +6,17 @@ import { exportarRvm, EXPORTAR_TODAS } from '../../services/dashboard.service'
 
 type Escopo = 'operadora' | 'todas'
 
-export default function ExportarModal({ operadora, operadoraNome, onClose, onError }: {
-  /** Key da operadora atualmente selecionada no painel. */
+export default function ExportarModal({ operadora, operadoraNome, somenteTodas = false, onClose, onError }: {
+  /** Key da operadora atualmente selecionada no painel ('' na visão consolidada). */
   operadora: string
   /** Nome legível da operadora atual (para o rótulo da opção). */
   operadoraNome: string
+  /** Visão consolidada aberta: não há "operadora atual" — só a opção "todas". */
+  somenteTodas?: boolean
   onClose: () => void
   onError: (msg: string) => void
 }) {
-  const [escopo, setEscopo] = useState<Escopo>('operadora')
+  const [escopo, setEscopo] = useState<Escopo>(somenteTodas ? 'todas' : 'operadora')
   const [exportando, setExportando] = useState(false)
 
   async function exportar() {
@@ -44,14 +46,18 @@ export default function ExportarModal({ operadora, operadoraNome, onClose, onErr
     >
       <div style={{ display: 'grid', gap: 10 }}>
         <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', marginBottom: 2 }}>
-          Escolha o que incluir na planilha:
+          {somenteTodas
+            ? 'A visão consolidada exporta todas as operadoras num único arquivo:'
+            : 'Escolha o que incluir na planilha:'}
         </div>
-        <OpcaoEscopo
-          selecionado={escopo === 'operadora'}
-          onSelect={() => setEscopo('operadora')}
-          titulo={`Somente ${operadoraNome || 'a operadora atual'}`}
-          descricao="Um arquivo com os internados da operadora selecionada."
-        />
+        {!somenteTodas && (
+          <OpcaoEscopo
+            selecionado={escopo === 'operadora'}
+            onSelect={() => setEscopo('operadora')}
+            titulo={`Somente ${operadoraNome || 'a operadora atual'}`}
+            descricao="Um arquivo com os internados da operadora selecionada."
+          />
+        )}
         <OpcaoEscopo
           selecionado={escopo === 'todas'}
           onSelect={() => setEscopo('todas')}

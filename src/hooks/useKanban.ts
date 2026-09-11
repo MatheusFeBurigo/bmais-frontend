@@ -1,7 +1,7 @@
 // Hook de estado de servidor do domínio "kanban" (tarefas do analista).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../lib/queryKeys'
-import { fetchKanban, resolverPendencia, marcarCobrado, concluirAnalise } from '../services/kanban.service'
+import { fetchKanban, marcarCobrado, concluirAnalise } from '../services/kanban.service'
 import type { KanbanPayload, ConcluirAnalisePayload } from '../types/api'
 
 // O quadro reflete pendências e status de relatório — dado que muda ao importar
@@ -14,30 +14,6 @@ export function useKanban() {
     queryKey: queryKeys.kanban(),
     queryFn: fetchKanban,
     staleTime: KANBAN_STALE,
-  })
-}
-
-// Resolver uma pendência de parsing tira o card da coluna "refazer análise".
-// Remove o card do cache na hora (otimista) e invalida para reconciliar com o servidor.
-export function useResolverPendencia() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (pendenciaId: number) => resolverPendencia(pendenciaId),
-    onSuccess: (_res, pendenciaId) => {
-      qc.setQueryData<KanbanPayload>(queryKeys.kanban(), (atual) => {
-        if (!atual?.tarefas) return atual
-        return {
-          ...atual,
-          tarefas: {
-            ...atual.tarefas,
-            refazer_analise: (atual.tarefas.refazer_analise ?? []).filter(
-              (t) => t.pendencia_id !== pendenciaId,
-            ),
-          },
-        }
-      })
-      qc.invalidateQueries({ queryKey: queryKeys.kanban() })
-    },
   })
 }
 

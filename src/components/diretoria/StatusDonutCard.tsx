@@ -6,14 +6,17 @@ import { DonutChart, LineChart } from '../charts'
 import { DONUT_LABELS, DONUT_COLORS } from './diretoria.styles'
 
 export default function StatusDonutCard({ data }: { data: DiretoriaPayload }) {
-  const vals = [data.sem_relatorio, data.relatorio_vencido, data.proximo_vencer, data.relatorio_em_dia, data.aguardando_gatilho]
+  const vals = [data.sem_relatorio, data.relatorio_vencido, data.proximo_vencer, data.relatorio_em_dia]
+  // O donut mostra TODOS os internados, não só os em monitoramento: "Em Dia" passou
+  // a incluir quem ainda não atingiu o gatilho do leito (nada é devido ainda).
+  const totalInternados = vals.reduce((s, v) => s + (v || 0), 0)
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 10, marginTop: 10 }}>
       <div className="card">
         <div className="card-header">
           <div>
             <div className="card-title">Status de Relatórios — Visão Global</div>
-            <p className="card-sub">Distribuição dos {data.em_monitoramento || 0} pacientes em monitoramento</p>
+            <p className="card-sub">Distribuição dos {totalInternados} pacientes internados</p>
           </div>
         </div>
         <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 24, alignItems: 'center' }}>

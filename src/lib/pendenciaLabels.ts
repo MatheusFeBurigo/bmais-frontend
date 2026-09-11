@@ -1,80 +1,72 @@
-// Traduz os rótulos crus de pendência (do backend) em texto claro de AÇÃO para o
-// analista. O backend grava vocabulários diferentes conforme a origem:
+// Traduz os motivos crus de pendência de CENSO (do backend) no texto que o
+// usuário lê na tela de upload.
 //
-//   • Relatório (coluna "Revisão Relatório"): palavras soltas — hospital, paciente,
-//     observações, médico, data (relatorios_validador.py). São ambíguas no card:
-//     "paciente" não é um campo em branco, é um VÍNCULO faltante (o relatório não
-//     casou com nenhuma internação). Este módulo resolve essa ambiguidade.
+// Regra deste arquivo: o texto fala com QUEM ENVIA O CENSO, não com quem
+// programou. Diz o que está faltando e o que fazer — nunca por que o sistema não
+// conseguiu ("não reconhecido", "formato inválido", "chave de identidade").
 //
-//   • Censo (coluna "Refazer análise"): frases já legíveis, mas com jargão
-//     ("chave de identidade"). Passam por uma limpeza leve, com fallback ao texto
-//     original quando não reconhecidas (o validador pode gerar variações dinâmicas,
-//     ex.: "data ... em formato inválido: '...'").
-//
-// Renderização é feita em Kanban.tsx; nada aqui altera o backend.
+// O validador do backend gera duas famílias de motivo:
+//   - FIXOS      → mapeados um a um em MOTIVO_CENSO;
+//   - DINÂMICOS  → trazem valores interpolados (e `repr()` do Python, com aspas
+//                  simples). Reescritos por PADRÕES abaixo; sem isso vazariam
+//                  crus para a tela, do jeito que o Python os formatou.
+// Nada aqui altera o backend.
 
-// ── Campos faltantes de RELATÓRIO (palavras soltas) ──────────────────────────
-// Rótulo curto (chip) + explicação (tooltip / texto de apoio) + variante de badge.
-export interface CampoFaltanteInfo {
-  /** Texto curto exibido no chip. */
-  label: string
-  /** O que de fato faltou e qual a ação esperada — vira title/tooltip. */
-  explicacao: string
-  variant: 'danger' | 'warning' | 'caution' | 'muted'
-}
-
-export const CAMPO_FALTANTE: Record<string, CampoFaltanteInfo> = {
-  paciente: {
-    label: 'Sem paciente vinculado',
-    explicacao:
-      'O relatório não foi ligado a nenhuma internação: o nome veio vazio ou não ' +
-      'casou com nenhum paciente internado. Escolha a internação à mão para encaixar.',
-    variant: 'danger',
-  },
-  hospital: {
-    label: 'Hospital não identificado',
-    explicacao:
-      'Não reconhecemos de qual hospital é o documento (cabeçalho não identificado).',
-    variant: 'danger',
-  },
-  médico: {
-    label: 'Médico não capturado',
-    explicacao:
-      'O nome do médico auditor não foi lido do cabeçalho do relatório. Preencha à mão.',
-    variant: 'caution',
-  },
-  data: {
-    label: 'Data não capturada',
-    explicacao:
-      'A data do relatório não foi lida do documento. Informe a data da visita.',
-    variant: 'caution',
-  },
-  observações: {
-    label: 'Sem observações',
-    explicacao:
-      'O parecer/observação do paciente veio em branco no documento. Preencha à mão.',
-    variant: 'warning',
-  },
-}
-
-/** Info de um campo faltante de relatório, com fallback para rótulos não mapeados. */
-export function campoFaltanteInfo(campo: string): CampoFaltanteInfo {
-  return CAMPO_FALTANTE[campo] || { label: campo, explicacao: '', variant: 'muted' }
-}
-
-// ── Motivos de CENSO (frases) ────────────────────────────────────────────────
-// Motivos fixos → texto sem jargão. Motivos dinâmicos (com valores interpolados)
-// não estão aqui; caem no fallback e são exibidos como vieram.
 const MOTIVO_CENSO: Record<string, string> = {
   'sem atendimento (chave de identidade)':
-    'Nº de atendimento não lido — é o código que identifica a internação. Sem ele não dá para saber de quem é o registro.',
-  'sem nome': 'Nome do paciente não foi lido do documento.',
-  'sem data de entrada': 'Data de internação não foi lida (obrigatória para internados).',
+    'O número de atendimento não veio no censo. É ele que identifica a internação — informe para continuar.',
+  'sem nome': 'O nome do paciente não veio no censo.',
+  'sem data de entrada': 'A data de internação não veio no censo.',
   'situação ALTA sem data de alta válida':
-    'Registro marcado como alta, mas sem uma data de alta legível.',
+    'O paciente consta como alta, mas a data da alta não veio no censo.',
 }
 
-/** Texto claro de um motivo de censo; devolve o próprio motivo se não for mapeado. */
+/** Tira o repr() do Python: "'05/04/26'" → "05/04/26". */
+function semAspas(v: string): string {
+  return v.trim().replace(/^['"]|['"]$/g, '')
+}
+
+// Motivos com valor interpolado. Cada padrão devolve a frase já pronta.
+const PADROES: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
+  [
+    /^data de entrada em formato inválido: (.+)$/,
+    (m) => `A data de internação veio como “${semAspas(m[1])}”, que não é uma data. Informe a data correta.`,
+  ],
+  [
+    /^data de alta em formato inválido: (.+)$/,
+    (m) => `A data de alta veio como “${semAspas(m[1])}”, que não é uma data. Informe a data correta.`,
+  ],
+  [
+    /^data de alta \((.+?)\) anterior à entrada \((.+?)\)$/,
+    (m) => `A alta (${semAspas(m[1])}) está antes da internação (${semAspas(m[2])}). Corrija uma das duas datas.`,
+  ],
+]
+
+/** Texto que o usuário lê para um motivo de pendência de censo. */
 export function motivoCensoTexto(motivo: string): string {
-  return MOTIVO_CENSO[motivo] || motivo
+  const fixo = MOTIVO_CENSO[motivo]
+  if (fixo) return fixo
+  for (const [re, formatar] of PADROES) {
+    const m = motivo.match(re)
+    if (m) return formatar(m)
+  }
+  // Motivo novo que o backend passou a gerar e ainda não foi traduzido aqui.
+  // Mostrar a frase crua é melhor do que esconder o problema, mas ela tende a
+  // soar técnica — ao adicionar motivos no validador, mapeie-os acima.
+  return motivo
+}
+
+// ── Tipo do censo ────────────────────────────────────────────────────────────
+// O backend usa chaves internas ("misto", "altas", "internados"); na tela elas
+// viram o nome que quem trabalha com o censo reconhece.
+const TIPO_CENSO: Record<string, string> = {
+  misto: 'Internados e altas',
+  altas: 'Altas',
+  internados: 'Internados',
+}
+
+/** Nome do tipo de censo para a tela; null quando o tipo não veio. */
+export function tipoCensoTexto(tipo?: string | null): string | null {
+  if (!tipo) return null
+  return TIPO_CENSO[tipo] ?? tipo
 }
