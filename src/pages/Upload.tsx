@@ -1,7 +1,9 @@
 import { useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { invalidarPorEvento } from '../lib/invalidation'
-import { enviarCensos, reverterEnvioCenso } from '../services/censos.service'
+import { dataHora } from '../lib/datas'
+import { confirmarReenvioCensos, enviarCensos, reverterEnvioCenso } from '../services/censos.service'
 import type { HospitalManual, Operadora, PacienteGravado, PendenteCenso, UploadCensoResponse, UploadCensoResult } from '../types/api'
 import { usePageHeader } from '../components/PageHeader'
 import { Spinner } from '../components/ui'
@@ -81,10 +83,33 @@ const localStyles = `
 .up-arquivo-topo{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
 .up-arquivo-nome{font-family:var(--font-mono);font-size:var(--t-sm);font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .up-arquivo-sub{font-size:var(--t-sm);color:var(--muted)}
+/* Data do censo: etiqueta discreta, à direita do cabeçalho do arquivo. Fonte
+   mono porque é número que se compara entre linhas — alinhado, lê-se de relance
+   qual arquivo é de outro dia. */
+.up-data-censo{margin-left:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border:1px solid var(--border);border-radius:99px;background:var(--surface-3);font-family:var(--font-mono);font-size:var(--t-xs);font-weight:600;color:var(--ink-3)}
+.up-data-censo svg{color:var(--muted-2)}
 .up-arquivo-erro{font-size:var(--t-sm);color:var(--danger-2);line-height:1.45}
 .up-arquivo-notas{font-size:var(--t-xs);color:var(--ink-3);line-height:1.5;display:grid;gap:2px}
 .up-ignorar{margin-left:auto;flex-shrink:0;padding:2px 9px;border:1px solid var(--border);background:var(--surface);border-radius:99px;font-size:var(--t-xs);font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit}
 .up-ignorar:hover{border-color:var(--border-strong);color:var(--ink-2)}
+/* Ações de um arquivo que pede decisão (hoje: reenvio de um censo já lido). O
+   "Pular" perde o margin-left:auto porque aqui as duas ações andam juntas, à
+   esquerda — empurrar uma para a borda faria parecer que não se relacionam. */
+.up-arquivo-acoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.up-arquivo-acoes .up-ignorar{margin-left:0}
+.up-reenviar{padding:4px 12px;border-radius:99px;font-size:var(--t-xs);font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--warning);background:var(--warning-bg);color:var(--warning-2)}
+.up-reenviar:hover:not(:disabled){background:var(--warning);color:#fff}
+.up-reenviar:disabled{opacity:.6;cursor:default}
+
+/* Arquivo digitalizado: o aviso vira BLOCO, não uma linha de erro. Este caso não
+   se resolve reenviando — os pacientes têm de ser cadastrados à mão —, e a
+   instrução precisa competir em peso com o resto da tela, senão passa batida. */
+.up-imagem-aviso{display:flex;gap:11px;padding:11px 12px;border:1px solid var(--warning);border-radius:var(--r-md);background:var(--warning-bg)}
+.up-imagem-ico{flex-shrink:0;color:var(--warning-2);margin-top:1px}
+.up-imagem-txt{flex:1;min-width:0;font-size:var(--t-sm);color:var(--ink-2);line-height:1.5}
+.up-imagem-passos{margin-top:7px;display:grid;gap:4px;font-size:var(--t-sm);color:var(--ink-2)}
+.up-ir-cadastrar{flex-shrink:0;padding:4px 12px;border-radius:99px;border:1px solid var(--warning);background:var(--warning);color:#fff;font-size:var(--t-xs);font-weight:600;text-decoration:none}
+.up-ir-cadastrar:hover{filter:brightness(.94)}
 
 /* Grupos clicáveis (internados / com alta). Cor de link e chevron: precisam se ler
    como controle, não como rótulo — com o cinza das tags informativas ninguém
@@ -172,6 +197,28 @@ const IcoChevron = (
 function plural(n: number, singular: string, pluralForma = `${singular}s`): string {
   return n === 1 ? singular : pluralForma
 }
+
+/** ISO `AAAA-MM-DD` → `dd/mm`. O ano fica de fora: o censo é sempre recente, e
+ *  no resumo o que se compara é o DIA. */
+function ddmm(iso: string): string {
+  const [, mes, dia] = iso.slice(0, 10).split('-')
+  return mes && dia ? `${dia}/${mes}` : iso
+}
+
+const IcoImagem = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" />
+  </svg>
+)
+
+const IcoCalendario = (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+  </svg>
+)
 
 const IcoPdf = (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -293,6 +340,8 @@ export default function Upload() {
   const [hospital, setHospital] = useState('')
   // Desfazer: sessão em processo de reversão (trava o botão) e envios recentes.
   const [revertendo, setRevertendo] = useState<string | null>(null)
+  // Nome do arquivo cujo reenvio está sendo processado (trava o botão do cartão).
+  const [reenviando, setReenviando] = useState<string | null>(null)
   // Envio aguardando confirmação para ser desfeito (null = modal fechada). Guarda
   // o que a modal mostra, para o texto citar o hospital e a quantidade.
   const [confirmarDesfazer, setConfirmarDesfazer] = useState<
@@ -353,6 +402,8 @@ export default function Upload() {
       const data = await enviarCensos(files, hospitais)
       const pend = coletarPendentes(data.resultados ?? [])
       const faltaHosp = (data.resultados ?? []).filter((r) => r.precisa_hospital).length
+      const jaLidos = (data.resultados ?? []).filter((r) => r.precisa_confirmar_reenvio).length
+      const scans = (data.resultados ?? []).filter((r) => r.erro_tipo === 'imagem').length
       setResult(data)
       setPendentes(pend)
       setWizardAberto(pend.length + faltaHosp > 0)
@@ -361,12 +412,48 @@ export default function Upload() {
       invalidarDados()
       const partes: string[] = []
       if (faltaHosp) partes.push(`${faltaHosp} ${plural(faltaHosp, 'arquivo')} sem hospital`)
+      // Um arquivo já lido não é erro nem pendência: é uma decisão que só o
+      // usuário pode tomar, e ela fica no cartão do arquivo. O toast apenas
+      // avisa que há algo esperando, para ninguém sair da tela achando que
+      // tudo entrou.
+      if (jaLidos) partes.push(`${jaLidos} ${plural(jaLidos, 'arquivo')} já ${plural(jaLidos, 'lido', 'lidos')} antes`)
+      // O digitalizado entra no toast porque é o único caso cuja saída está FORA
+      // desta tela: os pacientes vão ter de ser cadastrados na Visão Geral, e
+      // quem envia precisa sair daqui sabendo disso.
+      if (scans) {
+        partes.push(`${scans} ${plural(scans, 'arquivo')} ${plural(scans, 'digitalizado')}`
+          + ' — cadastrar à mão')
+      }
       if (pend.length) partes.push(`${pend.length} ${plural(pend.length, 'paciente')} para completar`)
       setToast(partes.length ? `Censos lidos — ${partes.join(' · ')}` : 'Censos processados')
     } catch (err) {
       setToast(`Erro: ${(err as Error).message}`)
     } finally {
       setBusy(false)
+    }
+  }
+
+  // Processa um arquivo que o backend recusou por já ter sido lido antes. Os
+  // arquivos continuam no staging da sessão, então basta reprocessar autorizando
+  // nominalmente — o resultado substitui o aviso no lugar dele.
+  async function confirmarReenvio(arquivo: string) {
+    const sessao = result?.sessao
+    if (!sessao) return
+    setReenviando(arquivo)
+    try {
+      const hospitais: Record<string, HospitalManual> = hospital
+        ? { [arquivo]: { key: hospital } }
+        : {}
+      const data = await confirmarReenvioCensos(sessao, [arquivo], hospitais)
+      const res = data.resultados?.[0]
+      if (res) onArquivoProcessado(res)
+      invalidarDados()
+      const n = res?.total ?? 0
+      setToast(`Arquivo reenviado — ${n} ${plural(n, 'paciente')} ${plural(n, 'atualizado')}`)
+    } catch (err) {
+      setToast(`Erro ao reenviar: ${(err as Error).message}`)
+    } finally {
+      setReenviando(null)
     }
   }
 
@@ -574,6 +661,8 @@ export default function Upload() {
                 setIgnorados((lista) => [...lista, arquivo])
                 setToast(`${arquivo} ignorado`)
               }}
+              onConfirmarReenvio={confirmarReenvio}
+              reenviando={reenviando}
             />
           </>
         )}
@@ -632,6 +721,7 @@ export default function Upload() {
 function ResultadoEnvio({
   resultados, pendentes, semHospital, criados, atualizados,
   podeDesfazer, desfazendo, onCompletar, onDesfazer, onIgnorar,
+  onConfirmarReenvio, reenviando,
 }: {
   resultados: UploadCensoResult[]
   pendentes: number
@@ -646,13 +736,27 @@ function ResultadoEnvio({
   onCompletar?: () => void
   onDesfazer: () => void
   onIgnorar: (arquivo: string) => void
+  /** Processa um arquivo que já tinha sido lido antes, após o usuário confirmar. */
+  onConfirmarReenvio: (arquivo: string) => void
+  /** Nome do arquivo cujo reenvio está em andamento (trava o botão daquele cartão). */
+  reenviando: string | null
 }) {
-  const falhas = resultados.filter((r) => r.erro).length
+  // Digitalizados não são "erro": o arquivo chegou certo, o hospital é que o
+  // mandou como imagem. Contar junto os pintaria de vermelho no placar,
+  // contradizendo o cartão do arquivo — que pede uma AÇÃO (cadastrar à mão), e
+  // não uma correção.
+  const digitalizados = resultados.filter((r) => r.erro_tipo === 'imagem').length
+  const falhas = resultados.filter((r) => r.erro && r.erro_tipo !== 'imagem').length
   const totalPacientes = resultados.reduce((s, r) => s + (r.total || 0), 0)
   const emLeito = resultados.reduce((s, r) => s + (r.internados || 0), 0)
   const comAlta = resultados.reduce((s, r) => s + (r.altas || 0), 0)
 
-  const problemas = pendentes > 0 || semHospital > 0 || falhas > 0
+  const aguardaReenvio = resultados.filter((r) => r.precisa_confirmar_reenvio).length
+  // Datas distintas entre os arquivos do lote. Quase sempre é UMA (o envio do
+  // dia); mais de uma é justamente o que o usuário precisa notar — subiu o censo
+  // de ontem junto com o de hoje.
+  const datas = [...new Set(resultados.map((r) => r.data_censo).filter(Boolean))].sort()
+  const problemas = pendentes > 0 || semHospital > 0 || falhas > 0 || aguardaReenvio > 0 || digitalizados > 0
   // O placar só ganha espaço se realmente somar algo além do que a linha já diz.
   const vaiResumir = resultados.length > 1 || problemas
 
@@ -675,11 +779,25 @@ function ResultadoEnvio({
               </>
             )}
             {resultados.length > 1 && <> · {resultados.length} arquivos</>}
+            {datas.length === 1 && <> · censo de <b>{ddmm(datas[0] as string)}</b></>}
+            {datas.length > 1 && (
+              <> · censos de <b>{datas.map((d) => ddmm(d as string)).join(', ')}</b></>
+            )}
           </div>
           {problemas && (
             <div className="up-placar-alertas">
               {pendentes > 0 && <span className="badge warning">{pendentes} a completar</span>}
               {semHospital > 0 && <span className="badge warning">{semHospital} sem hospital</span>}
+              {aguardaReenvio > 0 && (
+                <span className="badge warning">
+                  {aguardaReenvio} {plural(aguardaReenvio, 'já lido', 'já lidos')}
+                </span>
+              )}
+              {digitalizados > 0 && (
+                <span className="badge warning">
+                  {digitalizados} {plural(digitalizados, 'digitalizado')} — cadastrar à mão
+                </span>
+              )}
               {falhas > 0 && <span className="badge danger">{falhas} com erro</span>}
             </div>
           )}
@@ -700,7 +818,9 @@ function ResultadoEnvio({
       )}
 
       {resultados.map((res, i) => (
-        <LinhaResultado key={`${res.arquivo}-${i}`} res={res} onIgnorar={onIgnorar} />
+        <LinhaResultado key={`${res.arquivo}-${i}`} res={res} onIgnorar={onIgnorar}
+                        onConfirmarReenvio={onConfirmarReenvio}
+                        reenviando={reenviando === res.arquivo} />
       ))}
 
       {podeDesfazer && (
@@ -773,14 +893,83 @@ function ListaPacientes({ pacientes }: { pacientes: PacienteGravado[] }) {
   )
 }
 
+/** Dia a que o censo se refere, lido do cabeçalho do próprio relatório.
+ *
+ *  É a informação que permite perceber, na conferência, que subiu o censo de
+ *  ontem ou o de um dia já enviado — o nome do arquivo não serve de pista,
+ *  porque repete todo dia ("INTER PORTO.pdf") ou nem traz data ("Anexo (1).pdf").
+ *
+ *  Sem data no arquivo não renderiza nada: um "—" ocuparia espaço para dizer que
+ *  não há o que dizer, e um palpite seria pior — ninguém confere o que parece
+ *  plausível. */
+function DataDoCenso({ iso }: { iso?: string | null }) {
+  if (!iso) return null
+  const [ano, mes, dia] = iso.slice(0, 10).split('-')
+  if (!ano || !mes || !dia) return null
+  return (
+    <span className="up-data-censo" title={`Censo de ${dia}/${mes}/${ano}`}>
+      {IcoCalendario}
+      {dia}/{mes}
+    </span>
+  )
+}
+
 // ── Um arquivo do envio ──────────────────────────────────────────────────────
-function LinhaResultado({ res, onIgnorar }: {
+function LinhaResultado({ res, onIgnorar, onConfirmarReenvio, reenviando }: {
   res: UploadCensoResult
   onIgnorar: (arquivo: string) => void
+  onConfirmarReenvio?: (arquivo: string) => void
+  reenviando?: boolean
 }) {
   // Grupo aberto (null = recolhido). Recolhido por padrão: um lote com vários
   // arquivos de 60 pacientes empurraria a tela inteira.
   const [aberto, setAberto] = useState<'INTERNADO' | 'ALTA' | null>(null)
+
+  // Arquivo DIGITALIZADO (foto/scan): não há texto para ler, e nenhuma correção
+  // no sistema muda isso. O que o usuário precisa saber tem duas partes, e por
+  // isso este caso ganha cartão próprio em vez de uma linha de erro: (a) os
+  // pacientes DESTE censo só entram à mão, e (b) para os próximos envios, o
+  // hospital precisa mandar o PDF gerado pelo sistema.
+  //
+  // Antes isto era um parágrafo cinza dentro do mesmo cartão vermelho do
+  // "formato desconhecido" — dois problemas de saídas opostas com a mesma cara,
+  // e a instrução mais importante (cadastrar à mão) se perdia no meio do texto.
+  if (res.erro && res.erro_tipo === 'imagem') {
+    return (
+      <div className="up-arquivo atencao">
+        <div className="up-arquivo-topo">
+          <span className="up-arquivo-nome" title={res.arquivo}>{res.arquivo}</span>
+          <span className="badge warning"><i className="bdot" />imagem digitalizada</span>
+          <DataDoCenso iso={res.data_censo} />
+        </div>
+        <div className="up-imagem-aviso">
+          <span className="up-imagem-ico" aria-hidden>{IcoImagem}</span>
+          <div className="up-imagem-txt">
+            <b>Este censo precisa ser cadastrado à mão.</b> O arquivo é uma página
+            digitalizada (foto ou scan), então não há texto para o sistema ler —
+            nenhum paciente foi gravado.
+            <div className="up-imagem-passos">
+              <div>
+                <b>Agora:</b> cadastre os pacientes deste censo pela Visão Geral,
+                em <b>“Adicionar paciente”</b>.
+              </div>
+              <div>
+                <b>Para os próximos:</b> peça ao hospital o arquivo gerado pelo
+                sistema dele (PDF de texto) — aí a leitura volta a ser automática.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="up-arquivo-acoes">
+          <Link to="/" className="up-ir-cadastrar">Ir para a Visão Geral</Link>
+          <button type="button" className="up-ignorar" onClick={() => onIgnorar(res.arquivo)}
+                  title="Tira este arquivo da lista. Nada foi gravado por ele.">
+            Ignorar
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (res.erro) {
     return (
@@ -798,6 +987,43 @@ function LinhaResultado({ res, onIgnorar }: {
     )
   }
 
+  // Arquivo cujo CONTEÚDO já foi lido antes. Nada foi gravado: a tela mostra
+  // quando aquele censo entrou e o usuário decide. Reenviar é legítimo — é como
+  // se corrige um censo mandado no hospital errado, ou se relê um arquivo depois
+  // de um ajuste no leitor —, então aqui há uma saída para os dois lados.
+  if (res.precisa_confirmar_reenvio) {
+    const anterior = res.envio_anterior
+    const quando = dataHora(anterior?.processado_em)
+    const n = anterior?.total_pacientes ?? 0
+    return (
+      <div className="up-arquivo atencao">
+        <div className="up-arquivo-topo">
+          <span className="up-arquivo-nome" title={res.arquivo}>{res.arquivo}</span>
+          <span className="badge warning"><i className="bdot" />já foi lido</span>
+        </div>
+        <div className="up-arquivo-sub">
+          Este arquivo já foi enviado{quando ? <> em <b>{quando}</b></> : null}
+          {n ? <>, com {n} {plural(n, 'paciente')}</> : null}.
+          {anterior?.arquivo && anterior.arquivo !== res.arquivo
+            ? <> Na ocasião o nome era <b>“{anterior.arquivo}”</b>.</>
+            : null}
+          {' '}Nada foi gravado agora.
+        </div>
+        <div className="up-arquivo-acoes">
+          <button type="button" className="up-reenviar"
+                  disabled={reenviando}
+                  onClick={() => onConfirmarReenvio?.(res.arquivo)}>
+            {reenviando ? 'Processando…' : 'Enviar mesmo assim'}
+          </button>
+          <button type="button" className="up-ignorar" onClick={() => onIgnorar(res.arquivo)}
+                  title="Tira este arquivo da lista. Nada foi gravado por ele.">
+            Pular
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (res.precisa_hospital) {
     const lidos = res.pacientes_extraidos ?? 0
     return (
@@ -805,6 +1031,7 @@ function LinhaResultado({ res, onIgnorar }: {
         <div className="up-arquivo-topo">
           <span className="up-arquivo-nome" title={res.arquivo}>{res.arquivo}</span>
           <span className="badge warning"><i className="bdot" />falta o hospital</span>
+          <DataDoCenso iso={res.data_censo} />
         </div>
         <div className="up-arquivo-sub">
           {res.hospital_sugerido
@@ -820,8 +1047,8 @@ function LinhaResultado({ res, onIgnorar }: {
   const emLeito = gravados.filter((p) => p.situacao !== 'ALTA')
   const comAlta = gravados.filter((p) => p.situacao === 'ALTA')
   const pendentes = res.pendentes || 0
-  const descartados = res.descartados || 0
   const avisos = res.avisos ?? []
+  const mantidos = res.mantidos_com_alta ?? []
 
   // Um grupo vira botão quando há nomes para mostrar; senão é só o número — não
   // pode parecer clicável sem ter o que abrir.
@@ -853,6 +1080,7 @@ function LinhaResultado({ res, onIgnorar }: {
         <span className="up-arquivo-sub">
           {res.hospital_nome || res.hospital || 'Hospital não informado'}
         </span>
+        <DataDoCenso iso={res.data_censo} />
       </div>
 
       <div className="up-grupos">
@@ -865,15 +1093,23 @@ function LinhaResultado({ res, onIgnorar }: {
 
       {aberto && <ListaPacientes pacientes={aberto === 'ALTA' ? comAlta : emLeito} />}
 
-      {(pendentes > 0 || descartados > 0 || avisos.length > 0) && (
+      {(pendentes > 0 || avisos.length > 0 || mantidos.length > 0) && (
         <div className="up-arquivo-notas">
           {pendentes > 0 && (
             <div>{pendentes} {plural(pendentes, 'paciente')} com dado faltando.</div>
           )}
-          {descartados > 0 && (
+          {/* Já tinham alta e o censo não os reabriu. Não é erro — é o censo
+              repetindo quem já saiu —, mas precisa ser dito: a contagem de
+              gravados, sozinha, não explicaria por que essas linhas não entraram.
+              Os nomes vêm junto porque é por eles que se reconhece o caso. */}
+          {mantidos.length > 0 && (
             <div>
-              {descartados} {plural(descartados, 'alta')} de paciente sem internação no
-              sistema — {plural(descartados, 'ignorada')}.
+              {mantidos.length} {plural(mantidos.length, 'paciente')} já{' '}
+              {plural(mantidos.length, 'tinha', 'tinham')} alta e{' '}
+              {plural(mantidos.length, 'continua', 'continuam')} como{' '}
+              {plural(mantidos.length, 'estava', 'estavam')}:{' '}
+              {mantidos.slice(0, 4).map((m) => m.nome || m.atendimento).join(', ')}
+              {mantidos.length > 4 && ` e mais ${mantidos.length - 4}`}.
             </div>
           )}
           {avisos.map((a, j) => <div key={j}>⚠ {a}</div>)}

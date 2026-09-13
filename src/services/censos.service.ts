@@ -54,6 +54,22 @@ export function reprocessarCensos(
   })
 }
 
+/** Processa arquivos que o backend recusou por JÁ TEREM SIDO LIDOS antes, depois
+ *  de o usuário confirmar. Os arquivos continuam no staging da sessão, então é a
+ *  mesma rota — o que muda é `confirmados`, que autoriza nominalmente cada um. */
+export function confirmarReenvioCensos(
+  sessao: string, arquivos: string[], hospitais?: Record<string, HospitalManual>,
+): Promise<UploadCensoResponse> {
+  return apiFetch<UploadCensoResponse>('/upload/processar', {
+    method: 'POST',
+    body: {
+      sessao, arquivos, confirmados: arquivos,
+      ...(hospitais && Object.keys(hospitais).length ? { hospitais } : {}),
+    },
+    timeoutMs: 120_000,
+  })
+}
+
 /** Descarta uma pendência de censo: resolve SEM gravar o paciente. A revisão é
  *  toda feita no upload — não há fila no Kanban para resgatar o que ficasse aberto,
  *  então o assistente precisa desta saída explícita para o registro que não entra. */

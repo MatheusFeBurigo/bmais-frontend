@@ -60,9 +60,19 @@ export function HospitalCombobox({
   const wrapRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
+  // Digitando agora? Enquanto o usuário edita o campo, o texto é DELE — nenhuma
+  // sincronização externa pode sobrescrevê-lo.
+  const digitando = useRef(false)
+
   // O valor pode mudar por fora (troca de operadora limpa a escolha, por exemplo):
   // o texto acompanha, senão o campo mostraria um hospital que não está mais valendo.
+  //
+  // Mas só quando a mudança vem DE FORA. Com um hospital já selecionado, digitar a
+  // primeira letra fazia: `onChange('')` (digitar reabre a escolha) → `escolhido`
+  // vira null → este efeito rodava e limpava o campo, engolindo a letra. O usuário
+  // via o campo travar e só conseguia escrever a partir da segunda tecla.
   useEffect(() => {
+    if (digitando.current) return
     setBusca(escolhido?.nome ?? '')
   }, [escolhido])
 
@@ -111,12 +121,16 @@ export function HospitalCombobox({
   }, [])
 
   function selecionar(h: Hospital) {
+    // Escolheu um item: o texto volta a ser espelho do valor, e a sincronização
+    // externa pode agir de novo.
+    digitando.current = false
     onChange(h.key)
     setBusca(h.nome)
     setAberto(false)
   }
 
   function onTexto(texto: string) {
+    digitando.current = true
     setBusca(texto)
     onChange('')   // digitar reabre a escolha: o valor só volta ao selecionar um item
     setAberto(true)
@@ -159,6 +173,20 @@ export function HospitalCombobox({
           value={busca}
           onChange={(e) => onTexto(e.target.value)}
           onFocus={() => !disabled && setAberto(true)}
+          onBlur={() => {
+            // Saiu do campo: o texto deixa de ser "do usuário" e volta a espelhar
+            // o valor. Soltar a trava aqui é o que faz uma mudança externa
+            // posterior (a troca de operadora limpa a escolha) voltar a ser
+            // refletida — senão o campo mostraria um hospital que não vale mais.
+            //
+            // O texto digitado sem seleção era só um filtro, e é descartado: o
+            // valor é fechado por definição, e deixar "Hospi" no campo com
+            // `value` vazio faria parecer que algo foi escolhido. Selecionar pelo
+            // menu não passa por aqui — o `mousedown` da opção dá preventDefault
+            // justamente para não disparar este blur antes da escolha.
+            digitando.current = false
+            setBusca(escolhido?.nome ?? '')
+          }}
           onKeyDown={onKey}
         />
         {aberto && !disabled && (

@@ -692,8 +692,6 @@ export interface UploadCensoResult {
   gravados_detalhe?: PacienteGravado[]
   /** Telemetria do parser: divergência entre linhas extraídas e o total impresso no PDF. */
   avisos?: string[]
-  /** Altas de pacientes sem entrada no sistema — ignoradas. */
-  descartados?: number
   pendentes?: number
   pendentes_detalhe?: PendenteCenso[]
   /** O layout foi lido, mas o hospital não está no cadastro: nada foi gravado.
@@ -707,7 +705,50 @@ export interface UploadCensoResult {
   operadora_nome?: string | null
   /** Pacientes que o parser extraiu e ficaram aguardando o hospital. */
   pacientes_extraidos?: number
+  /** Dia a que o censo se refere (ISO `AAAA-MM-DD`), lido do cabeçalho do próprio
+   *  relatório. `null` quando o arquivo não declara — a tela então não mostra
+   *  data, em vez de exibir um palpite. */
+  data_censo?: string | null
+  /** Pacientes que o censo trouxe mas que JÁ tinham alta e não foram alterados:
+   *  a entrada do censo não é posterior à alta registrada, então é a mesma
+   *  internação que já terminou. Não é erro — é o censo repetindo quem já saiu. */
+  mantidos_com_alta?: MantidoComAlta[]
+  /** O CONTEÚDO deste arquivo já foi lido num envio anterior: nada foi gravado.
+   *  A tela mostra quando aquele censo entrou e o usuário decide se processa
+   *  assim mesmo (reprocessa com o nome em `confirmados`). */
+  precisa_confirmar_reenvio?: boolean
+  /** Quando e onde este mesmo arquivo já entrou. Vem junto do aviso acima e,
+   *  depois de confirmado, em `reenvio_confirmado` — para o resultado não
+   *  esconder que aquele censo já estava no sistema. */
+  envio_anterior?: EnvioAnterior | null
+  reenvio_confirmado?: EnvioAnterior | null
   erro?: string
+  /** Por que o arquivo não foi lido, quando há `erro`:
+   *  - `imagem`: PDF digitalizado/escaneado, sem texto. Não há o que ler; os
+   *    pacientes deste censo precisam ser cadastrados à mão.
+   *  - `formato_desconhecido`: tem texto, mas o layout não é reconhecido — caso
+   *    de avisar o suporte para incluir o modelo. */
+  erro_tipo?: 'imagem' | 'formato_desconhecido' | null
+}
+
+/** Paciente que o censo trouxe, mas que já estava com alta no sistema. */
+export interface MantidoComAlta {
+  atendimento?: string | null
+  nome?: string | null
+  /** Alta que já estava registrada (ISO). */
+  data_alta?: string | null
+  /** Entrada que o censo trouxe — anterior ou igual à alta, por isso não reabriu. */
+  data_entrada?: string | null
+}
+
+/** O envio anterior de um arquivo com o mesmo conteúdo. */
+export interface EnvioAnterior {
+  processado_em?: string | null
+  /** Nome com que o arquivo foi enviado antes — pode diferir do atual. */
+  arquivo?: string | null
+  hospital_key?: string | null
+  total_pacientes?: number
+  sessao?: string | null
 }
 
 export interface UploadCensoResponse {
