@@ -7,9 +7,11 @@
 //
 // A listagem só carrega key/nome, por isso a ficha vem por GET /api/hospital/{key}
 // quando o modal abre — antes disso nenhuma chamada é feita.
+import { useState } from 'react'
 import type { Hospital, OperadoraVinculo } from '../types/api'
 import { Modal, OpAvatar, LoadingState } from './ui'
-import { useHospital } from '../hooks/useHospital'
+import { useHospital, useTimelineHospital } from '../hooks/useHospital'
+import TimelineCensos from './hospital/TimelineCensos'
 
 /** Campos da ficha exibidos, na ordem. Ausentes viram "—", nunca somem: a
  *  lacuna é informação (o cadastro está incompleto). */
@@ -48,6 +50,11 @@ export default function HospitalDetalhesModal({
   hospital, onClose, onAbrirCadastro, sobreposta,
 }: HospitalDetalhesModalProps) {
   const { data, isLoading, isError, error } = useHospital(hospital.key)
+  // Histórico de censos: aberto sob demanda. Ele traz os pacientes de até 60
+  // envios, e a razão mais comum de abrir esta ficha é achar um telefone —
+  // carregar junto faria toda consulta de contato pagar por isso.
+  const [verHistorico, setVerHistorico] = useState(false)
+  const timeline = useTimelineHospital(hospital.key, verHistorico)
 
   const vinculadas: OperadoraVinculo[] = data?.operadoras_nomes
     ?? (data?.operadoras ?? []).map((k) => ({ key: k, nome: k }))
@@ -135,6 +142,28 @@ export default function HospitalDetalhesModal({
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Histórico de censos: em que dias este hospital mandou, e quem veio.
+              Responde "ele tem mandado?" — que o resto da ficha não responde. */}
+          <div>
+            <div className="row" style={{ gap: 8, alignItems: 'baseline' }}>
+              <div style={{ ...rotuloStyle, marginBottom: 0, flex: 1 }}>Histórico de censos</div>
+              {!verHistorico && (
+                <button className="btn btn-ghost btn-sm" onClick={() => setVerHistorico(true)}>
+                  Ver histórico
+                </button>
+              )}
+            </div>
+            {verHistorico && (
+              <div style={{ marginTop: 8 }}>
+                <TimelineCensos
+                  data={timeline.data}
+                  isLoading={timeline.isLoading}
+                  isError={timeline.isError}
+                />
+              </div>
+            )}
           </div>
 
           {texto(data.observacoes) !== '—' && (

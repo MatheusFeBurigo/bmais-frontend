@@ -43,7 +43,7 @@ export default function OverviewView({ operadoras, onNav, onToast, onChanged, to
   async function limparDados() {
     const r = prompt('Isso vai apagar TODAS as internações, relatórios e censos.\nOperadoras, hospitais e equipe serão mantidos.\n\nDigite LIMPAR para confirmar:')
     if (r === null) return
-    if (r.trim().toUpperCase() !== 'LIMPAR') { onToast('Confirmação incorreta — nada foi apagado'); return }
+    if (r.trim().toUpperCase() !== 'LIMPAR') { onToast('Confirmação incorreta. Nada foi apagado'); return }
     setBusy('limpar')
     try {
       const d = await apiLimparDados()

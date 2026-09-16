@@ -29,7 +29,7 @@ export function derivarInsights(data: DiretoriaPayload): Insight[] {
     {
       clr: proximo > 0 ? 'warning' : 'info',
       title: 'Próximos a vencer',
-      desc: 'Pacientes cujo relatório vence em 1–3 dias — priorizar visita.',
+      desc: 'Pacientes cujo relatório vence em 1–3 dias. Priorizar visita.',
       status: `${proximo} paciente${proximo === 1 ? '' : 's'}`,
     },
     {
@@ -47,7 +47,7 @@ export function derivarInsights(data: DiretoriaPayload): Insight[] {
     {
       clr: avancada > 0 ? 'warning' : longa > 0 ? 'info' : 'muted',
       title: 'Longa permanência',
-      desc: 'Internados acima do limite — candidatos a revisão de alta.',
+      desc: 'Internados acima do limite: candidatos a revisão de alta.',
       status: `${longa} longa · ${avancada} avançada`,
     },
   ]

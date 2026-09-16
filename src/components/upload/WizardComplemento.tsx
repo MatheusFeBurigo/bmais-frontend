@@ -16,6 +16,7 @@ import type {
   CampoCenso, CompletarPendenciaPayload, Hospital, HospitalManual, Operadora,
   PendenteCenso, UploadCensoResult,
 } from '../../types/api'
+import { Alerta, alertaStyles } from './Alerta'
 import { Spinner } from '../ui'
 import { ConfirmarModal } from '../ConfirmarModal'
 import { HospitalCombobox } from '../HospitalCombobox'
@@ -52,9 +53,8 @@ const styles = `
 .wz-alvo-meta{font-size:var(--t-sm);color:var(--muted);margin-top:1px}
 
 /* Explicação do que falta — texto corrente, não bullet de log. */
-.wz-motivos{display:grid;gap:5px;font-size:var(--t-sm);color:var(--ink-3);line-height:1.5}
-.wz-motivos>div{display:flex;gap:7px}
-.wz-motivos-ico{color:var(--warning);flex-shrink:0}
+/* Só empilha os <Alerta> do passo — a forma de cada um vem do componente. */
+.wz-motivos{display:grid;gap:5px}
 
 .wz-sec{display:grid;gap:9px}
 .wz-sec-lbl{font-size:10px;letter-spacing:.12em;font-weight:700;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:9px}
@@ -94,8 +94,6 @@ const styles = `
 
 .wz-ok{display:flex;gap:9px;align-items:flex-start;border-left:3px solid var(--success);background:var(--success-bg);padding:10px 14px;border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:var(--t-sm);color:var(--ink-2);line-height:1.5}
 .wz-ok-ico{color:var(--success);flex-shrink:0}
-.wz-aviso{display:flex;gap:9px;align-items:flex-start;border-left:3px solid var(--warning);background:var(--warning-bg);padding:10px 14px;border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:var(--t-sm);color:var(--ink-2);line-height:1.5}
-.wz-aviso-ico{color:var(--warning-2);flex-shrink:0}
 
 /* Resumo final */
 .wz-resumo{display:grid;gap:16px;font-size:var(--t-sm);color:var(--ink-3);line-height:1.5}
@@ -488,6 +486,55 @@ export default function WizardComplemento({
     }
   }
 
+  // Enter aciona a AÇÃO PRIMÁRIA do passo — o mesmo que o botão azul do rodapé.
+  //
+  // Quem completa um censo passa por dezenas de pacientes digitando um campo
+  // cada: tirar a mão do teclado para clicar em "Gravar e continuar" a cada um é
+  // o grosso do trabalho. Aqui Enter faz o que o passo pede e já avança.
+  //
+  // As condições são as MESMAS dos botões (`disabled`), não uma cópia aproximada:
+  // se o botão não pode ser clicado, o Enter também não age — senão o atalho
+  // gravaria um paciente incompleto que o clique recusaria.
+  useEffect(() => {
+    const onEnter = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return
+      // Fora do assistente, ou com a confirmação de saída aberta (o Enter
+      // pertence a ela), não há o que acionar.
+      if (ocupado || confirmandoSaida) return
+      const alvo = e.target as HTMLElement | null
+      // Em <textarea> o Enter é quebra de linha; num <button> ou <a> focado, o
+      // navegador já dispara o clique daquele elemento — interceptar aqui
+      // acionaria DOIS comandos com uma tecla.
+      const tag = alvo?.tagName
+      if (tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'A' || tag === 'SELECT') return
+      // Um combobox aberto usa o Enter para escolher o item da lista.
+      if (alvo?.getAttribute('aria-expanded') === 'true') return
+
+      if (!passo) return
+      e.preventDefault()
+
+      if (passo.tipo === 'hospital') {
+        const nome = passo.arquivo.arquivo
+        if ((hospEstado[nome] ?? 'pendente') === 'processado') { avancar(); return }
+        if (hospManualDe(hospForm[nome], operadorasValidas) != null) {
+          confirmarHospital(passo.arquivo)
+        }
+        return
+      }
+
+      const item = passo.item
+      const k = chavePaciente(item)
+      if ((estado[k] ?? 'pendente') !== 'pendente') { avancar(); return }
+      if (item.pendencia_id != null) salvarPaciente(item)
+    }
+    window.addEventListener('keydown', onEnter)
+    return () => window.removeEventListener('keydown', onEnter)
+    // Sem array de dependências de propósito: o handler lê `passo`, `estado`,
+    // `hospForm` e os três callbacks, que mudam a cada tecla digitada nos campos.
+    // Uma lista aqui ou estaria sempre desatualizada (gravando o paciente com o
+    // valor anterior do formulário) ou seria reescrita a cada render assim mesmo.
+  })
+
   // Assistente cobre a tela inteira: a página de Upload atrás fica parada.
   useTravarScroll()
 
@@ -500,7 +547,7 @@ export default function WizardComplemento({
 
   return (
     <div className="drawer-backdrop" onClick={tentarFechar}>
-      <style>{styles}</style>
+      <style>{alertaStyles}{styles}</style>
       <div className="card wz" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="wz-head">
           <div className="wz-head-txt">
@@ -570,24 +617,18 @@ export default function WizardComplemento({
               </div>
             </div>
             {arquivosSemHospital.some((a) => hospEstado[a.arquivo] !== 'processado') && (
-              <div className="wz-aviso">
-                <span className="wz-aviso-ico">{IcoAlerta}</span>
-                <span>
-                  Arquivo sem hospital definido <strong>não teve nenhum paciente gravado</strong>. Volte um passo
-                  para informar o hospital, ou envie o arquivo de novo mais tarde.
-                </span>
-              </div>
+              <Alerta nivel="atencao">
+                Arquivo sem hospital definido <strong>não teve nenhum paciente gravado</strong>. Volte um passo
+                para informar o hospital, ou envie o arquivo de novo mais tarde.
+              </Alerta>
             )}
             {semDecisao > 0 && (
-              <div className="wz-aviso">
-                <span className="wz-aviso-ico">{IcoAlerta}</span>
-                <span>
-                  <strong>{semDecisao} {plural(semDecisao, 'paciente')}</strong> ainda sem decisão.
-                  {plural(semDecisao, 'Ele não será gravado', 'Eles não serão gravados')} e não
-                  {plural(semDecisao, ' aparecerá', ' aparecerão')} em outra tela — volte para
-                  preencher ou descartar.
-                </span>
-              </div>
+              <Alerta nivel="critico">
+                <strong>{semDecisao} {plural(semDecisao, 'paciente')}</strong> ainda sem decisão.
+                {plural(semDecisao, 'Ele não será gravado', 'Eles não serão gravados')} e não
+                {plural(semDecisao, ' aparecerá', ' aparecerão')} em outra tela. Volte para
+                preencher ou descartar.
+              </Alerta>
             )}
           </div>
         )}
@@ -638,13 +679,13 @@ export default function WizardComplemento({
             return (
               <>
                 {item.pendencia_id == null
-                  ? <span className="wz-erro">{IcoAlerta} Este paciente não pode ser completado aqui — resolva pelo Kanban.</span>
+                  ? <span className="wz-erro">{IcoAlerta} Este paciente não pode ser completado aqui. Resolva pelo Kanban.</span>
                   : erro[k] && <span className="wz-erro">{IcoAlerta} {erro[k]}</span>}
                 {est === 'pendente' && (
                   <button type="button" className="btn btn-outline btn-sm"
                     disabled={ocupado || item.pendencia_id == null}
                     onClick={() => descartarPaciente(item)}
-                    title="O paciente não será gravado — a decisão fica registrada">
+                    title="O paciente não será gravado. A decisão fica registrada">
                     Descartar paciente
                   </button>
                 )}
@@ -697,7 +738,7 @@ export default function WizardComplemento({
           </div>
           <div>
             {plural(semDecisaoAoFechar, 'Ele não será gravado', 'Eles não serão gravados')} e não{' '}
-            {plural(semDecisaoAoFechar, 'aparecerá', 'aparecerão')} em outra tela — a revisão
+            {plural(semDecisaoAoFechar, 'aparecerá', 'aparecerão')} em outra tela. A revisão
             do censo acontece só aqui.
           </div>
         </ConfirmarModal>
@@ -765,18 +806,13 @@ function PassoHospital({ arquivo, form, estado, resultado, operadoras, hospitais
           </span>
         </div>
       ) : (
-        <div className="wz-motivos">
-          <div>
-            <span className="wz-motivos-ico">{IcoAlerta}</span>
-            <span>
-              {arquivo.hospital_sugerido
-                ? <>O PDF informa o hospital <strong>“{arquivo.hospital_sugerido}”</strong>, que ainda não está no cadastro.</>
-                : <>O PDF não informa de qual hospital é o censo.</>}
-              {' '}Escolha um hospital já cadastrado ou cadastre este agora — só depois disso os{' '}
-              {lidos} {plural(lidos, 'paciente')} {plural(lidos, 'é', 'são')} {plural(lidos, 'gravado')}.
-            </span>
-          </div>
-        </div>
+        <Alerta nivel="atencao">
+          {arquivo.hospital_sugerido
+            ? <>O PDF informa o hospital <strong>“{arquivo.hospital_sugerido}”</strong>, que ainda não está no cadastro.</>
+            : <>O PDF não informa de qual hospital é o censo.</>}
+          {' '}Escolha um hospital já cadastrado ou cadastre este agora. Só depois disso os{' '}
+          {lidos} {plural(lidos, 'paciente')} {plural(lidos, 'é', 'são')} {plural(lidos, 'gravado')}.
+        </Alerta>
       )}
 
       {!processado && (
@@ -891,19 +927,13 @@ function PassoPaciente({ item, rascunho, faltantes, motivos, estado, onCampo }: 
         <div className="wz-ok">{IcoOk}<span>Paciente gravado no sistema.</span></div>
       )}
       {estado === 'descartado' && (
-        <div className="wz-aviso">
-          <span className="wz-aviso-ico">{IcoAlerta}</span>
-          <span>Paciente descartado — não foi gravado. A decisão ficou registrada.</span>
-        </div>
+        <Alerta nivel="nota">Paciente descartado. Não foi gravado. A decisão ficou registrada.</Alerta>
       )}
 
       {!salvo && motivos.length > 0 && (
         <div className="wz-motivos">
           {motivos.map((m, i) => (
-            <div key={i}>
-              <span className="wz-motivos-ico">{IcoAlerta}</span>
-              <span>{motivoCensoTexto(m)}</span>
-            </div>
+            <Alerta key={i} nivel="atencao">{motivoCensoTexto(m)}</Alerta>
           ))}
         </div>
       )}
@@ -921,7 +951,7 @@ function PassoPaciente({ item, rascunho, faltantes, motivos, estado, onCampo }: 
       )}
 
       <div className="wz-sec">
-        <div className="wz-sec-lbl">Lido do PDF — confira e corrija se precisar</div>
+        <div className="wz-sec-lbl">Lido do PDF: confira e corrija se precisar</div>
         {capturados.length > 0 && (
           <div className="wz-grid">
             {capturados.map((c) => (

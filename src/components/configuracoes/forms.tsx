@@ -75,7 +75,7 @@ export function AddEscalaHospForm({ hosp, opKey, profs, onClose, onToast, onChan
         <div>
           <label style={labelStyle}>Serviço</label>
           <select className="bm-input bm-select" style={{ fontSize: 'var(--t-sm)' }} value={servico} onChange={(e) => setServico(e.target.value)}>
-            {SERVICOS.map((s) => <option key={s} value={s}>{s} — {SERVICO_LABEL[s]}</option>)}
+            {SERVICOS.map((s) => <option key={s} value={s}>{s}: {SERVICO_LABEL[s]}</option>)}
           </select>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>

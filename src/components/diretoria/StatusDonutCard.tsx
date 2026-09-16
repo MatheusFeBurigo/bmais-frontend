@@ -15,7 +15,7 @@ export default function StatusDonutCard({ data }: { data: DiretoriaPayload }) {
       <div className="card">
         <div className="card-header">
           <div>
-            <div className="card-title">Status de Relatórios — Visão Global</div>
+            <div className="card-title">Status de Relatórios (visão global)</div>
             <p className="card-sub">Distribuição dos {totalInternados} pacientes internados</p>
           </div>
         </div>
@@ -54,7 +54,7 @@ export default function StatusDonutCard({ data }: { data: DiretoriaPayload }) {
         <div className="card-header">
           <div>
             <div className="card-title">Relatórios Registrados por Semana</div>
-            <p className="card-sub">Últimas 8 semanas — tendência de cobertura</p>
+            <p className="card-sub">Últimas 8 semanas: tendência de cobertura</p>
           </div>
           <Badge variant="info">Total: {data.total_relatorios || 0}</Badge>
         </div>

@@ -32,3 +32,33 @@ export function nomeProprio(valor?: string | null): string {
     )
     .join(' ')
 }
+
+/**
+ * Como identificar um paciente na tela quando o censo não traz o nome.
+ *
+ * O "Relatório Personalizado" do SOULMV (Clínica São Gonçalo, São Gonçalo,
+ * Icaraí — 71 pacientes) não tem coluna de paciente: o hospital identifica a
+ * internação pela SENHA de autorização do convênio. O campo `nome` fica vazio de
+ * propósito — inventar um nome com a senha ("KKEGN82") engana quem confere o
+ * censo contra o PDF e some de qualquer busca por nome.
+ *
+ * A ordem é a da confiabilidade da identificação: nome, senha, atendimento. O
+ * prefixo ("senha", "atend.") é o que impede a leitura errada — sem ele, um
+ * código solto na coluna Paciente é lido como se fosse um nome.
+ *
+ * Nunca devolve vazio: uma linha em branco na coluna do paciente é indistinguível
+ * de um erro de carregamento.
+ */
+export function identificacaoPaciente(p?: {
+  nome?: string | null
+  senha?: string | null
+  atendimento?: string | null
+} | null): string {
+  const nome = nomeProprio(p?.nome)
+  if (nome) return nome
+  const senha = (p?.senha || '').trim()
+  if (senha) return `senha ${senha}`
+  const atendimento = (p?.atendimento || '').trim()
+  if (atendimento) return `atend. ${atendimento}`
+  return 'sem identificação'
+}

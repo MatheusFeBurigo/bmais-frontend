@@ -8,10 +8,10 @@ export const SERVICO_LABEL: Record<string, string> = {
   P: 'Análise de Conta', V: 'Aud. Concorrente', AMB: 'Ambulatório', PS: 'Pronto Socorro',
 }
 export const SERVICOS = [
-  { key: 'P', label: 'P — Análise de Conta' },
-  { key: 'V', label: 'V — Auditoria Concorrente' },
-  { key: 'AMB', label: 'AMB — Ambulatório' },
-  { key: 'PS', label: 'PS — Pronto Socorro' },
+  { key: 'P', label: 'P: Análise de Conta' },
+  { key: 'V', label: 'V: Auditoria Concorrente' },
+  { key: 'AMB', label: 'AMB: Ambulatório' },
+  { key: 'PS', label: 'PS: Pronto Socorro' },
 ]
 
 export function isAtivo(p: Profissional): boolean {

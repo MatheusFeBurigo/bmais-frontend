@@ -12,7 +12,7 @@ import { registrarRelatorioRapido } from '../services/internacao.service'
 import { queryKeys } from '../lib/queryKeys'
 import { invalidarPorEvento } from '../lib/invalidation'
 import { hojeISO } from '../lib/datas'
-import { nomeProprio } from '../lib/texto'
+import { identificacaoPaciente } from '../lib/texto'
 import { useTravarScroll } from '../lib/travarScroll'
 import HospitalDetalhesModal from './HospitalDetalhesModal'
 import type { TimelineEvento } from '../types/api'
@@ -102,7 +102,7 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
           <div>{sr && <StatusBadge sr={sr} />}</div>
           <div className="flex-1" style={{ minWidth: 0 }}>
             <div style={{ fontSize: 'var(--t-lg)', fontWeight: 600, letterSpacing: '-.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {nomeProprio(d?.nome) || (isLoading ? '—' : 'Paciente')}
+              {d ? identificacaoPaciente(d) : isLoading ? '—' : 'Paciente'}
             </div>
             <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
               {d && (

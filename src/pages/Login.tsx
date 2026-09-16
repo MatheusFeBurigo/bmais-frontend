@@ -107,7 +107,7 @@ export default function Login() {
             Controle total da sua <em>auditoria hospitalar</em>
           </h1>
           <p className="auth-hero-lede">
-            Acompanhe internações, relatórios e SLAs por operadora em um só lugar —
+            Acompanhe internações, relatórios e SLAs por operadora em um só lugar,
             com alertas que antecipam o que precisa de atenção.
           </p>
 

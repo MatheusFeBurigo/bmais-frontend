@@ -190,6 +190,10 @@ a{text-decoration:none;color:inherit}
 .kpi-clickable.active-filter{outline:2px solid currentColor;outline-offset:-1px}
 
 /* ── Badges ── */
+/* Texto só para leitor de tela: onde a cor ou o ícone carregam um sentido que a
+   palavra não diz (o grau de um alerta, por exemplo), esta classe entrega esse
+   sentido por escrito a quem não vê nenhum dos dois. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:5px;font-size:var(--t-xs);font-weight:600;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}
 .bdot{width:5px;height:5px;border-radius:50%;display:inline-block;flex-shrink:0}
 .badge.danger{background:var(--danger-bg);color:var(--danger-2)}.badge.danger .bdot{background:var(--danger)}

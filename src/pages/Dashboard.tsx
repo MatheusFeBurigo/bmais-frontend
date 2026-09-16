@@ -223,7 +223,11 @@ export default function Dashboard() {
     const filtrados = internacoes.filter((p) => {
       const nome = (p.nome || '').toLowerCase()
       const atend = String(p.atendimento || '').toLowerCase()
-      const okBusca = !q || nome.includes(q) || atend.includes(q)
+      // A senha entra na busca porque é a identificação exibida na coluna
+      // Paciente dos censos sem coluna de nome: buscar só por nome tornaria
+      // esses pacientes inencontráveis na própria tela que os lista.
+      const senha = (p.senha || '').toLowerCase()
+      const okBusca = !q || nome.includes(q) || atend.includes(q) || senha.includes(q)
       const okUti = !utiOn || (p.tipo_leito || '').toUpperCase() === 'UTI'
       const ok30 = !d30On || Number(p.dias || 0) > 30
       // Permanência pelos campos reais (limites por operadora), não por dias>N:
@@ -293,7 +297,7 @@ export default function Dashboard() {
   const opcaoHospital = (h: Hospital) => (
     <option key={h.key} value={h.key}>
       {h.nome}
-      {h.internados ? ` — ${h.internados} internado${h.internados !== 1 ? 's' : ''}` : ''}
+      {h.internados ? `, ${h.internados} internado${h.internados !== 1 ? 's' : ''}` : ''}
       {h.urgente ? ` · ${h.urgente} alerta${h.urgente !== 1 ? 's' : ''}` : ''}
     </option>
   )
@@ -365,7 +369,7 @@ export default function Dashboard() {
           {/* Seletor de hospital */}
           <div className="section-label" style={{ marginTop: 18 }}>
             {temPanorama
-              ? `Hospital — ${hospitaisPanorama.length} unidades cadastradas${todas && operadorasLista.length > 0 ? ` em ${operadorasLista.length} operadoras` : ''}`
+              ? `Hospital: ${hospitaisPanorama.length} unidades cadastradas${todas && operadorasLista.length > 0 ? ` em ${operadorasLista.length} operadoras` : ''}`
               : 'Hospital'}
           </div>
           <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>

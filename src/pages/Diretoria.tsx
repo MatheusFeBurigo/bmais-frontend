@@ -9,6 +9,7 @@ import HeroKpis from '../components/diretoria/HeroKpis'
 import StatusDonutCard from '../components/diretoria/StatusDonutCard'
 import ResumoOperadoraTable from '../components/diretoria/ResumoOperadoraTable'
 import BottomCharts from '../components/diretoria/BottomCharts'
+import RedeOperadorasCard from '../components/diretoria/RedeOperadorasCard'
 
 export default function Diretoria() {
   const [toast, setToast] = useState<string | null>(null)
@@ -37,7 +38,7 @@ export default function Diretoria() {
     try {
       const d = await inserirSeedDemo()
       if (d.ok) {
-        setToast(`✓ Demo inserido — ${d.pacientes_inseridos} pacientes, ${d.relatorios_adicionados} relatórios`)
+        setToast(`✓ Demo inserido: ${d.pacientes_inseridos} pacientes, ${d.relatorios_adicionados} relatórios`)
         refetch()
       } else {
         setToast('Erro ao inserir demo')
@@ -83,6 +84,7 @@ export default function Diretoria() {
           >
             <StatusDonutCard data={data} />
             <ResumoOperadoraTable data={data} expOp={expOp} onExpOp={setExpOp} onExportar={exportar} />
+            <RedeOperadorasCard data={data} />
             <BottomCharts data={data} />
           </Deferred>
         </>

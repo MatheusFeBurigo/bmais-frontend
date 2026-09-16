@@ -116,14 +116,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (u: string, p: string, remember = true) => {
     const res = await apiFetch<LoginResponse>('/login', {
       method: 'POST',
-      body: { email: u, username: u, password: p },
+      // `remember` vai ao servidor porque nos modos HMAC é ele que decide o
+      // prazo do token (1 ou 30 dias); só guardar em localStorage não bastava.
+      body: { email: u, username: u, password: p, remember },
       skipAuthRedirect: true,
     })
     // Base limpa antes de carregar os dados do novo usuário — não herda o cache
     // (recortado ao escopo) de quem estava logado antes nesta aba.
     qc.clear()
     clearSidebarCache()  // idem para o snapshot persistente da Sidebar
-    // Grava token + refresh_token e inicia a contagem do teto da sessão (1 dia).
+    // Grava token + refresh_token e inicia a contagem do teto da sessão
+    // (30 dias com "Manter conectado", 1 dia sem).
     iniciarSessao(res, remember)
     setTokenValido(true)
     setUsername(res.username)

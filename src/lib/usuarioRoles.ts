@@ -26,7 +26,7 @@ export const ROLE_DESC: Record<UserRole, string> = {
   diretor: 'Diretoria, Gestor e Configurações. Não vê Operações.',
   gestor: 'Gestor/Fluxo, Upload e Configurações. Não vê Diretoria, Operacional nem Operações.',
   administrativo: 'Operacional, Upload e Kanban. Não vê Diretoria, Gestor nem Operações.',
-  tecnico: 'Análise técnica dos relatórios do auditor externo — emite o parecer interno.',
+  tecnico: 'Análise técnica dos relatórios do auditor externo. Emite o parecer interno.',
   analista: 'Consulta o Operacional, o Kanban e as Movimentações (trilha de auditoria) e mantém hospitais e operadoras em Operações. Não registra relatórios nem altera dados de paciente. Não vê Diretoria nem Gestor.',
 }
 

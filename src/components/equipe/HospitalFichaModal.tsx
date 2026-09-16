@@ -103,7 +103,7 @@ export default function HospitalFichaModal({ hospital, opNome, onClose, onToast,
         </div>
 
         <p style={{ margin: 0, fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
-          Campos em branco são mantidos como já estão — preencha só o que quiser alterar.
+          Campos em branco são mantidos como já estão. Preencha só o que quiser alterar.
         </p>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 12 }}>

@@ -56,8 +56,8 @@ export default function Logs() {
     useMemo(() => ({
       title: 'Movimentações',
       subtitle: podeGerenciar
-        ? 'Quem fez o quê, quando — e controle das contas que geram as demandas'
-        : 'Quem fez o quê, quando — e a atividade de cada conta',
+        ? 'Quem fez o quê, quando, e controle das contas que geram as demandas'
+        : 'Quem fez o quê, quando, e a atividade de cada conta',
       actions: (
         <button className="btn btn-outline btn-sm" onClick={v.refetchTudo} disabled={atualizando}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -114,7 +114,7 @@ export default function Logs() {
           Não foi possível carregar as movimentações: {erroTrilha}
           {/relation|audit_logs|does not exist/i.test(erroTrilha) && (
             <div style={{ color: 'var(--muted)', marginTop: 4 }}>
-              A tabela de auditoria ainda não existe no banco — aplique a migration <span className="mono">0016_audit_logs.sql</span>.
+              A tabela de auditoria ainda não existe no banco. Aplique a migration <span className="mono">0016_audit_logs.sql</span>.
             </div>
           )}
         </div>

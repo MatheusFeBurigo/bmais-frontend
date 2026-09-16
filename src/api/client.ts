@@ -6,12 +6,19 @@ const TOKEN_KEY = 'bmais_token'
 // Metadados da sessão (refresh_token + prazos), gravados no MESMO storage do token.
 const SESSAO_KEY = 'bmais_sessao'
 
-// Duração máxima da sessão: 1 dia após o login o usuário é deslogado e precisa
-// entrar de novo — em todos os modos de autenticação. Nos modos HMAC o backend
-// também expira o token em 24h (BMAIS_TOKEN_TTL); no modo Supabase o JWT dura
-// ~1h e é renovado via refresh_token (POST /api/sessao/renovar) até este teto.
-// VITE_SESSAO_MAX_HORAS (build-time) sobrescreve; padrão 24.
+// Duração máxima da sessão. É o "Manter conectado" que decide qual teto vale:
+//  - marcado  → 30 dias (SESSAO_LEMBRADA_MAX_MS): fechar e reabrir o navegador
+//    mantém o usuário dentro, sem digitar a senha de novo.
+//  - desmarcado → 1 dia (SESSAO_MAX_MS), e o token vive em sessionStorage, então
+//    na prática some ao fechar a aba.
+// Em ambos os casos, atingido o teto o usuário é deslogado e precisa entrar de
+// novo. No modo Supabase o JWT dura ~1h e é renovado via refresh_token (POST
+// /api/sessao/renovar) até o teto; nos modos HMAC o backend expira o token junto
+// (BMAIS_TOKEN_TTL / BMAIS_TOKEN_TTL_LEMBRADO — ver login em routes/auth.py).
+// VITE_SESSAO_MAX_HORAS e VITE_SESSAO_LEMBRADA_DIAS (build-time) sobrescrevem.
 const SESSAO_MAX_MS = (Number(import.meta.env.VITE_SESSAO_MAX_HORAS) || 24) * 60 * 60 * 1000
+const SESSAO_LEMBRADA_MAX_MS =
+  (Number(import.meta.env.VITE_SESSAO_LEMBRADA_DIAS) || 30) * 24 * 60 * 60 * 1000
 // Renova o token de acesso quando faltar menos que isto para ele vencer.
 const RENOVACAO_MARGEM_MS = 60_000
 
@@ -90,13 +97,15 @@ function gravarSessao(token: string, meta: SessaoMeta, persist: boolean) {
   store.setItem(SESSAO_KEY, JSON.stringify(meta))
 }
 
-// Login: grava o token e começa a contar o teto da sessão (1 dia).
+// Login: grava o token e começa a contar o teto da sessão. `persist` é o
+// "Manter conectado": além de escolher o storage, define o teto (30 dias
+// marcado, 1 dia desmarcado) — sem isso a caixa não muda nada na prática.
 export function iniciarSessao(s: SessaoRecebida, persist = true) {
   const agora = Date.now()
   gravarSessao(s.token, {
     refresh_token: s.refresh_token ?? null,
     token_expira_em: s.expires_in ? agora + s.expires_in * 1000 : null,
-    sessao_expira_em: agora + SESSAO_MAX_MS,
+    sessao_expira_em: agora + (persist ? SESSAO_LEMBRADA_MAX_MS : SESSAO_MAX_MS),
   }, persist)
 }
 
@@ -107,7 +116,10 @@ function atualizarSessao(s: SessaoRecebida) {
   gravarSessao(s.token, {
     refresh_token: s.refresh_token ?? meta?.refresh_token ?? null,
     token_expira_em: s.expires_in ? Date.now() + s.expires_in * 1000 : null,
-    sessao_expira_em: meta?.sessao_expira_em || Date.now() + SESSAO_MAX_MS,
+    // Preserva o teto do login. Só recalcula se a meta sumiu — e aí segue o
+    // storage: em localStorage a sessão era "lembrada", então vale o teto longo.
+    sessao_expira_em: meta?.sessao_expira_em
+      || Date.now() + (persist ? SESSAO_LEMBRADA_MAX_MS : SESSAO_MAX_MS),
   }, persist)
 }
 

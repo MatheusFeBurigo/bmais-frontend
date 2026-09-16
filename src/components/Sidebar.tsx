@@ -160,7 +160,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
                 <NavLink
                   key={op.key}
                   to={`/?operadora=${op.key}`}
-                  title={isAlert ? `${op.nome} — ${novos} novo${novos > 1 ? 's' : ''}` : op.nome}
+                  title={isAlert ? `${op.nome}: ${novos} novo${novos > 1 ? 's' : ''}` : op.nome}
                   className={
                     'sb-sub-item' + (isAlert ? ' has-alert' : '') + (active ? ' active' : '')
                   }

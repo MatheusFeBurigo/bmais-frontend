@@ -235,3 +235,69 @@ export function RegBar({ m, selNome, onReg }: { m: GestorMetrics; selNome: strin
     />
   )
 }
+
+// 6. Hospitais por operadora — quantas unidades DISTINTAS de cada operadora
+// tiveram movimento no período. Responde "quem tem a maior rede em atividade",
+// que as barras de internados não respondem: uma operadora pode concentrar muitos
+// pacientes em poucos hospitais, e outra espalhar poucos por uma rede grande.
+//
+// A base do vínculo hospital↔operadora vem em boa parte dos CENSOS: quando um
+// censo traz pacientes de um convênio, o hospital passa a constar naquela
+// operadora — por isso a contagem acompanha o que chega, sem cadastro manual.
+//
+// Clique filtra por operadora, como os outros gráficos da tela.
+export function OpHospBar({ m, selKey, onOp }: {
+  m: GestorMetrics; selKey: string; onOp: (key: string) => void
+}) {
+  // Só quem tem hospital no período, do maior para o menor — a ordem é a resposta.
+  const ops = (m.por_operadora || [])
+    .filter((o) => (o.hospitais ?? 0) > 0)
+    .sort((a, b) => (b.hospitais ?? 0) - (a.hospitais ?? 0))
+  const corBarra = (ctx: { dataIndex: number }) =>
+    !selKey || ops[ctx.dataIndex]?.key === selKey ? COR.verde : 'rgba(14,122,83,.30)'
+  const options: ChartOptions<'bar'> = {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    onClick: (_evt, els) => { if (els.length) onOp(ops[els[0].index].key) },
+    onHover: pointerCursor,
+    layout: { padding: { right: 28 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        titleFont: { size: 13 },
+        bodyFont: { size: 13 },
+        callbacks: {
+          // O tooltip diz as duas coisas: quantos hospitais e quantos pacientes
+          // estão neles — é a comparação que dá sentido ao tamanho da rede.
+          label: (ctx) => {
+            const o = ops[ctx.dataIndex]
+            const n = o?.hospitais ?? 0
+            return `${n} ${n === 1 ? 'hospital' : 'hospitais'} · ${o?.internados ?? 0} internados`
+          },
+        },
+      },
+    },
+    scales: {
+      x: { beginAtZero: true, grid: { color: GRID }, border: { display: false }, ticks: { font: MONO, color: AXIS, precision: 0 } },
+      y: { grid: { display: false }, border: { color: GRID }, ticks: { font: NOME_FONT, color: INK, crossAlign: 'far' as const } },
+    },
+  }
+  return (
+    <Bar
+      options={options}
+      data={{
+        labels: ops.map((o) => (o.nome.length > 34 ? o.nome.slice(0, 33) + '…' : o.nome)),
+        datasets: [{
+          label: 'Hospitais',
+          data: ops.map((o) => o.hospitais ?? 0),
+          backgroundColor: corBarra,
+          borderRadius: 4,
+          barPercentage: 0.82,
+          categoryPercentage: 0.86,
+        }],
+      }}
+    />
+  )
+}

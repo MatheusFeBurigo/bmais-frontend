@@ -159,7 +159,7 @@ export default function OperadoraView({ opSel, onNav, onToast, onChanged, toast 
         {/* Hospitais */}
         <div className="card">
           <div className="card-header">
-            <div className="card-title">Hospitais — {opSel.nome}</div>
+            <div className="card-title">Hospitais de {opSel.nome}</div>
             <button className="btn btn-outline btn-sm" onClick={() => setAddHosp((val) => !val)}>Adicionar</button>
           </div>
           <div className="card-body">

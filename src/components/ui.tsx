@@ -1,6 +1,7 @@
 // Componentes de UI compartilhados, portados do design system (base.html).
 // Reusados pelas telas migradas (Diretoria, Gestor, Equipe, Configurações, Upload).
 
+import { useRef } from 'react'
 import type { ReactNode } from 'react'
 import { useTravarScroll } from '../lib/travarScroll'
 
@@ -185,12 +186,34 @@ export function Modal({ title, onClose, children, footer, largura, sobreposta }:
   // Enquanto a modal está aberta a página de trás não rola: o backdrop cobre a
   // tela, e rolar o que está atrás dele só desalinha o contexto de quem lê.
   useTravarScroll()
+
+  // Fechar ao clicar fora exige que o clique tenha COMEÇADO fora.
+  //
+  // Só `onClick` no backdrop não basta: um menu suspenso dentro da modal (os
+  // comboboxes de hospital, médico e convênio) escolhe no `mousedown` e some na
+  // hora. No `mouseup` o elemento original já não existe, então o navegador
+  // dispara o `click` no ancestral comum — que é o backdrop, passando por cima
+  // do `stopPropagation` do card. A modal fechava sozinha ao escolher um item.
+  //
+  // Guardando onde o gesto começou, o clique que nasce dentro nunca fecha,
+  // mesmo que o alvo suma no meio do caminho. Arrastar de dentro para fora
+  // (selecionar texto e soltar no backdrop) também deixa de fechar, que é o
+  // comportamento certo pelo mesmo motivo.
+  const comecouNoBackdrop = useRef(false)
+
   return (
     // O backdrop centraliza e limita a altura; o CARD nunca passa da viewport.
     // Antes era `margin:10vh auto` sem teto: conteudo alto (a ficha do hospital,
     // por exemplo) transbordava para fora da tela e o rodape com os botoes ficava
     // inalcancavel. Agora cabecalho e rodape sao fixos e SO o corpo rola.
-    <div className={`modal-backdrop${sobreposta ? ' modal-sobreposta' : ''}`} onClick={onClose}>
+    <div
+      className={`modal-backdrop${sobreposta ? ' modal-sobreposta' : ''}`}
+      onMouseDown={(e) => { comecouNoBackdrop.current = e.target === e.currentTarget }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && comecouNoBackdrop.current) onClose()
+        comecouNoBackdrop.current = false
+      }}
+    >
       <div
         className="card modal-card"
         style={largura ? { maxWidth: largura } : undefined}

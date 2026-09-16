@@ -5,6 +5,7 @@ import { queryKeys } from '../lib/queryKeys'
 import {
   editarInternacao,
   fetchInternacaoDados,
+  listarConvenios,
   fetchInternacaoRelatorios,
   fetchInternacaoTimeline,
   type InternacaoEdicao,
@@ -70,4 +71,24 @@ export function usePrefetchInternacao() {
       staleTime: DRAWER_STALE,
     })
   }, [qc])
+}
+
+/** Convênios já vistos nos censos, para o dropdown da conferência do envio.
+ *
+ *  `enabled` por parâmetro: a lista varre o histórico de internações, e a modal
+ *  de edição é aberta por poucos pacientes num envio. Buscar junto com a tela
+ *  faria todo upload pagar por um dado que a maioria dos envios não abre.
+ *
+ *  `staleTime` alto porque o conjunto de convênios praticamente não muda dentro
+ *  de uma sessão: um convênio novo só aparece quando entra um censo com um nome
+ *  inédito, e aí o envio seguinte já o traz (o backend esvazia o cache a cada
+ *  escrita).
+ */
+export function useConvenios(ativo: boolean) {
+  return useQuery({
+    queryKey: queryKeys.convenios(),
+    queryFn: listarConvenios,
+    enabled: ativo,
+    staleTime: 10 * 60 * 1000,
+  })
 }

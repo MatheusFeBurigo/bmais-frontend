@@ -17,8 +17,8 @@ import { podeExecutar, podeVer } from '../auth/permissions'
 import { baixarAnexoRelatorio, registrarRelatorioRapido, type InternacaoEdicao } from '../services/internacao.service'
 import { queryKeys } from '../lib/queryKeys'
 import { invalidarPorEvento } from '../lib/invalidation'
-import { hojeISO } from '../lib/datas'
-import { nomeProprio } from '../lib/texto'
+import { hojeISO, paraISO } from '../lib/datas'
+import { identificacaoPaciente, nomeProprio } from '../lib/texto'
 import type { InternacaoDados, RelatorioItem, TimelineEvento } from '../types/api'
 import { dataHora } from '../lib/datas'
 
@@ -103,7 +103,10 @@ export default function Paciente() {
     setRascunho({
       nome: d.nome ?? '',
       atendimento: d.atendimento ?? '',
-      data_entrada: d.data_entrada ?? '',
+      // ISO: é o único formato que o <input type="date"> exibe, e o banco guarda
+      // "17/08/2026". Sem converter, o campo abria VAZIO na ficha de quase todo
+      // paciente — parecia dado perdido.
+      data_entrada: paraISO(d.data_entrada),
       tipo_leito: d.tipo_leito ?? '',
       leito_codigo: d.leito_codigo ?? '',
       especialidade: d.especialidade ?? '',
@@ -130,7 +133,16 @@ export default function Paciente() {
   async function salvarEdicao() {
     setErroEdicao(null)
     try {
-      const res = await editar.mutateAsync(rascunho)
+      // A data volta ao valor cru se não foi tocada: as que o input não exibe
+      // (ano de 2 dígitos) abrem vazias, e mandar esse vazio APAGARIA a data
+      // gravada. Mesma regra da modal do envio.
+      const enviar: InternacaoEdicao = {
+        ...rascunho,
+        data_entrada: (rascunho.data_entrada === paraISO(d?.data_entrada)
+          ? (d?.data_entrada ?? '')
+          : (rascunho.data_entrada ?? '')),
+      }
+      const res = await editar.mutateAsync(enviar)
       setEditando(false)
       setToast(res.atualizado === false ? 'Nada foi alterado' : '✓ Dados atualizados')
     } catch (e) {
@@ -153,7 +165,7 @@ export default function Paciente() {
       () => ({
         title: (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-            {nomeProprio(d?.nome) || (isLoading ? '—' : 'Paciente')}
+            {d ? identificacaoPaciente(d) : isLoading ? '—' : 'Paciente'}
             {sr && <StatusBadge sr={sr} />}
           </span>
         ),
@@ -273,6 +285,10 @@ export default function Paciente() {
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
               <Campo label="Nome do segurado" valor={editando ? d.nome : nomeProprio(d.nome)} span={2} edit={editando} campo="nome" rascunho={rascunho} onChange={setCampo} />
+              {/* Censos sem coluna de paciente identificam a internação pela senha
+                  de autorização: é o único identificador que esses pacientes têm,
+                  então ela precisa aparecer (e ser corrigível) na ficha. */}
+              <Campo label="Senha de autorização" valor={d.senha} mono edit={editando} campo="senha" rascunho={rascunho} onChange={setCampo} />
               <Campo label="Status" valor={d.status || 'INTERNADO'} edit={editando} campo="status" rascunho={rascunho} onChange={setCampo} opcoes={STATUS_OPCOES} />
               <Campo label="RN" valor={rnLabel(d)} />
 

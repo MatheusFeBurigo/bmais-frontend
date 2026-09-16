@@ -63,7 +63,21 @@ export default function ResumoOperadoraTable({ data, expOp, onExpOp, onExportar 
                       <OpAvatar opKey={op.key} size={28} />
                       <div>
                         <div className="fw-6" style={{ fontSize: 'var(--t-base)' }}>{op.nome}</div>
-                        <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)' }}>janela: {op.janela_relatorio ? `${op.janela_relatorio}d` : '—'}</div>
+                        {/* Rede + janela na mesma linha de apoio: a tabela já tem
+                            12 colunas de métrica, e o tamanho da rede identifica a
+                            operadora — não é mais um indicador a comparar. */}
+                        <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)' }}>
+                          {op.hospitais != null && (
+                            <>
+                              <span title={`${op.hospitais} ${op.hospitais === 1 ? 'hospital vinculado' : 'hospitais vinculados'}`
+                                + (op.hospitais_ativos != null ? ` · ${op.hospitais_ativos} com pacientes agora` : '')}>
+                                {op.hospitais} {op.hospitais === 1 ? 'hospital' : 'hospitais'}
+                              </span>
+                              {' · '}
+                            </>
+                          )}
+                          janela: {op.janela_relatorio ? `${op.janela_relatorio}d` : '—'}
+                        </div>
                       </div>
                     </div>
                   </td>

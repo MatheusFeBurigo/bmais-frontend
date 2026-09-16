@@ -120,10 +120,20 @@ export function HospitalCombobox({
     return () => document.removeEventListener('mousedown', onDoc)
   }, [])
 
+  // Acabou de escolher: o `focus` que vier LOGO em seguida não reabre o menu.
+  //
+  // A opção é escolhida no `mousedown` com `preventDefault` (para o campo não
+  // perder o foco antes do clique registrar), e o menu fecha na hora. Só que o
+  // `click` correspondente ainda vai ser despachado, e como a opção já sumiu ele
+  // cai no input — que foca e dispara `onFocus`, reabrindo o menu que acabou de
+  // fechar. O usuário escolhia o hospital e a lista continuava aberta.
+  const acabouDeEscolher = useRef(false)
+
   function selecionar(h: Hospital) {
     // Escolheu um item: o texto volta a ser espelho do valor, e a sincronização
     // externa pode agir de novo.
     digitando.current = false
+    acabouDeEscolher.current = true
     onChange(h.key)
     setBusca(h.nome)
     setAberto(false)
@@ -172,7 +182,17 @@ export function HospitalCombobox({
           disabled={disabled}
           value={busca}
           onChange={(e) => onTexto(e.target.value)}
-          onFocus={() => !disabled && setAberto(true)}
+          onMouseDown={() => { acabouDeEscolher.current = false }}
+          onFocus={() => {
+            // Foco vindo do clique que acabou de escolher: consome a marca e não
+            // reabre. Um foco posterior (clicar no campo de novo, Tab) abre
+            // normalmente, que é o comportamento esperado.
+            if (acabouDeEscolher.current) {
+              acabouDeEscolher.current = false
+              return
+            }
+            if (!disabled) setAberto(true)
+          }}
           onBlur={() => {
             // Saiu do campo: o texto deixa de ser "do usuário" e volta a espelhar
             // o valor. Soltar a trava aqui é o que faz uma mudança externa
@@ -217,7 +237,7 @@ export function HospitalCombobox({
             )}
             {totalFiltrado > visiveis.length && (
               <div className="hc-mais">
-                Mostrando {visiveis.length} de {totalFiltrado} — digite para refinar.
+                Mostrando {visiveis.length} de {totalFiltrado}. Digite para refinar.
               </div>
             )}
           </div>

@@ -11,7 +11,7 @@ import { OperadoraPills, ChipsAtivos } from '../components/gestor/FiltrosBar'
 import FluxoCard from '../components/gestor/FluxoCard'
 import MediasJanelaCard from '../components/gestor/MediasJanelaCard'
 import TabelaPacientes from '../components/gestor/TabelaPacientes'
-import { FaixasDonut, HospBar, RegBar } from '../components/gestor/charts'
+import { FaixasDonut, HospBar, OpHospBar, RegBar } from '../components/gestor/charts'
 
 export default function Gestor() {
   const [drawerId, setDrawerId] = useState<number | null>(null)
@@ -127,6 +127,26 @@ export default function Gestor() {
               </div>
             )}
           </div>
+
+          {/* Rede em atividade por operadora. Só com mais de uma operadora: um
+              ranking de um item não compara nada, e a tela já diz de quem é o
+              recorte no cabeçalho. */}
+          {(m.por_operadora || []).filter((o) => (o.hospitais ?? 0) > 0).length > 1 && (
+            <div className="chart-card" style={{ marginBottom: 16 }}>
+              <div className="chart-title">Hospitais por operadora</div>
+              <div className="chart-hint">
+                Unidades distintas com movimento no período. A rede vem do cadastro
+                e dos censos recebidos · clique numa barra para filtrar
+              </div>
+              <div style={{ height: 300 }}>
+                <OpHospBar
+                  m={m}
+                  selKey={v.fOperadora}
+                  onOp={(key) => v.setFiltro({ operadora: key === v.fOperadora ? '' : key })}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Lista de pacientes — pills de filtro JUNTO da tabela (evita "pulo"
               de scroll: nada de altura variável fica abaixo dos pills clicados). */}

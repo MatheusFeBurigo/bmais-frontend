@@ -35,7 +35,7 @@ export default function BottomCharts({ data }: { data: DiretoriaPayload }) {
       <div className="card">
         <div className="card-header">
           <div>
-            <div className="card-title">Top Hospitais — Internados Ativos</div>
+            <div className="card-title">Top Hospitais por internados ativos</div>
             <p className="card-sub">Concentração de pacientes por unidade</p>
           </div>
         </div>

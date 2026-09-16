@@ -22,7 +22,7 @@ export default function StatusAtualizacao({ atualizadoEm, sincronizando, interva
   const segundos = Math.round(intervaloMs / 1000)
   const title = intervaloMs > 0
     ? `Revalidado automaticamente a cada ${segundos}s com a aba visível, e ao voltar para ela.`
-    : 'Atualização automática desligada — use "Atualizar".'
+    : 'Atualização automática desligada. Use "Atualizar".'
   return (
     <span
       className="row"

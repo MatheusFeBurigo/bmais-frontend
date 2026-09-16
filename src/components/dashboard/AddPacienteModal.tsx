@@ -82,7 +82,7 @@ export default function AddPacienteModal({
       // Recompõe os agregados operacionais (Visão Geral, panorama, sidebar…).
       invalidarPorEvento(qc, 'pacienteAdicionado')
       onDone(res.ja_existia
-        ? 'Este atendimento já existia — paciente não duplicado.'
+        ? 'Este atendimento já existia. O paciente não foi duplicado.'
         : '✓ Paciente adicionado')
     } catch (err) {
       onError(`Erro: ${(err as Error).message}`)

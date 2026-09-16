@@ -14,7 +14,7 @@
 
 const MOTIVO_CENSO: Record<string, string> = {
   'sem atendimento (chave de identidade)':
-    'O número de atendimento não veio no censo. É ele que identifica a internação — informe para continuar.',
+    'O número de atendimento não veio no censo. É ele que identifica a internação. Informe para continuar.',
   'sem nome': 'O nome do paciente não veio no censo.',
   'sem data de entrada': 'A data de internação não veio no censo.',
   'situação ALTA sem data de alta válida':

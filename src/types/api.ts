@@ -42,7 +42,14 @@ export interface Hospital extends HospitalFicha {
 
 export interface Internacao {
   id: number
-  nome: string
+  /**
+   * Vazio nos censos que não têm coluna de paciente: o hospital identifica a
+   * internação pela `senha` de autorização. Use `identificacaoPaciente()`
+   * (lib/texto) para exibir — nunca `nome` cru.
+   */
+  nome: string | null
+  /** Senha de autorização do convênio; identifica o paciente quando não há nome. */
+  senha?: string | null
   atendimento?: string | null
   hospital_key?: string
   hospital_nome?: string
@@ -452,11 +459,21 @@ export interface GestorGrupo {
   nome: string
   internados: number
   altas: number
+  /** Só em `por_operadora`: hospitais DISTINTOS da operadora com movimento no
+   *  período. Ausente nos demais agrupamentos (por hospital, por região). */
+  hospitais?: number
 }
 
 export interface PacienteDia {
   id: number
-  nome: string
+  /**
+   * Vazio nos censos que não têm coluna de paciente: o hospital identifica a
+   * internação pela `senha` de autorização. Use `identificacaoPaciente()`
+   * (lib/texto) para exibir — nunca `nome` cru.
+   */
+  nome: string | null
+  /** Senha de autorização do convênio; identifica o paciente quando não há nome. */
+  senha?: string | null
   atendimento?: string | null
   hospital_key?: string
   hospital_nome?: string
@@ -594,6 +611,12 @@ export interface DiretoriaOperadora {
   longa_avancada: number
   total_altas: number
   sla: number
+  /** Hospitais vinculados à operadora no cadastro (rede), já recortados ao escopo
+   *  do usuário. A base cresce sozinha pelos censos: um censo com pacientes de um
+   *  convênio prova que aquele hospital atende aquela operadora. */
+  hospitais?: number
+  /** Destes, quantos tiveram movimento — hospital parado continua na rede. */
+  hospitais_ativos?: number
 }
 
 export interface TopHospital {
@@ -660,19 +683,60 @@ export interface PendenteCenso {
 }
 
 /** Um paciente gravado por um arquivo do censo (conferência na tela de upload). */
+/** O que há de errado com um paciente da lista de conferência. */
+export interface ProblemaPaciente {
+  /** `convenio_nao_reconhecido` | `outra_operadora` | `sem_convenio`. */
+  tipo: string
+  /** Frase pronta para ler — a tela não remonta texto de domínio. */
+  texto: string
+}
+
 export interface PacienteGravado {
+  /** O que há de errado com ESTE paciente (ausente = nada). Marcado na linha
+   *  para o usuário achar QUEM tem o problema, não só quantos são. */
+  problema?: ProblemaPaciente | null
+  /** Corrigido na modal de edição, só nesta tela: a operadora escolhida resolveu
+   *  o alerta da linha. Não vem do backend — existe para o aviso derivado (que é
+   *  remontado a cada render a partir das listas do arquivo) não ressuscitar um
+   *  problema que o usuário acabou de resolver. */
+  resolvido?: boolean
+  /** Id da internação gravada — é o que permite editar o paciente direto da
+   *  lista de conferência do envio. Ausente em resultados de envios antigos,
+   *  processados antes de o backend devolver o id: a linha existe, o lápis não. */
+  id?: number | null
   nome?: string | null
+  /** Identificação do paciente nos censos sem coluna de nome (ver `nome`). */
+  senha?: string | null
   atendimento?: string | null
   situacao: 'INTERNADO' | 'ALTA'
   leito_codigo?: string | null
   /** Convênio lido do próprio censo — o mesmo hospital atende várias operadoras. */
   convenio?: string | null
+  /** Operadora sob a qual o paciente foi GRAVADO (key do cadastro), que pode não
+   *  ser a escolhida no envio. É o que a correção de convênio ajusta, e o que
+   *  define as regras de avaliação do paciente. */
+  operadora_key?: string | null
   data_entrada?: string | null
   data_alta?: string | null
 }
 
+/** Um paciente que o censo tentou mover de seguradora. */
+export interface ConflitoOperadora {
+  atendimento?: string | null
+  nome?: string | null
+  /** Onde o paciente ESTÁ (e continuou). */
+  operadora_atual: string
+  /** O que o censo trouxe e foi recusado. */
+  operadora_do_censo: string
+  convenio_atual?: string | null
+  convenio_do_censo?: string | null
+}
+
 export interface UploadCensoResult {
   arquivo: string
+  /** O censo que este arquivo gerou (`censos.id`). É por ele que a lista remove
+   *  um paciente DESTE documento sem apagar a ficha de quem já existia antes. */
+  censo_id?: number
   hospital?: string
   hospital_nome?: string
   tipo?: string
@@ -713,15 +777,29 @@ export interface UploadCensoResult {
    *  a entrada do censo não é posterior à alta registrada, então é a mesma
    *  internação que já terminou. Não é erro — é o censo repetindo quem já saiu. */
   mantidos_com_alta?: MantidoComAlta[]
-  /** O CONTEÚDO deste arquivo já foi lido num envio anterior: nada foi gravado.
-   *  A tela mostra quando aquele censo entrou e o usuário decide se processa
-   *  assim mesmo (reprocessa com o nome em `confirmados`). */
-  precisa_confirmar_reenvio?: boolean
-  /** Quando e onde este mesmo arquivo já entrou. Vem junto do aviso acima e,
-   *  depois de confirmado, em `reenvio_confirmado` — para o resultado não
-   *  esconder que aquele censo já estava no sistema. */
-  envio_anterior?: EnvioAnterior | null
-  reenvio_confirmado?: EnvioAnterior | null
+  /** Pacientes que este censo tentou mover de uma operadora para OUTRA e que
+   *  não foram movidos: a internação ficou na operadora que já tinha.
+   *
+   *  Exige decisão humana porque o sistema não sabe qual lado está errado — o
+   *  convênio impresso no PDF, ou o cadastro anterior do paciente. Trocar
+   *  sozinho seria mudar a seguradora de alguém em silêncio, e é da operadora
+   *  que saem as regras de avaliação e a apuração da cobrança. */
+  conflitos_operadora?: ConflitoOperadora[]
+  /** Operadora escolhida por quem enviou (passo 1 da tela). É o padrão para quem
+   *  não tem convênio reconhecido — não é a operadora de todo mundo do arquivo. */
+  operadora_escolhida?: string | null
+  /** Dupla checagem do envio: pacientes que entraram sob operadora DIFERENTE da
+   *  escolhida, porque o convênio deles é de outra. Um censo é do hospital e pode
+   *  ser misto, então isto é normal — mas precisa ser dito, senão o envio diverge
+   *  em silêncio do que o usuário pediu. Vazio = tudo entrou como escolhido. */
+  operadoras_divergentes?: OperadoraDivergente[]
+  /** Pacientes com convênio impresso que NÃO casou com nenhuma operadora do
+   *  cadastro: entraram sob a escolhida. Sinal de cadastro incompleto. */
+  convenios_nao_reconhecidos?: PacienteConvenio[]
+  /** Pacientes que entraram SEM convênio nenhum no PDF. A linha deles já era
+   *  marcada na lista; sem esta lista o painel não tinha o que dizer sobre a
+   *  marca, e o usuário via o alerta na linha sem achar a explicação. */
+  sem_convenio?: PacienteConvenio[]
   erro?: string
   /** Por que o arquivo não foi lido, quando há `erro`:
    *  - `imagem`: PDF digitalizado/escaneado, sem texto. Não há o que ler; os
@@ -729,6 +807,74 @@ export interface UploadCensoResult {
    *  - `formato_desconhecido`: tem texto, mas o layout não é reconhecido — caso
    *    de avisar o suporte para incluir o modelo. */
   erro_tipo?: 'imagem' | 'formato_desconhecido' | null
+}
+
+/** O mínimo para reconhecer um paciente na conferência do envio. */
+export interface PacienteConvenio {
+  nome?: string | null
+  atendimento?: string | null
+  /** Convênio como está impresso no censo — é por ele que se reconhece o caso. */
+  convenio?: string | null
+}
+
+/** Um grupo de pacientes que entrou sob operadora diferente da escolhida. */
+export interface OperadoraDivergente {
+  operadora_key: string
+  operadora_nome?: string
+  /** Quantos pacientes — pode ser maior que `pacientes.length`, que é amostra. */
+  total: number
+  /** Alguns nomes, para reconhecer o caso sem despejar o censo inteiro. */
+  pacientes: PacienteConvenio[]
+  /** Os atendimentos de TODOS (não só dos exibidos). É o que permite descontar
+   *  do total quem foi corrigido ou removido nesta tela: com só a amostra,
+   *  remover alguém fora dos 5 primeiros deixava o alerta com a contagem antiga. */
+  atendimentos?: string[]
+}
+
+/** Um arquivo de censo dentro de um dia da timeline do hospital. */
+export interface CensoArquivo {
+  censo_id: number
+  arquivo?: string | null
+  tipo?: string | null
+  /** Quando o arquivo foi enviado — diferente do dia a que o censo se refere. */
+  processado_em?: string | null
+  /** Preenchido quando o envio foi desfeito; o registro continua na timeline. */
+  revertido_em?: string | null
+  total_pacientes: number
+}
+
+/** Um paciente que apareceu num censo. */
+export interface CensoPaciente {
+  id: number
+  nome?: string | null
+  senha?: string | null
+  atendimento?: string | null
+  leito_codigo?: string | null
+  convenio?: string | null
+  data_entrada?: string | null
+  data_alta?: string | null
+  status?: string | null
+  /** "novo" = este censo criou a internação; "atualizado" = já existia. */
+  origem?: string
+}
+
+/** Um dia da timeline: os censos daquele dia e quem veio neles. */
+export interface CensoDia {
+  /** Data de REFERÊNCIA do censo (ISO). `null` quando o relatório não declara. */
+  data: string | null
+  arquivos: CensoArquivo[]
+  pacientes: CensoPaciente[]
+  /** Pessoas distintas no dia (o mesmo paciente pode estar em dois arquivos). */
+  total_pacientes: number
+  /** Destes, quantos ENTRARAM neste dia. */
+  novos: number
+}
+
+export interface TimelineHospital {
+  hospital_key: string
+  hospital_nome: string
+  total_censos: number
+  dias: CensoDia[]
 }
 
 /** Paciente que o censo trouxe, mas que já estava com alta no sistema. */
@@ -739,16 +885,6 @@ export interface MantidoComAlta {
   data_alta?: string | null
   /** Entrada que o censo trouxe — anterior ou igual à alta, por isso não reabriu. */
   data_entrada?: string | null
-}
-
-/** O envio anterior de um arquivo com o mesmo conteúdo. */
-export interface EnvioAnterior {
-  processado_em?: string | null
-  /** Nome com que o arquivo foi enviado antes — pode diferir do atual. */
-  arquivo?: string | null
-  hospital_key?: string | null
-  total_pacientes?: number
-  sessao?: string | null
 }
 
 export interface UploadCensoResponse {
@@ -809,7 +945,14 @@ export interface CriarInternacaoResponse {
 
 export interface InternacaoDados {
   id: number
-  nome: string
+  /**
+   * Vazio nos censos que não têm coluna de paciente: o hospital identifica a
+   * internação pela `senha` de autorização. Use `identificacaoPaciente()`
+   * (lib/texto) para exibir — nunca `nome` cru.
+   */
+  nome: string | null
+  /** Senha de autorização do convênio; identifica o paciente quando não há nome. */
+  senha?: string | null
   atendimento?: string | null
   hospital_nome?: string | null
   hospital_key?: string | null

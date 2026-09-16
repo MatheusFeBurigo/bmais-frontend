@@ -270,8 +270,8 @@ export default function MultiSelectHospitais({ hospitais, selecionados, onChange
 
       <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
         {sel.size === 0
-          ? 'Nenhum hospital selecionado — o usuário verá TODOS os hospitais.'
-          : `${sel.size} hospital(is) de ${nOps} operadora(s) — o usuário verá apenas estes.`}
+          ? 'Nenhum hospital selecionado: o usuário verá TODOS os hospitais.'
+          : `${sel.size} hospital(is) de ${nOps} operadora(s): o usuário verá apenas estes.`}
       </div>
     </div>
   )

@@ -41,7 +41,14 @@ export default function MedicoCombobox({ value, onChange, nomes }: {
     return () => document.removeEventListener('mousedown', onDoc)
   }, [])
 
+  // Acabou de escolher: o `focus` que vier LOGO em seguida não reabre o menu.
+  // A opção é escolhida no `mousedown` com `preventDefault`, e o `click`
+  // correspondente cai no input (a opção já sumiu), focando-o e reabrindo o menu
+  // que acabou de fechar. Mesma armadilha do HospitalCombobox.
+  const acabouDeEscolher = useRef(false)
+
   function selecionar(nome: string) {
+    acabouDeEscolher.current = true
     onChange(nome)
     setAberto(false)
   }
@@ -68,7 +75,14 @@ export default function MedicoCombobox({ value, onChange, nomes }: {
         autoComplete="off"
         value={value}
         onChange={(e) => { onChange(e.target.value); setAberto(true); setAtivo(0) }}
-        onFocus={() => setAberto(true)}
+        onMouseDown={() => { acabouDeEscolher.current = false }}
+        onFocus={() => {
+          if (acabouDeEscolher.current) {
+            acabouDeEscolher.current = false
+            return
+          }
+          setAberto(true)
+        }}
         onKeyDown={onKey}
       />
       {aberto && (

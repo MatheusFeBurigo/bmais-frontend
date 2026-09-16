@@ -23,11 +23,15 @@ export const queryKeys = {
   configuracoes: (op: string, hospital: string) =>
     ['configuracoes', op, hospital] as const,
 
+  /** Convênios já vistos nos censos (dropdown da conferência do envio). */
+  convenios: () => ['convenios'] as const,
+
   equipe: () => ['equipe'] as const,
   profissional: (id: number | null) => ['prof', id] as const,
   hospitais: (op: string) => ['hospitais', op] as const,
   /** Ficha cadastral de UM hospital (GET /api/hospital/{key}). */
   hospital: (key: string) => ['hospital', key] as const,
+  hospitalTimeline: (key: string) => ['hospital', key, 'timeline'] as const,
 
   usuarios: () => ['usuarios'] as const,
 

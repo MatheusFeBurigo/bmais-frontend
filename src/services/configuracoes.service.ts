@@ -1,6 +1,6 @@
 // Serviço de dados do domínio "configuracoes" (operadoras + hospitais + regras).
 import { apiFetch } from '../api/client'
-import type { ConfiguracoesPayload, Hospital, HospitalFicha, OperadoraRegras } from '../types/api'
+import type { ConfiguracoesPayload, Hospital, HospitalFicha, OperadoraRegras, TimelineHospital } from '../types/api'
 
 export interface ConfiguracoesParams {
   op?: string
@@ -50,6 +50,11 @@ export function criarHospital(nome: string, operadoraKey: string, key: string): 
 /** Ficha cadastral de um hospital, com as operadoras vinculadas. */
 export function fetchHospital(key: string): Promise<Hospital> {
   return apiFetch<Hospital>(`/hospital/${key}`)
+}
+
+/** Em que dias o hospital mandou censo, e quem veio em cada um. */
+export function fetchTimelineHospital(key: string): Promise<TimelineHospital> {
+  return apiFetch<TimelineHospital>(`/hospital/${key}/timeline`)
 }
 
 /** Atualiza os dados cadastrais/contatos do hospital. */

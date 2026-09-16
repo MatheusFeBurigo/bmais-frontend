@@ -333,7 +333,7 @@ function HospitalItem({ hosp, confirmando, ocupado, onEditar, onPedirExcluir, on
   return (
     <div className="malha-hosp-row">
       <button type="button" className="malha-hosp-nome botao" onClick={onEditar}
-        title={`${hosp.nome} — clique para editar`}>
+        title={`${hosp.nome}. Clique para editar`}>
         {hosp.nome}
       </button>
       <button type="button" className="malha-hosp-x" onClick={onPedirExcluir}
