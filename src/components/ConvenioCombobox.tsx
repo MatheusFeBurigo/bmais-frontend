@@ -42,6 +42,13 @@ const styles = `
 /* Opcao de outra operadora: a etiqueta da operadora fica em destaque de aviso,
    porque escolhe-la MUDA a operadora do paciente. */
 .cc-opt-outra{flex-shrink:0;font-size:var(--t-xs);color:var(--warning-2);font-weight:600}
+/* Cadastrar o que esta escrito. Fica no PE do menu, depois das opcoes: o certo
+   quase sempre esta na lista, e um botao de criar acima dela convidaria a
+   duplicar convenio que ja existe. */
+.cc-criar{display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:8px 10px;border:0;border-top:1px solid var(--border-soft);margin-top:2px;background:none;font-family:inherit;font-size:var(--t-sm);font-weight:600;color:var(--primary);cursor:pointer;border-radius:6px}
+.cc-criar:hover{background:var(--primary-soft)}
+.cc-criar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:400;color:var(--ink-2)}
+.cc-criar b{font-weight:600;color:var(--ink-1)}
 `
 
 const MAX_VISIVEIS = 50
@@ -53,6 +60,7 @@ function normalizar(s: string): string {
 
 export function ConvenioCombobox({
   convenios, value, onChange, disabled, id, carregando, operadora, operadoraNome,
+  onCadastrar,
 }: {
   /** Convênios já vistos nos censos, com a operadora de cada um. */
   convenios: ConvenioVisto[]
@@ -72,6 +80,10 @@ export function ConvenioCombobox({
   disabled?: boolean
   id?: string
   carregando?: boolean
+  /** Oferece cadastrar o que está escrito, quando nenhum convênio conhecido tem
+   *  esse nome. Ausente = a lista só sugere (é o comportamento de quem não pode
+   *  cadastrar: o campo continua aceitando texto livre, como sempre aceitou). */
+  onCadastrar?: (nome: string) => void
 }) {
   const [aberto, setAberto] = useState(false)
   const [ativo, setAtivo] = useState(0)
@@ -152,6 +164,20 @@ export function ConvenioCombobox({
   // um beco sem saída. O recorte é ajuda, não trava.
   const abreSozinho = visiveis.length === 0 && foraDoContexto.length > 0
   const lista = (verTodas || abreSozinho) ? [...visiveis, ...foraDoContexto] : visiveis
+
+  // O texto escrito JÁ é um convênio conhecido? Vale contra a lista inteira, não
+  // contra o recorte: um convênio de outra operadora existe do mesmo jeito, e
+  // oferecer "cadastrar" ali criaria o duplicado que a padronização acabou de
+  // eliminar. Comparação normalizada (sem caixa, sem espaço repetido) — a mesma
+  // do backend, senão "BRADESCO  SAUDE" digitado pareceria inédito.
+  const escritoExiste = useMemo(() => {
+    const alvo = normalizar(value)
+    return !!alvo && convenios.some((c) => normalizar(c.convenio) === alvo)
+  }, [convenios, value])
+
+  // O convite a cadastrar só aparece com algo escrito e nada igual na lista.
+  const podeCadastrar = Boolean(onCadastrar && value.trim() && !escritoExiste
+    && !carregando)
 
   // Acabou de escolher: o `focus` que vier LOGO em seguida não reabre o menu.
   // A opção é escolhida no `mousedown` com `preventDefault`, e o `click`
@@ -260,7 +286,12 @@ export function ConvenioCombobox({
                     // operadora. Dizer isso é o que impede o usuário de concluir
                     // que o convênio não está cadastrado.
                     ? `Nenhum convênio de ${operadoraNome ?? 'desta operadora'} com “${value}”.`
-                    : `Nenhum convênio conhecido com “${value}”. Pode escrever assim mesmo.`}
+                    : podeCadastrar
+                      // Com o botão de cadastrar logo abaixo, repetir "pode
+                      // escrever assim mesmo" ofereceria o caminho pior (texto
+                      // solto, sem operadora) ao lado do melhor.
+                      ? `Nenhum convênio conhecido com “${value}”.`
+                      : `Nenhum convênio conhecido com “${value}”. Pode escrever assim mesmo.`}
               </div>
             )}
             {/* A saída do recorte. Sem ela o filtro viraria uma parede: o
@@ -277,6 +308,22 @@ export function ConvenioCombobox({
               <div className="cc-mais">
                 Mostrando {visiveis.length} de {totalFiltrado}. Digite para refinar.
               </div>
+            )}
+            {/* Cadastrar o que está escrito. É a saída do caso que a lista não
+                resolve: o convênio do PDF não existe em lugar nenhum, e sem
+                isto o usuário só podia deixá-lo como texto solto — sem
+                operadora, e portanto sem as regras que regem o paciente.
+                `mousedown` com `preventDefault` pelo mesmo motivo das opções:
+                sem ele o campo perde o foco antes de o clique registrar. */}
+            {podeCadastrar && (
+              <button type="button" className="cc-criar"
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        setAberto(false)
+                        onCadastrar?.(value.trim())
+                      }}>
+                + Cadastrar <span><b>{value.trim()}</b> como convênio novo</span>
+              </button>
             )}
           </div>
         )}

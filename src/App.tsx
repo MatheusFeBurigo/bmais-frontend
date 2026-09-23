@@ -11,7 +11,8 @@ import AppLayout from './components/AppLayout'
 import {
   importDashboard, importDiretoria, importGestor,
   importEquipe, importConfiguracoes, importUpload,
-  importKanban, importPaciente, importUsuarioForm, importLogs,
+  importKanban, importPaciente, importUsuarioForm, importLogs, importAjuda,
+  importProgresso, importVolumetria, importRelatorio,
 } from './routes'
 
 // Páginas carregadas sob demanda (code-splitting). Diretoria e Gestor arrastam
@@ -27,6 +28,10 @@ const Kanban = lazy(importKanban)
 const Paciente = lazy(importPaciente)
 const UsuarioForm = lazy(importUsuarioForm)
 const Logs = lazy(importLogs)
+const Ajuda = lazy(importAjuda)
+const Progresso = lazy(importProgresso)
+const Volumetria = lazy(importVolumetria)
+const Relatorio = lazy(importRelatorio)
 
 function PageFallback() {
   return <LoadingState style={{ minHeight: '100vh' }} />
@@ -122,7 +127,26 @@ function ProtectedRoutes() {
         <Route path="/kanban" element={<GatedRoute screen="kanban"><Kanban /></GatedRoute>} />
         {/* Movimentações (auditoria): analista interno e admin (EXCLUSIVAS.logs). */}
         <Route path="/logs" element={<GatedRoute screen="logs"><Logs /></GatedRoute>} />
+        {/* Progresso (avanço do projeto): administração e diretoria. */}
+        <Route
+          path="/progresso"
+          element={<GatedRoute screen="progresso"><Progresso /></GatedRoute>}
+        />
+        {/* Volumetria (carga de trabalho por hospital): coordenadores + admin. */}
+        <Route
+          path="/volumetria"
+          element={<GatedRoute screen="volumetria"><Volumetria /></GatedRoute>}
+        />
+        {/* Relatório da auditoria geral: diretoria (e admin, p/ manutenção). */}
+        <Route
+          path="/relatorio"
+          element={<GatedRoute screen="relatorio"><Relatorio /></GatedRoute>}
+        />
         <Route path="/paciente/:id" element={<Paciente />} />
+        {/* Ajuda (documentação das telas): sem GatedRoute — todo papel acessa.
+            O recorte é POR MÓDULO dentro da tela, pela mesma hierarquia das
+            demais (components/ajuda/catalogo.tsx). */}
+        <Route path="/ajuda" element={<Ajuda />} />
         {/* Gestão de usuários (admin-only): /novo antes de /:id p/ o literal vencer. */}
         <Route path="/usuarios/novo" element={<RequireAdmin><UsuarioForm /></RequireAdmin>} />
         <Route path="/usuarios/:id" element={<RequireAdmin><UsuarioForm /></RequireAdmin>} />

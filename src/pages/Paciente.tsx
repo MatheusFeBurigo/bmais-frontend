@@ -14,13 +14,17 @@ import { useEditarInternacao, useInternacaoDados, useInternacaoRelatorios, useIn
 import { useEquipe } from '../hooks/useEquipe'
 import { useAuth } from '../auth/AuthContext'
 import { podeExecutar, podeVer } from '../auth/permissions'
-import { baixarAnexoRelatorio, registrarRelatorioRapido, type InternacaoEdicao } from '../services/internacao.service'
+import { registrarRelatorioRapido, type InternacaoEdicao } from '../services/internacao.service'
 import { queryKeys } from '../lib/queryKeys'
 import { invalidarPorEvento } from '../lib/invalidation'
 import { hojeISO, paraISO } from '../lib/datas'
 import { identificacaoPaciente, nomeProprio } from '../lib/texto'
+import { camposIncompletos, type CampoFicha } from '../lib/fichaIncompleta'
+import { Alerta, alertaStyles } from '../components/Alerta'
+import { CalendarioVisita } from '../components/kanban/CalendarioVisita'
 import type { InternacaoDados, RelatorioItem, TimelineEvento } from '../types/api'
-import { dataHora } from '../lib/datas'
+import { dataBR, dataHora } from '../lib/datas'
+import { ordenarRecentePrimeiro, classeDoEvento } from '../lib/timeline'
 
 export default function Paciente() {
   const { id } = useParams<{ id: string }>()
@@ -156,6 +160,12 @@ export default function Paciente() {
     if (!d) setEditando(false)
   }, [d])
 
+  // Campos importantes que o censo não trouxe. O aviso é do DADO GRAVADO: enquanto
+  // edita, cada campo some do destaque sozinho (ver `aindaFalta` em Campo), mas a
+  // lista do topo só muda depois de salvar, quando `d` volta do servidor.
+  const faltantes = useMemo(() => (d ? camposIncompletos(d) : []), [d])
+  const faltaCampo = useMemo(() => new Set<CampoFicha>(faltantes.map((f) => f.campo)), [faltantes])
+
   const sr = d?.status_relatorio || ''
 
   // Topbar da página: título com o nome + subtítulo com atendimento/hospital,
@@ -216,6 +226,7 @@ export default function Paciente() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <style>{alertaStyles}</style>
       {/* ── Cards de KPI ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
         <div className="dk">
@@ -233,7 +244,7 @@ export default function Paciente() {
           <div className="dk-bar" style={{ background: barColor }} />
           <div className="dk-label" style={semRelatorio ? { color: 'var(--danger)' } : undefined}>Última visita</div>
           <div className="dk-value" style={semRelatorio ? { color: 'var(--danger)', fontSize: 'var(--t-lg)' } : { fontSize: 'var(--t-lg)' }}>
-            {d.data_ultima_visita || 'Sem rel.'}
+            {dataBR(d.data_ultima_visita) || 'Sem rel.'}
           </div>
           <div className="dk-meta">
             {d.data_ultima_visita ? 'última visita' : `${d.dias_sem_relatorio ?? '—'}d sem rel.`}
@@ -247,6 +258,26 @@ export default function Paciente() {
           <div className="dk-meta">janela: {d.janela_relatorio ?? '—'}d</div>
         </div>
       </div>
+
+      {/* Resumo do que falta, ACIMA do card: os campos em branco estão espalhados
+          pela grade, e sem ele descobrir que a ficha está incompleta exigiria varrer
+          14 campos um a um. Nível "atenção" (nunca crítico): o paciente está no
+          sistema e a tela funciona; o que falta é completar, e o "Editar" do próprio
+          card é o caminho — por isso o alerta não repete um botão de ação. */}
+      {!editando && faltantes.length > 0 && (
+        <Alerta nivel="atencao">
+          {faltantes.length === 1 ? (
+            <>
+              <b>{faltantes[0].label}</b> não veio no censo. {faltantes[0].porque}
+            </>
+          ) : (
+            <>
+              <b>{faltantes.length} campos importantes</b> não vieram no censo:{' '}
+              {faltantes.map((f) => f.label).join(', ')}.
+            </>
+          )}
+        </Alerta>
+      )}
 
       {/* ── Grid: dados à esquerda, relatórios/timeline à direita ──
           alignItems:stretch faz a coluna direita ter a mesma altura do card de
@@ -284,7 +315,7 @@ export default function Paciente() {
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
-              <Campo label="Nome do segurado" valor={editando ? d.nome : nomeProprio(d.nome)} span={2} edit={editando} campo="nome" rascunho={rascunho} onChange={setCampo} />
+              <Campo label="Nome do segurado" valor={editando ? d.nome : nomeProprio(d.nome)} span={2} falta={faltaCampo.has('nome')} edit={editando} campo="nome" rascunho={rascunho} onChange={setCampo} />
               {/* Censos sem coluna de paciente identificam a internação pela senha
                   de autorização: é o único identificador que esses pacientes têm,
                   então ela precisa aparecer (e ser corrigível) na ficha. */}
@@ -292,10 +323,16 @@ export default function Paciente() {
               <Campo label="Status" valor={d.status || 'INTERNADO'} edit={editando} campo="status" rascunho={rascunho} onChange={setCampo} opcoes={STATUS_OPCOES} />
               <Campo label="RN" valor={rnLabel(d)} />
 
-              <Campo label="Atendimento" valor={d.atendimento} mono edit={editando} campo="atendimento" rascunho={rascunho} onChange={setCampo} />
+              <Campo label="Atendimento" valor={d.atendimento} mono falta={faltaCampo.has('atendimento')} edit={editando} campo="atendimento" rascunho={rascunho} onChange={setCampo} />
+              {/* Ao lado do atendimento porque são o mesmo tipo de dado visto de
+                  dois lados: o número do paciente no HOSPITAL e o número dele na
+                  OPERADORA. É a carteirinha que se informa ao ligar para o
+                  convênio, e por isso ela precisa estar na ficha, não só na
+                  conferência do envio, que some depois do upload. */}
+              <Campo label="Carteirinha" valor={d.carteirinha} mono edit={editando} campo="carteirinha" rascunho={rascunho} onChange={setCampo} />
               <Campo label="Tipo de leito" valor={d.tipo_leito} edit={editando} campo="tipo_leito" rascunho={rascunho} onChange={setCampo} opcoes={LEITO_OPCOES} />
-              <Campo label="Leito / código" valor={d.leito_codigo} edit={editando} campo="leito_codigo" rascunho={rascunho} onChange={setCampo} />
-              <Campo label="Data internação" valor={d.data_entrada} mono edit={editando} campo="data_entrada" rascunho={rascunho} onChange={setCampo} tipo="date" />
+              <Campo label="Leito / código" valor={d.leito_codigo} falta={faltaCampo.has('leito_codigo')} edit={editando} campo="leito_codigo" rascunho={rascunho} onChange={setCampo} />
+              <Campo label="Data internação" valor={d.data_entrada} mono falta={faltaCampo.has('data_entrada')} edit={editando} campo="data_entrada" rascunho={rascunho} onChange={setCampo} tipo="date" />
 
               <Campo label="Data alta" valor={d.status === 'INTERNADO' || !d.data_ultima_visita ? 'PERMANECE' : '—'} />
               <Campo label="Médico" valor={d.medico} edit={editando} campo="medico" rascunho={rascunho} onChange={setCampo} />
@@ -334,8 +371,12 @@ export default function Paciente() {
                 >
                   <div className="section-label" style={{ margin: 0 }}>Novo relatório</div>
                   <div>
-                    <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Data da visita *</div>
-                    <input type="date" className="bm-input" value={dataVisita} onChange={(e) => setDataVisita(e.target.value)} />
+                    {/* "realizada": mesmo rótulo do drawer. Relatório é sempre de
+                        visita que já aconteceu; a data PREVISTA tem campo próprio
+                        (Agendar visita), e confundir as duas quebraria o cálculo
+                        de dias sem relatório. */}
+                    <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Data da visita realizada *</div>
+                    <CalendarioVisita valor={dataVisita} onEscolher={setDataVisita} limite="passado" placeholder="Escolher data" />
                   </div>
                   <div>
                     <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Médico auditor</div>
@@ -440,19 +481,9 @@ function isRelatorio(ev: TimelineEvento): boolean {
   return ev.tipo === 'RELATORIO' || ev.tipo === 'RELATORIO_INTERNO' || /relat[óo]rio/i.test(ev.titulo)
 }
 
-// Timeline com o mais recente no topo. O backend entrega ascendente (admissão
-// primeiro) com o marco "Hoje/Pendente" — o estado atual, sem data — no fim.
-// Aqui o marco "Hoje" sobe para o topo (é o "agora") e os eventos datados vêm
-// logo abaixo, do mais recente ao mais antigo. Não muta o array original.
-function ordenarRecentePrimeiro(eventos: TimelineEvento[]): TimelineEvento[] {
-  const hoje = eventos.filter((e) => e.hoje)
-  const datados = eventos.filter((e) => !e.hoje).slice().reverse()
-  return [...hoje, ...datados]
-}
-
 function Campo({
   label, valor, span = 1, mono = false, multiline = false,
-  edit = false, campo, rascunho, onChange, opcoes, tipo = 'text',
+  edit = false, campo, rascunho, onChange, opcoes, tipo = 'text', falta = false,
 }: {
   label: string
   valor?: string | number | null
@@ -467,16 +498,27 @@ function Campo({
   onChange?: <K extends keyof InternacaoEdicao>(campo: K, valor: string) => void
   opcoes?: string[]
   tipo?: 'text' | 'date'
+  /** Campo importante que chegou em branco: destaca em âmbar e pede "informar".
+   *  Vem de `camposIncompletos()` — a ficha não decide sozinha o que é importante. */
+  falta?: boolean
 }) {
   const editavel = edit && campo != null && rascunho != null && onChange != null
-  const texto = valor === null || valor === undefined || valor === '' ? '—' : String(valor)
+  // Enquanto edita, o destaque acompanha o que a pessoa digitou: preencher o campo
+  // apaga o âmbar na hora, sem esperar o salvamento. `falta` vem do dado gravado e
+  // sozinho manteria o alerta aceso sobre um campo já preenchido na tela.
+  const aindaFalta = falta && (!editavel || !String((rascunho?.[campo!] as string | undefined) ?? '').trim())
+  const marca = aindaFalta ? ' campo-falta' : ''
+  // Em leitura, campos de data saem em dd/mm/aaaa; o <input type="date"> segue
+  // exigindo o ISO cru e por isso a conversão fica só na exibição.
+  const bruto = valor === null || valor === undefined || valor === '' ? '—' : String(valor)
+  const texto = tipo === 'date' ? (dataBR(bruto) || bruto) : bruto
 
   if (editavel) {
     const val = (rascunho[campo] as string | undefined) ?? ''
     const set = (v: string) => onChange(campo, v)
     return (
-      <div style={{ gridColumn: `span ${span}` }}>
-        <div className="uppercase t-muted" style={{ fontSize: 10, letterSpacing: '.08em', fontWeight: 700, marginBottom: 5 }}>
+      <div style={{ gridColumn: `span ${span}` }} className={marca.trim() || undefined}>
+        <div className="uppercase t-muted campo-lbl" style={{ fontSize: 10, letterSpacing: '.08em', fontWeight: 700, marginBottom: 5 }}>
           {label}
         </div>
         {opcoes ? (
@@ -500,20 +542,24 @@ function Campo({
   }
 
   return (
-    <div style={{ gridColumn: `span ${span}` }}>
-      <div className="uppercase t-muted" style={{ fontSize: 10, letterSpacing: '.08em', fontWeight: 700, marginBottom: 5 }}>
+    <div style={{ gridColumn: `span ${span}` }} className={marca.trim() || undefined}>
+      <div className="uppercase t-muted campo-lbl" style={{ fontSize: 10, letterSpacing: '.08em', fontWeight: 700, marginBottom: 5 }}>
         {label}
       </div>
       <div
-        className={mono ? 'mono' : undefined}
+        className={`campo-box${mono ? ' mono' : ''}`}
+        title={aindaFalta ? `${label} não veio no censo. Use “Editar” para informar.` : undefined}
         style={{
-          border: '1px solid var(--border-strong)',
+          // Borda e fundo ficam no inline (e não na classe .campo-falta) porque
+          // estilo inline vence a folha: deixá-los só no CSS faria o âmbar nunca
+          // aparecer. A classe segue existindo para o rótulo e para o modo edição.
+          border: `1px solid ${aindaFalta ? 'var(--warning)' : 'var(--border-strong)'}`,
           borderRadius: 8,
           padding: multiline ? '9px 11px' : '7px 11px',
           minHeight: multiline ? 60 : undefined,
           fontSize: 'var(--t-base)',
-          color: texto === '—' ? 'var(--muted-2)' : 'var(--ink)',
-          background: 'var(--surface)',
+          color: aindaFalta ? 'var(--warning-2)' : texto === '—' ? 'var(--muted-2)' : 'var(--ink)',
+          background: aindaFalta ? 'var(--warning-bg)' : 'var(--surface)',
           whiteSpace: multiline ? 'pre-wrap' : 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -525,27 +571,11 @@ function Campo({
   )
 }
 
-// Um relatório no card lateral: documento anexado + quando/quem anexou.
-// Mostra a data-hora de registro (criado_em), o autor com o chip de papel, a
-// descrição e — quando há documento — o link para baixá-lo (signed URL).
+// Um relatório no card lateral: quando/quem registrou + a observação escrita.
+// Mostra a data-hora de registro (criado_em), o autor com o chip de papel e a
+// descrição, no mesmo formato da timeline.
 function RelatorioCard({ r }: { r: RelatorioItem }) {
-  const [baixando, setBaixando] = useState(false)
-  const [erroDownload, setErroDownload] = useState<string | null>(null)
   const cor = roleVisual(r.autor_role).color
-  // Nome sugerido do arquivo no download; o backend serve o conteúdo real.
-  const nomeArquivo = `relatorio-${r.id}.pdf`
-
-  async function baixar() {
-    setErroDownload(null)
-    setBaixando(true)
-    try {
-      await baixarAnexoRelatorio(r.id, nomeArquivo)
-    } catch (e) {
-      setErroDownload(e instanceof Error ? e.message : 'Falha ao baixar o anexo')
-    } finally {
-      setBaixando(false)
-    }
-  }
 
   return (
     <div
@@ -556,33 +586,18 @@ function RelatorioCard({ r }: { r: RelatorioItem }) {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 'var(--t-sm)', fontWeight: 600, color: 'var(--ink)' }}>
-          {dataHora(r.criado_em) || r.data_visita || '—'}
+          {dataHora(r.criado_em) || dataBR(r.data_visita) || '—'}
         </span>
         {r.autor && <AutorChip role={r.autor_role} autor={r.autor} />}
       </div>
       {r.data_visita && (
         <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)', marginTop: 2 }}>
-          Visita: {r.data_visita}{r.medico ? ` · ${r.medico}` : ''}
+          Visita: {dataBR(r.data_visita)}{r.medico ? ` · ${r.medico}` : ''}
         </div>
       )}
-      {r.tem_anexo ? (
-        <button
-          className="btn btn-outline btn-sm"
-          style={{ marginTop: 10, gap: 6 }}
-          onClick={baixar}
-          disabled={baixando}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
-          {baixando ? 'Baixando…' : 'Baixar documento'}
-        </button>
-      ) : (
-        <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted-2)', marginTop: 8 }}>
-          Sem documento anexado
-        </div>
-      )}
-      {erroDownload && (
-        <div className="badge danger" style={{ marginTop: 8, padding: '6px 9px', textTransform: 'none', letterSpacing: 0 }}>
-          {erroDownload}
+      {r.descricao && (
+        <div className="tl-desc" style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>
+          {r.descricao}
         </div>
       )}
     </div>
@@ -596,32 +611,38 @@ function LeitoBig({ tipo }: { tipo?: string | null }) {
   return <span style={{ fontSize: 'var(--t-md)', color: 'var(--muted-2)' }}>—</span>
 }
 
-// Classe de cor por TIPO de evento — fonte única: nomeia tanto o marcador
-// (.tl-dot.tp-*) quanto o card (.tl-card.tp-*). Cada tipo tem sua cor padrão.
-const TIPO_CLASSE: Record<string, string> = {
-  ADMISSAO: 'tp-admissao',
-  RELATORIO: 'tp-relatorio',
-  RELATORIO_INTERNO: 'tp-relatorio-interno',
-  STATUS: 'tp-status',
-  ALTA_AUTO: 'tp-alta-auto',
-  EDIT: 'tp-edit',
-  PENDENTE: 'tp-pendente',
-}
-
 function TimelineItem({ ev }: { ev: TimelineEvento }) {
   const relatorio = isRelatorio(ev)
   // Classe de cor do tipo. Tipos conhecidos viram card colorido; um tipo sem
   // mapeamento (evento legado) fica em linha simples com a variante do backend.
-  const tipoClasse = TIPO_CLASSE[ev.tipo]
+  const tipoClasse = classeDoEvento(ev)
   const cardClass = tipoClasse ? ` tl-card ${tipoClasse}` : ''
   // Marcador: a classe de tipo colore o dot; sem tipo mapeado, usa a variante.
   const dotClass = tipoClasse || ev.variante
+  const visita = ev.tipo === 'VISITA_AGENDADA'
+  const cancelada = visita && ev.status_visita === 'cancelada'
   return (
-    <div className={`tl-item${cardClass}`}>
-      <div className={`tl-dot ${dotClass}`} />
-      <div className="tl-date">{ev.hoje ? 'Hoje' : ev.data || '—'}</div>
+    <div className={`tl-item${cardClass}${cancelada ? ' tl-cancelada' : ''}`}>
+      {/* Cancelada troca o marcador redondo por um X: o card já muda de cor
+          (cinza), mas o X torna o estado "não vai mais acontecer" legível
+          mesmo sem olhar a cor — a mesma informação que "Longa avançada"
+          removida do Kanban tinha (ver bmais-kanban-priorizacao-card): o texto
+          não pode depender só da cor para se explicar. */}
+      {cancelada ? (
+        <span className="tl-dot-x" aria-hidden>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </span>
+      ) : (
+        <div className={`tl-dot ${dotClass}`} />
+      )}
+      <div className="tl-date">
+        {ev.hoje ? 'Hoje' : dataBR(ev.data) || '—'}
+        {/* Hora só em VISITA_AGENDADA (migration 0035) — os demais tipos não
+            têm hora registrada, e um "—" gratuito seria ruído. */}
+        {visita && ev.hora && <span className="tl-hora"> às {ev.hora.slice(0, 5)}</span>}
+      </div>
       <div className="tl-label">
-        {ev.titulo}
+        <span className={cancelada ? 'tl-label-riscado' : undefined}>{ev.titulo}</span>
         {/* Relatório externo: médico responsável. Relatório interno: quem o fez
             (autor/e-mail por enquanto). Cor do chip pelo papel de quem registrou. */}
         {relatorio && ev.tipo === 'RELATORIO_INTERNO' && ev.autor && (
@@ -632,6 +653,16 @@ function TimelineItem({ ev }: { ev: TimelineEvento }) {
         {relatorio && ev.tipo !== 'RELATORIO_INTERNO' && ev.medico && (
           <span style={{ marginLeft: 8, verticalAlign: 'middle' }}>
             <MedicoChip nome={ev.medico} role={ev.autor_role} />
+          </span>
+        )}
+        {/* Visita agendada: mesmo chip do relatório, de QUEM é o compromisso —
+            não confundir com "quem clicou em agendar" (autor), que não aparece
+            aqui de propósito, igual a Admissão não mostra quem cadastrou.
+            Continua aparecendo cancelada: "de quem era" a visita que não
+            aconteceu é útil tanto quanto "de quem é" a que ainda vai. */}
+        {visita && ev.medico && (
+          <span style={{ marginLeft: 8, verticalAlign: 'middle' }}>
+            <MedicoChip nome={ev.medico} role={ev.autor_role} titulo="Responsável" />
           </span>
         )}
       </div>

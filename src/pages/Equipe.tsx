@@ -239,6 +239,7 @@ export default function Equipe() {
 
       {addOpen && (
         <AddProfModal
+          opsLista={data?.ops_lista ?? []}
           onClose={() => setAddOpen(false)}
           onDone={(msg) => { setAddOpen(false); setToast(msg); invalidar() }}
           onError={setToast}

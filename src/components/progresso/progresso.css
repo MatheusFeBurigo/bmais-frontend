@@ -1,0 +1,276 @@
+/* Tela Progresso (avanço dos módulos do projeto).
+   Escopado em .prg. O layout é o do documento de origem; a paleta e a tipografia
+   saem inteiramente dos tokens do design-system (Geist, Geist Mono, azul de
+   marca), para a tela não parecer um anexo colado no sistema.
+
+   Regra de cor desta tela, porque no original ela se contradizia:
+     - a PASTILHA e o CONTADOR dizem o GRUPO (azul = em construção, âmbar =
+       iniciado, cinza = ainda não começou);
+     - a TRILHA de etapas tem escala própria: verde = etapa cumprida, azul =
+       onde o trabalho está agora, cinza = ainda por fazer.
+   Assim uma cor nunca significa duas coisas na mesma tela. */
+
+/* Ocupa a largura toda da área de conteúdo: o quadro tem 4 colunas por módulo
+   (nome, situação, barra, percentual) e ainda a trilha de etapas embaixo —
+   espremer isso em 920px era o que obrigava a barra a encolher. */
+.prg{width:100%}
+
+/* ── Cartão de destaque: avanço geral + contagem por grupo ──────────────── */
+.prg-destaque{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:18px 20px;box-shadow:var(--shadow-xs)}
+.prg-destaque-topo{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
+.prg-destaque-label{font-size:var(--t-sm);font-weight:600;color:var(--muted)}
+.prg-destaque-pct{font-family:var(--font-mono);font-size:var(--t-3xl);font-weight:600;
+  letter-spacing:-.04em;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums}
+.prg-contagens{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}
+@media(max-width:620px){.prg-contagens{grid-template-columns:1fr 1fr}}
+.prg-cont{display:flex;flex-direction:column;gap:1px;padding:9px 11px;border-radius:var(--r-sm);
+  border:1px solid var(--border);background:var(--surface-2)}
+.prg-cont-n{font-family:var(--font-mono);font-size:var(--t-xl);font-weight:600;line-height:1.1;
+  color:var(--tom,var(--ink));font-variant-numeric:tabular-nums}
+.prg-cont-label{font-size:var(--t-sm);color:var(--muted)}
+
+/* Tom por grupo (pastilha e contador). */
+.build{--tom:var(--accent)}
+.started{--tom:var(--caution)}
+.todo{--tom:var(--muted-2)}
+.study{--tom:var(--muted-2)}
+
+/* ── Barras de avanço ───────────────────────────────────────────────────── */
+.prg-track{height:7px;border-radius:99px;background:var(--bg-2);overflow:hidden;min-width:0}
+.prg-track-lg{height:9px}
+.prg-fill{height:100%;border-radius:99px;background:var(--tom,var(--accent));transition:width .4s ease}
+/* Grupos sem trabalho em curso: a barra some como preenchimento sólido para não
+   competir com quem está em obra. */
+.prg-fill.todo,.prg-fill.study{background:var(--muted-3)}
+
+/* ── Pastilha de situação e marcas do módulo ────────────────────────────── */
+.prg-pill{display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  font-size:var(--t-xs);font-weight:600;padding:2px 9px;border-radius:99px;white-space:nowrap;
+  color:var(--tom,var(--muted));background:var(--surface-3);border:1px solid var(--border);
+  flex-shrink:0;width:100%}
+.prg-pill::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.prg-pill.build{background:var(--accent-soft);border-color:rgba(31,111,190,.2)}
+.prg-pill.started{background:var(--caution-bg);border-color:rgba(181,134,6,.2)}
+/* Posição deduzida do percentual, e não apurada na conferência: o leitor precisa
+   saber, mas isto não é um alerta — daí o âmbar discreto, sem ícone. */
+.prg-inferido{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--caution);background:var(--caution-bg);border:1px solid rgba(181,134,6,.2);
+  padding:1px 7px;border-radius:99px;cursor:help}
+
+/* ── Legenda do percurso ────────────────────────────────────────────────── */
+.prg-legenda{display:flex;flex-wrap:wrap;gap:7px 16px;margin:14px 0 4px;padding:10px 14px;
+  background:var(--surface-3);border:1px solid var(--border-soft);border-radius:var(--r-sm)}
+.prg-legenda-item{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-sm);color:var(--muted)}
+.prg-legenda-n{display:grid;place-items:center;width:16px;height:16px;border-radius:50%;flex-shrink:0;
+  background:var(--surface);border:1px solid var(--border-strong);color:var(--ink-3);
+  font-family:var(--font-mono);font-size:9px;font-weight:600;font-variant-numeric:tabular-nums}
+
+/* Lápis por módulo, só para quem pode editar. Discreto até o hover: a tela é
+   de leitura, e uma coluna de botões azuis competiria com os números.
+   Fica ANTES das media queries: definido depois, venceria as sobrescritas
+   delas por ordem de cascata (a especificidade é a mesma). */
+.prg-editar{display:grid;place-items:center;width:28px;height:28px;padding:0;flex-shrink:0;
+  justify-self:center;
+  border:1px solid transparent;background:none;border-radius:var(--r-sm);color:var(--muted-2);
+  cursor:pointer;transition:color .12s,background .12s,border-color .12s}
+.prg-editar:hover{background:var(--surface-3);border-color:var(--border);color:var(--accent)}
+.prg-editar:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ── Quadro dos módulos ─────────────────────────────────────────────────── */
+.prg-quadro{margin-top:14px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-md);overflow:hidden}
+/* Respiro maior entre grupos que entre módulos do mesmo grupo: é a distância
+   que faz o olho enxergar os blocos antes de ler as linhas. */
+.prg-grupo{padding:16px 20px 10px}
+.prg-grupo + .prg-grupo{border-top:1px solid var(--border)}
+.prg-grupo-titulo{display:flex;align-items:center;gap:8px;margin:0 0 10px;
+  font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.1em;font-weight:600;color:var(--muted)}
+.prg-grupo-total{font-family:var(--font-mono);font-size:10px;font-weight:600;padding:1px 7px;
+  border-radius:99px;background:var(--surface-3);border:1px solid var(--border);color:var(--muted)}
+
+.prg-modulo{padding:16px 0}
+.prg-modulo + .prg-modulo{border-top:1px solid var(--border-soft)}
+/* Linha de cabeçalho do módulo: identificação à esquerda, situação e medida à
+   direita. `auto` na barra evita que ela roube largura do nome. */
+/* A pastilha tem largura FIXA: com `auto`, "Em construção" e "Iniciado"
+   tinham tamanhos diferentes e empurravam a barra de cada módulo para uma
+   posição — as barras não alinhavam entre linhas, que é justamente o que se
+   compara ao correr o olho pela lista. */
+.prg-modulo-topo{display:grid;
+  grid-template-columns:minmax(0,1fr) 116px minmax(120px,190px) 46px 28px;
+  gap:14px;align-items:center}
+@media(max-width:920px){
+  /* Estreito, a barra desce para a linha inteira: espremida entre o nome e o
+     percentual, ficaria com poucos pixels e não comunicaria nada. O MESMO
+     ponto de quebra da trilha, para o módulo inteiro mudar de forma de uma vez
+     — com pontos diferentes, a linha reorganizava em dois momentos.
+     O percentual PERMANECE: é o número principal da linha, e escondê-lo no
+     estreito tirava justamente o que se procura. */
+  .prg-modulo-topo{grid-template-columns:minmax(0,1fr) 110px 46px;gap:10px}
+  .prg-modulo-topo .prg-track{grid-column:1 / -1;grid-row:2}
+  .prg-editar{grid-row:1;grid-column:3}
+  .prg-modulo-pct{grid-row:1;grid-column:2;text-align:right}
+  .prg-pill{grid-row:2;grid-column:1 / -1;width:auto;justify-self:start;margin-top:2px}
+}
+/* IDENTIFICAÇÃO: código ACIMA do nome. Lado a lado, o "Mód. 5A" era lido como
+   parte do título; empilhado, cada um tem o seu peso. */
+.prg-modulo-id{min-width:0;display:flex;flex-direction:column;gap:2px}
+.prg-modulo-cod{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--muted-2);
+  letter-spacing:.08em;text-transform:uppercase}
+.prg-modulo-nome{font-size:var(--t-md);font-weight:600;color:var(--ink);margin:0;
+  line-height:1.3;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prg-modulo-pct{font-family:var(--font-mono);font-size:var(--t-md);font-weight:600;color:var(--ink);
+  font-variant-numeric:tabular-nums;text-align:right}
+
+/* ── Etapa atual, por extenso ───────────────────────────────────────────────
+   Separada da trilha por um respiro: é a leitura rápida ("em que pé está"), e
+   a trilha abaixo é o detalhe de quem quer as seis. */
+.prg-andamento{margin-top:12px}
+.prg-etapa-atual{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;margin:0 0 10px}
+.prg-etapa-atual-txt{display:inline-flex;align-items:baseline;gap:8px;min-width:0}
+/* Contagem com largura fixa: sem ela, "0/6" e "10/6" deslocavam a frase
+   seguinte e os resumos não começavam na mesma coluna. */
+.prg-etapa-atual-n{min-width:30px;font-family:var(--font-mono);font-size:var(--t-xs);
+  font-weight:600;color:var(--accent);letter-spacing:.02em;flex-shrink:0}
+.prg-etapa-atual-nome{font-size:var(--t-base);color:var(--ink-2);font-weight:500}
+/* As marcas do módulo ficam à direita, longe da frase: juntas na mesma linha
+   elas pareciam continuação do nome da etapa. */
+.prg-marcas{display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
+
+/* ── Trilha das 6 etapas ────────────────────────────────────────────────────
+   Lista vertical, e não a fileira horizontal do original: em 6 colunas o nome
+   da etapa não cabia (virava um número solto) e a data ficava em 8,5px. */
+.prg-fases{list-style:none;margin:0;padding:0;display:grid}
+/* Colunas de largura FIXA: marcador, nome, avanço e prazos. Com `auto` cada
+   linha se ajustava ao próprio texto — "concluída" e "38%" produziam colunas
+   diferentes, e nada ficava alinhado de uma etapa para a outra. */
+.prg-fase{position:relative;display:grid;
+  grid-template-columns:20px minmax(0,1fr) 84px 188px;
+  gap:14px;align-items:center;padding:5px 0;min-height:30px}
+/* A linha que liga uma etapa à seguinte nasce do próprio item: sem elementos
+   separados por conexão (o original tinha 5 <span> só para isso). */
+.prg-fase::before{content:'';position:absolute;left:9.5px;top:-2px;bottom:50%;width:1.5px;
+  background:var(--border-strong)}
+.prg-fase:first-child::before{display:none}
+.prg-fase.done::before,.prg-fase.current::before{background:var(--success)}
+.prg-fase-dot{position:relative;z-index:1;display:grid;place-items:center;width:20px;height:20px;
+  border-radius:50%;font-family:var(--font-mono);font-size:9px;font-weight:600;
+  font-variant-numeric:tabular-nums;background:var(--surface);border:1.5px solid var(--border-strong);
+  color:var(--muted-2)}
+.prg-fase.done .prg-fase-dot{background:var(--success);border-color:var(--success);color:#fff}
+.prg-fase.current .prg-fase-dot{background:var(--accent);border-color:var(--accent);color:#fff;
+  box-shadow:0 0 0 3px var(--accent-soft)}
+.prg-fase-nome{font-size:var(--t-base);color:var(--muted);min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prg-fase.done .prg-fase-nome{color:var(--ink-3)}
+.prg-fase.current .prg-fase-nome{color:var(--ink);font-weight:600}
+/* PRAZOS: cada data com o seu rótulo. Antes eram dois números soltos lado a
+   lado ("27/08  até 27/09") e nada dizia qual era início e qual previsão. */
+/* Duas sub-colunas fixas: sem isto, uma etapa só com início empurrava a sua
+   data para onde a etapa de cima tinha o "até", e a coluna serrilhava. */
+.prg-fase-data{display:grid;grid-template-columns:88px 88px;gap:12px;align-items:baseline}
+.prg-fase-quando{display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap}
+/* Os dois espaços existem sempre (o TSX rende ambos, vazios quando não há
+   data), então cada um fica na sua coluna sem regra extra. */
+.prg-fase-rotulo{font-size:9px;text-transform:uppercase;letter-spacing:.08em;
+  font-weight:600;color:var(--muted-3)}
+.prg-fase-data b{font-family:var(--font-mono);font-size:var(--t-xs);font-weight:600;
+  color:var(--ink-3);font-variant-numeric:tabular-nums}
+/* A previsão é estimativa, não data cumprida: mais tênue que o início. */
+.prg-fase-data i{font-family:var(--font-mono);font-size:var(--t-xs);font-style:normal;
+  color:var(--muted-2);font-variant-numeric:tabular-nums}
+
+.prg-nao-iniciado{margin:10px 0 0;font-size:var(--t-base);color:var(--muted-2);font-style:italic}
+
+/* ── Avanço de cada etapa ───────────────────────────────────────────────────
+   O percentual por etapa é a fonte da verdade (migration 0031): dele saem a
+   cor da etapa, o total do módulo e o avanço geral do projeto. */
+.prg-fase-pct{justify-self:start;font-family:var(--font-mono);font-size:var(--t-xs);
+  font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;padding:1px 8px;
+  border-radius:99px;border:1px solid transparent}
+/* Concluída vira palavra, não "100%": é o estado que se procura na lista, e a
+   palavra se lê mais rápido que um número no meio de outros números. */
+.prg-fase-pct.done{color:var(--success);background:var(--success-bg);
+  border-color:rgba(14,122,83,.18);font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+.prg-fase-pct.current{color:var(--accent);background:var(--accent-soft);
+  border-color:rgba(31,111,190,.18)}
+
+/* Campo de percentual na edição, com o atalho de concluir ao lado. */
+.prg-fase-pct-edit{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.prg-fase-pct-edit .bm-input{width:62px;padding:4px 20px 4px 8px;font-size:var(--t-xs);
+  font-family:var(--font-mono);text-align:right}
+.prg-fase-pct-edit .prg-edit-sufixo{position:static;margin-left:-19px;font-size:var(--t-xs)}
+/* "concluir" preenche 100 sem digitar: é o caso mais comum da tela. */
+.prg-fase-concluir{font-size:9px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;
+  padding:3px 7px;border-radius:99px;border:1px solid var(--border);background:var(--surface);
+  color:var(--muted);cursor:pointer;font-family:inherit;transition:color .12s,border-color .12s,background .12s}
+.prg-fase-concluir:hover:not(:disabled){background:var(--success-bg);border-color:rgba(14,122,83,.3);
+  color:var(--success)}
+.prg-fase-concluir:disabled{opacity:.35;cursor:default}
+
+/* Total do módulo no rodapé da edição: o número que a diretoria lê, mudando a
+   cada dígito — o usuário vê o efeito do ajuste antes de salvar. */
+.prg-edit-total{display:inline-flex;align-items:baseline;gap:7px;font-size:var(--t-sm);
+  color:var(--muted)}
+.prg-edit-total b{font-family:var(--font-mono);font-size:var(--t-lg);font-weight:600;
+  color:var(--ink);font-variant-numeric:tabular-nums}
+.prg-edit-total-nota{font-size:var(--t-xs);color:var(--muted-3)}
+
+/* Origem do número do topo, ao lado do rótulo. */
+.prg-destaque-nota{display:block;font-size:var(--t-xs);font-weight:400;color:var(--muted-3);
+  text-transform:none;letter-spacing:0;margin-top:1px}
+
+/* ── Edição no lugar ────────────────────────────────────────────────────────
+   Clicar no lápis transforma os campos do próprio módulo em inputs, sem modal:
+   o cronograma tem 12 campos (início e previsão das 6 etapas), e numa janela
+   flutuante o usuário perderia de vista a linha que está editando. */
+.prg-modulo.editando{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--accent);
+  border-radius:var(--r-sm);padding-left:14px;padding-right:12px;margin:2px -12px}
+/* Os dois campos de data de uma etapa, na coluna onde a data aparece na
+   leitura: a linha não muda de forma ao entrar em edição. */
+.prg-fase-edit{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.prg-fase-edit .bm-input{width:92px;padding:4px 8px;font-size:var(--t-xs);
+  font-family:var(--font-mono);text-align:center}
+.prg-fase-edit .bm-input::placeholder{font-family:var(--font-sans);
+  color:var(--muted-3);letter-spacing:.02em}
+.prg-edit-acoes{display:flex;align-items:center;gap:8px;margin-top:14px;
+  padding-top:12px;border-top:1px solid var(--border)}
+@media(max-width:920px){
+  /* Sem largura para nome, avanço e prazos na mesma linha, a etapa empilha:
+     cada bloco continua legível em vez de virar campos de 40px. Vale para a
+     leitura e para a edição — antes eram duas faixas diferentes (560 e 700),
+     e a segunda vencia a primeira por vir depois no arquivo. */
+  .prg-fase{grid-template-columns:20px minmax(0,1fr);row-gap:6px}
+  .prg-fase-pct,.prg-fase-pct-edit,.prg-fase-data,.prg-fase-edit{grid-column:2}
+  .prg-fase-data{grid-template-columns:96px 96px}
+  .prg-fase-edit .bm-input{width:84px}
+}
+
+/* ── Ajuste manual ──────────────────────────────────────────────────────── */
+/* Lápis por módulo, só para quem pode editar. Discreto até o hover: a tela é de
+   leitura, e uma coluna de botões azuis competiria com os números. */
+/* Marca de valor ajustado à mão — informativa, e não um alerta (por isso o tom
+   neutro, diferente do âmbar de "etapa estimada"). */
+.prg-ajustado{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--muted);background:var(--surface-3);border:1px solid var(--border);
+  padding:1px 7px;border-radius:99px;cursor:help}
+
+
+
+/* Origem e data da apuração: fecha a tela dizendo de onde vêm os números. */
+.prg-fonte{margin-top:18px;font-size:var(--t-sm);color:var(--muted-2);text-align:center;
+  line-height:1.6}
+
+/* Atalho para o relatório da auditoria. Cartão de uma linha, com o peso de um
+   item de navegação e não o de um número: convida sem competir com o avanço
+   geral logo acima. */
+.prg-atalho{display:flex;align-items:center;gap:14px;margin-top:12px;padding:13px 16px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  text-decoration:none;color:inherit;transition:border-color .12s,background .12s}
+.prg-atalho:hover{border-color:var(--ink-3);background:var(--surface-2)}
+.prg-atalho-texto{display:flex;flex-direction:column;gap:2px;min-width:0}
+.prg-atalho-titulo{font-size:var(--t-base);font-weight:600;color:var(--ink)}
+.prg-atalho-sub{font-size:var(--t-sm);color:var(--muted-2);line-height:1.5}
+.prg-atalho-seta{margin-left:auto;font-size:20px;line-height:1;color:var(--muted-3)}

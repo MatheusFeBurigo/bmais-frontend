@@ -4,9 +4,13 @@
 // se vê mora em `components/upload/`: o formulário dos três passos, o resultado do
 // lote (placar + um cartão por arquivo) e o assistente que completa o que faltou.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { invalidarPorEvento } from '../lib/invalidation'
+import { lerPasso1, salvarPasso1 } from '../lib/envioPersistido'
+import {
+  type EstadoProgresso, ProgressoEnvio, progressoStyles,
+} from '../components/upload/ProgressoEnvio'
 import { ehSomenteLeitura } from '../auth/permissions'
 import { useAuth } from '../auth/AuthContext'
 import { enviarCensos, reverterEnvioCenso } from '../services/censos.service'
@@ -23,7 +27,7 @@ import { useSidebar } from '../hooks/useDashboard'
 
 // Estilos específicos da tela, reunidos dos componentes que a compõem (o projeto
 // injeta CSS por <style> na própria tela, não por arquivo .css importado).
-const localStyles = [formularioStyles, estilosResultado].join('\n')
+const localStyles = [formularioStyles, progressoStyles, estilosResultado].join('\n')
 
 // Todos os pendentes de um conjunto de resultados (o backend carimba o arquivo em cada um).
 function coletarPendentes(resultados: UploadCensoResult[]): PendenteCenso[] {
@@ -39,8 +43,17 @@ export default function Upload() {
     invalidarPorEvento(qc, 'dadosAlterados')
   }
 
+  // Só as escolhas do passo 1 sobrevivem ao F5 — ver lib/envioPersistido.ts. O
+  // RESULTADO não é guardado: ele é um retrato do processamento, e mantê-lo em
+  // cache criava um estado velho que discordava do que a tela sabia calcular
+  // (alertas já resolvidos voltavam a aparecer, sem que desse para saber se o
+  // que estava em tela vinha do envio ou do storage).
+  const [guardado] = useState(() => lerPasso1())
+
   const [files, setFiles] = useState<File[]>([])
   const [busy, setBusy] = useState(false)
+  // Quanto do envio já foi lido. `null` = não há envio em curso.
+  const [progresso, setProgresso] = useState<EstadoProgresso | null>(null)
   const [result, setResult] = useState<UploadCensoResponse | null>(null)
   // Pacientes que o sistema leu mas não conseguiu completar e ainda não foram gravados.
   // Cada um já é uma pendência no Kanban — o que ficar sem completar continua lá.
@@ -58,8 +71,8 @@ export default function Upload() {
   // hospital×operadora (385 linhas para 219 hospitais distintos), então uma lista
   // única repetiria o mesmo nome até 4x, sem nada que os diferenciasse na tela.
   // Filtrar pela operadora resolve na origem: cada nome aparece uma vez só.
-  const [operadora, setOperadora] = useState('')
-  const [hospital, setHospital] = useState('')
+  const [operadora, setOperadora] = useState(() => guardado?.operadora ?? '')
+  const [hospital, setHospital] = useState(() => guardado?.hospital ?? '')
   // Desfazer: sessão em processo de reversão (trava o botão) e envios recentes.
   const [revertendo, setRevertendo] = useState<string | null>(null)
   // Envio aguardando confirmação para ser desfeito (null = modal fechada). Guarda
@@ -77,6 +90,13 @@ export default function Upload() {
   // operacional=acesso, gerencial=diretor, destrutivo=admin). O gestor edita,
   // mas não apaga — mostrar a lixeira a ele daria 403 no clique.
   const podeExcluir = role === 'admin'
+  // Guarda só o passo 1, a cada mudança. Sem condição de "tem resultado": estas
+  // são escolhas do usuário e valem para o próximo envio, mesmo que este ainda
+  // nem tenha acontecido.
+  useEffect(() => {
+    salvarPasso1(operadora, hospital)
+  }, [operadora, hospital])
+
   const hospitaisQ = useTodosHospitais()
   const sidebarQ = useSidebar()
 
@@ -125,12 +145,13 @@ export default function Upload() {
     e.preventDefault()
     if (!files.length) return
     setBusy(true)
+    setProgresso({ fase: 'enviando', feitos: 0, total: files.length })
     try {
       // O hospital do lote vale para TODOS os arquivos deste envio. O backend usa a
       // key para escolher o leitor e carimbar o resultado.
       const hospitais: Record<string, HospitalManual> = {}
       for (const f of files) hospitais[f.name] = { key: hospital }
-      const data = await enviarCensos(files, hospitais)
+      const data = await enviarCensos(files, hospitais, setProgresso)
       const pend = coletarPendentes(data.resultados ?? [])
       const faltaHosp = (data.resultados ?? []).filter((r) => r.precisa_hospital).length
       const scans = (data.resultados ?? []).filter((r) => r.erro_tipo === 'imagem').length
@@ -155,6 +176,7 @@ export default function Upload() {
       setToast(`Erro: ${(err as Error).message}`)
     } finally {
       setBusy(false)
+      setProgresso(null)
     }
   }
 
@@ -294,6 +316,11 @@ export default function Upload() {
           onFiles={setFiles}
           onSubmit={processar}
         />
+
+        {/* Logo abaixo do formulário, onde o resultado vai nascer: o progresso
+            ocupa o lugar do que ele está produzindo, então a vista não precisa
+            procurar em outro canto da tela para saber se ainda está rodando. */}
+        {progresso && <ProgressoEnvio estado={progresso} />}
 
         {result && visiveis.length > 0 && (
           <>

@@ -12,6 +12,10 @@ export const importKanban = () => import('./pages/Kanban')
 export const importPaciente = () => import('./pages/Paciente')
 export const importUsuarioForm = () => import('./pages/UsuarioForm')
 export const importLogs = () => import('./pages/Logs')
+export const importAjuda = () => import('./pages/Ajuda')
+export const importProgresso = () => import('./pages/Progresso')
+export const importVolumetria = () => import('./pages/Volumetria')
+export const importRelatorio = () => import('./pages/Relatorio')
 
 // Mapa rota → prefetch, consumido pela Sidebar via onMouseEnter/onFocus.
 export const prefetchPorRota: Record<string, () => Promise<unknown>> = {
@@ -23,4 +27,8 @@ export const prefetchPorRota: Record<string, () => Promise<unknown>> = {
   '/upload': importUpload,
   '/kanban': importKanban,
   '/logs': importLogs,
+  '/ajuda': importAjuda,
+  '/progresso': importProgresso,
+  '/volumetria': importVolumetria,
+  '/relatorio': importRelatorio,
 }

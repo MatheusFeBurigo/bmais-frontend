@@ -11,7 +11,11 @@ import { podeExecutar } from '../auth/permissions'
 import { registrarRelatorioRapido } from '../services/internacao.service'
 import { queryKeys } from '../lib/queryKeys'
 import { invalidarPorEvento } from '../lib/invalidation'
-import { hojeISO } from '../lib/datas'
+import { dataBR } from '../lib/datas'
+import { ordenarRecentePrimeiro, classeDoEvento } from '../lib/timeline'
+import { useAgendarVisita } from './kanban/useAgendarVisita'
+import { SeletorVisita } from './kanban/SeletorVisita'
+import { CalendarioVisita } from './kanban/CalendarioVisita'
 import { identificacaoPaciente } from '../lib/texto'
 import { useTravarScroll } from '../lib/travarScroll'
 import HospitalDetalhesModal from './HospitalDetalhesModal'
@@ -31,12 +35,24 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
   // Registrar relatório é ação exclusiva do perfil técnico (admin supervisiona).
   // Demais papéis veem o drawer somente-leitura (KPIs + timeline).
   const podeRegistrar = podeExecutar(role, 'registrarRelatorio')
+  // Agendar visita: o mesmo par de papéis, em permissão própria.
+  const podeAgendar = podeExecutar(role, 'agendarVisita')
   // Médicos auditores (tipo 'M') ativos, cadastrados na tela de Equipe.
   const medicosAtivos = (equipe?.medicos ?? []).filter((m) => Boolean(m.ativo))
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
-  const [dataVisita, setDataVisita] = useState(hojeISO())
+  // Vazio por padrão, como o campo de "Agendar visita": o botão nasce cinza
+  // até o técnico confirmar a data, em vez de já ativo com hoje pré-preenchido
+  // — que fazia parecer disponível antes de qualquer decisão do usuário.
+  const [dataVisita, setDataVisita] = useState('')
+  // Agendamento: estado próprio, separado do formulário de relatório. As duas
+  // datas significam coisas opostas (prevista x realizada) e não podem se
+  // misturar num só formulário.
+  const [dataAgenda, setDataAgenda] = useState('')
+  const [horaAgenda, setHoraAgenda] = useState('')
+  const [medicoAgenda, setMedicoAgenda] = useState('')
+  const agenda = useAgendarVisita(internacaoId)
   const [medico, setMedico] = useState('')
   const [obs, setObs] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -124,6 +140,9 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
               )}
             </div>
           </div>
+          {/* Volta a ficar no topo, ao lado do X: é a saída do drawer para a
+              ficha completa, e vale para TODOS os papéis — quem não registra
+              relatório também precisa chegar lá. */}
           <button
             className="btn btn-primary btn-sm"
             style={{ flexShrink: 0, gap: 6 }}
@@ -131,7 +150,7 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
             title="Abrir a ficha completa deste paciente"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M16 13H8M16 17H8M10 9H8" /></svg>
-            Ver completo
+            Detalhes
           </button>
           <button className="btn btn-ghost btn-sm" onClick={onClose} style={{ padding: 6, flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -169,8 +188,15 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
                 <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Sem eventos registrados.</div>
               )}
               {tl && tl.eventos.length > 0 && (
-                <div className="tl">
-                  {tl.eventos.map((ev, i) => (
+                // Altura limitada + scroll PRÓPRIO: sem isso a timeline crescia
+                // junto do histórico do paciente e empurrava "Registrar
+                // relatório"/"Agendar visita" cada vez mais para baixo do
+                // drawer. `max-height` (não `flex:1`, como a página completa
+                // usa) porque aqui o pai é uma coluna que já rola inteira
+                // (`drawer-body`), não um container de altura travada pelo
+                // viewport. Mais recente no topo — mesma ordem da página.
+                <div className="tl" style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
+                  {ordenarRecentePrimeiro(tl.eventos).map((ev, i) => (
                     <TimelineItem key={i} ev={ev} />
                   ))}
                 </div>
@@ -182,8 +208,12 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       <div>
-                        <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Data da visita *</div>
-                        <input type="date" className="bm-input" value={dataVisita} onChange={(e) => setDataVisita(e.target.value)} />
+                        {/* "realizada" e o `max` de hoje: com um campo de data
+                            PREVISTA no bloco de agendar, o rótulo antigo ("Data da
+                            visita") convidava a registrar relatório de visita
+                            futura, que quebraria o cálculo de dias sem relatório. */}
+                        <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Data da visita realizada *</div>
+                        <CalendarioVisita valor={dataVisita} onEscolher={setDataVisita} limite="passado" placeholder="Escolher data" />
                       </div>
                       <div>
                         <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Médico auditor</div>
@@ -200,6 +230,89 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
                     </div>
                     {erro && <div className="badge danger" style={{ padding: '8px 10px', textTransform: 'none', letterSpacing: 0 }}>{erro}</div>}
                   </div>
+                  {/* O botão fica FORA do grid dos campos: dentro dele, o
+                      `display:grid` esticava o botão por toda a largura, e ele
+                      não se parecia com o "Agendar visita" logo abaixo. As duas
+                      ações do drawer são irmãs e têm o mesmo formato. */}
+                  <button
+                    className="btn btn-outline"
+                    style={{ marginTop: 10 }}
+                    onClick={salvar}
+                    disabled={salvando || !d || !dataVisita}
+                  >
+                    {salvando ? 'Registrando…' : 'Registrar relatório'}
+                  </button>
+                </>
+              )}
+
+              {/* Agendar fica DEPOIS de registrar: o caso frequente é lançar a
+                  visita que acabou de acontecer, e o compromisso futuro é a
+                  exceção. Continuam em blocos separados, com botões próprios,
+                  para não confundir a data prevista com a data realizada. */}
+              {podeAgendar && (
+                <>
+                  <div className="section-label" style={{ marginTop: 22 }}>Agendar visita</div>
+                  {d.visita_agendada ? (
+                    <div className="dk" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div className="flex-1" style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 'var(--t-md)', color: d.visita_agendada_vencida ? 'var(--danger)' : 'var(--ink-2)' }}>
+                          {d.visita_agendada_vencida
+                            ? `Visita atrasada, era ${dataBR(d.visita_agendada_em)}`
+                            : `Visita marcada para ${dataBR(d.visita_agendada_em)}`}
+                          {d.visita_agendada_hora && ` às ${d.visita_agendada_hora.slice(0, 5)}`}
+                        </div>
+                        {d.visita_agendada_medico && (
+                          <div className="dk-meta">Responsável: {d.visita_agendada_medico}</div>
+                        )}
+                        {d.visita_agendada_por && (
+                          <div className="dk-meta">Marcada por {d.visita_agendada_por}</div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        disabled={agenda.salvando}
+                        onClick={() => void agenda.desmarcar()}
+                      >
+                        {agenda.salvando ? 'Cancelando…' : 'Cancelar'}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <SeletorVisita
+                        data={dataAgenda}
+                        onData={setDataAgenda}
+                        hora={horaAgenda}
+                        onHora={setHoraAgenda}
+                        medico={medicoAgenda}
+                        onMedico={setMedicoAgenda}
+                      />
+                      {/* Médico e horário obrigatórios: sem responsável o
+                          agendamento não diz de QUEM é a visita, e sem horário
+                          vira só uma data solta. Mesma regra travada de novo no
+                          backend (a rota é chamável direto). */}
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        style={{ marginTop: 10 }}
+                        disabled={agenda.salvando || !dataAgenda || !horaAgenda || !medicoAgenda}
+                        onClick={async () => {
+                          if (await agenda.agendar(dataAgenda, medicoAgenda, horaAgenda)) {
+                            setDataAgenda('')
+                            setHoraAgenda('')
+                            setMedicoAgenda('')
+                          }
+                        }}
+                      >
+                        {agenda.salvando ? 'Agendando…' : 'Agendar visita'}
+                      </button>
+                    </>
+                  )}
+                  {agenda.erro && (
+                    <div className="badge danger" style={{ marginTop: 8, padding: '8px 10px', textTransform: 'none', letterSpacing: 0 }}>
+                      {agenda.erro}
+                    </div>
+                  )}
                 </>
               )}
             </>
@@ -208,11 +321,6 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
 
         <div className="drawer-footer" style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0 }}>
           <button className="btn btn-outline" onClick={onClose}>Fechar</button>
-          {podeRegistrar && (
-            <button className="btn btn-primary" onClick={salvar} disabled={salvando || !d}>
-              {salvando ? 'Registrando…' : 'Registrar relatório'}
-            </button>
-          )}
         </div>
       </div>
 
@@ -230,22 +338,48 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
 function TimelineItem({ ev }: { ev: TimelineEvento }) {
   const relatorio = ev.tipo === 'RELATORIO' || /relat[óo]rio/i.test(ev.titulo)
   const labelStyle = ev.variante === 'danger' ? { color: 'var(--danger)' } : undefined
-  // Relatório: mostra só o médico responsável. Demais eventos com autoria humana
-  // (edição manual, observação) mostram o usuário que registrou. Marcos sintéticos
-  // e eventos de sistema não têm autoria e não exibem chip.
+  // Relatório: mostra só o médico responsável. Visita agendada: o responsável
+  // por ela (não quem clicou em agendar). Demais eventos com autoria humana
+  // mostram o usuário que registrou. Marcos sintéticos e eventos de sistema não
+  // têm autoria e não exibem chip.
   const chipRelatorio = relatorio && Boolean(ev.medico)
-  const chipAutor = !relatorio && Boolean(ev.autor)
-  // Relatório: marcador colorido pelo papel de quem registrou.
+  const chipVisita = ev.tipo === 'VISITA_AGENDADA' && Boolean(ev.medico)
+  const chipAutor = !relatorio && !chipVisita && Boolean(ev.autor)
+  // Relatório: marcador colorido pelo papel de quem registrou. Demais tipos
+  // mapeados usam a cor fixa do tipo (mesmo padrão de pages/Paciente.tsx).
+  const tipoClasse = classeDoEvento(ev)
   const dotStyle = relatorio ? { background: roleVisual(ev.autor_role).color } : undefined
+  const dotClass = tipoClasse || ev.variante
+  const cardClass = tipoClasse && !relatorio ? ` tl-card ${tipoClasse}` : ''
+  const cancelada = ev.tipo === 'VISITA_AGENDADA' && ev.status_visita === 'cancelada'
   return (
-    <div className="tl-item">
-      <div className={`tl-dot ${ev.variante}`} style={dotStyle} />
-      <div className="tl-date">{ev.hoje ? 'Hoje' : ev.data || '—'}</div>
+    <div className={`tl-item${cardClass}${cancelada ? ' tl-cancelada' : ''}`}>
+      {/* Cancelada troca o marcador redondo por um X: o card muda de cor, mas o
+          X deixa o estado "não vai mais acontecer" legível sem depender só da
+          cor. Mesma mudança em pages/Paciente.tsx. */}
+      {cancelada ? (
+        <span className="tl-dot-x" aria-hidden>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </span>
+      ) : (
+        <div className={`tl-dot ${dotClass}`} style={dotStyle} />
+      )}
+      {/* `dataBR`: sem isso um evento como "Visita agendada" mostrava a data ISO
+          crua ("2026-09-22") em vez de "22/09/2026". */}
+      <div className="tl-date">
+        {ev.hoje ? 'Hoje' : dataBR(ev.data) || '—'}
+        {ev.tipo === 'VISITA_AGENDADA' && ev.hora && <span className="tl-hora"> às {ev.hora.slice(0, 5)}</span>}
+      </div>
       <div className="tl-label" style={labelStyle}>
-        {ev.titulo}
+        <span className={cancelada ? 'tl-label-riscado' : undefined}>{ev.titulo}</span>
         {chipRelatorio && (
           <span style={{ marginLeft: 8, verticalAlign: 'middle' }}>
             <MedicoChip nome={ev.medico!} role={ev.autor_role} />
+          </span>
+        )}
+        {chipVisita && (
+          <span style={{ marginLeft: 8, verticalAlign: 'middle' }}>
+            <MedicoChip nome={ev.medico!} role={ev.autor_role} titulo="Responsável" />
           </span>
         )}
         {chipAutor && (

@@ -37,6 +37,8 @@ export interface InternacaoEdicao {
   /** Senha de autorização: identifica o paciente nos censos sem coluna de nome. */
   senha?: string
   atendimento?: string
+  /** Número do paciente na operadora, lido do censo (migration 0028). */
+  carteirinha?: string
   data_entrada?: string
   hora_entrada?: string
   data_alta?: string
@@ -123,25 +125,70 @@ export function registrarRelatorioRapido(id: number, rel: RelatorioRapido): Prom
   })
 }
 
-/** Um convênio já visto nos censos, com a operadora que o cobre. */
-export interface ConvenioVisto {
-  /** O texto como veio do PDF — é por ele que o usuário reconhece a linha. */
-  convenio: string
-  /** Quantas internações trouxeram este convênio. */
-  total: number
-  /** A operadora mais frequente deste convênio. `null` = nunca casou com
-   *  nenhuma; a tela mostra a opção e o usuário escolhe a operadora à mão. */
-  operadora_key?: string | null
-  operadora_nome?: string | null
+/**
+ * Agenda a visita. `data` é ISO (AAAA-MM-DD) e precisa ser hoje ou futura: para
+ * uma visita que já aconteceu o caminho é `registrarRelatorioRapido`. `medico`
+ * (de QUEM é a visita) e `hora` ("HH:MM") são obrigatórios — o backend recusa
+ * sem os dois. Move o card do paciente para a coluna "Aguardando visita".
+ */
+export function agendarVisita(id: number, data: string, medico: string, hora: string): Promise<unknown> {
+  return apiFetch(`/internacao/${id}/visita-agendada`, {
+    method: 'POST',
+    body: { data, medico, hora },
+  })
 }
 
-/** Convênios que os censos de fato trouxeram, com a operadora de cada um.
+/** Desfaz o agendamento: o card volta para a fila de "Sem relatório". */
+export function desmarcarVisita(id: number): Promise<unknown> {
+  return apiFetch(`/internacao/${id}/visita-agendada`, { method: 'DELETE' })
+}
+
+/** Um convênio que a tela pode oferecer. Vem de duas fontes (ver `listarConvenios`). */
+export interface ConvenioVisto {
+  /** O texto que identifica o convênio: a grafia do cadastro quando existe,
+   *  senão a que veio do PDF — é por ele que o usuário reconhece a linha. */
+  convenio: string
+  /** Quantas internações trouxeram este convênio. 0 = cadastrado e ainda não
+   *  visto em censo nenhum. */
+  total: number
+  /** A operadora do cadastro; na falta dele, a mais frequente do histórico.
+   *  `null` = nunca casou com nenhuma; a tela mostra a opção e o usuário escolhe
+   *  a operadora à mão. */
+  operadora_key?: string | null
+  operadora_nome?: string | null
+  /** Veio do cadastro de convênios, não só do histórico: o vínculo com a
+   *  operadora foi DECIDIDO por alguém, não inferido pela frequência. */
+  cadastrado?: boolean
+}
+
+/** Os convênios que a tela pode oferecer, com a operadora de cada um.
  *
- *  Não há cadastro de convênios: `internacoes.convenio` é texto livre lido do
- *  PDF. Esta lista é o histórico agrupado — o mapa do que os hospitais mandam. */
+ *  Duas fontes: o CADASTRO de convênios (migration 0026, o que alguém decidiu
+ *  que existe) e o HISTÓRICO do que os censos trouxeram (`internacoes.convenio`
+ *  é texto livre lido do PDF). Onde as duas falam do mesmo nome, o cadastro
+ *  vence — ele é decisão, o histórico é estatística. */
 export function listarConvenios(): Promise<{
   convenios: ConvenioVisto[]
   operadoras: { key: string; nome: string }[]
 }> {
   return apiFetch('/convenios')
+}
+
+/** Cadastra um convênio novo, já vinculado a uma operadora.
+ *
+ *  Só diretor e admin (o backend responde 403 aos demais): decidir que um nome
+ *  de convênio existe e a quem ele pertence muda o que todas as telas oferecem.
+ *  Não altera paciente nenhum — o convênio passa a existir na LISTA, e a
+ *  correção do paciente é o passo seguinte.
+ *
+ *  Erros vêm como `ApiError`: 400 (operadora fora do cadastro) e 409 (nome já
+ *  cadastrado — a mensagem diz em qual operadora ele está). */
+export function criarConvenio(nome: string, operadoraKey: string): Promise<{
+  ok?: boolean
+  convenio: ConvenioVisto
+}> {
+  return apiFetch('/convenios', {
+    method: 'POST',
+    body: { nome, operadora_key: operadoraKey },
+  })
 }

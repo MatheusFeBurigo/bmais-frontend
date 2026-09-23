@@ -16,7 +16,7 @@ import type {
   CampoCenso, CompletarPendenciaPayload, Hospital, HospitalManual, Operadora,
   PendenteCenso, UploadCensoResult,
 } from '../../types/api'
-import { Alerta, alertaStyles } from './Alerta'
+import { Alerta, alertaStyles } from '../Alerta'
 import { Spinner } from '../ui'
 import { ConfirmarModal } from '../ConfirmarModal'
 import { HospitalCombobox } from '../HospitalCombobox'

@@ -1,6 +1,7 @@
 // Linha de KPIs da tela de Movimentações (apresentação pura): totais do período.
 import { KpiCard, Skeleton } from '../ui'
 import type { AuditoriaTotais } from '../../types/api'
+import { contarCadastros } from './logs.model'
 
 export default function KpisAuditoria({ totais, periodoLabel, carregando }: {
   totais?: AuditoriaTotais
@@ -18,7 +19,7 @@ export default function KpisAuditoria({ totais, periodoLabel, carregando }: {
   }
   const t = totais
   const ent = t?.por_entidade ?? {}
-  const cadastros = (ent.hospital ?? 0) + (ent.operadora ?? 0) + (ent.profissional ?? 0) + (ent.escala ?? 0)
+  const cadastros = contarCadastros(ent)
   return (
     <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(5,1fr)', marginBottom: 16 }}>
       <KpiCard variant="primary-kpi" label={`Movimentações · ${periodoLabel}`} value={t?.acoes ?? 0}

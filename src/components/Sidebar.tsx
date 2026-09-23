@@ -3,8 +3,11 @@ import { NavLink, useSearchParams, useLocation } from 'react-router-dom'
 import { useSidebar, usePrefetchDashboard } from '../hooks/useDashboard'
 import { prefetchPorRota } from '../routes'
 import { useAuth } from '../auth/AuthContext'
-import { podeVer } from '../auth/permissions'
+import { podeVer, rotaFallback } from '../auth/permissions'
 import { ROLE_LABEL as ROTULO_PAPEL } from '../lib/usuarioRoles'
+import SidebarAjuda from './ajuda/SidebarAjuda'
+import { useAjudaNav } from './ajuda/useAjudaNav'
+import { useTrocaPainel } from './ajuda/useTrocaPainel'
 
 // Aquece o chunk da rota antes do clique (hover/foco), evitando o flash de
 // carregamento na navegação. Silencia falhas — é só otimização.
@@ -47,6 +50,22 @@ const IconKanban = () => (
 const IconLogs = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><path d="M14 3v5h5" /><path d="M8 13h5" /><path d="M8 17h8" /><path d="m16 5 2 2 4-4" /></svg>
 )
+// Progresso: trilha com etapas concluídas e uma em curso — a leitura da tela.
+const IconProgresso = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16" /><circle cx="5.5" cy="12" r="2.5" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" /><circle cx="18.5" cy="12" r="2.5" /></svg>
+)
+// Relatório: folha de documento com linhas de texto — a peça da auditoria.
+const IconRelatorio = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M9 12h6" /><path d="M9 16h6" /></svg>
+)
+// Volumetria: barras de tamanhos diferentes — a carga de trabalho por hospital.
+const IconVolumetria = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><rect x="5" y="13" width="4" height="8" /><rect x="11" y="8" width="4" height="13" /><rect x="17" y="4" width="4" height="17" /></svg>
+)
+// Ajuda: interrogação em círculo, o sinal universal de documentação.
+const IconAjuda = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.4-2.8 4" /><path d="M12 17.3h.01" /></svg>
+)
 // Chevrons duplos: apontam para a esquerda (recolher) ou direita (expandir).
 const IconCollapse = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 17-5-5 5-5" /><path d="m18 17-5-5 5-5" /></svg>
@@ -80,7 +99,9 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
-  const { username, role, perfilCarregando, logout } = useAuth()
+  const { username, nome, role, perfilCarregando, logout } = useAuth()
+  // Identidade no rodapé é o NOME; o e-mail (username) fica no tooltip.
+  const exibicao = nome ?? username
   const { data } = useSidebar()
   const prefetchDashboard = usePrefetchDashboard()
   const [params] = useSearchParams()
@@ -89,6 +110,12 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
   // operadoras): nenhuma sub-item fica ativa — o próprio "Visão Geral" é o ativo.
   const opAtual = params.get('operadora') || ''
   const noDashboard = location.pathname === '/'
+  // Na tela de Ajuda a barra deixa de listar as TELAS e passa a listar os
+  // MÓDULOS da documentação — mesma barra, mesmos estilos, outro conteúdo.
+  // A troca é animada: `naAjuda` é o painel EM CENA (que atrasa o do destino
+  // enquanto o atual sai), e `classeTroca` carrega a animação da vez.
+  const { ajuda: naAjuda, classe: classeTroca } = useTrocaPainel(location.pathname === '/ajuda')
+  const ajuda = useAjudaNav()
 
   // No boot/login o `role` chega DEPOIS do /me. `podeVer(null, …)` libera tudo,
   // então os itens gated apareceriam e sumiriam ao resolver o papel (flash). Até
@@ -121,6 +148,14 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
         </div>
       </div>
 
+      {/* Um invólucro por painel, com a classe da animação: é ele que desliza,
+          não a barra inteira (marca, rodapé e botão de recolher ficam parados,
+          então a troca é do MIOLO, e não da tela). */}
+      <div className={`sb-troca${classeTroca ? ` ${classeTroca}` : ''}`}>
+      {naAjuda ? (
+        <SidebarAjuda nav={ajuda} rotaSaida={rotaFallback(role)} />
+      ) : (
+      <>
       <nav className="sb-nav">
         <div className="sb-section">
           <div className="sb-section-label">Painel</div>
@@ -184,7 +219,13 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
           {mostrar('kanban') && (
             <NavLink to="/kanban" className={itemClass} {...prefetchProps('/kanban')}>
               <span className="sb-item-icon"><IconKanban /></span>
-              <span className="sb-item-label">Tarefas / Kanban</span>
+              <span className="sb-item-label">Tarefas</span>
+            </NavLink>
+          )}
+          {mostrar('volumetria') && (
+            <NavLink to="/volumetria" className={itemClass} {...prefetchProps('/volumetria')}>
+              <span className="sb-item-icon"><IconVolumetria /></span>
+              <span className="sb-item-label">Volumetria</span>
             </NavLink>
           )}
           {mostrar('diretoria') && (
@@ -227,8 +268,28 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
               <span className="sb-item-label">Movimentações</span>
             </NavLink>
           )}
+          {/* Progresso: avanço da CONSTRUÇÃO do produto, não da operação. Fica
+              por último na seção, abaixo das telas de trabalho. */}
+          {mostrar('progresso') && (
+            <NavLink to="/progresso" className={itemClass} {...prefetchProps('/progresso')}>
+              <span className="sb-item-icon"><IconProgresso /></span>
+              <span className="sb-item-label">Progresso</span>
+            </NavLink>
+          )}
+          {/* Relatório da auditoria: vizinho do Progresso porque responde à
+              mesma pergunta em outra escala — um mostra onde a obra está, o
+              outro o plano inteiro de que ela faz parte. */}
+          {mostrar('relatorio') && (
+            <NavLink to="/relatorio" className={itemClass} {...prefetchProps('/relatorio')}>
+              <span className="sb-item-icon"><IconRelatorio /></span>
+              <span className="sb-item-label">Relatório</span>
+            </NavLink>
+          )}
         </div>
       </nav>
+      </>
+      )}
+      </div>
 
       <button
         type="button"
@@ -245,24 +306,37 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
       {/* Rodapé = perfil do usuário logado + Sair (movidos da topbar para cá). */}
       <div className="sb-foot">
         <div className="sb-foot-user">
-          <div className="sb-foot-avatar" title={username ?? undefined}>{iniciais(username ?? '')}</div>
+          <div className="sb-foot-avatar" title={username ?? undefined}>{iniciais(exibicao ?? '')}</div>
           <div className="sb-foot-info flex-1">
-            <div className="sb-foot-name" title={username ?? undefined}>{username ?? 'Usuário'}</div>
+            <div className="sb-foot-name" title={username ?? undefined}>{exibicao ?? 'Usuário'}</div>
             <div className="sb-foot-role">
               {perfilCarregando ? '…' : (role ? (ROLE_LABEL[role] ?? role) : `Ref: ${data?.hoje_efetivo ?? '—'}`)}
             </div>
           </div>
         </div>
-        <button
-          type="button"
-          className="sb-logout"
-          onClick={logout}
-          aria-label="Sair"
-          title="Sair"
-        >
-          <span className="sb-logout-icon"><IconLogout /></span>
-          <span className="sb-logout-label">Sair</span>
-        </button>
+        {/* Sair + Ajuda lado a lado. A Ajuda é atalho, não tela de trabalho:
+            fica como ícone no rodapé em vez de disputar espaço com o menu. */}
+        <div className="sb-foot-acoes">
+          <button
+            type="button"
+            className="sb-logout"
+            onClick={logout}
+            aria-label="Sair"
+            title="Sair"
+          >
+            <span className="sb-logout-icon"><IconLogout /></span>
+            <span className="sb-logout-label">Sair</span>
+          </button>
+          <NavLink
+            to="/ajuda"
+            className={({ isActive }) => (isActive ? 'sb-ajuda active' : 'sb-ajuda')}
+            aria-label="Ajuda"
+            title="Ajuda: documentação das telas"
+            {...prefetchProps('/ajuda')}
+          >
+            <IconAjuda />
+          </NavLink>
+        </div>
       </div>
     </aside>
   )

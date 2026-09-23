@@ -1,4 +1,7 @@
-// Vocabulário único de alerta da tela de envio.
+// Vocabulário único de alerta do sistema.
+//
+// Nasceu na tela de envio e hoje serve também a ficha do paciente (campo
+// importante em branco): o mesmo âmbar com o mesmo sentido em telas diferentes.
 //
 // Antes, dizer "preste atenção nisto" tinha seis formas diferentes na mesma tela:
 // badge no placar, texto corrido no cartão, linha cinza de t-xs com um emoji "⚠",
@@ -10,7 +13,7 @@
 // está tudo certo, só registrando. A cor é reforço, nunca o único sinal: cada
 // nível tem ícone próprio e o texto continua dizendo o que houve por escrito.
 
-import type { NivelAviso } from '../../lib/avisosCenso'
+import type { NivelAviso } from '../lib/avisosCenso'
 
 export const alertaStyles = `
 /* Barra lateral da cor do nível + fundo tingido. A barra é o que faz os alertas

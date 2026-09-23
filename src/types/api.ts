@@ -66,6 +66,8 @@ export interface Internacao {
   janela_relatorio?: number | null
   gatilho?: number | null
   data_entrada?: string | null
+  /** Preenchida quando o paciente ja recebeu alta (lista do filtro "Altas"). */
+  data_alta?: string | null
   data_ultima_visita?: string | null
   status?: string
   status_relatorio?: string
@@ -75,6 +77,24 @@ export interface Internacao {
   // Limites reais de longa permanência (em dias), configurados por operadora.
   limite_longa?: number | null
   limite_avancada?: number | null
+  // ── Visita agendada ───────────────────────────────────────────────────────
+  // O compromisso do técnico de ir ver o paciente num dia. É o que separa a
+  // coluna "Aguardando visita" da fila de "Sem relatório". Não é um status:
+  // agendar não cumpre a obrigação de relatório.
+  visita_agendada?: boolean | null
+  /** Dia (ISO) da visita marcada. */
+  visita_agendada_em?: string | null
+  /** Quem marcou (e-mail do técnico). */
+  visita_agendada_por?: string | null
+  /** De QUEM é a visita (médico auditor). Diferente de quem marcou. */
+  visita_agendada_medico?: string | null
+  /** Horário da visita ("HH:MM"), migration 0035. Só exibição — nenhuma regra
+   *  de vencimento ou ordenação depende dele, só a data. */
+  visita_agendada_hora?: string | null
+  /** Dias até a visita; negativo = o dia já passou. */
+  dias_ate_visita?: number | null
+  /** Passou do dia e a visita não foi registrada. */
+  visita_agendada_vencida?: boolean | null
   alerta_relatorio?: boolean
   em_monitoramento?: boolean
   obs?: string | null
@@ -189,6 +209,195 @@ export type UserRole =
   /** Analista interno: LÊ os dados operacionais e a trilha de Movimentações, sem escrever
    *  nada. Não vê Diretoria nem Gestor. */
   | 'analista'
+  /** Coordenador administrativo: vê a Volumetria (cobranças de censo por hospital),
+   *  sem recorte de escopo. Somente leitura. */
+  | 'coordenador_administrativo'
+  /** Coordenador técnico: vê a Volumetria (pacientes sem relatório/aguardando visita
+   *  por hospital), sem recorte de escopo. Somente leitura. */
+  | 'coordenador_tecnico'
+
+// Payload de GET /api/volumetria (tela Volumetria, coordenadores).
+// Centrado na PESSOA: quanto cada técnico/administrativo carrega em TEMPO
+// estimado de análise (horas), contra a capacidade dela, e quais hospitais
+// ninguém do grupo cobre. As regras vivem em domain/carga.py (backend).
+export type VolumetriaNivel = 'normal' | 'atencao' | 'sobrecarga'
+
+export interface VolumetriaLimiares {
+  fila_atencao_dias: number
+  fila_sobrecarga_dias: number
+  pressao_atencao_pct: number
+  pressao_sobrecarga_pct: number
+}
+
+/** Parâmetros EFETIVOS do grupo (padrões já mesclados com o que foi calibrado).
+ *  Os de leito/fatores só existem no grupo técnico; `minutos_cobranca` só no
+ *  administrativo. */
+export interface VolumetriaParametros {
+  minutos_leito?: { UTI: number; APARTAMENTO: number; ENFERMARIA: number }
+  fator_longa_10?: number
+  fator_longa_30?: number
+  fator_reanalise?: number
+  minutos_cobranca?: number
+  capacidade_horas_dia: number
+  /** user_id → horas/dia próprias (ausente = padrão do grupo). */
+  capacidade_por_pessoa: Record<string, number>
+  prazo_dias: number
+  limiares: VolumetriaLimiares
+}
+
+/** Corpo do PUT parcial: chave de topo ausente = não mexeu; dentro dos
+ *  sub-objetos, `null` REMOVE a entrada (volta ao padrão). */
+export interface VolumetriaParametrosCorpo {
+  minutos_leito?: Partial<Record<'UTI' | 'APARTAMENTO' | 'ENFERMARIA', number | null>>
+  fator_longa_10?: number
+  fator_longa_30?: number
+  fator_reanalise?: number
+  minutos_cobranca?: number
+  capacidade_horas_dia?: number
+  capacidade_por_pessoa?: Record<string, number | null>
+  prazo_dias?: number
+  limiares?: Partial<Record<keyof VolumetriaLimiares, number | null>>
+}
+
+export interface VolumetriaParametrosMeta {
+  personalizado: boolean
+  atualizado_por: string | null
+  atualizado_em: string | null
+}
+
+/** Quebra das demandas com os MESMOS nomes das colunas de Tarefas (+ o que já
+ *  venceu). Técnico: as quatro categorias (sem_relatorio, aguardando_visita,
+ *  vencido, proximo_vencer) são exclusivas e somam a fila; `internados` é
+ *  todo mundo sob responsabilidade. Administrativo: `sem_censo` (1 por
+ *  hospital a cobrar) e `maior_atraso` em dias. */
+export interface VolumetriaQuebra {
+  internados?: number
+  em_monitoramento?: number
+  sem_relatorio?: number
+  aguardando_visita?: number
+  visitas_atrasadas?: number
+  vencido?: number
+  proximo_vencer?: number
+  sem_censo?: number
+  maior_atraso?: number
+}
+
+export interface VolumetriaHospitalDaPessoa {
+  hospital_key: string
+  hospital_nome: string
+  operadora_key: string | null
+  /** Casos na fila deste hospital. */
+  pendencias: number
+  /** Tempo estimado desses casos, em horas. */
+  horas: number
+  /** Internados ativos (só no grupo técnico). */
+  internados?: number | null
+  /** Só no grupo administrativo: há quantos dias o hospital está sem censo. */
+  dias_sem_censo?: number | null
+  quebra: VolumetriaQuebra
+  /** Quantas OUTRAS pessoas do grupo também cobrem este hospital. */
+  compartilhado_com: number
+  /** Região do cadastro do hospital; "Sem região" quando em branco. */
+  regiao: string
+}
+
+/** Uma região coberta por uma pessoa: a parte DELA naquela região. */
+export interface VolumetriaRegiaoDaPessoa {
+  regiao: string
+  hospitais: number
+  /** Internados nos hospitais dela naquela região. 0 no administrativo. */
+  pacientes: number
+  pendencias: number
+  horas: number
+}
+
+/** Uma região do grupo e quem responde por ela. Hospital compartilhado conta
+ *  uma vez nos totais, e todas as pessoas que o cobrem entram em `responsaveis`. */
+export interface VolumetriaRegiaoDoGrupo {
+  regiao: string
+  responsaveis: Array<{ user_id: string; nome: string }>
+  hospitais: number
+  pacientes: number
+  pendencias: number
+  horas: number
+}
+
+export interface VolumetriaPessoa {
+  user_id: string
+  /** Nome cadastrado no perfil; sem ele, um legível derivado do e-mail. */
+  nome: string
+  /** True quando `nome` foi derivado do e-mail (perfil sem nome cadastrado). */
+  sem_nome: boolean
+  email: string
+  /** Sem hospital vinculado: vê a rede inteira. Para o coordenador é "área não
+   *  definida", não "carrega tudo" — fica fora do gráfico e os indicadores
+   *  abaixo vêm null. */
+  sem_vinculo: boolean
+  /** Casos na fila (contagem). */
+  total_pendencias: number | null
+  /** Tempo estimado da fila, em horas. */
+  horas: number | null
+  /** horas ÷ capacidade diária: quantos dias para zerar a fila. */
+  dias_fila: number | null
+  /** Só no grupo técnico: % da capacidade dos próximos `prazo_dias` que os
+   *  casos vencendo nesse prazo consomem. null no administrativo. */
+  pressao_pct: number | null
+  nivel: VolumetriaNivel | null
+  capacidade_horas_dia: number
+  /** True quando a capacidade veio de `capacidade_por_pessoa`, não do grupo. */
+  capacidade_propria: boolean
+  /** Ordenado por horas desc. Vazio quando `sem_vinculo`. */
+  hospitais: VolumetriaHospitalDaPessoa[]
+  /** Quantos hospitais a pessoa herdou em Operações. */
+  hospitais_n: number
+  /** Soma das quebras dos hospitais dela. null quando `sem_vinculo`. */
+  quebra: VolumetriaQuebra | null
+  /** Internados sob responsabilidade (técnico). null no administrativo/sem vínculo. */
+  pacientes: number | null
+  /** Regiões que a pessoa cobre, derivadas dos hospitais dela. */
+  regioes: VolumetriaRegiaoDaPessoa[]
+}
+
+export interface VolumetriaHospitalSemCobertura {
+  hospital_key: string
+  hospital_nome: string
+  operadora_key: string | null
+  pendencias: number
+  horas: number
+  internados?: number | null
+  /** Só no grupo administrativo: há quantos dias o hospital está sem censo. */
+  dias_sem_censo?: number | null
+  quebra: VolumetriaQuebra
+}
+
+// Um grupo (técnico OU administrativo). `papel` identifica o grupo
+// ('coordenador_tecnico' | 'coordenador_administrativo'), não quem está logado.
+export interface VolumetriaGrupo {
+  papel: UserRole
+  role_operacional: 'tecnico' | 'administrativo'
+  total_pendencias: number
+  total_horas: number
+  /** Internados ativos na rede (técnico). null no administrativo. */
+  total_pacientes: number | null
+  /** Quebra total da rede, para os KPIs. */
+  quebra: VolumetriaQuebra
+  /** Sobrecarga → atenção → normal (fila desc dentro do nível); os `sem_vinculo` no fim. */
+  pessoas: VolumetriaPessoa[]
+  /** Pendência > 0 e nenhum vínculo explícito no grupo. Ordenado por horas desc. */
+  sem_cobertura: VolumetriaHospitalSemCobertura[]
+  /** Quem responde por cada região, com o peso da região. */
+  regioes: VolumetriaRegiaoDoGrupo[]
+  parametros: VolumetriaParametros
+  parametros_meta: VolumetriaParametrosMeta
+}
+
+export interface VolumetriaPayload {
+  /** Papel de quem pediu o payload. */
+  papel: UserRole
+  /** 1 grupo (cada coordenador) ou 2 (admin vê os dois, para supervisão). */
+  grupos: VolumetriaGrupo[]
+  filtros: GestorFiltros
+}
 
 // Resposta de POST /api/login (e de POST /api/sessao/renovar). `refresh_token`
 // só vem no modo Supabase; `expires_in` (s) é a validade do token de acesso.
@@ -216,6 +425,8 @@ export interface RegisterResponse {
 export interface MeResponse {
   username: string
   role: UserRole | null
+  /** Nome de exibição: o cadastrado no perfil, senão derivado do e-mail. */
+  nome?: string | null
 }
 
 // ── Gestão de usuários de acesso (contas de login) ──────────────────────────
@@ -430,6 +641,18 @@ export interface ProfissionalDetalhe {
   escala: Escala[]
 }
 
+/** Resposta do POST /api/profissionais. */
+export interface ProfissionalCriado {
+  ok: boolean
+  id: number
+  /** Já havia profissional com este nome: veio o id dele, sem duplicar. */
+  existing?: boolean
+  /** Só quando o cadastro trouxe escala: quantos hospitais entraram... */
+  escala_adicionada?: number
+  /** ...e quais não entraram (não há transação, o resto fica gravado). */
+  escala_falhas?: Array<{ hospital_nome: string; operadora_key: string; servico: string; erro: string }>
+}
+
 // ── Gestor / Fluxo (GET /api/gestor) ────────────────────────────────────────
 export interface DiaMetricas {
   internados: number
@@ -530,7 +753,7 @@ export interface GestorResposta {
 // própria tela de upload, onde o usuário completa ou descarta cada registro.
 
 /** Coluna do kanban = categoria de tarefa. */
-export type KanbanColuna = 'sem_relatorio' | 'cobrancas' | 'analise_tecnica'
+export type KanbanColuna = 'sem_relatorio' | 'aguardando_visita' | 'visitas_atrasadas' | 'cobrancas'
 
 /** Relatório do auditor externo a analisar (card da coluna analise_tecnica). */
 export interface RelatorioExterno {
@@ -561,12 +784,61 @@ export interface KanbanTarefa {
   cobranca_id?: number | null
   /** Dia cujo censo faltou (YYYY-MM-DD). */
   data_ref?: string | null
-  /** Timestamp ISO do último censo enviado pelo hospital (null = nunca). */
+  /** Dia (ISO) a que o último censo do hospital SE REFERE, não o dia do upload
+   *  (null = nunca enviou). Quem sobe hoje o censo de uma semana atrás não cobriu
+   *  o dia de hoje, e é esta data que o card conta. */
   ultimo_censo?: string | null
-  /** Há quantos dias foi o último censo (null se nunca enviou). */
+  /** Há quantos dias foi o último censo, contado por `ultimo_censo`. */
   dias_sem_censo?: number | null
+  /** false = o relatório não declarou a data e `ultimo_censo` é o dia do upload.
+   *  Não aparece na tela; serve a quem for investigar uma data suspeita. */
+  data_declarada?: boolean | null
   /** Análise técnica (coluna analise_tecnica) — habilita concluir o parecer. */
   analise_id?: number | null
+  // ── Contexto clínico (cards de paciente) ──────────────────────────────────
+  // Alimentam as linhas de detalhe do card e os filtros de prioridade da tela
+  // (UTI, longa permanência, sem leito…), que rodam no cliente sobre o payload
+  // já carregado — sem ida extra ao servidor a cada clique em chip.
+  /** Senha de autorização; identifica o paciente nos censos sem coluna de nome. */
+  senha?: string | null
+  carteirinha?: string | null
+  tipo_leito?: string | null
+  leito_codigo?: string | null
+  especialidade?: string | null
+  medico?: string | null
+  convenio?: string | null
+  idade?: string | null
+  sexo?: string | null
+  data_entrada?: string | null
+  data_ultima_visita?: string | null
+  /** Dias internado (≠ dias_sem_relatorio). */
+  dias?: number | null
+  /** Janela de relatório da operadora; usada pelo chip "Urgentes". */
+  janela_relatorio?: number | null
+  status_relatorio?: string | null
+  em_monitoramento?: boolean | null
+  longa_10?: boolean | null
+  longa_30?: boolean | null
+  limite_longa?: number | null
+  limite_avancada?: number | null
+  // ── Visita agendada ───────────────────────────────────────────────────────
+  // O compromisso do técnico de ir ver o paciente num dia. É o que separa a
+  // coluna "Aguardando visita" da fila de "Sem relatório". Não é um status:
+  // agendar não cumpre a obrigação de relatório.
+  visita_agendada?: boolean | null
+  /** Dia (ISO) da visita marcada. */
+  visita_agendada_em?: string | null
+  /** Quem marcou (e-mail do técnico). */
+  visita_agendada_por?: string | null
+  /** De QUEM é a visita (médico auditor). Diferente de quem marcou. */
+  visita_agendada_medico?: string | null
+  /** Horário da visita ("HH:MM"), migration 0035. Só exibição — nenhuma regra
+   *  de vencimento ou ordenação depende dele, só a data. */
+  visita_agendada_hora?: string | null
+  /** Dias até a visita; negativo = o dia já passou. */
+  dias_ate_visita?: number | null
+  /** Passou do dia e a visita não foi registrada. */
+  visita_agendada_vencida?: boolean | null
   /** Relatório do auditor externo que o técnico vai analisar. */
   relatorio_externo?: RelatorioExterno
 }
@@ -575,8 +847,9 @@ export interface KanbanTarefa {
  *  administrativo, as operacionais. Todas opcionais para cobrir os dois papéis. */
 export interface KanbanColunas {
   sem_relatorio?: KanbanTarefa[]
+  aguardando_visita?: KanbanTarefa[]
+  visitas_atrasadas?: KanbanTarefa[]
   cobrancas?: KanbanTarefa[]
-  analise_tecnica?: KanbanTarefa[]
 }
 
 /** Payload do GET /api/kanban — tarefas + opções de filtro (recortadas ao escopo).
@@ -708,6 +981,10 @@ export interface PacienteGravado {
   /** Identificação do paciente nos censos sem coluna de nome (ver `nome`). */
   senha?: string | null
   atendimento?: string | null
+  /** Número do paciente na operadora, lido do censo. É o que se leva para a
+   *  operadora ao autorizar uma diária, e o campo que mais sofre com erro de
+   *  leitura (dígitos longos, impressos quebrados em duas linhas). */
+  carteirinha?: string | null
   situacao: 'INTERNADO' | 'ALTA'
   leito_codigo?: string | null
   /** Convênio lido do próprio censo — o mesmo hospital atende várias operadoras. */
@@ -954,6 +1231,8 @@ export interface InternacaoDados {
   /** Senha de autorização do convênio; identifica o paciente quando não há nome. */
   senha?: string | null
   atendimento?: string | null
+  /** Número do paciente na operadora, lido do censo (migration 0028). */
+  carteirinha?: string | null
   hospital_nome?: string | null
   hospital_key?: string | null
   tipo_leito?: string | null
@@ -976,6 +1255,13 @@ export interface InternacaoDados {
   longa_30?: boolean
   obs?: string | null
   operadora_key?: string | null
+  /** Visita marcada pelo técnico (ver KanbanTarefa). */
+  visita_agendada?: boolean | null
+  visita_agendada_em?: string | null
+  visita_agendada_por?: string | null
+  visita_agendada_medico?: string | null
+  visita_agendada_hora?: string | null
+  visita_agendada_vencida?: boolean | null
 }
 
 export type TimelineVariante =
@@ -996,6 +1282,12 @@ export interface TimelineEvento {
   autor_role?: UserRole | string | null
   /** Médico auditor do relatório — exibido na timeline no lugar do autor. */
   medico?: string | null
+  /** Exclusivo de VISITA_AGENDADA (migration 0034): 'agendada' | 'cancelada'.
+   *  Cancelar atualiza o MESMO evento, então este campo é o que diferencia os
+   *  dois estados de um card que, no banco, é uma linha só. */
+  status_visita?: string | null
+  /** Horário da visita ("HH:MM"), migration 0035. Só em VISITA_AGENDADA. */
+  hora?: string | null
 }
 
 export interface InternacaoTimeline {

@@ -1,6 +1,7 @@
 // Serviço de dados do domínio "equipe" (profissionais + escala + hospitais).
 import { apiFetch } from '../api/client'
-import type { EquipePayload, ProfissionalDetalhe, ProfTipo, Hospital } from '../types/api'
+import type { EquipePayload, ProfissionalDetalhe, ProfissionalCriado, ProfTipo, Hospital } from '../types/api'
+import type { EntradaEscala } from './escala.service'
 
 /** Lista de profissionais + resumo da equipe. */
 export function fetchEquipe(): Promise<EquipePayload> {
@@ -22,9 +23,11 @@ export function fetchTodosHospitais(): Promise<Hospital[]> {
   return apiFetch<Hospital[]>('/hospitais')
 }
 
-/** Cria um novo profissional. */
-export function criarProfissional(nome: string, tipo: ProfTipo): Promise<unknown> {
-  return apiFetch('/profissionais', { method: 'POST', body: { nome, tipo } })
+/** Cria um novo profissional, já com os hospitais da escala dele (opcional).
+ *  Uma chamada só: o backend grava o profissional e cada hospital com o id
+ *  recém-criado, e devolve quantos entraram e quais não entraram. */
+export function criarProfissional(nome: string, tipo: ProfTipo, escala: EntradaEscala[] = []): Promise<ProfissionalCriado> {
+  return apiFetch<ProfissionalCriado>('/profissionais', { method: 'POST', body: { nome, tipo, escala } })
 }
 
 /** Atualiza nome/tipo de um profissional. */

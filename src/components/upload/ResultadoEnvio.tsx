@@ -22,7 +22,7 @@ import type { Operadora, UploadCensoResult } from '../../types/api'
 import {
   CartaoArquivo, cartaoArquivoStyles, ordenarPorUrgencia, urgenciaDe,
 } from './CartaoArquivo'
-import { alertaStyles } from './Alerta'
+import { alertaStyles } from '../Alerta'
 import { listaPacientesStyles } from './ListaPacientes'
 import { contadorAvisosStyles } from './ContadorAvisos'
 import { editarPacienteStyles } from './EditarPacienteModal'
@@ -51,6 +51,7 @@ export const resultadoStyles = `
 .up-placar-rot{color:var(--muted)}
 .up-cor-internado{color:var(--info);font-weight:600}
 .up-cor-alta{color:var(--success-2);font-weight:600}
+
 
 /* Faixa de ação (completar / desfazer): mesma estrutura para as duas. */
 .up-faixa{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--border-soft);flex-wrap:wrap}
@@ -116,36 +117,21 @@ export function ResultadoEnvio({
     [resultados],
   )
 
-  // Pacientes que entraram em outra operadora, pelo convênio de cada um (censo
-  // misto, ou enviado sob a operadora errada). Vira badge porque é a dupla
-  // checagem pedida — quem envia precisa ver isso no resumo, não só ao rolar até
-  // o cartão.
+  // Pacientes em outra operadora NÃO entram mais no placar.
   //
-  // Conta PACIENTES, não arquivos: "1 arquivo com outra operadora" não dizia o
-  // tamanho do caso (um paciente ou sessenta?), que é justamente o que decide se
-  // vale conferir um a um ou reenviar o censo.
+  // Era um badge ("90 pacientes em outras operadoras") e, por tabela, um dos
+  // gatilhos que pintavam o placar de âmbar. Saiu porque as abas por operadora
+  // passaram a mostrar o caso inteiro, uma aba por destino com a contagem de
+  // cada uma: o badge repetia no topo, em número solto, o que está desenhado e
+  // navegável logo abaixo — e, pior, anunciava como pendência o que é o
+  // funcionamento NORMAL de um censo de hospital (cada paciente entra na
+  // operadora do seu convênio). Com ele, um envio perfeito de censo misto abria
+  // alaranjado, pedindo uma providência que não existe.
   //
-  // Cada cartão informa quantos ainda estão em aberto (`onDivergentesMudaram`),
-  // porque corrigir a operadora de um paciente ou removê-lo da lista acontece lá
-  // dentro e o placar, somado a partir do resultado do processamento, não
-  // enxerga isso sozinho. Enquanto um arquivo não avisa nada, vale o número que
-  // veio do backend.
-  const [divergentesPorArquivo, setDivergentesPorArquivo] = useState<Record<string, number>>({})
-  const marcarDivergentes = useCallback((arquivo: string, aindaAbertos: number) => {
-    setDivergentesPorArquivo((atual) => (atual[arquivo] === aindaAbertos
-      ? atual  // mesmo número: não re-renderiza o placar à toa
-      : { ...atual, [arquivo]: aindaAbertos }))
-  }, [])
+  // Com o badge foi junto a fiação que o mantinha vivo (`onDivergentesMudaram`,
+  // que o cartão usava para avisar o placar a cada correção): sem número no
+  // topo, não há o que sincronizar.
 
-  const pacientesOutraOperadora = useMemo(
-    () => resultados.reduce((n, r) => {
-      const doBackend = (r.operadoras_divergentes ?? [])
-        .reduce((s, d) => s + (d.total ?? 0), 0)
-      const vivo = divergentesPorArquivo[r.arquivo]
-      return n + (vivo === undefined ? doBackend : vivo)
-    }, 0),
-    [resultados, divergentesPorArquivo],
-  )
   // Pacientes (não arquivos) que entraram sob a operadora escolhida porque o
   // convênio impresso não está no cadastro.
   // Quantos convênios cada arquivo já teve corrigidos na sua lista. O cartão
@@ -185,7 +171,7 @@ export function ResultadoEnvio({
   const datas = [...new Set(resultados.map((r) => r.data_censo).filter(Boolean))].sort()
   const problemas = pendentes > 0 || semHospital > 0 || falhas > 0
     || digitalizados > 0 || arquivosCriticos > 0
-    || pacientesOutraOperadora > 0 || semConvenioCasado > 0
+    || semConvenioCasado > 0
   // O placar só ganha espaço se realmente somar algo além do que a linha já diz.
   //
   // Com UM arquivo e nada a resolver, ele ainda aparece — porque desde que o
@@ -281,12 +267,6 @@ export function ResultadoEnvio({
                   {arquivosCriticos} {plural(arquivosCriticos, 'arquivo')} a conferir
                 </span>
               )}
-              {pacientesOutraOperadora > 0 && (
-                <span className="badge warning">
-                  {pacientesOutraOperadora} {plural(pacientesOutraOperadora, 'paciente')}{' '}
-                  {plural(pacientesOutraOperadora, 'em outra operadora', 'em outras operadoras')}
-                </span>
-              )}
               {semConvenioCasado > 0 && (
                 <span className="badge warning">
                   {semConvenioCasado} {plural(semConvenioCasado, 'convênio')} não {plural(semConvenioCasado, 'reconhecido')}
@@ -329,7 +309,6 @@ export function ResultadoEnvio({
                        operadoras={operadoras}
                        onDesfazer={somenteLeitura ? undefined : onDesfazerArquivo}
                        onConveniosResolvidos={marcarResolvidos}
-                       onDivergentesMudaram={marcarDivergentes}
                        desfazendo={desfazendoArquivo === res.arquivo} />
       ))}
 

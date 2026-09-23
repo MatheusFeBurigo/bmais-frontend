@@ -3,21 +3,39 @@
 import { useState } from 'react'
 import type { HospitalSelected, Profissional } from '../../types/api'
 import { Modal } from '../ui'
-import { criarOperadora, criarHospital } from '../../services/configuracoes.service'
+import { criarOperadora, criarHospital, salvarFichaHospital } from '../../services/configuracoes.service'
+import SelectRegiao from '../SelectRegiao'
 import { adicionarEscala } from '../../services/escala.service'
 import { SERVICO_LABEL, SERVICOS } from './configuracoes.styles'
 
 export function AddHospitalForm({ opKey, onClose, onToast, onChanged }: { opKey: string; onClose: () => void; onToast: (m: string) => void; onChanged: () => void }) {
   const [nome, setNome] = useState('')
+  // A região é escolhida aqui, no nascimento do hospital, e não deixada para
+  // uma edição posterior da ficha: é ela que agrupa os hospitais na escolha de
+  // escopo do usuário, e hospital sem região cai num balde "Sem região" que
+  // ninguém lembra de esvaziar (foi como 95 das 402 linhas ficaram em branco).
+  const [regiao, setRegiao] = useState('')
   const [saving, setSaving] = useState(false)
   async function criar() {
     const n = nome.trim()
     if (!n) { onToast('Informe o nome do hospital'); return }
+    if (!regiao) { onToast('Selecione a região'); return }
     setSaving(true)
     try {
       const key = n.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 30)
       const d = await criarHospital(n, opKey, key)
-      if (d.ok || d.criado) { onToast('✓ Hospital adicionado'); onChanged(); onClose() }
+      if (d.ok || d.criado) {
+        // A criação e a região são dois pedidos: a rota de criar aceita apenas
+        // key/nome/operadora. Se a região falhar, o hospital já existe — o
+        // aviso manda completar pela ficha em vez de fingir que deu tudo certo.
+        try {
+          await salvarFichaHospital(key, { regiao })
+          onToast('✓ Hospital adicionado')
+        } catch {
+          onToast('Hospital adicionado, mas a região não foi salva. Defina-a na ficha.')
+        }
+        onChanged(); onClose()
+      }
       else onToast('Erro ao adicionar hospital')
     } catch (e) { onToast(`Erro: ${(e as Error).message}`) } finally { setSaving(false) }
   }
@@ -26,6 +44,7 @@ export function AddHospitalForm({ opKey, onClose, onToast, onChanged }: { opKey:
       <div className="uppercase t-muted" style={{ marginBottom: 8, fontSize: 10, letterSpacing: '.1em', fontWeight: 600 }}>Novo hospital</div>
       <div style={{ display: 'grid', gap: 8 }}>
         <input type="text" className="bm-input" placeholder="Nome do hospital" value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
+        <SelectRegiao value={regiao} onChange={setRegiao} />
         <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
           <button className="btn btn-outline btn-sm" onClick={onClose}>Cancelar</button>
           <button className="btn btn-primary btn-sm" onClick={criar} disabled={saving}>{saving ? 'Adicionando…' : 'Adicionar'}</button>

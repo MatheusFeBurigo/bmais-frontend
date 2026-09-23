@@ -3,6 +3,7 @@ import { useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../lib/queryKeys'
 import {
+  criarConvenio,
   editarInternacao,
   fetchInternacaoDados,
   listarConvenios,
@@ -90,5 +91,21 @@ export function useConvenios(ativo: boolean) {
     queryFn: listarConvenios,
     enabled: ativo,
     staleTime: 10 * 60 * 1000,
+  })
+}
+
+/** Cadastra um convênio novo (diretor/admin) e recarrega a lista.
+ *
+ *  A invalidação é o ponto: sem ela o `staleTime` de 10min do `useConvenios`
+ *  seguraria a lista antiga, e o convênio recém-criado não apareceria no
+ *  combobox que acabou de criá-lo. */
+export function useCriarConvenio() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ nome, operadoraKey }: { nome: string; operadoraKey: string }) =>
+      criarConvenio(nome, operadoraKey),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.convenios() })
+    },
   })
 }

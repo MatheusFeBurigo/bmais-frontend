@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { ProfTipo, ProfissionalDetalhe } from '../../types/api'
 import { Badge } from '../ui'
 import { atualizarProfissional, definirAtivoProfissional } from '../../services/equipe.service'
+import { adicionarEscala } from '../../services/escala.service'
 import { TIPO_LABEL, isAtivo } from './equipe.styles'
 import { IconPlus, IconCheck } from './icons'
 import EscalaList from './EscalaList'
@@ -93,11 +94,14 @@ export default function DetalheProf({ detalhe, opsLista, onToast, onChanged }: {
 
       {formEscala && (
         <FormEscala
-          profId={p.id}
           opsLista={opsLista}
+          onAdicionar={async (entrada) => {
+            await adicionarEscala({ ...entrada, profissional_id: p.id })
+            onToast('✓ Hospital adicionado à escala')
+            onChanged()
+          }}
           onClose={() => setFormEscala(false)}
           onToast={onToast}
-          onChanged={onChanged}
         />
       )}
 

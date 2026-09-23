@@ -7,6 +7,9 @@ import type { LoginResponse, MeResponse, RegisterResponse, UserRole } from '../t
 
 interface AuthState {
   username: string | null
+  // Nome de exibição (perfil, ou derivado do e-mail), resolvido pelo /me. Não é
+  // persistido: até o /me responder, a UI cai no username.
+  nome: string | null
   role: UserRole | null
   authenticated: boolean
   loading: boolean
@@ -36,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // renderizam o menu correto, sem esperar o /me. O /me revalida em background.
   const perfilSalvo = getPerfil()
   const [username, setUsername] = useState<string | null>(perfilSalvo?.username ?? null)
+  const [nome, setNome] = useState<string | null>(null)
   const [role, setRole] = useState<UserRole | null>((perfilSalvo?.role as UserRole | null) ?? null)
   const [loading, setLoading] = useState(true)
   // Perfil (/me) em resolução. Só BLOQUEIA a UI quando há token MAS ainda não
@@ -51,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     encerrarSessao()  // token + refresh_token + perfil espelhado
     clearSidebarCache()  // não vazar o recorte de operadoras ao próximo usuário
     setUsername(null)
+    setNome(null)
     setRole(null)
     setTokenValido(false)
     // Zera TODO o cache de dados: as respostas são recortadas ao escopo do usuário
@@ -71,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const me = await apiFetch<MeResponse>('/me', { skipAuthRedirect: true })
         if (!cancelled) {
           setUsername(me.username)
+          setNome(me.nome ?? null)
           setRole(me.role ?? null)
           // Atualiza o espelho para o próximo boot já hidratar o papel certo
           // (o /me é a fonte de verdade; o papel pode ter mudado no servidor).
@@ -84,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           encerrarSessao()
           clearSidebarCache()
           setUsername(null)
+          setNome(null)
           setRole(null)
           setTokenValido(false)
         }
@@ -106,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPerfil(null)  // não hidratar uma sessão morta no próximo boot
       clearSidebarCache()
       setUsername(null)
+      setNome(null)
       setRole(null)
       setTokenValido(false)
       qc.clear()  // não deixa o cache recortado sobreviver à queda de sessão
@@ -136,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPerfilCarregando(true)
     try {
       const me = await apiFetch<MeResponse>('/me', { skipAuthRedirect: true })
+      setNome(me.nome ?? null)
       setRole(me.role ?? null)
       // Espelha o perfil no MESMO storage do token (remember) para o próximo
       // boot hidratar o papel de forma síncrona — sem flash de menu na Sidebar.
@@ -175,8 +184,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const authenticated = !!username || tokenValido
 
   const value = useMemo<AuthState>(
-    () => ({ username, role, authenticated, loading, perfilCarregando, login, register, logout }),
-    [username, role, authenticated, loading, perfilCarregando, login, register, logout],
+    () => ({ username, nome, role, authenticated, loading, perfilCarregando, login, register, logout }),
+    [username, nome, role, authenticated, loading, perfilCarregando, login, register, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

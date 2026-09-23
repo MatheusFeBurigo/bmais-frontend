@@ -15,6 +15,14 @@ function formDe(files: File[]): FormData {
 // Resposta da fase 1 (stage): só confirma o recebimento dos arquivos.
 interface StageResponse { sessao: string; arquivos: string[] }
 
+/** Quanto do envio já foi feito, para a tela mostrar a porcentagem. */
+export interface ProgressoEnvio {
+  fase: 'enviando' | 'lendo'
+  feitos: number
+  total: number
+  atual?: string | null
+}
+
 /** Processa PDFs de censo hospitalar em 2 fases, para não estourar o timeout.
  *
  *  Fase 1 (stage): sobe os arquivos e recebe OK imediato (rápido, só I/O).
@@ -30,15 +38,60 @@ interface StageResponse { sessao: string; arquivos: string[] }
  *  existe, e não precisa perguntar depois. Arquivo fora do mapa segue automático. */
 export async function enviarCensos(
   files: File[], hospitais?: Record<string, HospitalManual>,
+  onProgresso?: (p: ProgressoEnvio) => void,
 ): Promise<UploadCensoResponse> {
+  onProgresso?.({ fase: 'enviando', feitos: 0, total: files.length })
   const stage = await apiUpload<StageResponse>('/upload/stage', formDe(files))
-  return apiFetch<UploadCensoResponse>('/upload/processar', {
-    method: 'POST',
-    body: hospitais && Object.keys(hospitais).length
-      ? { sessao: stage.sessao, hospitais }
-      : { sessao: stage.sessao },
-    timeoutMs: 120_000,
-  })
+
+  // Os nomes que o BACKEND gravou, não os do `File`: a gravação sanitiza o nome
+  // (ver uploads.py), e pedir o processamento pelo nome original não acharia o
+  // arquivo em disco. O stage devolve a lista já como ela ficou.
+  const nomes = stage.arquivos?.length
+    ? stage.arquivos
+    : files.map((f) => f.name)
+
+  // UM ARQUIVO POR CHAMADA, em série.
+  //
+  // A rota aceita `arquivos: [...]` (era o caminho do reprocessamento parcial do
+  // assistente), então processar de um em um não pediu nada do backend. É o que
+  // torna a porcentagem REAL: cada resposta significa um arquivo efetivamente
+  // lido e gravado, e não um palpite de cronômetro.
+  //
+  // Em série, não em paralelo: o processamento grava no banco, e disparar N
+  // importações concorrentes multiplicaria a carga e embaralharia a ordem dos
+  // resultados — além de o client Supabase do backend ser um singleton que não
+  // gosta de concorrência.
+  const resultados: UploadCensoResponse['resultados'] = []
+  for (const [i, nome] of nomes.entries()) {
+    onProgresso?.({ fase: 'lendo', feitos: i, total: nomes.length, atual: nome })
+    // O mapa de hospitais é recortado para este arquivo: mandar o lote inteiro
+    // funcionaria, mas o backend só usa a entrada do arquivo que está lendo.
+    const doArquivo = hospitais?.[nome]
+    try {
+      const parcial = await apiFetch<UploadCensoResponse>('/upload/processar', {
+        method: 'POST',
+        body: {
+          sessao: stage.sessao,
+          arquivos: [nome],
+          ...(doArquivo ? { hospitais: { [nome]: doArquivo } } : {}),
+        },
+        timeoutMs: 120_000,
+      })
+      resultados.push(...(parcial.resultados ?? []))
+    } catch (e) {
+      // O lote CONTINUA. Um PDF corrompido no meio de dez não pode custar os
+      // outros nove — e o resultado precisa dizer o que houve com ele, senão o
+      // arquivo sumiria da tela sem explicação. Mesmo formato que o backend
+      // usaria, para a tela não precisar saber de onde veio o erro.
+      resultados.push({
+        arquivo: nome,
+        erro: (e as Error).message || 'Não foi possível ler este arquivo.',
+        erro_tipo: 'formato_desconhecido',
+      })
+    }
+  }
+  onProgresso?.({ fase: 'lendo', feitos: nomes.length, total: nomes.length })
+  return { sessao: stage.sessao, resultados }
 }
 
 /** Reprocessa arquivos de uma sessão já enviada (assistente): só os listados, com o

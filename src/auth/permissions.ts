@@ -18,13 +18,17 @@ export type Screen =
   | 'upload'
   | 'kanban'
   | 'logs'
+  | 'progresso'
+  | 'volumetria'
+  | 'relatorio'
 
 // Telas que cada papel NÃO pode ver. Ausência de entrada = vê tudo.
 const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
   // Diretor vê tudo, exceto Equipe.
   diretor: ['equipe'],
-  // Gestor: só Gestor/Fluxo + Upload + Configurações (sem Diretoria, Operacional, Equipe).
-  gestor: ['diretoria', 'operacional', 'equipe'],
+  // Gestor: só Gestor/Fluxo + Upload + Configurações (sem Operacional nem Equipe).
+  // Diretoria sai pela allowlist EXCLUSIVAS, não daqui.
+  gestor: ['operacional', 'equipe'],
   // Administrativo: Operacional + Upload + Kanban (suas tarefas). Sem Diretoria, Gestor, Equipe, Configurações.
   administrativo: ['diretoria', 'gestor', 'equipe', 'configuracoes'],
   // Técnico: mesmo recorte do administrativo (segundo papel operacional básico).
@@ -35,12 +39,25 @@ const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
   // Diretoria e Gestor (decisão do produto), Upload e Configurações — telas cujo
   // conteúdo É a escrita que ele não pode executar (subir censo, regras da operadora).
   analista: ['diretoria', 'gestor', 'upload', 'configuracoes'],
+  // Coordenadores: só a Operacional (contexto) + Volumetria (allowlist abaixo).
+  // Fora tudo que é operação/gestão. A única escrita deles (vincular pessoa a
+  // hospital) vive dentro da Volumetria — ver ROLES_ATRIBUIR_VOLUMETRIA no backend.
+  coordenador_administrativo: ['diretoria', 'gestor', 'equipe', 'configuracoes', 'upload', 'kanban', 'logs'],
+  coordenador_tecnico: ['diretoria', 'gestor', 'equipe', 'configuracoes', 'upload', 'kanban', 'logs'],
 }
 
 // Telas EXCLUSIVAS de papéis específicos (allowlist). Mais forte que a lista de
 // bloqueio: quem não estiver aqui NÃO vê. Use para telas que pertencem à visão de
 // papéis específicos — o Kanban é dos papéis operacionais (admin também vê, p/ supervisão).
 const EXCLUSIVAS: Partial<Record<Screen, readonly UserRole[]>> = {
+  // Diretoria e Gestor são telas de DECISÃO, e o acesso segue o cargo, não o
+  // poder técnico: quem administra o sistema mantém cadastros e contas, não
+  // acompanha desempenho de operadora nem fluxo de internações. Por isso o admin
+  // NÃO entra — é a exceção à regra de que ele vê tudo (23/09/2026, a pedido do
+  // usuário). Allowlist, e não BLOQUEADAS, para nenhum papel novo herdar estas
+  // telas por omissão. Espelha ROLES_TELA_DIRETORIA/GESTOR no backend.
+  diretoria: ['diretor'],
+  gestor: ['gestor', 'diretor'],
   kanban: ['administrativo', 'tecnico', 'admin', 'analista'],
   // Operações (ex-Equipe): administrador e analista interno. Nem o diretor entra
   // — allowlist, para o papel novo não herdar a tela por omissão.
@@ -48,12 +65,25 @@ const EXCLUSIVAS: Partial<Record<Screen, readonly UserRole[]>> = {
   // Movimentações (auditoria): administrador e analista interno. Nem o diretor vê.
   // Espelha ROLES_AUDITORIA do backend (interface/authz.py).
   logs: ['admin', 'analista'],
+  // Progresso (avanço da construção do produto): administração e diretoria.
+  // É informação sobre o CONTRATO — o que já foi entregue e o que falta —, não
+  // sobre a operação, então não chega a quem trabalha na assistência.
+  progresso: ['admin', 'diretor'],
+  // Volumetria: carga de trabalho por hospital, para os coordenadores decidirem
+  // como dividir hospitais entre administrativos/técnicos. Admin vê para supervisão.
+  volumetria: ['coordenador_administrativo', 'coordenador_tecnico', 'admin'],
+  // Relatório da auditoria geral: é peça de diretoria. Traz valores de pagamento
+  // e o plano contratual dos próximos blocos, e o próprio documento diz que não
+  // deve circular fora dela. Admin entra para manter a tela, não como leitor.
+  relatorio: ['admin', 'diretor'],
 }
 
 // Papéis SOMENTE LEITURA: veem as telas, mas nenhuma ação que altera dados.
 // Espelha ROLES_SOMENTE_LEITURA do backend, que é quem de fato barra (403) —
 // aqui só escondemos os controles para não oferecer o que vai falhar.
-const SOMENTE_LEITURA: ReadonlySet<UserRole> = new Set<UserRole>(['analista'])
+const SOMENTE_LEITURA: ReadonlySet<UserRole> = new Set<UserRole>([
+  'analista', 'coordenador_administrativo', 'coordenador_tecnico',
+])
 
 /** True se o papel não pode alterar dado nenhum (perfil de observação). */
 export function ehSomenteLeitura(role: UserRole | null): boolean {
@@ -80,11 +110,18 @@ const ROTA_DA_SCREEN: Record<Screen, string> = {
   upload: '/upload',
   kanban: '/kanban',
   logs: '/logs',
+  progresso: '/progresso',
+  volumetria: '/volumetria',
+  relatorio: '/relatorio',
 }
 
 // Ordem de preferência ao escolher a "tela inicial" de um papel barrado.
 const ORDEM_FALLBACK: readonly Screen[] = [
   'operacional', 'gestor', 'diretoria', 'kanban', 'logs', 'upload', 'configuracoes', 'equipe',
+  'volumetria',
+  // Progresso e Relatório ficam por último de propósito: são telas de leitura, e
+  // cair nelas ao ser barrado em outra não ajudaria ninguém a trabalhar.
+  'progresso', 'relatorio',
 ]
 
 // Ações do domínio protegidas por papel (não são telas, mas operações dentro de
@@ -93,9 +130,19 @@ const ORDEM_FALLBACK: readonly Screen[] = [
 const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
   // Registrar relatório no drawer: exclusivo do perfil técnico (admin supervisiona).
   registrarRelatorio: ['tecnico', 'admin'],
+  // Cadastrar convênio na modal de edição do paciente. É cadastro, não operação:
+  // o nome passa a existir para TODAS as telas e leva junto a operadora que o
+  // cobre. Espelha `requer_diretor` na rota POST /api/convenios — os papéis
+  // operacionais continuam escolhendo da lista e digitando texto livre.
+  criarConvenio: ['diretor', 'admin'],
+  // Agendar a visita: é o gatilho que move o card para "Aguardando visita", e
+  // pertence a quem vai fazer a visita. Mesmo par de `registrarRelatorio`, mas em
+  // constante própria — as duas podem divergir (ex.: liberar o agendamento ao
+  // administrativo) sem reabrir quem registra relatório.
+  agendarVisita: ['tecnico', 'admin'],
 }
 
-export type AcaoProtegida = 'registrarRelatorio'
+export type AcaoProtegida = 'registrarRelatorio' | 'criarConvenio' | 'agendarVisita'
 
 /** True se o papel pode executar a ação. `role` null/desconhecido NÃO libera:
  *  ação sensível exige papel resolvido (diferente de `podeVer`, que é permissivo). */

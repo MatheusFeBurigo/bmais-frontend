@@ -34,6 +34,10 @@ export interface InternadosTableProps {
   /** Visão consolidada (todas as operadoras): mostra a coluna "Operadora" para
    *  dizer de quem é cada paciente. Numa operadora só, a coluna é redundante. */
   mostrarOperadora?: boolean
+  /** Lista de pacientes que JÁ receberam alta (filtro "Altas"). Troca os rótulos
+   *  e acrescenta a coluna "Alta" — sem ela, a data que define a linha não
+   *  apareceria em lugar nenhum da tabela. */
+  vendoAltas?: boolean
 }
 
 export default function InternadosTable({
@@ -52,13 +56,14 @@ export default function InternadosTable({
   onPrev,
   onNext,
   mostrarOperadora = false,
+  vendoAltas = false,
 }: InternadosTableProps) {
-  const colunas = mostrarOperadora ? 12 : 11
+  const colunas = 11 + (mostrarOperadora ? 1 : 0) + (vendoAltas ? 1 : 0)
   return (
     <div className="card" style={{ marginTop: 14 }}>
       <div className="card-header" style={{ alignItems: 'center', paddingBottom: 14 }}>
         <div>
-          <div className="card-title">Todos os Internados</div>
+          <div className="card-title">{vendoAltas ? 'Pacientes com Alta' : 'Todos os Internados'}</div>
           <div className="card-sub">
             <span className="mono fw-6">{totalVisiveis}</span> de{' '}
             <span className="mono fw-6">{totalBackend || totalInternacoes}</span>
@@ -89,12 +94,16 @@ export default function InternadosTable({
               <th style={{ width: 86 }}>Atend.</th>
               <th style={{ width: 60 }}>Leito</th>
               <th style={{ width: 96 }}>Internação</th>
+              {vendoAltas && <th style={{ width: 96 }}>Alta</th>}
               <th>Última Visita</th>
               <th style={{ width: 96 }} className="t-right" title="Dias desde o último relatório sobre a janela permitida (ex.: 5 / 7)">
                 Sem relatório
               </th>
-              <th style={{ width: 88 }} className="t-right" title="Dias de internação sobre o gatilho de alerta (ex.: 12 / 10)">
-                Dias internado
+              <th style={{ width: 88 }} className="t-right"
+                title={vendoAltas
+                  ? 'Dias entre a internação e a alta'
+                  : 'Dias de internação sobre o gatilho de alerta (ex.: 12 / 10)'}>
+                {vendoAltas ? 'Dias' : 'Dias internado'}
               </th>
               <th style={{ width: 78 }} className="t-right" title="Marcador de longa permanência: 10 dias ou 30 dias">
                 Permanência
@@ -145,6 +154,9 @@ export default function InternadosTable({
                   <td><span className="mono t-muted" style={{ fontSize: 'var(--t-sm)' }}>{p.atendimento || '—'}</span></td>
                   <td><LeitoTag tipo={p.tipo_leito} /></td>
                   <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_entrada || '—'}</span></td>
+                  {vendoAltas && (
+                    <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_alta || '—'}</span></td>
+                  )}
                   <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_ultima_visita || '—'}</span></td>
                   <td className="t-right">
                     <DiasRatio
@@ -187,7 +199,9 @@ export default function InternadosTable({
                 <td colSpan={colunas}>
                   <div className="empty-state">
                     <div style={{ fontSize: 32, opacity: 0.25, marginBottom: 8 }}>📋</div>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Nenhum internado encontrado</div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                      {vendoAltas ? 'Nenhuma alta encontrada' : 'Nenhum internado encontrado'}
+                    </div>
                     <div style={{ fontSize: 'var(--t-sm)' }}>Tente outro filtro ou operadora.</div>
                   </div>
                 </td>

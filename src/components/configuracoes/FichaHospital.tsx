@@ -6,18 +6,22 @@ import {
   salvarFichaHospital, vincularOperadora, desvincularOperadora,
 } from '../../services/configuracoes.service'
 import { OpAvatar } from '../ui'
+import SelectRegiao from '../SelectRegiao'
 
 /** Chaves da ficha que este formulário edita — restritas às que existem em
  *  HospitalSelected, para o typecheck pegar um campo renomeado no backend. */
 type CampoFicha = keyof Pick<HospitalSelected,
   'telefone' | 'email' | 'cnpj' | 'regiao' | 'endereco' | 'cidade' | 'uf' | 'cep'>
 
-/** Campos editáveis da ficha, na ordem em que aparecem no formulário. */
-const CAMPOS: Array<{ k: CampoFicha; label: string; placeholder?: string; tipo?: string }> = [
+/** Campos editáveis da ficha, na ordem em que aparecem no formulário.
+ *  `regiao` é o único com lista fechada: ela agrupa os hospitais na escolha de
+ *  escopo do usuário, e digitada à mão a mesma região virava várias (era texto
+ *  livre até aqui, e 95 das 402 linhas ficaram em branco). */
+const CAMPOS: Array<{ k: CampoFicha; label: string; placeholder?: string; tipo?: string; opcoes?: boolean }> = [
   { k: 'telefone', label: 'Telefone', placeholder: '(11) 0000-0000', tipo: 'tel' },
   { k: 'email', label: 'E-mail', placeholder: 'contato@hospital.com.br', tipo: 'email' },
   { k: 'cnpj', label: 'CNPJ', placeholder: '00.000.000/0000-00' },
-  { k: 'regiao', label: 'Região', placeholder: 'Zona Sul' },
+  { k: 'regiao', label: 'Região', opcoes: true },
   { k: 'endereco', label: 'Endereço', placeholder: 'Rua, número' },
   { k: 'cidade', label: 'Cidade', placeholder: 'São Paulo' },
   { k: 'uf', label: 'UF', placeholder: 'SP' },
@@ -151,13 +155,20 @@ export default function FichaHospital({ hosp, operadoras, onToast, onChanged }: 
                 {CAMPOS.map((c) => (
                   <div key={c.k} className="config-field">
                     <label>{c.label}</label>
-                    <input
-                      type={c.tipo || 'text'}
-                      className="bm-input"
-                      placeholder={c.placeholder}
-                      value={form[c.k]}
-                      onChange={(e) => setForm((f) => ({ ...f, [c.k]: e.target.value }))}
-                    />
+                    {c.opcoes ? (
+                      <SelectRegiao
+                        value={form[c.k]}
+                        onChange={(v) => setForm((f) => ({ ...f, [c.k]: v }))}
+                      />
+                    ) : (
+                      <input
+                        type={c.tipo || 'text'}
+                        className="bm-input"
+                        placeholder={c.placeholder}
+                        value={form[c.k]}
+                        onChange={(e) => setForm((f) => ({ ...f, [c.k]: e.target.value }))}
+                      />
+                    )}
                   </div>
                 ))}
               </div>

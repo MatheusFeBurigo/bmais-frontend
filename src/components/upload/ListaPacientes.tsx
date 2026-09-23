@@ -26,13 +26,27 @@ export const listaPacientesStyles = `
 /* Herda .bmais-table (zebra, hover) e só aperta a densidade: esta é uma lista de
    conferência dentro de um card, não a tabela cheia de uma tela. O nome é a
    única coluna elástica; as demais ficam do tamanho do conteúdo. */
-.up-pac-tabela{font-size:var(--t-sm);width:100%}
+/* "fixed" + larguras explícitas: com uma tabela POR SEÇÃO, cada uma mediria o
+   próprio conteúdo e as colunas dançariam de "Internações" para "Altas" — o
+   alinhamento entre seções, que a linha-separador dava de graça, passa a ser
+   declarado aqui. É o que sustenta a conferência contra o PDF, que se faz
+   descendo a vista por uma coluna só. O nome fica com a sobra ("auto"). */
+.up-pac-tabela{font-size:var(--t-sm);width:100%;table-layout:fixed}
+.up-pac-tabela th:nth-child(2),.up-pac-tabela td:nth-child(2){width:110px}
+.up-pac-tabela th:nth-child(3),.up-pac-tabela td:nth-child(3){width:110px}
+.up-pac-tabela th:nth-child(4),.up-pac-tabela td:nth-child(4){width:74px}
+.up-pac-tabela th:nth-child(5),.up-pac-tabela td:nth-child(5){width:150px}
+.up-pac-tabela th:nth-child(6),.up-pac-tabela td:nth-child(6){width:92px}
+.up-pac-tabela th:nth-child(7),.up-pac-tabela td:nth-child(7){width:58px}
 .up-pac-tabela thead th{padding:6px 8px;background:var(--surface-3)}
 .up-pac-tabela tbody td{padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .up-pac-tabela th:first-child,.up-pac-tabela td:first-child{padding-left:10px}
 .up-pac-tabela th:last-child,.up-pac-tabela td:last-child{padding-right:10px}
 .up-pac-tabela th.col-data,.up-pac-tabela td.up-pac-data{text-align:right}
-.up-pac-nome{max-width:0;width:100%}          /* absorve a sobra; o resto encolhe */
+/* Com "table-layout:fixed" a sobra já vem para cá (é a única coluna sem largura
+   declarada); o "max-width:0" de antes existia para forçar isso no layout
+   automático e aqui só atrapalharia o truncamento. */
+.up-pac-nome{width:auto}
 /* Linha com problema: faixa lateral da cor do tipo + fundo levíssimo. A cor é
    reforço — a FRASE embaixo do nome é que diz o que houve, para quem não
    distingue as matizes e para quem lê por leitor de tela. */
@@ -43,6 +57,10 @@ export const listaPacientesStyles = `
 .up-pac-com-problema.sem_convenio td{background:rgba(217,105,12,.05)}
 .up-pac-vazio{color:var(--muted-2);font-style:italic}
 .up-pac-atend{font-family:var(--font-mono);font-size:var(--t-xs);color:var(--muted);font-variant-numeric:tabular-nums}
+/* Carteirinha: mesma família do atendimento (mono/tabular, para comparar dígito
+   a dígito), com teto de largura — algumas operadoras emitem 16 dígitos e sem
+   limite a coluna comeria o espaço do nome. */
+.up-pac-cart{font-family:var(--font-mono);font-size:var(--t-xs);color:var(--muted);font-variant-numeric:tabular-nums;max-width:130px}
 .up-pac-leito{font-size:var(--t-xs);color:var(--muted-2)}
 .up-pac-conv{font-size:var(--t-xs);color:var(--muted-2);max-width:180px}
 /* Data colorida pela situação — a mesma dupla do resto da tela. */
@@ -50,19 +68,28 @@ export const listaPacientesStyles = `
 .up-pac-data.internado{color:var(--info)}
 .up-pac-data.alta{color:var(--success-2)}
 
-/* Separador de situação: uma linha da própria tabela, sticky, com a cor do
-   grupo à esquerda. Como linha (e não um título fora da tabela), as colunas
-   continuam alinhadas entre as duas seções — que é o que permite conferir
-   descendo a vista por uma coluna só, sem reencontrar o alinhamento no meio. */
-.up-pac-sep td{position:sticky;top:26px;z-index:1;padding:5px 10px;background:var(--surface-3);border-top:1px solid var(--border);border-bottom:1px solid var(--border-soft)}
-.up-pac-sep:first-child td{border-top:0}
-.up-pac-sep-rot{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
-.up-pac-sep-rot.internado{color:var(--info)}
-.up-pac-sep-rot.alta{color:var(--success-2)}
+/* Seção de situação: um bloco com TÍTULO, cabeçalho de colunas e linhas, nesta
+   ordem. O título era uma linha dentro da tabela, entre o <thead> e os dados —
+   lido de cima para baixo, vinha "PACIENTE / ATENDIMENTO / …" e só depois
+   "INTERNAÇÕES", como se os nomes de coluna encabeçassem a tabela e o título
+   fosse mais uma linha dela. Acima do cabeçalho, cada bloco se apresenta antes
+   de descrever as suas colunas. */
+.up-pac-sec + .up-pac-sec{margin-top:2px}
+/* Título grudado no cabeçalho que ele encabeça: sem margem embaixo, e com a
+   mesma borda que separa as seções. Sticky junto com o <thead> (que para em
+   26px), para o nome da seção acompanhar a rolagem de uma lista longa. */
+.up-pac-sec-tit{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:7px;padding:7px 10px;background:var(--surface-3);border-top:1px solid var(--border);border-bottom:1px solid var(--border-soft);font-size:var(--t-sm);text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+.up-pac-sec:first-child .up-pac-sec-tit{border-top:0}
+.up-pac-sec-tit.internado{color:var(--info)}
+.up-pac-sec-tit.alta{color:var(--success-2)}
+/* O <thead> de cada seção para logo ABAIXO do título da sua seção, não no topo
+   do container: empilhados, os dois ficam legíveis ao rolar — o título diz de
+   quem é a lista e o cabeçalho diz o que é cada coluna. */
+.up-pac-sec .up-pac-tabela thead th{position:sticky;top:30px;z-index:1}
 .up-pac-sep-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .up-pac-sep-dot.internado{background:var(--info)}
 .up-pac-sep-dot.alta{background:var(--success)}
-.up-pac-sep-n{font-family:var(--font-mono);color:var(--muted);font-weight:600;letter-spacing:0}
+.up-pac-sep-n{font-family:var(--font-mono);color:var(--muted);font-weight:600;letter-spacing:0;font-size:var(--t-sm)}
 
 /* Busca no CABEÇALHO do cartão, ao lado da data do censo. Fechada é só a lupa;
    aberta vira um campo de largura fixa — assim o nome do arquivo e a data, que
@@ -188,6 +215,18 @@ export const listaPacientesStyles = `
 .up-pac-tabela tbody tr:hover .up-pac-lapis:disabled,
 .up-pac-lapis:disabled:hover{background:none;border-color:transparent;color:var(--muted-2)}
 .up-pac-nada{padding:14px 10px;text-align:center;font-size:var(--t-sm);color:var(--muted)}
+/* Faixa de "lista recortada": a lista está mostrando só parte do censo, e nada
+   mais em tela diria isso depois que o botão do cabeçalho saiu. Âmbar como o
+   alerta que levou até aqui, e com a saída dentro dela: um modo em que se entra
+   por um link precisa dizer como se sai, senão o usuário fica preso numa lista
+   que parece ter perdido pacientes. Sticky acima de tudo, para a saída
+   continuar ao alcance numa lista longa. */
+.up-pac-recorte{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 10px;background:var(--warning-bg);border-bottom:1px solid rgba(217,105,12,.22);font-size:var(--t-sm);color:var(--ink-2)}
+.up-pac-recorte-txt{flex:1;min-width:150px}
+.up-pac-recorte-txt b{color:var(--warning-2)}
+.up-pac-recorte button{flex-shrink:0;padding:3px 11px;border:1px solid var(--warning);border-radius:99px;background:var(--surface);font-family:inherit;font-size:var(--t-xs);font-weight:600;color:var(--warning-2);cursor:pointer}
+.up-pac-recorte button:hover{background:rgba(217,105,12,.08)}
+.up-pac-recorte button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(217,105,12,.2)}
 /* Trecho que casou com a busca: fundo âmbar, como qualquer resultado de busca. */
 .up-pac-marca{background:var(--caution-bg);color:var(--ink);border-radius:2px;padding:0 1px}
 `
@@ -380,9 +419,18 @@ function Linhas({ pacientes, termo, onEditar, onRemover }: {
     <>
       {pacientes.map((p, i) => {
         const id = identificacao(p)
+        // `temProblema`, não `p.problema`: quem foi corrigido na modal volta com
+        // `resolvido: true` e o `problema` do processamento INTACTO (ele é o
+        // retrato de como o arquivo chegou, não some por edição). Testando só o
+        // campo, a linha seguia marcada e com o balão de alerta depois de o
+        // usuário ter arrumado o convênio — o aviso sumia do painel e das
+        // contagens, que usam esta função, e ficava só aqui, sem nada que o
+        // fizesse ir embora. Esta é a regra única de "tem alerta"; a linha tem
+        // de obedecer à mesma que o resto da tela.
+        const marcado = temProblema(p)
         return (
           <tr key={`${p.atendimento ?? ''}-${i}`}
-              className={p.problema ? `up-pac-com-problema ${p.problema.tipo}` : undefined}>
+              className={marcado ? `up-pac-com-problema ${p.problema?.tipo}` : undefined}>
             {/* Nome sempre pelo `nomeProprio`: a gravação já normaliza (o backend
                 aplica a mesma regra), mas os censos chegam em CAIXA ALTA e um
                 resultado antigo — de cache ou de servidor ainda não atualizado —
@@ -398,7 +446,7 @@ function Linhas({ pacientes, termo, onEditar, onRemover }: {
                   nome, ele dobrava a altura de cada linha marcada e quebrava a
                   varredura da lista, que é o que se faz ao conferir contra o
                   PDF. Aqui o ícone anuncia, e quem quiser o detalhe abre. */}
-              {p.problema && <AlertaDoPaciente problema={p.problema} />}
+              {marcado && p.problema && <AlertaDoPaciente problema={p.problema} />}
               {p.nome
                 ? <Realce texto={nomeProprio(p.nome)} termo={termo} />
                 : id
@@ -412,6 +460,13 @@ function Linhas({ pacientes, termo, onEditar, onRemover }: {
                 os dados que se está conferindo. */}
             <td className="up-pac-atend">
               {p.atendimento ? <Realce texto={p.atendimento} termo={termo} /> : null}
+            </td>
+            {/* Mesmo tratamento do atendimento: fonte mono e tabular, porque
+                o que se faz com este número é compará-lo dígito a dígito com o
+                do PDF — e algarismos de largura variável desalinham a coluna.
+                Vazio fica em branco, como as demais células desta lista. */}
+            <td className="up-pac-cart" title={p.carteirinha ?? undefined}>
+              {p.carteirinha ? <Realce texto={p.carteirinha} termo={termo} /> : null}
             </td>
             <td className="up-pac-leito">{p.leito_codigo || null}</td>
             <td className="up-pac-conv" title={p.convenio ?? undefined}>
@@ -475,22 +530,74 @@ function Linhas({ pacientes, termo, onEditar, onRemover }: {
   )
 }
 
-function Separador({ deAlta, n, total }: { deAlta: boolean; n: number; total: number }) {
+/** Título de uma seção de situação, ACIMA do cabeçalho de colunas da sua tabela.
+ *
+ *  Era uma linha dentro da tabela, entre o `<thead>` e as linhas. Funcionava,
+ *  mas punha o título no mesmo plano dos dados: lido de cima para baixo, vinha
+ *  "PACIENTE / ATENDIMENTO / …" e só depois "INTERNAÇÕES" — como se os nomes de
+ *  coluna valessem para a tabela e o título fosse mais uma linha dela. Aqui o
+ *  título encabeça o bloco, e o cabeçalho de colunas pertence visivelmente à
+ *  lista que vem sob ele.
+ *
+ *  O alinhamento entre as duas seções, que a linha única garantia de graça,
+ *  passa a vir do `table-layout:fixed` com as mesmas larguras nas duas tabelas
+ *  (ver `listaPacientesStyles`): sem isso, cada tabela mediria o próprio
+ *  conteúdo e as colunas dançariam de uma seção para a outra — justamente o que
+ *  quebra a conferência, que se faz descendo a vista por uma coluna só. */
+function TituloSecao({ deAlta, n, total }: { deAlta: boolean; n: number; total: number }) {
   const cor = deAlta ? 'alta' : 'internado'
   return (
-    <tr className="up-pac-sep">
-      <td colSpan={6}>
-        <span className={`up-pac-sep-rot ${cor}`}>
-          <span className={`up-pac-sep-dot ${cor}`} />
-          {deAlta ? 'Alta' : 'Internações'}
-          <span className="up-pac-sep-n">
-            {/* Com busca ativa, mostra "achados de total" — senão o número
-                mudaria ao digitar e pareceria que o censo encolheu. */}
-            {n === total ? n : `${n} de ${total}`}
-          </span>
-        </span>
-      </td>
-    </tr>
+    <div className={`up-pac-sec-tit ${cor}`}>
+      <span className={`up-pac-sep-dot ${cor}`} />
+      {deAlta ? 'Altas' : 'Internações'}
+      <span className="up-pac-sep-n">
+        {/* Com busca ativa, mostra "achados de total" — senão o número mudaria
+            ao digitar e pareceria que o censo encolheu. */}
+        {n === total ? n : `${n} de ${total}`}
+      </span>
+    </div>
+  )
+}
+
+/** Uma seção completa: título, cabeçalho de colunas e as linhas. */
+function Secao({ deAlta, pacientes, total, termo, onEditar, onRemover, titulo }: {
+  deAlta: boolean
+  pacientes: PacienteGravado[]
+  /** Quantos a seção tem ao todo, antes da busca. */
+  total: number
+  termo: string
+  onEditar?: (p: PacienteGravado) => void
+  onRemover?: (p: PacienteGravado) => void
+  /** Rótulo da primeira coluna (nome ou senha, conforme o censo). */
+  titulo: string
+}) {
+  return (
+    <div className="up-pac-sec">
+      <TituloSecao deAlta={deAlta} n={pacientes.length} total={total} />
+      <table className="bmais-table up-pac-tabela">
+        <thead>
+          <tr>
+            <th className="up-pac-nome">{titulo}</th>
+            <th>Atendimento</th>
+            {/* Carteirinha ao lado do atendimento: são os dois números que
+                identificam o paciente, um no hospital e outro na operadora.
+                Juntos, a vista desce por uma faixa só ao conferir contra o
+                PDF, que também os imprime lado a lado. */}
+            <th>Carteirinha</th>
+            <th>Leito</th>
+            <th>Convênio</th>
+            {/* Cabeçalho neutro: a coluna traz entrada de quem está em leito
+                e alta de quem saiu, e cada seção diz qual é a sua. */}
+            <th className="col-data">Data</th>
+            <th className="up-pac-acao"><span className="sr-only">Editar</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <Linhas pacientes={pacientes} termo={termo} onEditar={onEditar}
+                  onRemover={onRemover} />
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -588,8 +695,12 @@ export function BuscaPacientes({ termo, onTermo, achados, total }: {
 export function filtrarPacientes(lista: PacienteGravado[], termo: string): PacienteGravado[] {
   const alvo = normalizar(termo.trim())
   if (!alvo) return lista
+  // A carteirinha entra na busca pelo mesmo motivo do atendimento: quem chega
+  // com uma pendência da operadora na mão tem o número da carteirinha, não o
+  // nome — e era justamente o caminho que a lista não atendia.
   return lista.filter((p) => normalizar(identificacao(p)).includes(alvo)
-    || normalizar(p.atendimento ?? '').includes(alvo))
+    || normalizar(p.atendimento ?? '').includes(alvo)
+    || normalizar(p.carteirinha ?? '').includes(alvo))
 }
 
 /** Tem alerta na linha? `resolvido` sai da conta: quem foi corrigido na modal
@@ -604,6 +715,7 @@ export function contarProblemas(...listas: PacienteGravado[][]): number {
 
 export function ListaPacientes({
   emLeito, comAlta, termo = '', somenteProblema = false, onEditar, onRemover,
+  onVerTodos,
 }: {
   emLeito: PacienteGravado[]
   comAlta: PacienteGravado[]
@@ -618,24 +730,62 @@ export function ListaPacientes({
   onEditar?: (p: PacienteGravado) => void
   /** Apaga o paciente do sistema. Ausente = lista sem exclusão. */
   onRemover?: (p: PacienteGravado) => void
+  /** Desliga o recorte por "marcados". Ausente = a faixa não oferece saída
+   *  (não deveria acontecer: quem liga o filtro é quem passa esta função). */
+  onVerTodos?: () => void
 }) {
   const total = emLeito.length + comAlta.length
 
   // Os dois filtros se somam: buscar por nome DENTRO dos que têm problema é o
   // caminho de quem já sabe o nome que veio no aviso.
+  //
+  // E quem tem problema sobe para o topo da sua seção. Numa lista de 92 nomes, o
+  // único que pede decisão estava na posição em que o PDF o imprimiu: achá-lo
+  // era rolar caçando a faixa colorida. No topo, a conferência começa pelo que
+  // precisa dela.
+  //
+  // A ordenação é ESTÁVEL (`sort` do JS é estável desde o ES2019), e é isso que
+  // faz o paciente "voltar ao lugar certo" quando o problema é resolvido: ele
+  // deixa de vir na frente e retorna à posição que tinha na ordem do arquivo,
+  // entre os mesmos vizinhos — não para o fim da lista. Nada de guardar posição
+  // original: a lista de origem nunca é reordenada, só esta cópia é.
   const recortar = useCallback((lista: PacienteGravado[]) => {
     const base = somenteProblema ? lista.filter(temProblema) : lista
-    return filtrarPacientes(base, termo)
+    const achados = filtrarPacientes(base, termo)
+    return [...achados].sort(
+      (a, b) => Number(temProblema(b)) - Number(temProblema(a)),
+    )
   }, [somenteProblema, termo])
   const leitoVisivel = useMemo(() => recortar(emLeito), [emLeito, recortar])
   const altaVisivel = useMemo(() => recortar(comAlta), [comAlta, recortar])
   const achados = leitoVisivel.length + altaVisivel.length
+  // O rótulo da 1ª coluna sai do arquivo INTEIRO, não de cada seção: censos sem
+  // coluna de nome identificam pela senha, e decidir por seção faria uma dizer
+  // "Paciente" e a outra "Senha" na mesma lista.
+  const titulo = useMemo(
+    () => tituloIdentificacao([...emLeito, ...comAlta]), [emLeito, comAlta],
+  )
 
   if (!total) return null
 
   return (
     <div>
       <div className="up-lista-pac">
+        {/* A lista está recortada: diz isso e oferece a volta. Sem esta faixa, o
+            modo "marcados" era um beco — entrava-se por um link de alerta e não
+            havia nada em tela dizendo por que faltavam pacientes nem como
+            trazê-los de volta. */}
+        {somenteProblema && (
+          <div className="up-pac-recorte">
+            <span className="up-pac-recorte-txt">
+              Mostrando <b>{achados} {achados === 1 ? 'paciente' : 'pacientes'}</b>{' '}
+              que {achados === 1 ? 'precisa' : 'precisam'} de conferência.
+            </span>
+            {onVerTodos && (
+              <button type="button" onClick={onVerTodos}>Ver todos</button>
+            )}
+          </div>
+        )}
         {achados === 0 ? (
           <div className="up-pac-nada">
             {termo.trim()
@@ -645,39 +795,38 @@ export function ListaPacientes({
               : 'Nenhum paciente marcado: todos os alertas foram resolvidos.'}
           </div>
         ) : (
-          <table className="bmais-table up-pac-tabela">
-            <thead>
-              <tr>
-                <th>{tituloIdentificacao([...emLeito, ...comAlta])}</th>
-                <th>Atendimento</th>
-                <th>Leito</th>
-                <th>Convênio</th>
-                {/* Cabeçalho neutro: a coluna traz entrada de quem está em leito
-                    e alta de quem saiu, e cada seção tem o seu separador. */}
-                <th className="col-data">Data</th>
-                <th className="up-pac-acao"><span className="sr-only">Editar</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Em leito primeiro: é o estado corrente do hospital. As seções só
-                  aparecem quando têm linha — com a busca ativa, um grupo pode
-                  ficar vazio, e um cabeçalho sem nada embaixo confunde. */}
-              {leitoVisivel.length > 0 && (
-                <>
-                  <Separador deAlta={false} n={leitoVisivel.length} total={emLeito.length} />
-                  <Linhas pacientes={leitoVisivel} termo={termo.trim()} onEditar={onEditar}
-                          onRemover={onRemover} />
-                </>
-              )}
-              {altaVisivel.length > 0 && (
-                <>
-                  <Separador deAlta n={altaVisivel.length} total={comAlta.length} />
-                  <Linhas pacientes={altaVisivel} termo={termo.trim()} onEditar={onEditar}
-                          onRemover={onRemover} />
-                </>
-              )}
-            </tbody>
-          </table>
+          // Uma tabela POR SEÇÃO, cada uma com o seu cabeçalho de colunas: o
+          // título ("Internações 2") fica acima dos nomes de coluna, e não
+          // entre eles e as linhas. O alinhamento entre as duas tabelas vem do
+          // `table-layout:fixed` com larguras iguais — ver os estilos.
+          //
+          // As seções só aparecem quando têm linha: com a busca ativa um grupo
+          // pode ficar vazio, e um cabeçalho sem nada embaixo confunde.
+          <>
+            {/* Em leito primeiro: é o estado corrente do hospital. */}
+            {leitoVisivel.length > 0 && (
+              <Secao
+                deAlta={false}
+                pacientes={leitoVisivel}
+                total={emLeito.length}
+                termo={termo.trim()}
+                titulo={titulo}
+                onEditar={onEditar}
+                onRemover={onRemover}
+              />
+            )}
+            {altaVisivel.length > 0 && (
+              <Secao
+                deAlta
+                pacientes={altaVisivel}
+                total={comAlta.length}
+                termo={termo.trim()}
+                titulo={titulo}
+                onEditar={onEditar}
+                onRemover={onRemover}
+              />
+            )}
+          </>
         )}
       </div>
     </div>

@@ -22,6 +22,11 @@ const EVENTO_INVALIDA: Record<string, QueryRoot[]> = {
   // Paciente adicionado manualmente entra na contagem de internados → recompõe os
   // agregados operacionais (Visão Geral, panorama, gestor/diretoria) e a sidebar.
   pacienteAdicionado: ['dashboard', 'dashboardOverview', 'gestor', 'diretoria', 'sidebar', 'kanban'],
+  // Visita agendada/desmarcada move o card entre as colunas do quadro e nada
+  // mais: agendar NÃO muda status_relatorio nem agregado nenhum (ver a decisão em
+  // domain/avaliacao.py), então invalidar dashboard/diretoria aqui seria refetch
+  // inútil em cinco telas.
+  visitaAgendada: ['kanban'],
   // Mudança na equipe (profissionais/escala) afeta a contagem do sidebar.
   equipeAlterada: ['equipe', 'sidebar'],
   // Gestão de usuários (a trilha de auditoria também muda: criar/suspender/apagar).

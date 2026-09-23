@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import type { KanbanColuna, KanbanTarefa } from '../types/api'
+import type { KanbanTarefa } from '../types/api'
 import { usePageHeader } from '../components/PageHeader'
 import { useAuth } from '../auth/AuthContext'
 import { ehSomenteLeitura } from '../auth/permissions'
@@ -10,51 +10,20 @@ import { useKanban, useMarcarCobrado } from '../hooks/useKanban'
 import { usePrefetchInternacao } from '../hooks/useInternacao'
 import { localStyles } from '../components/kanban/kanban.styles'
 import { KanbanCard } from '../components/kanban/KanbanCard'
-import { AnaliseModal } from '../components/kanban/AnaliseModal'
+import { KanbanFiltros } from '../components/kanban/KanbanFiltros'
+import { contarChips, recortarColuna, type Recorte } from '../components/kanban/prioridade'
+// Definição de cada coluna (rótulo, cor, descrição) vive em components/kanban/
+// colunas.ts: a Volumetria reusa os mesmos textos para a quebra de demandas.
+import { COLUNAS } from '../components/kanban/colunas'
 
-// Definição de cada coluna: chave do payload, rótulo, cor de destaque e descrição.
-// Colunas são CATEGORIAS de tarefa (não estágios de progresso).
-const COLUNAS: Array<{
-  key: KanbanColuna
-  titulo: string
-  descricao: string
-  cor: string
-  corBg: string
-}> = [
-  {
-    key: 'sem_relatorio',
-    titulo: 'Sem relatório',
-    descricao: 'Internados que ainda não têm relatório de auditoria',
-    cor: 'var(--warning)',
-    corBg: 'var(--warning-bg)',
-  },
-  {
-    key: 'cobrancas',
-    titulo: 'Cobrar censo',
-    descricao: 'Hospitais que não enviaram o censo do dia anterior',
-    cor: 'var(--primary)',
-    corBg: 'var(--primary-soft)',
-  },
-  {
-    key: 'analise_tecnica',
-    titulo: 'Análise técnica',
-    descricao: 'Relatórios do auditor externo aguardando parecer do técnico interno',
-    cor: 'var(--info)',
-    corBg: 'var(--info-bg)',
-  },
-]
-
-// Colunas por PAPEL: o técnico vê só a análise técnica; o administrativo, as
-// operacionais; o admin vê todas (as operacionais + a análise técnica, supervisão).
-const COLUNAS_TECNICO = COLUNAS.filter((c) => c.key === 'analise_tecnica')
-const COLUNAS_OPERACIONAL = COLUNAS.filter((c) => c.key !== 'analise_tecnica')
+// Colunas por PAPEL, seguindo quem faz o trabalho: o administrativo persegue o
+// censo que não chegou; o técnico cuida dos pacientes (a fila, o que agendou e a
+// análise); o admin supervisiona os dois fluxos num só quadro. O backend monta o
+// payload com as mesmas regras — aqui é só a ordem de exibição.
+const COLUNAS_TECNICO = COLUNAS.filter((c) => c.key !== 'cobrancas')
+const COLUNAS_OPERACIONAL = COLUNAS.filter((c) => c.key === 'cobrancas')
 const COLUNAS_ADMIN = COLUNAS
 
-
-// Normaliza para busca: minúsculas e sem acentos, para "joao" casar com "João".
-function normalizarBusca(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
-}
 
 export default function Kanban() {
   // O quadro já vem recortado ao escopo de hospitais/operadoras do analista pelo
@@ -69,29 +38,34 @@ export default function Kanban() {
   const somenteLeitura = ehSomenteLeitura(role)
   const prefetch = usePrefetchInternacao()
   const [drawerId, setDrawerId] = useState<number | null>(null)
-  // Análise aberta na modal de parecer (card de "Análise técnica", board do técnico).
-  const [analiseAberta, setAnaliseAberta] = useState<KanbanTarefa | null>(null)
   const [toast, setToast] = useState<string | null>(null)
-  // Busca de card: filtra por nome do paciente (titulo), atendimento e hospital,
-  // em todas as colunas de uma vez. Sem acento e minúsculo para casar "joao"↔"João".
-  const [busca, setBusca] = useState('')
+  // Recorte da tela: busca + chips de prioridade + hospital + ordenação. Tudo é
+  // aplicado no cliente sobre o payload que já veio (o quadro inteiro está em
+  // memória), então trocar de filtro não custa uma ida ao servidor.
+  const [recorte, setRecorte] = useState<Recorte>({
+    busca: '', chips: [], hospital: '', ordem: 'prioridade',
+  })
 
   const tarefasRaw = data?.tarefas
-  // Aplica a busca a cada coluna, preservando a estrutura por coluna do payload.
+  // Aplica o recorte a cada coluna, preservando a estrutura por coluna do payload.
   const tarefas = useMemo(() => {
     if (!tarefasRaw) return tarefasRaw
-    const q = normalizarBusca(busca)
-    if (!q) return tarefasRaw
     const filtrado = {} as NonNullable<typeof tarefasRaw>
     for (const key of Object.keys(tarefasRaw) as Array<keyof typeof tarefasRaw>) {
-      filtrado[key] = (tarefasRaw[key] ?? []).filter((t) =>
-        normalizarBusca(
-          `${t.titulo ?? ''} ${t.atendimento ?? ''} ${t.hospital_nome ?? ''}`,
-        ).includes(q),
-      )
+      filtrado[key] = recortarColuna(tarefasRaw[key] ?? [], recorte)
     }
     return filtrado
-  }, [tarefasRaw, busca])
+  }, [tarefasRaw, recorte])
+
+  // Contagem dos chips sobre o quadro INTEIRO (sem os demais filtros): o número
+  // ao lado do chip precisa dizer quantos casos existem, não quantos sobraram do
+  // recorte atual — senão marcar um chip zeraria os outros e esconderia o resto.
+  const contagens = useMemo(() => {
+    const todos = tarefasRaw
+      ? (Object.values(tarefasRaw).flat().filter(Boolean) as KanbanTarefa[])
+      : []
+    return contarChips(todos)
+  }, [tarefasRaw])
   const ehTecnico = data?.papel === 'tecnico'
   const ehAdmin = data?.papel === 'admin'
   // Admin vê o quadro completo; técnico só a análise; demais, as operacionais.
@@ -100,13 +74,16 @@ export default function Kanban() {
   const total = tarefas
     ? colunas.reduce((s, c) => s + (tarefas[c.key]?.length ?? 0), 0)
     : 0
+  // Total sem recorte: o contador "X de Y" da barra precisa do universo, para o
+  // usuário perceber o quanto o filtro está escondendo.
+  const totalGeral = tarefasRaw
+    ? colunas.reduce((s, c) => s + (tarefasRaw[c.key]?.length ?? 0), 0)
+    : 0
 
   usePageHeader({
-    title: 'Tarefas / Kanban',
+    title: 'Tarefas',
     subtitle: !total ? undefined
-      : ehTecnico
-        ? `${total} relatório${total > 1 ? 's' : ''} para analisar`
-        : `${total} tarefa${total > 1 ? 's' : ''} pendente${total > 1 ? 's' : ''}`,
+      : `${total} tarefa${total > 1 ? 's' : ''} pendente${total > 1 ? 's' : ''}`,
   })
 
   // Handlers estáveis (useCallback): identidade constante entre renders para que o
@@ -145,44 +122,38 @@ export default function Kanban() {
         </div>
       )}
 
-      {/* Busca de card: filtra todas as colunas por paciente/atendimento/hospital. */}
+      {/* Barra de priorização: busca, chips de urgência, hospital e ordenação. */}
       {tarefasRaw && (
-        <div className="kb-busca-row">
-          <div className="kb-busca-wrap">
-            <svg className="kb-busca-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-            <input
-              type="text"
-              className="bm-input"
-              style={{ paddingLeft: 32, width: 300 }}
-              placeholder="Buscar card por paciente, atendimento, hospital…"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-            />
-            {busca && (
-              <button className="kb-busca-clear" onClick={() => setBusca('')} aria-label="Limpar busca" title="Limpar">✕</button>
-            )}
-          </div>
-          {busca && (
-            <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
-              {total} resultado{total !== 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
+        <KanbanFiltros
+          recorte={recorte}
+          onChange={setRecorte}
+          contagens={contagens}
+          hospitais={data?.filtros?.hospitais ?? []}
+          totalVisivel={total}
+          totalGeral={totalGeral}
+        />
       )}
 
-      {tarefas && busca && total === 0 && (
-        <div className="empty-state">Nenhum card encontrado para “{busca}”.</div>
+      {tarefas && total === 0 && totalGeral > 0 && (
+        <div className="empty-state">
+          Nenhum card corresponde aos filtros atuais.{' '}
+          <button
+            type="button"
+            className="link-cell"
+            onClick={() => setRecorte({ ...recorte, busca: '', chips: [], hospital: '' })}
+          >
+            Limpar filtros
+          </button>
+        </div>
       )}
 
       {tarefas && (
         <div
           className={`kb-board${atualizando ? ' atualizando' : ''}`}
-          style={{
-            gridTemplateColumns: `repeat(${colunas.length}, 1fr)`,
-            // Board do técnico tem 1 coluna só; limita a largura para uma coluna de
-            // leitura confortável em vez de esticar por toda a tela.
-            ...(ehTecnico ? { maxWidth: 560 } : null),
-          }}
+          // minmax(260px, 1fr): as colunas dividem a largura por igual e param
+          // de encolher em 260px. Sem o mínimo elas ficariam ilegíveis; sem o
+          // 1fr, sobraria espaço vazio à direita em telas largas.
+          style={{ gridTemplateColumns: `repeat(${colunas.length}, minmax(260px, 1fr))` }}
         >
           {colunas.map((col) => {
             const itens = tarefas[col.key] ?? []
@@ -195,13 +166,6 @@ export default function Kanban() {
                   </div>
                   <div className="kb-col-desc">{col.descricao}</div>
                 </header>
-                {/* Guia de uso no topo da coluna de análise técnica: explica o passo a passo. */}
-                {col.key === 'analise_tecnica' && itens.length > 0 && (
-                  <div className="kb-col-guia">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg>
-                    <span>Clique num relatório para lê-lo, escrever seu parecer e <strong>aprovar</strong> ou <strong>rejeitar</strong>.</span>
-                  </div>
-                )}
                 <div className="kb-col-body">
                   {itens.map((t) => (
                     <KanbanCard
@@ -209,7 +173,6 @@ export default function Kanban() {
                       tarefa={t}
                       corBg={col.corBg}
                       onAbrir={abrirPaciente}
-                      onAbrirAnalise={setAnaliseAberta}
                       onPrefetch={prefetch}
                       onCobrar={onCobrar}
                       cobrando={cobrar.isPending}
@@ -218,9 +181,11 @@ export default function Kanban() {
                   ))}
                   {itens.length === 0 && (
                     <div className="kb-empty">
-                      {col.key === 'analise_tecnica'
-                        ? 'Tudo em dia. Nenhum relatório do auditor aguardando seu parecer.'
-                        : 'Nenhuma tarefa aqui'}
+                      {col.key === 'aguardando_visita'
+                        ? 'Nenhuma visita marcada. Abra um paciente para agendar.'
+                        : col.key === 'visitas_atrasadas'
+                          ? 'Nenhuma visita atrasada. Tudo dentro do prazo.'
+                          : 'Nenhuma tarefa aqui'}
                     </div>
                   )}
                 </div>
@@ -235,14 +200,6 @@ export default function Kanban() {
           internacaoId={drawerId}
           onClose={() => setDrawerId(null)}
           onSaved={(msg) => { setDrawerId(null); setToast(msg) }}
-        />
-      )}
-      {analiseAberta && (
-        <AnaliseModal
-          tarefa={analiseAberta}
-          onClose={() => setAnaliseAberta(null)}
-          onToast={setToast}
-          onDone={() => setAnaliseAberta(null)}
         />
       )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}

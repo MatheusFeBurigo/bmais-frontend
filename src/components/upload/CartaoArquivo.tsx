@@ -14,11 +14,11 @@
 // achar o único que pede decisão. Recolhido ele ainda mostra o que importa para
 // bater o olho — nome, hospital, contagem e data —, e abre com um clique.
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { classificarAvisos } from '../../lib/avisosCenso'
 import type { Operadora, PacienteGravado, UploadCensoResult } from '../../types/api'
-import { Alerta } from './Alerta'
+import { Alerta } from '../Alerta'
 import { ContadorAvisos } from './ContadorAvisos'
 import { EditarPacienteModal } from './EditarPacienteModal'
 import { ConfirmarModal } from '../ConfirmarModal'
@@ -26,11 +26,14 @@ import { AvisoDesfazer } from './AvisoDesfazer'
 import { nomeProprio } from '../../lib/texto'
 import { removerPacienteDoCenso, restaurarInternacao } from '../../services/internacao.service'
 import {
-  BuscaPacientes, contarProblemas, filtrarPacientes, ListaPacientes,
+  BuscaPacientes, contarProblemas, filtrarPacientes, ListaPacientes, temProblema,
 } from './ListaPacientes'
+import {
+  ABA_TODOS, AbasOperadora, abasOperadoraStyles, agruparPorOperadora,
+} from './AbasOperadora'
 import { DataDoCenso, IcoChevron, IcoImagem, plural } from './comuns'
 
-export const cartaoArquivoStyles = `
+export const cartaoArquivoStyles = abasOperadoraStyles + `
 /* Um arquivo do envio. */
 .up-arquivo{padding:11px 14px;border-top:1px solid var(--border-soft);border-left:3px solid transparent;display:grid;gap:7px}
 /* Painel dos detalhes: separa os alertas da lista de pacientes. Sem isto, o
@@ -74,12 +77,6 @@ export const cartaoArquivoStyles = `
 .up-link-filtro{padding:0;border:0;background:none;font:inherit;color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .up-link-filtro:hover{opacity:.75}
 .up-link-filtro:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(21,92,168,.18);border-radius:3px}
-/* Filtro "ver N marcados", ao lado da lupa. Fica âmbar quando ativo: a lista
-   embaixo está recortada, e nada mais na tela diria isso. */
-.up-so-problema{flex-shrink:0;padding:3px 9px;border:1px solid var(--border);border-radius:99px;background:var(--surface);font-family:inherit;font-size:var(--t-xs);font-weight:600;color:var(--ink-3);cursor:pointer;transition:background .12s,color .12s,border-color .12s}
-.up-so-problema:hover{background:var(--surface-3);color:var(--ink-2)}
-.up-so-problema:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(21,92,168,.18)}
-.up-so-problema.ativo{border-color:var(--warning);background:rgba(217,105,12,.10);color:var(--warning)}
 /* Desfazer POR ARQUIVO: discreto (não é a ação esperada), mas presente no fim da
    conferência daquele arquivo. Borda tracejada e texto neutro — só o hover
    assume o vermelho, porque a leitura padrão da linha é informativa. */
@@ -149,6 +146,10 @@ export const cartaoArquivoStyles = `
 .up-grupo-mudo.internado{border-color:var(--info);color:var(--info)}
 .up-grupo-mudo.alta{border-color:var(--success);color:var(--success-2)}
 
+/* Abas por operadora: ver AbasOperadora.tsx (os estilos moram lá, junto do
+   componente, e entram por cartaoArquivoStyles para a página continuar
+   injetando o CSS desta tela de uma vez só). */
+
 /* Notas do leitor recolhidas: existem, não gritam. Um <summary> em vez de um
    botão porque o conteúdo é texto estático — o navegador já dá o comportamento
    e o estado de expansão para o leitor de tela. */
@@ -205,18 +206,9 @@ export function ordenarPorUrgencia(resultados: UploadCensoResult[]): UploadCenso
 }
 
 export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, operadoras,
-                               onDesfazer, desfazendo, onConveniosResolvidos,
-                               onDivergentesMudaram }: {
+                               onDesfazer, desfazendo, onConveniosResolvidos }: {
   res: UploadCensoResult
   onIgnorar: (arquivo: string) => void
-  /** Quantos pacientes deste arquivo AINDA estão em outra operadora, já
-   *  descontando quem foi corrigido ou removido aqui dentro.
-   *
-   *  Mesmo motivo de `onConveniosResolvidos`: o placar do lote é somado FORA do
-   *  cartão, a partir do resultado do processamento, e não enxerga as correções
-   *  feitas aqui. Sem isto o badge do topo seguia dizendo "1 arquivo com outra
-   *  operadora" depois de o último paciente divergente ter sido acertado. */
-  onDivergentesMudaram?: (arquivo: string, aindaAbertos: number) => void
   /** Quantos convênios não reconhecidos deste arquivo o usuário já corrigiu.
    *  O placar do lote é somado FORA do cartão, a partir do resultado do
    *  processamento, e não enxerga as correções feitas aqui dentro — sem isto o
@@ -242,8 +234,22 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // marcados na lista abaixo"; este é o botão que cumpre a frase, em vez de
   // deixar o usuário rolar 60 linhas atrás das faixas coloridas.
   const [somenteProblema, setSomenteProblema] = useState(false)
+  // Operadora cuja aba está aberta na conferência (censo misto). `ABA_TODOS` é
+  // o estado inicial: quem abre o cartão quer ver o censo como ele veio, e só
+  // então recorta por operadora.
+  const [abaOperadora, setAbaOperadora] = useState<string>(ABA_TODOS)
   // Paciente aberto para edição (null = modal fechada).
   const [editando, setEditando] = useState<PacienteGravado | null>(null)
+  // Fila de correção em série: os atendimentos marcados da aba, CONGELADOS no
+  // instante em que a modal abriu.
+  //
+  // Congelada de propósito. Recalculada a cada renderização, ela encolheria a
+  // cada paciente corrigido (o alerta some quando se salva), e o rótulo contaria
+  // ao contrário: "3 de 11", salva, "3 de 10". Pior, o "próximo" pularia nomes,
+  // porque os índices andariam sob os pés do usuário. Fixa, a travessia tem
+  // começo e fim estáveis: quem entrou marcado é percorrido até o fim, mesmo
+  // depois de corrigido.
+  const [fila, setFila] = useState<string[]>([])
   // Paciente aguardando confirmação de exclusão, e o que já foi apagado (some
   // da lista sem refazer o envio).
   const [removendo, setRemovendo] = useState<PacienteGravado | null>(null)
@@ -259,18 +265,11 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // há desfazer a oferecer (a ficha continua lá), mas sumir da lista sem dizer
   // nada deixaria a dúvida de sempre — "apaguei o paciente?".
   const [saiuDaLista, setSaiuDaLista] = useState<string | null>(null)
-  // Último número de divergentes já comunicado ao placar do lote. Evita repetir
-  // o aviso a cada renderização: o valor é derivado e se recalcula sempre, mas
-  // só INTERESSA ao pai quando muda.
-  const divergentesAvisados = useRef<number | null>(null)
-  // O valor a comunicar, preenchido mais abaixo (é derivado e só existe depois
-  // dos returns antecipados). O efeito que o entrega fica AQUI, antes deles:
-  // declarado lá embaixo seria um hook condicional.
-  const divergentesAtuais = useRef<number | null>(null)
   // Correções feitas nesta tela, por id da internação. O resultado do envio é
   // imutável (veio do backend), então a linha lê daqui quando há uma edição —
   // sem isto o usuário salvaria e continuaria vendo o valor antigo até recarregar.
   const [editados, setEditados] = useState<Record<number, PacienteGravado>>({})
+
 
   async function desfazerRemocao() {
     if (!apagado) return
@@ -342,20 +341,6 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   const urgencia = urgenciaDe(res)
   const [escolhaDoUsuario, setEscolhaDoUsuario] = useState<boolean | null>(null)
   const expandido = escolhaDoUsuario ?? false
-
-  // Avisa o placar do lote quando o número de pacientes em outra operadora muda
-  // (alguém corrigiu a operadora na modal, ou removeu o paciente da lista).
-  //
-  // Sem dependência de valor: roda a cada renderização e o próprio `ref` decide
-  // se há o que dizer. É de propósito — o número é derivado de três estados
-  // diferentes (edições, remoções, desfazer remoção), e listá-los aqui seria
-  // repetir a derivação e errar quando ela mudasse.
-  useEffect(() => {
-    const atual = divergentesAtuais.current
-    if (atual === null || atual === divergentesAvisados.current) return
-    divergentesAvisados.current = atual
-    onDivergentesMudaram?.(res.arquivo, atual)
-  })
 
   // Arquivo DIGITALIZADO (foto/scan): não há texto para ler, e nenhuma correção
   // no sistema muda isso. O que o usuário precisa saber tem duas partes, e por
@@ -498,10 +483,27 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
     return mapa
   })()
 
+  // Edições também indexadas por ATENDIMENTO, não só por id.
+  //
+  // `editados` é chaveado pelo id da internação, e a linha só recebe a versão
+  // corrigida quando tem id. Um resultado processado por servidor anterior ao
+  // campo `id` (ou uma linha cujo id não voltou) nunca casava: a edição era
+  // salva no banco, mas a lista continuava exibindo o paciente antigo — e o
+  // mapa derivado, logo abaixo, recolocava o alerta que o usuário acabou de
+  // resolver. O atendimento é a chave que TODO paciente tem (é por ela que o
+  // backend casa o censo com a ficha), então serve de segundo caminho.
+  const editadosPorAtendimento = new Map(
+    Object.values(editados)
+      .map((p) => [String(p.atendimento ?? '').trim(), p] as const)
+      .filter(([chave]) => chave),
+  )
+
   const aplicarEdicoes = (lista: PacienteGravado[]) =>
     lista
       .filter((p) => p.id == null || !removidos.includes(p.id))
-      .map((p) => (p.id != null && editados[p.id]) || p)
+      .map((p) => (p.id != null && editados[p.id])
+        || editadosPorAtendimento.get(String(p.atendimento ?? '').trim())
+        || p)
       // O campo do backend vence; o derivado entra só quando ele não veio.
       //
       // `resolvido` sai da frente das duas regras: quem foi corrigido na modal
@@ -518,6 +520,140 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   const leitoVisto = aplicarEdicoes(emLeito)
   const altaVista = aplicarEdicoes(comAlta)
   const nProblemas = contarProblemas(leitoVisto, altaVista)
+
+  // CENSO MISTO: uma aba por operadora, no lugar de uma faixa âmbar por
+  // operadora seguida de uma lista com todo mundo embaralhado.
+  //
+  // O agrupamento sai das listas JÁ editadas (`leitoVisto`/`altaVista`), e não
+  // do resultado cru: corrigir a operadora de um paciente na modal tem de
+  // movê-lo de aba na hora, e remover alguém tem de baixar a contagem da aba.
+  //
+  // Só existe com 2+ operadoras. Com uma só — o caso comum — não há agrupamento
+  // a fazer, e uma aba única seria um controle inerte ocupando a linha.
+  //
+  // Cálculo direto, sem `useMemo`: este ponto fica DEPOIS dos returns
+  // antecipados (digitalizado, erro, falta hospital), e um hook aqui seria
+  // chamado condicionalmente — a regra que o React exige para manter a ordem
+  // dos hooks entre renderizações.
+  const gruposOperadora = agruparPorOperadora(leitoVisto, altaVista, res, operadoras)
+  const censoMisto = gruposOperadora.length > 1
+  // Aba que não existe mais (o último paciente dela foi corrigido ou removido)
+  // volta para "Todos" — senão a lista ficaria vazia sem que nada explicasse
+  // por quê. Derivado, pelo mesmo motivo de não haver hook aqui: o estado
+  // guarda a escolha, e a leitura corrige o que não é mais possível.
+  const abaAtiva = censoMisto && gruposOperadora.some((g) => g.key === abaOperadora)
+    ? abaOperadora
+    : ABA_TODOS
+  const grupoAtivo = abaAtiva === ABA_TODOS
+    ? null
+    : gruposOperadora.find((g) => g.key === abaAtiva) ?? null
+  // O que a lista mostra: o censo inteiro, ou só a operadora da aba.
+  //
+  // O alerta `outra_operadora` da linha ("Convênio X: entrou em Notre Dame, não
+  // em Care Plus") não é exibido em aba nenhuma — nem dentro de uma operadora,
+  // nem em "Todos".
+  //
+  // Ele marcava como problema o funcionamento NORMAL do censo misto: cada
+  // paciente entra na operadora do seu convênio, e isso é o certo. Com as abas,
+  // a informação está em tela de três formas melhores — a aba diz de quem é o
+  // grupo, a contagem dela diz quantos são, e a coluna Convênio diz o convênio
+  // de cada linha. Repetir num balão por paciente virava uma parede de marcações
+  // âmbar sobre o que não pede ação nenhuma: o alarme falso que treina o usuário
+  // a ignorar a marcação justamente quando ela importa.
+  //
+  // Os outros tipos (convênio fora do cadastro, sem convênio) continuam em
+  // qualquer aba: falam de algo que a aba não diz e que pede decisão.
+  const semRuido = (lista: PacienteGravado[]) => lista.map(
+    (p) => (p.problema?.tipo === 'outra_operadora' ? { ...p, problema: null } : p),
+  )
+  const leitoNaAba = semRuido(grupoAtivo ? grupoAtivo.emLeito : leitoVisto)
+  const altaNaAba = semRuido(grupoAtivo ? grupoAtivo.comAlta : altaVista)
+  // Marcados DENTRO da aba: o botão "Ver N marcados" recorta a lista que está em
+  // tela, então prometer os 11 do arquivo enquanto a aba mostra 13 pacientes
+  // (dos quais 1 marcado) deixaria o filtro ligado com uma linha só e o rótulo
+  // dizendo onze.
+  const problemasNaAba = contarProblemas(leitoNaAba, altaNaAba)
+  // `operadora_escolhida` vem do backend como KEY ("careplus"), não como nome.
+  // Em negrito no meio de uma frase de tela ela aparecia em caixa baixa e sem
+  // acento, parecendo um código vazado para o usuário. O cadastro dá a grafia
+  // oficial; sem ele, a key ainda identifica a operadora e é melhor que nada.
+  const nomeEscolhida = (() => {
+    const chave = (res.operadora_escolhida ?? '').trim()
+    if (!chave) return null
+    return operadoras?.find((o) => o.key === chave)?.nome
+      ?? gruposOperadora.find((g) => g.key === chave)?.nome
+      ?? chave
+  })()
+  // "ver na lista", dos alertas, leva à ABA da operadora de que o alerta fala, e
+  // então marca as linhas dele.
+  //
+  // Mandar para "Todos" (o que esta função fazia antes) devolvia os 11 pacientes
+  // de um convênio não identificado espalhados no meio dos 112 do censo, entre
+  // quatro operadoras: o link prometia "quem são" e entregava uma lista em que
+  // os nomes citados não estavam agrupados nem identificados. Como cada alerta
+  // fala de UM destino ("11 pacientes entraram em Care Plus"), abrir a aba desse
+  // destino põe exatamente aquele grupo em tela.
+  //
+  // Sem destino (ou destino que não virou aba, em resultado antigo sem
+  // `operadora_key`), cai em "Todos" — é o comportamento anterior, e continua
+  // correto: sem grupos, não há aba para onde ir.
+  // Todos os pacientes da aba, na ORDEM EM QUE A LISTA OS MOSTRA (internações e
+  // depois altas). É o que faz o "próximo" seguir a ordem da tela: pular de um
+  // nome para outro numa sequência que o usuário não vê seria desorientador.
+  const naOrdemDaLista = [...leitoNaAba, ...altaNaAba]
+  const chaveDe = (p: PacienteGravado) => String(p.atendimento ?? '').trim()
+
+  /** Abre a edição, congelando a fila de marcados da aba a partir deste ponto. */
+  const abrirEdicao = (p: PacienteGravado) => {
+    const marcados = naOrdemDaLista.filter(temProblema).map(chaveDe).filter(Boolean)
+    // Quem abre um paciente SEM alerta não está corrigindo em série: a modal
+    // vem sem fila, e o botão "próximo" não aparece. Abrir uma travessia a
+    // partir de uma linha limpa levaria o usuário a pacientes que ele não pediu
+    // para ver.
+    setFila(temProblema(p) ? marcados : [])
+    setEditando(p)
+  }
+
+  /** O próximo marcado da fila depois do paciente aberto, ou null no fim. */
+  const proximoDaFila = (() => {
+    if (!editando || fila.length === 0) return null
+    const i = fila.indexOf(chaveDe(editando))
+    if (i < 0) return null
+    for (const chave of fila.slice(i + 1)) {
+      // A lista pode ter mudado desde que a fila foi congelada (o paciente foi
+      // removido da lista, ou a aba trocou): quem não está mais em tela é
+      // pulado, em vez de abrir uma modal vazia.
+      const achado = naOrdemDaLista.find((p) => chaveDe(p) === chave)
+      if (achado) return achado
+    }
+    return null
+  })()
+  const posicaoNaFila = editando && fila.length
+    ? fila.indexOf(chaveDe(editando)) + 1
+    : 0
+
+  const verNaLista = (operadora?: string | null) => {
+    const chave = (operadora ?? '').trim()
+    const grupo = chave ? gruposOperadora.find((g) => g.key === chave) : undefined
+    setAbaOperadora(grupo ? chave : ABA_TODOS)
+    // O recorte por "marcados" só entra quando a aba de destino NÃO responde
+    // sozinha à pergunta do link.
+    //
+    // Num alerta de divergência ("92 pacientes são da Bradesco"), a aba da
+    // Bradesco já é a resposta inteira, e a marcação de operadora não é exibida
+    // em lugar nenhum: ligar o filtro ali esvaziaria a lista.
+    //
+    // Nos outros ("11 vieram com convênio fora do cadastro"), a aba de destino
+    // tem mais gente além dos citados, e o recorte é o que separa uns dos
+    // outros. A contagem passa pelo MESMO `semRuido` da lista, para contar o que
+    // a tela de fato vai marcar, e olha a aba de DESTINO — `grupoAtivo` ainda é
+    // a aba antiga neste ponto, porque o estado só muda no próximo quadro.
+    const destino = grupo ?? { emLeito: leitoVisto, comAlta: altaVista }
+    const marcados = contarProblemas(
+      semRuido(destino.emLeito), semRuido(destino.comAlta),
+    )
+    setSomenteProblema(marcados > 0)
+  }
 
   // Os avisos do painel contam só quem AINDA tem o problema. `naoReconhecidos` e
   // `divergentes` vêm do processamento e não mudam quando o usuário corrige um
@@ -587,19 +723,12 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
     })
     .filter((d) => d.total > 0)
 
-  // Quantos pacientes deste arquivo ainda estão em outra operadora. Some do
-  // placar do lote quando chega a zero — é o que faz o badge do topo acompanhar
-  // as correções feitas aqui dentro, em vez de repetir para sempre o retrato do
-  // processamento.
-  const divergentesEmAberto = divergentesAbertos.reduce((n, d) => n + d.total, 0)
-  divergentesAtuais.current = divergentesEmAberto
-
   // Filtro ligado sem nada para mostrar = o usuário resolveu tudo enquanto via a
   // lista recortada. Vale como DERIVADO, não como efeito: o componente tem
   // returns antecipados acima (erro, falta hospital), então um hook aqui não
   // rodaria em toda renderização. Assim o estado guarda a intenção e a lista
   // volta a ser inteira sozinha quando não há mais o que marcar.
-  const filtrando = somenteProblema && nProblemas > 0
+  const filtrando = somenteProblema && problemasNaAba > 0
 
   // Quantos avisos este arquivo tem, por gravidade — é o que a linha recolhida
   // mostra no lugar das frases. Conta tudo o que o painel vai exibir: os avisos
@@ -611,8 +740,11 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // `mantidos_com_alta` NÃO entra: é nível `nota` (o censo repetindo quem já
   // saiu), e notas nunca viram número — seria o alarme falso que a tela evita.
   const nCriticos = acionaveis.filter((a) => a.nivel === 'critico').length
+  // As divergências só contam quando o painel de fato as EXIBE como alerta. Com
+  // as abas por operadora no lugar delas, contá-las faria a linha fechada
+  // prometer "3 avisos" e o usuário abrir para encontrar nenhum.
   const nAtencoes = acionaveis.filter((a) => a.nivel === 'atencao').length
-    + divergentesAbertos.length
+    + (censoMisto ? 0 : divergentesAbertos.length)
     + (naoReconhecidosAbertos.length > 0 ? 1 : 0)
     + (semConvenioAbertos.length > 0 ? 1 : 0)
     + (pendentes > 0 ? 1 : 0)
@@ -662,28 +794,23 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   const idPainel = `up-painel-${res.arquivo.replace(/[^\w-]/g, '_')}`
 
   // A busca só faz sentido com a lista aberta e com nomes para procurar.
-  // Ao lado dela, o filtro de marcados — presente só quando há o que filtrar.
+  //
+  // O botão "Ver N marcados" ficava aqui e saiu: o cabeçalho já carrega o nome
+  // do arquivo, a lupa, a data e o "Ocultar", e um quinto controle disputando a
+  // mesma linha era ruído. Quem quer ver os marcados chega pelo link do próprio
+  // alerta, que leva direto ao grupo certo — um caminho melhor que o botão,
+  // porque parte da frase que explica o problema.
   const busca = expandido && gravados.length > 0 ? (
     <>
-      {nProblemas > 0 && (
-        <button
-          type="button"
-          className={`up-so-problema${filtrando ? ' ativo' : ''}`}
-          aria-pressed={filtrando}
-          onClick={() => setSomenteProblema((v) => !v)}
-          title={filtrando
-            ? 'Mostrar todos os pacientes do arquivo'
-            : 'Mostrar só os pacientes que precisam de decisão'}
-        >
-          {filtrando ? 'Mostrando marcados' : `Ver ${nProblemas} marcados`}
-        </button>
-      )}
+      {/* Contra a lista DA ABA, não a do arquivo: com a aba da CarePlus aberta,
+          "3 de 112" mandava procurar num universo que não está em tela — o
+          denominador tem de ser o que o usuário vê. */}
       <BuscaPacientes
         termo={termoBusca}
         onTermo={setTermoBusca}
-        achados={filtrarPacientes(emLeito, termoBusca).length
-          + filtrarPacientes(comAlta, termoBusca).length}
-        total={gravados.length}
+        achados={filtrarPacientes(leitoNaAba, termoBusca).length
+          + filtrarPacientes(altaNaAba, termoBusca).length}
+        total={leitoNaAba.length + altaNaAba.length}
       />
     </>
   ) : null
@@ -762,13 +889,25 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
           {/* Censo misto: parte dos pacientes é de outra operadora. Nível `atencao`,
               não `critico` — nada se perdeu e nada está errado; cada um foi para a
               operadora certa. O que o usuário precisa é CONFERIR que era isso mesmo,
-              porque a outra leitura possível é ter subido o censo no lugar errado. */}
-          {divergentesAbertos.map((d) => (
+              porque a outra leitura possível é ter subido o censo no lugar errado.
+
+              Só aparece quando NÃO há abas por operadora. Havendo, elas dizem o
+              mesmo com muito mais precisão — a faixa dava o número e escondia as
+              pessoas ("o convênio de 92 pacientes é da Bradesco"), enquanto a aba
+              mostra os 92. Manter as duas coisas seria repetir em texto o que o
+              controle logo abaixo já faz, e três faixas âmbar empurrariam as abas
+              para fora da primeira tela.
+
+              O caminho de trás continua servindo: resultados sem `operadora_key`
+              por paciente (envio processado por um servidor anterior a este campo)
+              não formam grupo nenhum, `censoMisto` fica falso e os avisos voltam a
+              ser a única forma de a divergência ser dita. */}
+          {!censoMisto && divergentesAbertos.map((d) => (
             <Alerta key={d.operadora_key} nivel="atencao">
               O convênio {plural(d.total, 'de', 'de')} <b>{d.total}{' '}
               {plural(d.total, 'paciente')}</b> deste censo é da{' '}
               <b>{d.operadora_nome || d.operadora_key}</b>, e não{' '}
-              {res.operadora_escolhida ? <>da <b>{res.operadora_escolhida}</b></> : 'da operadora escolhida'}
+              {nomeEscolhida ? <>da <b>{nomeEscolhida}</b></> : 'da operadora escolhida'}
               {' '}no envio. {plural(d.total, 'Ele entrou', 'Eles entraram')} na operadora
               do próprio convênio, que é o certo. Confira{' '}
               {plural(d.total, 'se é esse paciente mesmo', 'se são esses pacientes mesmo')}
@@ -781,7 +920,7 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
                 <>
                   {' '}(
                   <button type="button" className="up-link-filtro"
-                          onClick={() => setSomenteProblema(true)}>
+                          onClick={() => verNaLista(d.operadora_key)}>
                     ver na lista
                   </button>
                   )
@@ -799,32 +938,42 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
           {/* Convênio impresso que o cadastro não reconhece: o paciente entrou sob a
               operadora escolhida. É falha de CADASTRO (falta vincular esse convênio),
               e some sozinha quando alguém o cadastra — por isso atenção, não erro. */}
-          {naoReconhecidosAbertos.length > 0 && (
-            <Alerta nivel="atencao">
-              <b>{naoReconhecidosAbertos.length}{' '}
-                {plural(naoReconhecidosAbertos.length, 'paciente')}</b>{' '}
-              {plural(naoReconhecidosAbertos.length, 'veio', 'vieram')} com um convênio que
-              não está no cadastro, então{' '}
-              {plural(naoReconhecidosAbertos.length, 'entrou', 'entraram')} na operadora
-              escolhida no envio — que pode não ser a{' '}
-              {plural(naoReconhecidosAbertos.length, 'dele', 'deles')}. Corrija o convênio
-              na linha, ou cadastre esse convênio para os próximos censos.
-              {nProblemas > 0 && (
-                <>
-                  {' '}(
-                  <button type="button" className="up-link-filtro"
-                          onClick={() => setSomenteProblema(true)}>
-                    ver {plural(naoReconhecidosAbertos.length, 'quem é', 'quem são')}
-                  </button>
-                  )
-                </>
-              )}
-              <span className="up-exemplos">
-                {[...new Set(naoReconhecidosAbertos.map((p) => p.convenio).filter(Boolean))]
-                  .slice(0, 4).join(', ')}.
-              </span>
-            </Alerta>
-          )}
+          {naoReconhecidosAbertos.length > 0 && (() => {
+            // Os convênios que não casaram, sem repetir a mesma grafia.
+            const convenios = [...new Set(
+              naoReconhecidosAbertos.map((p) => p.convenio).filter(Boolean),
+            )] as string[]
+            return (
+              // O FATO, e só ele: qual convênio o cadastro não reconheceu e
+              // quantos pacientes vieram com ele.
+              //
+              // A versão anterior completava com "entraram em Care Plus", e
+              // isso atrapalhava duas vezes: dizia como destino uma operadora
+              // que é só o padrão do envio (não a do convênio, que é justamente
+              // o que não se sabe), e a aba de operadora logo abaixo já mostra
+              // onde cada paciente ficou. Antes disso a frase ainda mandava
+              // "corrija na linha, ou cadastre esse convênio" — duas instruções
+              // para um caso em que nada se perdeu. As saídas (o lápis da
+              // linha, o cadastro de convênios) continuam onde sempre
+              // estiveram, para quem quiser agir.
+              <Alerta nivel="atencao">
+                Convênio não identificado:{' '}
+                <b>{convenios.join(', ')}</b>, em{' '}
+                <b>{naoReconhecidosAbertos.length}{' '}
+                  {plural(naoReconhecidosAbertos.length, 'paciente')}</b>.
+                {nProblemas > 0 && (
+                  <>
+                    {' '}(
+                    <button type="button" className="up-link-filtro"
+                            onClick={() => verNaLista(res.operadora_escolhida)}>
+                      ver {plural(naoReconhecidosAbertos.length, 'quem é', 'quem são')}
+                    </button>
+                    )
+                  </>
+                )}
+              </Alerta>
+            )
+          })()}
 
           {/* Sem convênio NENHUM no arquivo. Era o caso mudo: a linha do paciente
               já vinha marcada, e o painel não dizia nada sobre a marca — o
@@ -842,7 +991,7 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
                 <>
                   {' '}(
                   <button type="button" className="up-link-filtro"
-                          onClick={() => setSomenteProblema(true)}>
+                          onClick={() => verNaLista(res.operadora_escolhida)}>
                     ver na lista
                   </button>
                   )
@@ -905,17 +1054,31 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               {mantidos.length > 4 && ` e mais ${mantidos.length - 4}`}.
             </Alerta>
           )}
+          {/* Abas por operadora, imediatamente acima da lista que elas recortam.
+              Aqui, e não no cabeçalho do cartão: a aba é o cabeçalho da TABELA
+              (diz de quem são as linhas abaixo), e lá em cima ela se leria como
+              um filtro do arquivo inteiro, valendo também para os alertas. */}
+          {censoMisto && gravados.length > 0 && (
+            <AbasOperadora
+              grupos={gruposOperadora}
+              ativa={abaAtiva}
+              onAba={setAbaOperadora}
+              escolhida={res.operadora_escolhida}
+              total={leitoVisto.length + altaVista.length}
+            />
+          )}
           {gravados.length > 0 ? (
             // Abrir o arquivo já mostra QUEM veio, separado por situação. Antes
             // havia um segundo clique (os chips) para escolher um grupo por vez —
             // dois níveis de expansão para chegar a um nome, e metade da resposta
             // escondida em cada estado.
             <ListaPacientes
-              emLeito={leitoVisto}
-              comAlta={altaVista}
+              emLeito={leitoNaAba}
+              comAlta={altaNaAba}
               termo={termoBusca}
               somenteProblema={filtrando}
-              onEditar={somenteLeitura ? undefined : setEditando}
+              onVerTodos={() => setSomenteProblema(false)}
+              onEditar={somenteLeitura ? undefined : abrirEdicao}
               onRemover={(somenteLeitura || !podeExcluir) ? undefined : (p) => {
                 setErroRemover(null)
                 setRemovendo(p)
@@ -1022,7 +1185,12 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
         <EditarPacienteModal
           paciente={editando}
           operadoras={operadoras}
-          onFechar={() => setEditando(null)}
+          posicaoNaFila={posicaoNaFila || undefined}
+          totalNaFila={fila.length || undefined}
+          // Sem próximo (último da fila, ou aberto fora de uma fila) a modal não
+          // mostra o botão: ver `onProximo` lá.
+          onProximo={proximoDaFila ? () => setEditando(proximoDaFila) : undefined}
+          onFechar={() => { setEditando(null); setFila([]) }}
           onSalvo={(atualizado) => {
             if (atualizado.id != null) {
               setEditados((e) => ({ ...e, [atualizado.id as number]: atualizado }))

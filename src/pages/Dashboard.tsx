@@ -28,6 +28,9 @@ import type {
 const STATS_SOMAVEIS = [
   'total_internados', 'sem_relatorio', 'relatorio_vencido', 'proximo_vencer',
   'relatorio_em_dia', 'em_monitoramento', 'longa_10', 'longa_30',
+  // Altas: contagem do filtro "Altas" (quantos pacientes já saíram). Some aqui
+  // porque é uma contagem de pessoas, como as demais — não um limite por operadora.
+  'altas_recentes',
 ] as const
 
 // Panorama CONSOLIDADO (todas as operadoras do escopo) derivado do overview, sem
@@ -70,6 +73,11 @@ export default function Dashboard() {
   const operadora = params.get('operadora') || ''
   const todas = !operadora
   const filtro = params.get('filtro') || 'todos'
+  // Filtro "Altas": a lista deixa de ser os internados ativos e passa a ser quem
+  // JA recebeu alta (o backend troca a base de `ativos` para `altas`). E a unica
+  // forma de alcancar um paciente com alta por aqui: a busca desta tela filtra a
+  // lista que o backend mandou, e no modo padrao ela so tem internados.
+  const vendoAltas = filtro === 'altas'
   const hospital = params.get('hospital') || ''
 
   // Filtros client-side
@@ -265,6 +273,13 @@ export default function Dashboard() {
     setPagina(1)
   }, [busca, utiOn, d30On, permanencia, ordenar, operadora, filtro, hospital])
 
+  // Entrar em "Altas" com um recorte de permanência ativo deixaria a lista vazia
+  // (longa_10/30 não valem para quem já saiu). Os chips somem nesse modo, então
+  // o recorte precisa cair junto — senão ficaria ligado e invisível.
+  useEffect(() => {
+    if (vendoAltas) setPermanencia('')
+  }, [vendoAltas])
+
   const kpis: Array<[string, number, string, string, string]> = [
     ['sem_relatorio', Number(stats.sem_relatorio || 0), 'danger', 'Sem Relatório', 'nunca registrado'],
     ['vencido', Number(stats.relatorio_vencido || 0), 'warning', 'Atrasado', 'passou da janela'],
@@ -289,7 +304,11 @@ export default function Dashboard() {
 
   usePageHeader({
     title: 'Painel Operacional',
-    subtitle: (ovAtual || data) ? `${opNome} · ${stats.total_internados || 0} internados · Ref: ${stats.hoje_efetivo || overview?.hoje_efetivo || '—'}` : undefined,
+    subtitle: (ovAtual || data)
+      ? `${opNome} · ${vendoAltas
+          ? `${stats.altas_recentes || 0} com alta`
+          : `${stats.total_internados || 0} internados`} · Ref: ${stats.hoje_efetivo || overview?.hoje_efetivo || '—'}`
+      : undefined,
     actions,
   })
 
@@ -404,13 +423,33 @@ export default function Dashboard() {
           <div className="quick-filters" style={{ marginTop: 14 }}>
             <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', flexShrink: 0 }}>Filtros rápidos:</span>
             <span className={`qf-chip${utiOn ? ' active' : ''}`} onClick={() => setUtiOn((v) => !v)}>UTI / CTI</span>
-            <span className={`qf-chip${permanencia === '10' ? ' active' : ''}`} onClick={() => setPermanencia((v) => (v === '10' ? '' : '10'))}>
-              Longa 10d+
+            {/* Longa permanência só existe para quem está internado: as marcas
+                longa_10/longa_30 são zeradas quando há data de alta. Oferecê-las
+                na lista de altas seria um chip que sempre devolve zero. */}
+            {!vendoAltas && (
+              <>
+                <span className={`qf-chip${permanencia === '10' ? ' active' : ''}`} onClick={() => setPermanencia((v) => (v === '10' ? '' : '10'))}>
+                  Longa 10d+
+                </span>
+                <span className={`qf-chip${permanencia === '30' ? ' active' : ''}`} onClick={() => setPermanencia((v) => (v === '30' ? '' : '30'))}>
+                  Longa 30d+
+                </span>
+              </>
+            )}
+            <span className={`qf-chip${d30On ? ' active' : ''}`} onClick={() => setD30On((v) => !v)}>
+              {vendoAltas ? 'Ficou > 30 dias' : '> 30 dias'}
             </span>
-            <span className={`qf-chip${permanencia === '30' ? ' active' : ''}`} onClick={() => setPermanencia((v) => (v === '30' ? '' : '30'))}>
-              Longa 30d+
+            {/* Altas: troca a BASE da lista (altas no lugar de internados ativos),
+                por isso vai na URL como filtro do backend e não é um recorte
+                client-side como os chips acima. Sem ele, um paciente que recebeu
+                alta não é alcançável por esta tela nem pela busca. */}
+            <span
+              className={`qf-chip${vendoAltas ? ' active' : ''}`}
+              onClick={() => applyFilter('altas')}
+              title="Listar pacientes que já receberam alta (inclui a busca por nome, atendimento e senha)"
+            >
+              Altas
             </span>
-            <span className={`qf-chip${d30On ? ' active' : ''}`} onClick={() => setD30On((v) => !v)}>&gt; 30 dias</span>
             <select
               className="bm-input bm-select"
               style={{ width: 'auto', minWidth: 180 }}
@@ -418,15 +457,20 @@ export default function Dashboard() {
               onChange={(e) => setOrdenar(e.target.value as '' | 'sem_rel' | 'dias')}
               title="Ordenar a lista"
             >
-              <option value="">Ordenar: padrão</option>
+              <option value="">{vendoAltas ? 'Ordenar: alta mais recente' : 'Ordenar: padrão'}</option>
               <option value="sem_rel">Mais dias sem relatório</option>
-              <option value="dias">Mais dias internado</option>
+              <option value="dias">{vendoAltas ? 'Mais dias internado (até a alta)' : 'Mais dias internado'}</option>
             </select>
-            {(utiOn || d30On || permanencia !== '' || ordenar !== '') && (
+            {(utiOn || d30On || permanencia !== '' || ordenar !== '' || vendoAltas) && (
               <button
                 className="btn btn-ghost btn-sm"
                 style={{ color: 'var(--muted)' }}
-                onClick={() => { setUtiOn(false); setD30On(false); setPermanencia(''); setOrdenar('') }}
+                onClick={() => {
+                  setUtiOn(false); setD30On(false); setPermanencia(''); setOrdenar('')
+                  // "Altas" mora na URL (é filtro de backend): limpar também o desfaz,
+                  // senão o botão some e a lista continua mostrando altas.
+                  if (vendoAltas) applyFilter('altas')
+                }}
               >
                 Limpar
               </button>
@@ -436,7 +480,7 @@ export default function Dashboard() {
               type="text"
               className="bm-input"
               style={{ width: 260 }}
-              placeholder="Buscar segurado, atendimento…"
+              placeholder={vendoAltas ? 'Buscar entre as altas…' : 'Buscar segurado, atendimento…'}
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
             />
@@ -461,11 +505,12 @@ export default function Dashboard() {
                     paginados={paginados}
                     totalVisiveis={visiveis.length}
                     totalInternacoes={internacoes.length}
-                    totalBackend={stats.total_internados || 0}
+                    totalBackend={(vendoAltas ? stats.altas_recentes : stats.total_internados) || 0}
                     paginaAtual={paginaAtual}
                     totalPaginas={totalPaginas}
                     porPagina={POR_PAGINA}
                     mostrarOperadora={todas}
+                    vendoAltas={vendoAltas}
                     onExportar={() => setExportOpen(true)}
                     onAdicionarPaciente={somenteLeitura ? undefined : () => setAddOpen(true)}
                     onSelecionar={setDrawerId}

@@ -129,6 +129,49 @@ a{text-decoration:none;color:inherit}
 .sb-sub-mark.novos{font-family:var(--font-mono);font-size:10px;font-weight:700;min-width:17px;text-align:center;padding:1px 5px;border-radius:99px;background:var(--danger);color:#fff;letter-spacing:0}
 .sb-sub-item.has-alert .sb-sub-mark.novos{color:#fff}
 .sb-dot{width:6px;height:6px;border-radius:50%;background:var(--danger);animation:sb-pulse 1.6s ease-in-out infinite;display:inline-block;flex-shrink:0;margin-right:2px}
+/* ── Troca entre os painéis da barra (menu x Ajuda) ─────────────────────
+   O invólucro ocupa a altura que o .sb-nav ocupava (flex:1), para a marca, o
+   botão de recolher e o rodapé de perfil não se mexerem durante a troca: quem
+   desliza é o miolo. `overflow:hidden` recorta o painel enquanto ele entra ou
+   sai, senão o conteúdo transbordaria por cima da barra. */
+.sb-troca{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.sb-troca > .sb-nav{flex:1}
+/* Saída e entrada usam a mesma curva do resto da barra (sb-sub-in). O painel
+   que sai não recebe pointer-events: um clique no meio do movimento acertaria
+   um item que já está de saída. */
+.sb-troca-saindo{pointer-events:none}
+.sb-troca-saindo.sb-troca-avanca{animation:sb-sai-esquerda .22s cubic-bezier(.2,.7,.2,1) forwards}
+.sb-troca-saindo.sb-troca-recua{animation:sb-sai-direita .22s cubic-bezier(.2,.7,.2,1) forwards}
+.sb-troca-entrando.sb-troca-avanca{animation:sb-entra-direita .22s cubic-bezier(.2,.7,.2,1)}
+.sb-troca-entrando.sb-troca-recua{animation:sb-entra-esquerda .22s cubic-bezier(.2,.7,.2,1)}
+/* Deslocamento curto (10px): a barra é estreita, e um percurso longo faria a
+   troca parecer lenta mesmo em 220ms. */
+@keyframes sb-sai-esquerda{to{opacity:0;transform:translateX(-10px)}}
+@keyframes sb-sai-direita{to{opacity:0;transform:translateX(10px)}}
+@keyframes sb-entra-direita{from{opacity:0;transform:translateX(10px)}}
+@keyframes sb-entra-esquerda{from{opacity:0;transform:translateX(-10px)}}
+/* Quem pediu menos movimento recebe só o esmaecer, sem deslize. */
+@media (prefers-reduced-motion:reduce){
+  .sb-troca-saindo.sb-troca-avanca,.sb-troca-saindo.sb-troca-recua{animation-name:sb-sai-parado}
+  .sb-troca-entrando.sb-troca-avanca,.sb-troca-entrando.sb-troca-recua{animation-name:sb-entra-parado}
+}
+@keyframes sb-sai-parado{to{opacity:0}}
+@keyframes sb-entra-parado{from{opacity:0}}
+
+/* ── Sidebar no modo Ajuda ──────────────────────────────────────────────
+   A barra troca as TELAS pelos MÓDULOS da documentação. Reusa .sb-item e
+   .sb-section para o menu não mudar de linguagem visual ao entrar na Ajuda:
+   só o conteúdo muda. O que é próprio daqui é a marca de lido (no lugar do
+   badge de contagem) e o acompanhamento de leitura no rodapé. */
+.sb-voltar{width:calc(100% - 16px);border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);margin:10px 8px 2px;font-family:inherit;font-size:var(--t-base);text-align:left}
+.sb-voltar:hover{background:rgba(255,255,255,.07);color:#fff}
+/* Item de módulo: é <button>, e não <a>, porque a navegação troca a query
+   (?modulo=) da mesma rota. Herda .sb-item e só zera o que o botão traz. */
+button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-family:inherit;font-size:var(--t-base);text-align:left}
+
+/* Recolhida, o item de módulo vira só o ícone, como os do menu. */
+.app.is-collapsed .sb-voltar{justify-content:center;padding:8px 0}
+
 .sb-foot{margin-top:auto;padding:12px 12px 14px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:8px;color:rgba(218,229,235,.65);font-size:var(--t-sm);flex-shrink:0}
 .sb-foot-user{display:flex;align-items:center;gap:10px;padding:0 4px;min-width:0}
 .sb-foot-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#7FB1E0,#1F6FBE);color:#041C3D;display:grid;place-items:center;font-weight:600;font-size:11px;flex-shrink:0}
@@ -141,6 +184,18 @@ a{text-decoration:none;color:inherit}
 .sb-logout-icon{display:grid;place-items:center;width:15px;height:15px;flex-shrink:0;color:rgba(218,229,235,.55)}
 .sb-logout:hover .sb-logout-icon{color:#fff}
 .sb-logout-label{flex:1;text-align:left;white-space:nowrap;overflow:hidden}
+/* Linha de ações do rodapé: Sair ocupa a largura e a Ajuda fica como ícone
+   quadrado ao lado. A documentação é consulta ocasional — vira um atalho
+   discreto, e não mais um item competindo com as telas de trabalho no menu. */
+.sb-foot-acoes{display:flex;align-items:stretch;gap:6px}
+.sb-foot-acoes .sb-logout{flex:1;min-width:0}
+.sb-ajuda{display:grid;place-items:center;width:34px;flex-shrink:0;padding:0;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:rgba(218,229,235,.55);border-radius:8px;cursor:pointer;transition:color .12s,background .12s,border-color .12s}
+.sb-ajuda:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);color:#fff}
+.sb-ajuda.active{background:rgba(31,111,190,.22);border-color:rgba(127,177,224,.45);color:#fff}
+/* Recolhida, a sidebar empilha: os dois botões viram quadrados centrados. */
+.app.is-collapsed .sb-foot-acoes{flex-direction:column;align-items:center;gap:6px}
+.app.is-collapsed .sb-foot-acoes .sb-logout{flex:none;width:34px;justify-content:center;padding:8px 0}
+.app.is-collapsed .sb-ajuda{width:34px;height:33px}
 @keyframes sb-pulse{0%,100%{box-shadow:0 0 0 0 rgba(200,36,60,.5)}50%{box-shadow:0 0 0 5px rgba(200,36,60,0)}}
 
 /* ── Main ── */
@@ -163,7 +218,14 @@ a{text-decoration:none;color:inherit}
 .btn-ghost{color:var(--muted)}.btn-ghost:hover{background:var(--surface-3);color:var(--ink-2)}
 .btn-success{background:var(--success);color:#fff;border-color:var(--success)}.btn-success:hover{background:var(--success-2)}
 .btn-sm{padding:5px 10px;font-size:var(--t-sm)}
-.btn:disabled{opacity:.55;cursor:not-allowed}
+/* Desabilitado: CINZA de verdade, não só esmaecido. `opacity` sozinha mantinha
+   a cor do botão (um primário continuava azul claro), e o estado "ainda não dá
+   para clicar" ficava indistinguível de "clicável". As cores são fixadas aqui
+   para vencer as das variantes (outline/primary/success). */
+.btn:disabled{background:var(--surface-3);border-color:var(--border);color:var(--muted-2);cursor:not-allowed}
+/* Sem reação ao mouse: o hover das variantes continuava valendo e o botão
+   respondia ao ponteiro como se estivesse disponível. */
+.btn:disabled:hover{background:var(--surface-3);border-color:var(--border);color:var(--muted-2)}
 
 /* ── Cards ── */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden}
@@ -408,8 +470,17 @@ a{text-decoration:none;color:inherit}
 .tl-dot.tp-alta-auto{background:var(--warning)}
 .tl-dot.tp-edit{background:var(--muted-2)}
 .tl-dot.tp-pendente{background:var(--danger)}
+.tl-dot.tp-visita-agendada{background:var(--info)}
+.tl-dot.tp-visita-cancelada{background:var(--muted-2)}
 .tl-date{font-family:var(--font-mono);font-size:var(--t-xs);color:var(--muted);letter-spacing:.02em}
+/* Hora da visita (migration 0035), ao lado da data: peso normal para não competir
+   com ela, que é o dado principal da linha. */
+.tl-hora{font-weight:400;color:var(--muted-2)}
 .tl-label{font-size:var(--t-base);font-weight:600;color:var(--ink);margin-top:1px}
+/* Título riscado no card de visita cancelada: reforça "não vai mais acontecer"
+   sem precisar reler a palavra "cancelada" — o mesmo truque de uma lista de
+   compras riscada. */
+.tl-label-riscado{text-decoration:line-through;text-decoration-color:var(--muted-2);text-decoration-thickness:1.5px}
 .tl-desc{font-size:var(--t-sm);color:var(--muted);margin-top:1px}
 /* Card de evento na timeline: cada tipo é um card com fundo suave + borda lateral
    na SUA cor (fonte única — as mesmas classes .tp-* do marcador). O card é deslocado
@@ -433,6 +504,21 @@ a{text-decoration:none;color:inherit}
    cor do marcador. Mantêm o formato de card sem gritar visualmente. */
 .tl-item.tl-card.tp-status{background:var(--surface-3);border-color:var(--border);border-left-color:var(--ink-2)}
 .tl-item.tl-card.tp-edit{background:var(--surface-3);border-color:var(--border);border-left-color:var(--muted-2)}
+/* Visita agendada: mesma família azul de Admissão (é a variante "info" que o
+   backend já atribui ao tipo), diferenciada pelo TÍTULO e pela posição na
+   timeline, não por uma cor nova. Desmarcada: neutro como Edição — é a
+   ausência de um compromisso, não um fato clínico. */
+.tl-item.tl-card.tp-visita-agendada{background:var(--info-bg);border-color:rgba(31,93,170,.22);border-left-color:var(--info)}
+.tl-item.tl-card.tp-visita-agendada .tl-label{color:var(--info)}
+.tl-item.tl-card.tp-visita-cancelada{background:var(--surface-3);border-color:var(--border);border-left-color:var(--muted-2)}
+/* Marcador em X (substitui o .tl-dot redondo) do card cancelado: um sinal de
+   "encerrado", não só uma cor apagada — a mesma ideia de um item riscado numa
+   lista. Redondo com fundo neutro e borda, alinhado onde o .tl-dot ficaria. */
+.tl-dot-x{position:absolute;left:0;top:3px;width:11px;height:11px;border-radius:99px;background:var(--surface-3);border:2px solid var(--surface);box-shadow:0 0 0 2px var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted-2)}
+.tl-item.tl-card .tl-dot-x{left:-22px}
+/* O card inteiro perde um pouco de presença: o compromisso está encerrado, e a
+   timeline não deve puxar o olho para ele do mesmo jeito que para um card ativo. */
+.tl-item.tl-cancelada{opacity:.72}
 /* Timeline rolável: altura limitada pelo container flex do card; o histórico
    cresce dentro do scroll em vez de esticar o card. padding-right dá respiro à
    barra de rolagem para ela não cobrir os cards de relatório. */
@@ -446,6 +532,15 @@ a{text-decoration:none;color:inherit}
 .bm-input{appearance:none;background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:7px 11px;font-size:var(--t-base);color:var(--ink);font-family:inherit;outline:none;transition:border-color .12s,box-shadow .12s;width:100%}
 .bm-input:focus{border-color:var(--primary-3);box-shadow:0 0 0 3px rgba(21,92,168,.1)}
 .bm-select{padding-right:28px;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235F7384' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-size:16px}
+
+/* ── Campo importante em branco (ficha do paciente) ──
+   Mesmo vocabulário do assistente de complemento no envio (.wz-lbl.falta): âmbar
+   de "atenção", nunca vermelho — o dado está incompleto, não errado, e a ficha
+   segue utilizável. Quem não distingue as duas bordas cinza/âmbar ainda tem o
+   resumo escrito no topo do card, que nomeia cada campo em branco. */
+.campo-falta .campo-lbl{color:var(--warning-2)}
+.campo-falta .campo-box,.campo-falta .bm-input{border-color:var(--warning);background:var(--warning-bg)}
+.campo-falta .bm-input:focus{border-color:var(--warning);box-shadow:0 0 0 3px rgba(217,105,12,.12)}
 
 /* ── Op card ── */
 .op-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:18px;display:flex;flex-direction:column;gap:14px;transition:border-color .12s,box-shadow .12s;cursor:pointer}

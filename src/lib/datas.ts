@@ -49,3 +49,12 @@ export function paraISO(s: string | null | undefined): string {
   const iso = /^(\d{4}-\d{2}-\d{2})/.exec(t)
   return iso ? iso[1] : ''
 }
+
+/** Data para exibição: `AAAA-MM-DD` → `dd/mm/aaaa`. Valores que já vêm em
+ *  dd/mm/aaaa (ou em qualquer outro formato) passam intactos — a tela nunca
+ *  deve inventar uma data que não conseguiu interpretar. */
+export function dataBR(s: string | null | undefined): string {
+  if (!s) return ''
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.trim())
+  return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : s
+}

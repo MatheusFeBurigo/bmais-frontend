@@ -46,6 +46,12 @@ export const queryKeys = {
     ['auditoria', userId, entidade, acao, de, ate, q, pagina, limite] as const,
   auditoriaOpcoes: () => ['auditoria-opcoes'] as const,
   auditoriaResumo: (de: string) => ['auditoria-resumo', de] as const,
+
+  /** Ajustes manuais do avanço dos módulos (tela Progresso). */
+  progresso: () => ['progresso'] as const,
+
+  /** Carga de trabalho por hospital (tela Volumetria, coordenadores). */
+  volumetria: () => ['volumetria'] as const,
 } as const
 
 // Raiz (primeiro segmento) de cada domínio — usada para invalidar TODAS as
@@ -63,6 +69,8 @@ export const queryRoots = {
   kanban: ['kanban'] as const,
   auditoria: ['auditoria'] as const,
   auditoriaResumo: ['auditoria-resumo'] as const,
+  progresso: ['progresso'] as const,
+  volumetria: ['volumetria'] as const,
 } as const
 
 export type QueryRoot = keyof typeof queryRoots

@@ -39,6 +39,7 @@ export const ENTIDADE_LABEL: Record<string, string> = {
   censo: 'Censo',
   hospital: 'Hospital',
   operadora: 'Operadora',
+  convenio: 'Convênio',
   profissional: 'Equipe',
   escala: 'Escala',
   usuario: 'Usuário',
@@ -54,6 +55,7 @@ export const ENTIDADE_VARIANT: Record<string, BadgeVariant> = {
   censo: 'success',
   hospital: 'caution',
   operadora: 'caution',
+  convenio: 'caution',
   profissional: 'muted',
   escala: 'muted',
   usuario: 'danger',
@@ -72,7 +74,7 @@ export function entidadeVariant(key: string | null | undefined): BadgeVariant {
 }
 
 // Entidades que contam como "cadastros" (clientes e equipe) no painel de usuários.
-export const ENTIDADES_CADASTRO = ['hospital', 'operadora', 'profissional', 'escala'] as const
+export const ENTIDADES_CADASTRO = ['hospital', 'operadora', 'convenio', 'profissional', 'escala'] as const
 
 export function contarCadastros(porEntidade: Record<string, number> | undefined): number {
   if (!porEntidade) return 0
