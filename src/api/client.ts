@@ -357,9 +357,134 @@ export function apiUrl(path: string): string {
   return `${API_BASE}/api${path}`
 }
 
+/** Bytes já enviados de um upload em curso. */
+export interface ProgressoBytes {
+  enviados: number
+  total: number
+}
+
+// Upload por XMLHttpRequest, em vez de fetch.
+//
+// É o ÚNICO jeito de saber quantos bytes já subiram: o `fetch` não expõe
+// progresso de envio (o `ReadableStream` duplex que resolveria isso não tem
+// suporte nos navegadores que usamos). O XHR é legado, mas é o que mede.
+function uploadComProgresso<T>(
+  url: string, form: FormData, token: string | null,
+  onBytes?: (p: ProgressoBytes) => void,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', url)
+    // Content-Type NÃO é definido: o browser precisa gerar o boundary do multipart.
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+    xhr.responseType = 'text'
+
+    // TIMEOUT POR INATIVIDADE, não pela duração total.
+    //
+    // `xhr.timeout` conta a requisição INTEIRA e aborta no teto mesmo que os
+    // bytes estejam subindo normalmente — numa conexão lenta com um lote
+    // grande, o upload morria no meio, sozinho, e a tela ficava travada com a
+    // barra parada. É o defeito que a versão anterior deste arquivo tinha.
+    //
+    // O que interessa não é quanto tempo o envio leva, e sim se ele PAROU de
+    // progredir. Cada evento de progresso rearma o relógio; só o silêncio
+    // prolongado aborta.
+    let ocioso: ReturnType<typeof setTimeout> | undefined
+    let encerrado = false
+    const limpar = () => { if (ocioso !== undefined) clearTimeout(ocioso) }
+    const rearmar = () => {
+      limpar()
+      ocioso = setTimeout(() => {
+        encerrado = true
+        // `abort()` dispara onabort; o `encerrado` marca que a causa foi o
+        // tempo, para a mensagem dizer isso em vez de "conexão perdida".
+        xhr.abort()
+        reject(new NetworkError(
+          'Tempo limite excedido. Verifique sua conexão e tente de novo.', true,
+        ))
+      }, UPLOAD_TIMEOUT_MS)
+    }
+    rearmar()
+
+    // `lengthComputable` é falso quando o tamanho total não é conhecido (raro em
+    // FormData de arquivos). Aí não reportamos número — mas o relógio é rearmado
+    // de qualquer jeito: houve atividade, que é o que ele mede.
+    xhr.upload.onprogress = (e) => {
+      rearmar()
+      if (e.lengthComputable) onBytes?.({ enviados: e.loaded, total: e.total })
+    }
+    // Enquanto o SERVIDOR processa não há evento de upload (os bytes já subiram
+    // todos), e sem isto o relógio de inatividade mataria justamente a espera
+    // pela resposta. `onprogress` do download e `readystatechange` cobrem essa
+    // segunda metade.
+    xhr.onprogress = rearmar
+    xhr.onreadystatechange = () => { if (xhr.readyState >= 2) rearmar() }
+
+    xhr.onload = () => {
+      limpar()
+      const corpo = xhr.responseText
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (xhr.status === 204 || !corpo) return resolve(undefined as T)
+        try {
+          resolve(JSON.parse(corpo) as T)
+        } catch {
+          resolve(corpo as unknown as T)
+        }
+        return
+      }
+      let detail = `Erro ${xhr.status}`
+      try {
+        const data = JSON.parse(corpo)
+        if (data?.detail) detail = data.detail
+      } catch {
+        /* resposta sem corpo JSON */
+      }
+      reject(new ApiError(xhr.status, detail))
+    }
+    xhr.onerror = () => {
+      limpar()
+      reject(new NetworkError('Falha de conexão com o servidor.'))
+    }
+    xhr.onabort = () => {
+      limpar()
+      // Se o abort foi nosso (inatividade), a promessa já foi rejeitada com a
+      // mensagem certa e esta rejeição é ignorada — mas sem ela um abort vindo
+      // de fora deixaria a promessa pendente para sempre, que é a tela travada.
+      if (!encerrado) reject(new NetworkError('Envio interrompido.'))
+    }
+    xhr.send(form)
+  })
+}
+
 // Upload multipart (FormData). Injeta o token Bearer e NÃO define Content-Type
 // (o browser preenche o boundary automaticamente). Trata 401 como o apiFetch.
-export async function apiUpload<T = unknown>(path: string, form: FormData): Promise<T> {
+//
+// Com `onBytes`, sobe por XHR para reportar o progresso do envio; sem ele, segue
+// pelo caminho comum do fetch.
+export async function apiUpload<T = unknown>(
+  path: string, form: FormData, onBytes?: (p: ProgressoBytes) => void,
+): Promise<T> {
+  if (onBytes) {
+    const alvo = `${API_BASE}/api${path}`
+    const { token, recusado } = await garantirToken()
+    try {
+      return await uploadComProgresso<T>(alvo, form, token, onBytes)
+    } catch (e) {
+      if (!(e instanceof ApiError) || e.status !== 401) throw e
+      // Mesmo retry do fetchAutenticado: num 401, tenta UMA renovação e repete.
+      // Sem isto, um token que vence durante o envio derrubava a sessão no meio
+      // do upload em vez de se renovar — e o lote inteiro se perdia.
+      if (token && !recusado && getSessaoMeta()?.refresh_token) {
+        const atual = getToken()
+        const novo = atual && atual !== token ? atual : await renovarToken()
+        // O FormData é reutilizável: o `send` anterior não o consome.
+        if (novo) return await uploadComProgresso<T>(alvo, form, novo, onBytes)
+      }
+      encerrarSessao()
+      onUnauthorized?.()
+      throw e
+    }
+  }
   const res = await fetchAutenticado(
     `${API_BASE}/api${path}`, { method: 'POST', body: form }, UPLOAD_TIMEOUT_MS,
   )

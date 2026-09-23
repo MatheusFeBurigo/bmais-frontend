@@ -28,6 +28,7 @@
 // censo inteiro em partes, e uma delas está sempre valendo.
 
 import type { PacienteGravado, UploadCensoResult } from '../../types/api'
+import { varsOperadora } from '../../lib/coresOperadora'
 import { plural } from './comuns'
 
 export const abasOperadoraStyles = `
@@ -46,20 +47,28 @@ export const abasOperadoraStyles = `
    O -2px de margem faz a base da aba cair EM CIMA da régua, e não abaixo dela:
    é assim que a aba ativa "abre" um vão na linha e se conecta ao conteúdo. */
 .up-aba{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;margin-bottom:-2px;border:0;border-bottom:2px solid transparent;background:none;font-family:inherit;font-size:var(--t-md);font-weight:500;color:var(--muted);cursor:pointer;transition:color .12s,border-color .12s,background .12s}
-.up-aba:hover{color:var(--ink-2);background:var(--surface-3);border-bottom-color:var(--border-strong)}
+.up-aba:hover{color:var(--ink-2);background:var(--op-fundo,var(--surface-3));border-bottom-color:var(--border-strong)}
 .up-aba:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(21,92,168,.18);border-radius:var(--r-xs) var(--r-xs) 0 0}
-/* Ativa: base na cor primária e o texto no tom mais escuro da página. A cor não
-   é o único sinal — o peso sobe junto (500→700), para quem não distingue as
-   matizes continuar vendo qual aba está valendo. */
-.up-aba.ativa{color:var(--primary-3);font-weight:700;border-bottom-color:var(--primary-3)}
+/* Ativa: base e texto na cor da OPERADORA (ver lib/coresOperadora.ts), para o
+   bloco inteiro se reconhecer pela mancha antes da leitura. A cor não é o único
+   sinal — o peso sobe junto (500→700) e o nome está escrito na própria aba,
+   então quem não distingue as matizes continua vendo qual está valendo.
+   As variáveis --op-* vêm por style inline em cada aba; o fallback cobre a aba
+   "Todos", que não é de operadora nenhuma. */
+.up-aba.ativa{color:var(--op-ink,var(--primary-3));font-weight:700;border-bottom-color:var(--op-cor,var(--primary-3))}
+/* Ponto da cor da marca em TODAS as abas de operadora, inclusive inativas: é o
+   que permite achar "a linha vermelha da Bradesco" sem ler a barra inteira. */
+.up-aba-cor{width:7px;height:7px;border-radius:50%;background:var(--op-cor);flex-shrink:0}
 /* A contagem em mono: os números se comparam entre abas ("92 aqui, 13 ali"), e
    alinhados na mesma métrica a diferença se lê sem contar dígito. */
 .up-aba-n{font-family:var(--font-mono);font-weight:700;font-size:var(--t-sm);padding:1px 7px;border-radius:99px;background:var(--surface-3);color:var(--ink-3)}
-.up-aba.ativa .up-aba-n{background:var(--primary-3);color:#fff}
-/* A aba da operadora ESCOLHIDA no envio recebe um ponto: num censo em que a
-   maioria foi para outra operadora, é o que responde "e o que eu pedi, quantos
-   foram?" sem procurar o nome na barra. */
-.up-aba-dot{width:6px;height:6px;border-radius:50%;background:var(--info);flex-shrink:0}
+.up-aba.ativa .up-aba-n{background:var(--op-cor,var(--primary-3));color:#fff}
+/* A aba da operadora ESCOLHIDA no envio recebe um anel em volta do ponto: num
+   censo em que a maioria foi para outra operadora, é o que responde "e o que eu
+   pedi, quantos foram?" sem procurar o nome na barra. Um anel, e não um segundo
+   ponto ao lado, porque o ponto da cor já está ali — dois pontos na mesma aba
+   seriam lidos como dois estados diferentes. */
+.up-aba-cor.escolhida{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--op-cor)}
 /* A lista fica PENDURADA na régua: o painel do cartão separa seus blocos com
    10px de respiro, e esse vão entre a aba ativa e a tabela desfazia justamente
    a ligação que a aba existe para afirmar ("estas linhas são desta operadora").
@@ -201,10 +210,19 @@ export function AbasOperadora({ grupos, ativa, onAba, escolhida, total }: {
             className={`up-aba${ativa === g.key ? ' ativa' : ''}`}
             onClick={() => onAba(g.key)}
             title={`${g.total} ${plural(g.total, 'paciente')} em ${g.nome}`}
+            // A cor da marca desce por variável CSS: a aba, o contador e o ponto
+            // se pintam sozinhos a partir daqui.
+            style={varsOperadora(g.key)}
           >
-            {/* Só na aba da operadora escolhida: é a que responde "e o que eu
-                pedi?" sem obrigar a procurar o nome na barra. */}
-            {chave && g.key === chave && <i className="up-aba-dot" aria-hidden />}
+            {/* Ponto na cor da operadora; com anel, é a escolhida no envio.
+                Some na aba "Sem operadora", que não é marca nenhuma e receberia
+                o cinza neutro sem significar nada. */}
+            {g.key && (
+              <i
+                className={`up-aba-cor${g.key === chave ? ' escolhida' : ''}`}
+                title={g.key === chave ? 'Operadora escolhida no envio' : undefined}
+              />
+            )}
             {g.nome}
             <span className="up-aba-n">{g.total}</span>
           </button>

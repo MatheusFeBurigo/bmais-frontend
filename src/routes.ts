@@ -30,5 +30,5 @@ export const prefetchPorRota: Record<string, () => Promise<unknown>> = {
   '/ajuda': importAjuda,
   '/progresso': importProgresso,
   '/volumetria': importVolumetria,
-  '/relatorio': importRelatorio,
+  '/progresso/relatorio': importRelatorio,
 }

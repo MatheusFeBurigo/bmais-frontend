@@ -13,6 +13,21 @@ export const localStyles = `
 
 /* Bloco "Equipe": barra de busca/ordem + grade de cartões */
 .vol-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.vol-toolbar .bm-select{font-size:var(--t-sm)}
+
+/* Busca colapsada: só a lupa até o clique, e o campo cresce à esquerda dela
+   para o seletor de ordem ao lado não dançar quando abre. */
+.vol-busca{display:flex;align-items:center;border:1px solid transparent;border-radius:var(--r-sm);background:transparent;transition:border-color .16s,background-color .16s}
+.vol-busca.aberta{border-color:var(--border);background:var(--surface)}
+.vol-busca-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;flex-shrink:0;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--muted);cursor:pointer;transition:color .14s,border-color .14s,background-color .14s}
+.vol-busca-btn:hover{color:var(--ink);border-color:var(--border-strong)}
+.vol-busca.aberta .vol-busca-btn{border-color:transparent;background:transparent;color:var(--primary-3)}
+.vol-busca input{width:0;padding:0;border:0;background:transparent;font-size:var(--t-sm);opacity:0;transition:width .16s ease,opacity .16s ease,padding .16s ease}
+.vol-busca.aberta input{width:170px;padding:5px 2px 5px 9px;opacity:1}
+.vol-busca input:focus{outline:none;box-shadow:none}
+@media (prefers-reduced-motion:reduce){
+  .vol-busca,.vol-busca input,.vol-busca-btn{transition:none}
+}
 .vol-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding:2px 0}
 .vol-av{width:32px;height:32px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:var(--t-sm);font-weight:700;letter-spacing:.02em;background:var(--surface-3);color:var(--ink-2);flex-shrink:0}
 
@@ -120,5 +135,30 @@ export const localStyles = `
 @media (max-width:640px){
   .vol-reg-linha{grid-template-columns:1fr}
   .vol-reg-nums{justify-content:flex-start}
+}
+
+/* "Onde o tempo está indo": barra empilhada de 100% + legenda.
+   O gap entre fatias é a PRÓPRIA superfície aparecendo (2px), nunca uma borda
+   desenhada em volta do segmento. */
+.vol-tpt{display:flex;flex-direction:column;gap:10px}
+.vol-tpt-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--muted)}
+.vol-tpt-total{text-transform:none;letter-spacing:0;font-weight:600;font-size:var(--t-sm);color:var(--ink-2);font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.vol-tpt-barra{display:flex;gap:2px;height:26px;border-radius:var(--r-sm);overflow:hidden;background:var(--surface)}
+.vol-tpt.compacto .vol-tpt-barra{height:14px}
+.vol-tpt-fatia{display:flex;align-items:center;justify-content:center;min-width:2px;transition:filter .12s}
+.vol-tpt-fatia:hover{filter:brightness(1.08)}
+.vol-tpt-fatia b{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:var(--t-sm);font-weight:700;color:#fff;letter-spacing:.01em}
+.vol-tpt.compacto .vol-tpt-fatia b{display:none}
+.vol-tpt-legenda{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 16px}
+.vol-tpt.compacto .vol-tpt-legenda{display:flex;flex-wrap:wrap;gap:4px 12px}
+.vol-tpt-legenda li{display:flex;align-items:center;gap:7px;font-size:var(--t-sm);color:var(--muted);min-width:0}
+.vol-tpt-legenda i{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+.vol-tpt-lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.vol-tpt-val{margin-left:auto;font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600;flex-shrink:0}
+.vol-tpt.compacto .vol-tpt-val{margin-left:0}
+.vol-tpt-pct{font-family:var(--font-mono);font-variant-numeric:tabular-nums;flex-shrink:0;min-width:32px;text-align:right}
+.vol-tpt.compacto .vol-tpt-pct{display:none}
+@media (prefers-reduced-motion:reduce){
+  .vol-tpt-fatia{transition:none}
 }
 `

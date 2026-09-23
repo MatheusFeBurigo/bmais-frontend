@@ -179,7 +179,7 @@ export default function UsuarioForm() {
             {/* Escopo de dados — só para papéis operacionais (gestor/diretor/admin veem tudo). */}
             {temEscopoHospital(role) && (
               <div>
-                <label className="uppercase t-muted" style={labelStyle}>Regiões e hospitais (escopo de dados)</label>
+                <label className="uppercase t-muted" style={labelStyle}>Cidades e hospitais (escopo de dados)</label>
                 <MultiSelectHospitais hospitais={hospitais ?? []} selecionados={hospitaisSel} onChange={setHospitaisSel} />
               </div>
             )}

@@ -16,8 +16,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { podeVer } from '../auth/permissions'
-import { importRelatorio } from '../routes'
 import { usePageHeader } from '../components/PageHeader'
 import Toast from '../components/Toast'
 import {
@@ -30,7 +28,13 @@ import {
   useDescartarProgresso, useProgresso, useSalvarProgresso, type ModuloResolvido,
 } from '../hooks/useProgresso'
 import type { DataEtapa } from '../services/progresso.service'
+import { importRelatorio } from '../routes'
 import '../components/progresso/progresso.css'
+
+// Folha de documento com linhas de texto: o relatório da auditoria.
+const IconDocumento = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M9 13h6" /><path d="M9 17h6" /></svg>
+)
 
 // Tom de cada grupo. Vale para a pastilha e para o contador do topo — NÃO para
 // a trilha de etapas, que tem escala própria (ver o comentário do topo).
@@ -285,18 +289,27 @@ export default function Progresso() {
   // código. A diretoria acompanha. O servidor aplica a mesma regra (requer_admin
   // nas rotas de ajuste), então isto aqui é conveniência, não a trava.
   const podeEditar = role === 'admin'
-  // Atalho para o relatório da auditoria: mesmo recorte de papel da tela dele,
-  // consultado aqui para não oferecer um link que levaria a um redirecionamento.
-  const verRelatorio = podeVer(role, 'relatorio')
 
   // Id do módulo em edição: guardar o objeto deixaria o rascunho preso a uma
   // cópia antiga quando a lista recarregasse.
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [aviso, setAviso] = useState('')
 
+  // O relatório da auditoria é o plano de onde estes módulos saíram: quem
+  // acompanha o avanço costuma querer, em seguida, o porquê da ordem e o que
+  // cada bloco entrega. Fica como ação da tela, e não como item de menu, porque
+  // é leitura de apoio ao quadro — se abre a partir daqui e volta para cá.
   usePageHeader(useMemo(() => ({
     title: 'Progresso',
     subtitle: 'Avanço dos módulos do projeto',
+    actions: (
+      // onMouseEnter aquece o chunk do documento: ao clicar, ele já chegou.
+      <Link to="/progresso/relatorio" className="btn btn-outline btn-sm"
+        onMouseEnter={() => { void importRelatorio() }}>
+        <IconDocumento />
+        Relatório da auditoria
+      </Link>
+    ),
   }), []))
 
   // Contagens saem dos módulos RESOLVIDOS, não do catálogo: o grupo não muda no
@@ -359,21 +372,6 @@ export default function Progresso() {
           ))}
         </div>
       </section>
-
-      {/* O relatório da auditoria é o plano de onde estes módulos saíram: quem
-          acompanha o avanço costuma querer, em seguida, o porquê da ordem e o
-          que cada bloco entrega. O atalho fica no topo, antes do quadro. */}
-      {verRelatorio && (
-        <Link to="/relatorio" className="prg-atalho" onMouseEnter={() => { void importRelatorio() }}>
-          <span className="prg-atalho-texto">
-            <span className="prg-atalho-titulo">Relatório da auditoria geral</span>
-            <span className="prg-atalho-sub">
-              O levantamento, o plano dos cinco blocos e a transição dos sistemas atuais
-            </span>
-          </span>
-          <span className="prg-atalho-seta" aria-hidden="true">›</span>
-        </Link>
-      )}
 
       {/* As seis etapas, uma vez no topo: cada módulo repete os nomes na
           própria trilha, então aqui a lista dá a visão do percurso inteiro. */}

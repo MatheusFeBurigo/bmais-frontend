@@ -132,15 +132,16 @@ function ProtectedRoutes() {
           path="/progresso"
           element={<GatedRoute screen="progresso"><Progresso /></GatedRoute>}
         />
+        {/* Relatório da auditoria: subrota de Progresso, sob o MESMO gate — é
+            leitura de apoio ao quadro de módulos, aberta pelo botão de lá. */}
+        <Route
+          path="/progresso/relatorio"
+          element={<GatedRoute screen="progresso"><Relatorio /></GatedRoute>}
+        />
         {/* Volumetria (carga de trabalho por hospital): coordenadores + admin. */}
         <Route
           path="/volumetria"
           element={<GatedRoute screen="volumetria"><Volumetria /></GatedRoute>}
-        />
-        {/* Relatório da auditoria geral: diretoria (e admin, p/ manutenção). */}
-        <Route
-          path="/relatorio"
-          element={<GatedRoute screen="relatorio"><Relatorio /></GatedRoute>}
         />
         <Route path="/paciente/:id" element={<Paciente />} />
         {/* Ajuda (documentação das telas): sem GatedRoute — todo papel acessa.

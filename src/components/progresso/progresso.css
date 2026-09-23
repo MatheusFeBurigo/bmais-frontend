@@ -262,15 +262,3 @@
 /* Origem e data da apuração: fecha a tela dizendo de onde vêm os números. */
 .prg-fonte{margin-top:18px;font-size:var(--t-sm);color:var(--muted-2);text-align:center;
   line-height:1.6}
-
-/* Atalho para o relatório da auditoria. Cartão de uma linha, com o peso de um
-   item de navegação e não o de um número: convida sem competir com o avanço
-   geral logo acima. */
-.prg-atalho{display:flex;align-items:center;gap:14px;margin-top:12px;padding:13px 16px;
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
-  text-decoration:none;color:inherit;transition:border-color .12s,background .12s}
-.prg-atalho:hover{border-color:var(--ink-3);background:var(--surface-2)}
-.prg-atalho-texto{display:flex;flex-direction:column;gap:2px;min-width:0}
-.prg-atalho-titulo{font-size:var(--t-base);font-weight:600;color:var(--ink)}
-.prg-atalho-sub{font-size:var(--t-sm);color:var(--muted-2);line-height:1.5}
-.prg-atalho-seta{margin-left:auto;font-size:20px;line-height:1;color:var(--muted-3)}

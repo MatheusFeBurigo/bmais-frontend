@@ -240,11 +240,43 @@ export function ModuloVolumetria() {
         <li><strong>Equipe</strong>: um cartão por pessoa, com o nível de carga, as horas estimadas
           e a quebra das demandas pelos mesmos nomes das colunas de Tarefas. A lista pode ser
           ordenada por <strong>Maior carga</strong> ou por <strong>Nome</strong>.</li>
+        <li><strong>Onde o tempo está indo</strong>: o tempo estimado da fila repartido por tipo
+          de tarefa, numa barra única. A quebra dos cartões conta casos; esta conta horas.</li>
+        <li><strong>Por região</strong>: uma linha por região, com quem responde por ela e o que
+          há sob a responsabilidade dela. Clicar num nome abre o painel daquela pessoa.</li>
         <li><strong>Hospitais sem cobertura</strong>, que só aparece quando há alguma unidade nessa
           condição.</li>
         <li><strong>Comparativo</strong>, gráfico da carga pessoa a pessoa, recolhido por padrão.</li>
         <li><strong>Parâmetros de carga</strong>, também recolhido, descrito adiante.</li>
       </ol>
+
+      <h3>Onde o tempo está indo</h3>
+      <p>
+        A quebra de demandas conta <strong>casos</strong>; esta barra conta <strong>horas</strong>,
+        e as duas discordam de propósito. Dez pacientes de UTI e dez de enfermaria são o mesmo
+        número de casos e não dão o mesmo trabalho, então uma pessoa pode ter poucos casos e a
+        semana inteira presa num tipo de tarefa. É a diferença entre <em>quanta</em> coisa há e
+        <em>em que</em> o tempo está sendo gasto.
+      </p>
+      <p>
+        A barra aparece três vezes, sempre sobre a fila atual: no bloco da equipe inteira, dentro
+        de cada cartão em versão reduzida, para comparar pessoas de relance, e no painel da pessoa,
+        com os valores em horas. Só as tarefas que geram trabalho pendente entram: quem está em dia
+        conta como paciente sob responsabilidade, mas não consome tempo de fila.
+      </p>
+
+      <h3>Responsabilidade por região</h3>
+      <p>
+        A região <strong>não é atribuída a ninguém</strong>: ela vem do cadastro do hospital, e a
+        responsabilidade é deduzida dos hospitais de cada pessoa. Por isso quem cobre hospitais de
+        duas regiões aparece nas duas, com a parte de cada uma, e um hospital dividido entre duas
+        pessoas conta uma vez só no total da região, com as duas listadas como responsáveis.
+      </p>
+      <p>
+        Hospitais sem região preenchida caem na linha <strong>Sem região</strong>, que fica sempre
+        no fim porque indica cadastro faltando, e não uma área de verdade. A correção é feita na
+        ficha do hospital, em Configurações.
+      </p>
 
       <h3>Painel da pessoa</h3>
       <p>

@@ -1,5 +1,6 @@
-// Tela Volumetria: o quadro de Tarefas de cada funcionário, resumido para o
-// coordenador — em blocos.
+// Tela "Distribuição de tarefas" (rota /volumetria, ids técnicos mantidos):
+// o quadro de Tarefas de cada funcionário, resumido para o coordenador — em
+// blocos.
 //
 // Um membro da equipe herda hospitais em Operações; tudo que chega neles vira
 // demanda dele. Aqui o coordenador vê, um cartão por pessoa, quem são os
@@ -7,9 +8,10 @@
 // colunas de Tarefas), e é avisado de quem passou da capacidade. Clicar no
 // cartão abre o drawer para ver e ajustar a área da pessoa.
 //
-// Blocos: resumo (KPIs) → equipe (cartões) → por região (quem responde por
-// cada uma) → hospitais sem cobertura (se houver) → comparativo (gráfico,
-// recolhido) → parâmetros (recolhido).
+// Blocos: resumo (KPIs) → equipe (cartões) → onde o tempo está indo (barra por
+// tipo de tarefa) → por região (quem responde por cada uma) → hospitais sem
+// cobertura (se houver) → comparativo (gráfico, recolhido) → parâmetros
+// (recolhido).
 // Admin vê os dois grupos num seletor; cada coordenador vê só o seu.
 import { useEffect, useMemo, useState } from 'react'
 import { usePageHeader } from '../components/PageHeader'
@@ -22,6 +24,7 @@ import GradePessoas from '../components/volumetria/GradePessoas'
 import HospitaisSemCobertura from '../components/volumetria/HospitaisSemCobertura'
 import ParametrosCarga from '../components/volumetria/ParametrosCarga'
 import PorRegiao from '../components/volumetria/PorRegiao'
+import TempoPorTarefa from '../components/volumetria/TempoPorTarefa'
 import { localStyles } from '../components/volumetria/volumetria.styles'
 import { comVinculo, hospitaisCobertos, rotuloGrupo } from '../components/volumetria/volumetria.model'
 
@@ -37,7 +40,7 @@ export default function Volumetria() {
   const [aviso, setAviso] = useState('')
 
   usePageHeader(useMemo(() => ({
-    title: 'Volumetria',
+    title: 'Distribuição de tarefas',
     subtitle: 'Quem está na equipe e quantas demandas cada um tem agora',
   }), []))
 
@@ -137,13 +140,27 @@ export default function Volumetria() {
       {/* Bloco 2: equipe */}
       <GradePessoas grupo={grupo} onAbrir={setSelecionadoId} />
 
-      {/* Bloco 3: quem responde por cada região */}
+      {/* Bloco 3: onde o tempo da equipe está indo */}
+      <div className="card" style={{ marginTop: 16 }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">Onde o tempo está indo</div>
+            <p className="card-sub">
+              O tempo estimado da fila repartido por tipo de tarefa. A quebra dos cartões
+              conta casos; esta conta horas, e as duas podem discordar.
+            </p>
+          </div>
+        </div>
+        <TempoPorTarefa role={grupo.role_operacional} minutosCategoria={grupo.minutos_categoria} />
+      </div>
+
+      {/* Bloco 4: quem responde por cada região */}
       <PorRegiao grupo={grupo} onAbrir={setSelecionadoId} />
 
-      {/* Bloco 4: hospitais sem cobertura (só quando houver) */}
+      {/* Bloco 5: hospitais sem cobertura (só quando houver) */}
       <HospitaisSemCobertura grupo={grupo} onErro={setAviso} />
 
-      {/* Blocos 5 e 6: apoio, recolhidos */}
+      {/* Blocos 6 e 7: apoio, recolhidos */}
       <ComparativoCarga grupo={grupo} onAbrir={setSelecionadoId} />
       <ParametrosCarga grupo={grupo} onErro={setAviso} onAviso={setAviso} />
 

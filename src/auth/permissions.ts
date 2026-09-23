@@ -20,7 +20,6 @@ export type Screen =
   | 'logs'
   | 'progresso'
   | 'volumetria'
-  | 'relatorio'
 
 // Telas que cada papel NÃO pode ver. Ausência de entrada = vê tudo.
 const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
@@ -72,10 +71,6 @@ const EXCLUSIVAS: Partial<Record<Screen, readonly UserRole[]>> = {
   // Volumetria: carga de trabalho por hospital, para os coordenadores decidirem
   // como dividir hospitais entre administrativos/técnicos. Admin vê para supervisão.
   volumetria: ['coordenador_administrativo', 'coordenador_tecnico', 'admin'],
-  // Relatório da auditoria geral: é peça de diretoria. Traz valores de pagamento
-  // e o plano contratual dos próximos blocos, e o próprio documento diz que não
-  // deve circular fora dela. Admin entra para manter a tela, não como leitor.
-  relatorio: ['admin', 'diretor'],
 }
 
 // Papéis SOMENTE LEITURA: veem as telas, mas nenhuma ação que altera dados.
@@ -112,16 +107,15 @@ const ROTA_DA_SCREEN: Record<Screen, string> = {
   logs: '/logs',
   progresso: '/progresso',
   volumetria: '/volumetria',
-  relatorio: '/relatorio',
 }
 
 // Ordem de preferência ao escolher a "tela inicial" de um papel barrado.
 const ORDEM_FALLBACK: readonly Screen[] = [
   'operacional', 'gestor', 'diretoria', 'kanban', 'logs', 'upload', 'configuracoes', 'equipe',
   'volumetria',
-  // Progresso e Relatório ficam por último de propósito: são telas de leitura, e
-  // cair nelas ao ser barrado em outra não ajudaria ninguém a trabalhar.
-  'progresso', 'relatorio',
+  // Progresso fica por último de propósito: é tela de acompanhamento, e cair
+  // nela ao ser barrado em outra não ajudaria ninguém a trabalhar.
+  'progresso',
 ]
 
 // Ações do domínio protegidas por papel (não são telas, mas operações dentro de

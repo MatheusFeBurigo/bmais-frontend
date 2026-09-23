@@ -15,13 +15,32 @@ function formDe(files: File[]): FormData {
 // Resposta da fase 1 (stage): só confirma o recebimento dos arquivos.
 interface StageResponse { sessao: string; arquivos: string[] }
 
-/** Quanto do envio já foi feito, para a tela mostrar a porcentagem. */
+/** Quanto do envio já foi feito, para a tela mostrar a porcentagem.
+ *
+ *  `fracao` (0..1) é o progresso CONTÍNUO do lote inteiro, já somando as duas
+ *  fases. Contar só arquivos inteiros dava uma barra de dois degraus: com dois
+ *  arquivos ela só podia mostrar 0%, 50% e 100%, e o tempo todo em que o envio
+ *  dos bytes acontecia (a parte mais lenta num lote grande) ela ficava parada em
+ *  zero. O número precisa andar enquanto o trabalho anda. */
 export interface ProgressoEnvio {
   fase: 'enviando' | 'lendo'
+  /** Arquivos já lidos (a contagem que a tela mostra por extenso). */
   feitos: number
   total: number
+  /** Progresso real do lote, de 0 a 1. */
+  fracao: number
   atual?: string | null
 }
+
+// Peso de cada fase na barra. O envio dos bytes é medido de verdade (XHR), e a
+// leitura é medida por arquivo concluído; as duas somam 100%.
+//
+// 30/70 porque ler os PDFs é o que domina o relógio: subir 10 arquivos leva
+// segundos, lê-los leva mais de um minuto. Um peso igual faria a barra correr
+// até a metade e depois rastejar — a impressão de travamento que ela existe para
+// evitar.
+const PESO_ENVIO = 0.3
+const PESO_LEITURA = 0.7
 
 /** Processa PDFs de censo hospitalar em 2 fases, para não estourar o timeout.
  *
@@ -40,8 +59,16 @@ export async function enviarCensos(
   files: File[], hospitais?: Record<string, HospitalManual>,
   onProgresso?: (p: ProgressoEnvio) => void,
 ): Promise<UploadCensoResponse> {
-  onProgresso?.({ fase: 'enviando', feitos: 0, total: files.length })
-  const stage = await apiUpload<StageResponse>('/upload/stage', formDe(files))
+  onProgresso?.({ fase: 'enviando', feitos: 0, total: files.length, fracao: 0 })
+  const stage = await apiUpload<StageResponse>('/upload/stage', formDe(files), ({ enviados, total }) => {
+    // A fração de bytes ocupa a primeira faixa da barra. O `min` protege do
+    // caso em que o navegador reporta `loaded` maior que `total` (acontece com
+    // o overhead do multipart em alguns browsers) e a barra passaria do peso.
+    const parcial = total > 0 ? Math.min(enviados / total, 1) : 0
+    onProgresso?.({
+      fase: 'enviando', feitos: 0, total: files.length, fracao: parcial * PESO_ENVIO,
+    })
+  })
 
   // Os nomes que o BACKEND gravou, não os do `File`: a gravação sanitiza o nome
   // (ver uploads.py), e pedir o processamento pelo nome original não acharia o
@@ -63,7 +90,10 @@ export async function enviarCensos(
   // gosta de concorrência.
   const resultados: UploadCensoResponse['resultados'] = []
   for (const [i, nome] of nomes.entries()) {
-    onProgresso?.({ fase: 'lendo', feitos: i, total: nomes.length, atual: nome })
+    onProgresso?.({
+      fase: 'lendo', feitos: i, total: nomes.length, atual: nome,
+      fracao: PESO_ENVIO + (i / nomes.length) * PESO_LEITURA,
+    })
     // O mapa de hospitais é recortado para este arquivo: mandar o lote inteiro
     // funcionaria, mas o backend só usa a entrada do arquivo que está lendo.
     const doArquivo = hospitais?.[nome]
@@ -90,7 +120,7 @@ export async function enviarCensos(
       })
     }
   }
-  onProgresso?.({ fase: 'lendo', feitos: nomes.length, total: nomes.length })
+  onProgresso?.({ fase: 'lendo', feitos: nomes.length, total: nomes.length, fracao: 1 })
   return { sessao: stage.sessao, resultados }
 }
 

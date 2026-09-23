@@ -1,446 +1,604 @@
-/* Folha de estilo do "Relatório da Auditoria Geral", transposta do documento
-   original (Relatorio_Diretoria.html) SEM alteração de valores.
+/* Estilo da tela do Relatório da auditoria (subrota de Progresso).
 
-   O que mudou na transposição, e só isso: todo seletor foi prefixado com
-   `.rel-doc`, para que a tipografia, as variáveis de cor e as regras de
-   impressão do documento valham DENTRO dele e não vazem para o resto do
-   sistema (o relatório traz um `:root` próprio, que sobrescreveria o
-   design-system inteiro se ficasse solto). O que era `:root`, `html` e `body`
-   virou o próprio `.rel-doc`; o modo escuro continua ancorado no <html>, que é
-   onde o sistema grava `data-theme`.
+   O documento de origem (`Relatorio_Diretoria.html`) trazia uma folha própria:
+   serifa, paleta editorial e medidas de peça impressa. Ela NÃO é usada aqui. O
+   relatório passou a ser uma tela do BMais, então veste a roupa do BMais: as
+   fontes Geist, os tokens de cor, os cartões, as tabelas e os raios do
+   design-system. Quem abre a aba deve sentir que continua no sistema.
 
-   Regra de manutenção: se o documento de origem mudar, gere esta folha de novo
-   a partir do <style> dele, em vez de editar à mão, para que as duas não
-   divirjam. */
+   O que esta folha faz é mapear a marcação do documento (classes curtas como
+   `.sec`, `.tile`, `.find`, `.bloco`, que vêm do HTML original e não podem ser
+   renomeadas sem reescrever o conteúdo) para os padrões visuais da aplicação.
+   Tudo é escopado em `.rel-doc` para que nomes genéricos como `.card` ou `.tw`
+   não colidam com o resto do sistema.
+
+   O TEXTO e a ESTRUTURA de informação seguem os do documento, intocados: o que
+   muda aqui é só a aparência. */
+
 .rel-doc{
-  --ground:#F1F2F5; --sheet:#FFFFFF; --sheet2:#F7F8FA;
-  --ink:#171C2C; --ink2:#2E3548; --muted:#586074; --faint:#858DA0;
-  --rule:#DCE0E8; --rule2:#C3C9D6;
-  --navy:#1E2761; --navy-t:#1E2761; --navyfill:#E4E7F3;
-  --gold:#9C7224; --goldline:#C9993F; --goldfill:#F7EDD8;
-  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
-  --ok:#2D7A55; --okfill:#E1F1E8; --adj:#A9530F; --adjfill:#FBEADB;
-  --shadow:0 1px 2px rgba(23,28,44,.05),0 6px 18px rgba(23,28,44,.05);
-  --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
-  --sans:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  /* Hierarquia tipográfica da tela, derivada da escala do design-system. O
+     documento é texto corrido longo, então a base é maior que a da interface
+     (12,5px), que foi calibrada para tabelas e formulários. */
+  --rel-t-body:13.5px;
+  --rel-t-lede:14.5px;
+  --rel-h1:26px;
+  --rel-h2:19px;
+  --rel-h3:15.5px;
+  --rel-h4:13.5px;
+  /* Medida de leitura: linha longa demais cansa e faz perder a próxima. */
+  --rel-medida:78ch;
+
+  /* Séries dos dois gráficos. O HTML do documento referencia estes nomes em
+     `style=` inline (--s1, --s2, --s3, --adj), então eles continuam existindo,
+     agora apontando para a paleta do sistema em vez das cores do arquivo
+     original. Mexer neles aqui repinta os gráficos sem tocar no conteúdo. */
+  --s1:var(--info);
+  --s2:var(--warning);
+  --s3:var(--success);
+  --adj:var(--warning);
+
+  color:var(--ink-2);
+  font-family:var(--font-sans);
+  font-size:var(--rel-t-body);
+  line-height:1.62;
+
+  /* O documento ocupa a área de conteúdo inteira e traz margens próprias
+     (`.bar`, `.doc`), então o recuo do `.scope` do layout é cancelado aqui:
+     somar os dois estreitaria o texto e afastaria a barra de seções do topbar.
+     `width:auto` junto da margem negativa — sem ele, o bloco passaria a medir a
+     janela MAIS os dois recuos e o telefone ganharia rolagem lateral. */
+  margin:-18px -28px -48px;
+  width:auto;
 }
-/* Paleta escura do documento. No arquivo original ela entrava sozinha pelo
-   `prefers-color-scheme` do sistema operacional; esse gatilho foi removido: o
-   BMais é uma interface clara e não tem troca de tema, e um relatório preto no
-   meio de um app branco pareceria defeito. A paleta fica preservada atrás de
-   `data-theme="dark"` no <html>, para valer de imediato no dia em que o sistema
-   ganhar tema escuro. */
-:root[data-theme="dark"] .rel-doc{
-  --ground:#0E1119; --sheet:#161A25; --sheet2:#1C2130;
-  --ink:#E8EBF3; --ink2:#CBD1DF; --muted:#9BA3B7; --faint:#6E7690;
-  --rule:#283043; --rule2:#384157;
-  --navy:#9FB0F0; --navy-t:#B7C4F5; --navyfill:#1F2644;
-  --gold:#DDB262; --goldline:#C9993F; --goldfill:#2A2315;
-  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
-  --ok:#6CC49A; --okfill:#15291F; --adj:#E59A5B; --adjfill:#2E1E12;
-  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.25);
+
+.rel-doc h1,.rel-doc h2,.rel-doc h3,.rel-doc h4,.rel-doc h5{
+  font-family:var(--font-sans);
+  color:var(--ink);
+  letter-spacing:-.015em;
+  line-height:1.3;
+  font-weight:600;
 }
-.rel-doc *{box-sizing:border-box}
-.rel-doc [hidden]{display:none!important}
-.rel-doc{scroll-behavior:smooth}
-.rel-doc{background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.58;-webkit-font-smoothing:antialiased;margin:0}
-.rel-doc h1,.rel-doc h2,.rel-doc h3,.rel-doc h4,.rel-doc h5{font-family:var(--serif);color:var(--ink);margin:0;text-wrap:balance;letter-spacing:-.005em}
 .rel-doc p{margin:0}
-.rel-doc a{color:var(--navy-t)}
-.rel-doc button{font:inherit;color:inherit;cursor:pointer}
-.rel-doc :focus-visible{outline:2px solid var(--navy);outline-offset:2px;border-radius:3px}
-.rel-doc .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.rel-doc .tn{font-variant-numeric:tabular-nums}
-@media (prefers-reduced-motion:reduce){.rel-doc *{transition:none!important}.rel-doc{scroll-behavior:auto}}
+.rel-doc a{color:var(--accent);text-decoration:none}
+.rel-doc a:hover{text-decoration:underline}
+.rel-doc b,.rel-doc strong{color:var(--ink);font-weight:600}
+.rel-doc :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-xs)}
+/* Números em colunas: alinham quando têm a mesma largura. */
+.rel-doc .mono,.rel-doc .tn{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
 
-/* ---------- barra ---------- */
-.rel-doc .bar{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--sheet) 94%,transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--rule)}
-.rel-doc .bar-in{max-width:1120px;margin:0 auto;padding:9px 26px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.rel-doc .bar .brand{font-family:var(--serif);font-weight:700;font-size:15px;color:var(--navy-t);white-space:nowrap}
-.rel-doc .bar .brand span{color:var(--gold)}
+/* ── barra de seções ────────────────────────────────────────────────────
+   Navegação interna do documento. Vira uma faixa do sistema: cola abaixo do
+   topbar e usa as mesmas pílulas de aba, em escala menor. */
+.rel-doc .bar{
+  position:sticky;top:54px;z-index:19;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  margin-bottom:22px;
+}
+.rel-doc .bar-in{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:8px 28px;
+}
+.rel-doc .bar .brand{
+  font-size:var(--t-base);font-weight:600;color:var(--primary);white-space:nowrap;
+}
+.rel-doc .bar .brand span{color:var(--accent)}
 .rel-doc .bar nav{display:flex;gap:2px;flex-wrap:wrap;flex:1;min-width:0}
-.rel-doc .bar nav a{font-size:12.5px;color:var(--muted);text-decoration:none;padding:4px 9px;border-radius:5px;white-space:nowrap}
-.rel-doc .bar nav a:hover{background:var(--sheet2);color:var(--ink)}
-.rel-doc .tools{display:flex;gap:6px}
-.rel-doc .tools button{border:1px solid var(--rule2);background:var(--sheet);border-radius:6px;padding:4px 10px;font-size:12.5px;color:var(--muted)}
-.rel-doc .tools button:hover{border-color:var(--navy);color:var(--ink)}
+.rel-doc .bar nav a{
+  font-size:var(--t-sm);color:var(--muted);
+  padding:4px 9px;border-radius:var(--r-sm);white-space:nowrap;
+  transition:background .12s,color .12s;
+}
+.rel-doc .bar nav a:hover{background:var(--surface-3);color:var(--ink);text-decoration:none}
 
-/* ---------- documento ---------- */
-.rel-doc .doc{max-width:1120px;margin:0 auto;padding:34px 26px 100px;display:flex;flex-direction:column;gap:62px}
-.rel-doc .sec{display:flex;flex-direction:column;gap:22px;scroll-margin-top:66px}
-.rel-doc .sec-h{display:flex;flex-direction:column;gap:6px;max-width:74ch}
-.rel-doc .kick{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:600}
-.rel-doc .sec-h h2{font-size:27px;line-height:1.2}
-.rel-doc .lede{color:var(--muted);font-size:16px;max-width:70ch}
+/* ── documento ──────────────────────────────────────────────────────────── */
+.rel-doc .doc{
+  max-width:1180px;margin:0 auto;padding:0 28px 40px;
+  display:flex;flex-direction:column;gap:38px;
+}
+.rel-doc .sec{display:flex;flex-direction:column;gap:16px;scroll-margin-top:150px}
+.rel-doc .sec-h{display:flex;flex-direction:column;gap:5px;max-width:var(--rel-medida)}
+/* Sobrelinha de seção: mesmo tratamento dos rótulos de KPI do sistema. */
+.rel-doc .kick{
+  font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;
+}
+.rel-doc .sec-h h2{font-size:var(--rel-h1);letter-spacing:-.02em}
+.rel-doc .sec-h.sub{margin-top:8px;border-top:1px solid var(--border);padding-top:20px}
+.rel-doc .sec-h.sub h3{font-size:var(--rel-h2)}
+.rel-doc .lede{color:var(--muted);font-size:var(--rel-t-lede);max-width:var(--rel-medida)}
+.rel-doc .cap,.rel-doc .sec>.cap{font-size:var(--t-md);color:var(--muted);max-width:var(--rel-medida)}
 
 /* capa */
-.rel-doc .cover{display:grid;grid-template-columns:1.3fr 1fr;gap:34px;align-items:end;padding-bottom:28px;border-bottom:2px solid var(--ink)}
-.rel-doc .cover h1{font-size:43px;line-height:1.05;margin-top:10px;letter-spacing:-.015em}
-.rel-doc .cover .sub{font-family:var(--serif);font-size:19px;color:var(--ink2);margin-top:12px;max-width:34ch}
-.rel-doc .ctrl{border:1px solid var(--rule2);background:var(--sheet);font-size:12.5px}
-.rel-doc .ctrl .row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--rule)}
+.rel-doc .cover{
+  display:grid;grid-template-columns:1.3fr 1fr;gap:28px;align-items:end;
+  padding-bottom:22px;border-bottom:2px solid var(--ink);
+}
+/* As duas colunas da capa terminam na mesma linha de base: o quadro de controle
+   é uma ficha técnica ao lado do título, não um cartão flutuando acima dele. */
+.rel-doc .cover>div{min-width:0}
+.rel-doc .cover h1{font-size:34px;line-height:1.1;margin-top:8px;letter-spacing:-.03em}
+.rel-doc .cover .sub{
+  font-size:var(--t-lg);color:var(--ink-3);margin-top:10px;max-width:38ch;line-height:1.5;
+}
+/* Quadro de controle: cartão do sistema dividido em células. */
+.rel-doc .ctrl{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-xs);
+  font-size:var(--t-base);
+}
+.rel-doc .ctrl .row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border-soft)}
 .rel-doc .ctrl .row:last-child{border-bottom:0}
 .rel-doc .ctrl .row.one{grid-template-columns:1fr}
-.rel-doc .ctrl .cell{padding:9px 11px;border-right:1px solid var(--rule);display:flex;flex-direction:column;gap:2px;min-width:0}
+.rel-doc .ctrl .cell{
+  padding:9px 12px;border-right:1px solid var(--border-soft);
+  display:flex;flex-direction:column;gap:2px;min-width:0;
+}
 .rel-doc .ctrl .cell:last-child{border-right:0}
-.rel-doc .ctrl .lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
-.rel-doc .ctrl .v{font-weight:600;color:var(--ink)}
+.rel-doc .ctrl .lbl{
+  font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;
+}
+.rel-doc .ctrl .v{font-weight:600;color:var(--ink);line-height:1.45}
 
-/* frase de abertura */
-.rel-doc .thesis{background:var(--navyfill);border-left:4px solid var(--navy);padding:24px 28px;border-radius:0 8px 8px 0}
-.rel-doc .thesis p{font-family:var(--serif);font-size:21px;line-height:1.42;color:var(--ink);max-width:62ch}
-.rel-doc .thesis .who{font-size:12.5px;color:var(--muted);margin-top:12px;font-family:var(--sans)}
+/* frase de abertura: faixa de destaque, no azul institucional */
+.rel-doc .thesis{
+  background:var(--primary-soft);border-left:3px solid var(--primary);
+  padding:18px 22px;border-radius:0 var(--r-md) var(--r-md) 0;
+}
+.rel-doc .thesis p{font-size:var(--t-lg);line-height:1.55;color:var(--ink);max-width:70ch}
+.rel-doc .thesis .who{font-size:var(--t-md);color:var(--muted);margin-top:10px}
 
-/* números de destaque */
-.rel-doc .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:14px}
-.rel-doc .tile{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:3px}
-.rel-doc .tile .n{font-family:var(--serif);font-size:32px;font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.rel-doc .tile .n.warn{color:var(--adj)}
-.rel-doc .tile .t{font-size:13.5px;color:var(--ink2);font-weight:600}
-.rel-doc .tile .src{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:5px;letter-spacing:.03em}
+/* ── números de destaque: os KPI cards do sistema ───────────────────────── */
+.rel-doc .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:10px}
+.rel-doc .tile{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:12px 14px;display:flex;flex-direction:column;gap:3px;min-width:0;
+}
+.rel-doc .tile .n{
+  font-family:var(--font-mono);font-size:var(--t-3xl);font-weight:600;
+  letter-spacing:-.04em;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.05;
+}
+.rel-doc .tile .n.warn{color:var(--warning)}
+.rel-doc .tile .t{font-size:var(--t-md);color:var(--ink-2);line-height:1.45}
+.rel-doc .tile .src{font-size:var(--t-xs);color:var(--muted-2);margin-top:4px}
 
-/* achados */
-.rel-doc .finds{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px}
-.rel-doc .find{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:17px 19px 16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden}
-.rel-doc .find::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--rule2)}
-.rel-doc .find.hot::before{background:var(--s2)}
-.rel-doc .find .num{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;color:var(--faint);font-weight:600}
-.rel-doc .find h4{font-size:16.5px;line-height:1.28}
-.rel-doc .find p{font-size:13.8px;color:var(--ink2)}
-.rel-doc .find .ev{font-size:12.5px;color:var(--muted);border-top:1px dashed var(--rule);padding-top:8px;margin-top:2px}
+/* ── achados e perguntas: cartões ───────────────────────────────────────── */
+.rel-doc .finds,.rel-doc .finds.three,.rel-doc .qa{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:10px;
+}
+.rel-doc .find,.rel-doc .q{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:15px 17px;display:flex;flex-direction:column;gap:7px;
+  position:relative;overflow:hidden;
+}
+/* Faixa lateral: marca o achado que pesa na decisão. */
+.rel-doc .find::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--border-strong)}
+.rel-doc .find.hot::before{background:var(--accent)}
+.rel-doc .find .num{
+  font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;
+}
+.rel-doc .find h4,.rel-doc .q h4{font-size:var(--rel-h3);line-height:1.35}
+.rel-doc .q h4{color:var(--primary);margin-bottom:4px}
+.rel-doc .find p,.rel-doc .q p{font-size:var(--t-md);color:var(--ink-2)}
+/* Evidência/consequência: nota de rodapé do cartão. */
+.rel-doc .find .ev{
+  font-size:var(--t-base);color:var(--muted);
+  border-top:1px solid var(--border-soft);padding-top:7px;margin-top:1px;
+}
 .rel-doc .find .ev b{color:var(--ink);font-variant-numeric:tabular-nums}
 
-/* gráficos */
-.rel-doc .figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px}
-.rel-doc .fig{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:18px 20px 15px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
-.rel-doc .fig h4{font-size:16px}
-.rel-doc .fig .cap{font-size:12.8px;color:var(--muted);max-width:56ch}
-.rel-doc .leg{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
-.rel-doc .leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
-.rel-doc .panel{display:flex;flex-direction:column;gap:9px}
-.rel-doc .panel .ph{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:600}
-.rel-doc .row2{display:grid;grid-template-columns:76px 1fr;align-items:center;gap:10px;font-size:13px}
-.rel-doc .row2 .k{color:var(--ink2);text-align:right}
-.rel-doc .track{position:relative;height:20px;display:flex;align-items:center;gap:8px}
-.rel-doc .track .b{height:15px;border-radius:0 4px 4px 0;min-width:3px}
-.rel-doc .track .v{font-size:12.5px;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
-.rel-doc .stack{display:flex;height:30px;border-radius:5px;overflow:hidden;gap:2px}
-.rel-doc .stack i{display:block;height:100%}
-.rel-doc .stack .lbl{display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
-.rel-doc details.tv{font-size:12.5px;border-top:1px solid var(--rule);padding-top:9px}
-.rel-doc details.tv summary{color:var(--muted);cursor:pointer;list-style:revert}
-.rel-doc details.tv table{width:100%;border-collapse:collapse;margin-top:9px}
-.rel-doc details.tv th,.rel-doc details.tv td{text-align:left;padding:5px 7px;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums}
-.rel-doc details.tv th{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600}
-
-/* quadro de blocos */
-.rel-doc .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:13px}
-.rel-doc .blk{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:9px}
-.rel-doc .blk .top{display:flex;align-items:center;justify-content:space-between;gap:9px}
-.rel-doc .blk .id{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:600}
-.rel-doc .pill{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:20px;white-space:nowrap;font-weight:600}
-.rel-doc .pill.go{background:var(--okfill);color:var(--ok)}
-.rel-doc .pill.next{background:var(--goldfill);color:var(--gold)}
-.rel-doc .pill.wait{background:var(--sheet2);color:var(--muted);border:1px solid var(--rule)}
-.rel-doc .blk h4{font-size:16.5px;line-height:1.25}
-.rel-doc .blk .mods{font-size:13.3px;color:var(--ink2)}
-.rel-doc .blk .drop{font-size:12.6px;color:var(--muted);border-top:1px dashed var(--rule);padding-top:8px}
-.rel-doc .blk .when{font-family:var(--mono);font-size:11px;color:var(--gold);font-weight:600}
-
-/* tabelas */
-.rel-doc .tw{overflow-x:auto;border:1px solid var(--rule);border-radius:9px;background:var(--sheet)}
-.rel-doc table{width:100%;border-collapse:collapse;font-size:13.6px}
-.rel-doc th,.rel-doc td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
-.rel-doc thead th{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);font-weight:600;background:var(--sheet2);white-space:nowrap}
-.rel-doc tbody tr:last-child td{border-bottom:0}
-
-/* parte detalhada */
-.rel-doc .split{display:grid;grid-template-columns:230px 1fr;gap:34px;align-items:start}
-.rel-doc .toc{position:sticky;top:60px;display:flex;flex-direction:column;gap:1px;font-size:12.6px;max-height:calc(100vh - 90px);overflow-y:auto;padding-right:6px}
-.rel-doc .toc a{color:var(--muted);text-decoration:none;padding:3px 8px;border-radius:5px;border-left:2px solid transparent}
-.rel-doc .toc a:hover{background:var(--sheet2);color:var(--ink)}
-.rel-doc .toc a.n1{font-family:var(--serif);font-weight:700;color:var(--ink);margin-top:11px;font-size:13.5px}
-.rel-doc .md{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:8px 34px 34px;box-shadow:var(--shadow);min-width:0}
-.rel-doc .mdsec{padding-top:24px;scroll-margin-top:66px}
-.rel-doc .md h2{font-size:26px;margin:14px 0 4px;padding-top:16px;border-top:2px solid var(--ink)}
-.rel-doc .md h3{font-size:20px;margin:26px 0 4px;color:var(--navy-t)}
-.rel-doc .md h4{font-size:16.5px;margin:20px 0 3px}
-.rel-doc .md h5{font-size:15px;margin:16px 0 3px;color:var(--ink2)}
-.rel-doc .md p{margin:11px 0;color:var(--ink2);max-width:74ch}
-.rel-doc .md ul,.rel-doc .md ol{margin:11px 0;padding-left:22px;color:var(--ink2);max-width:74ch}
-.rel-doc .md li{margin:5px 0}
-.rel-doc .md blockquote{margin:16px 0;padding:14px 20px;background:var(--sheet2);border-left:3px solid var(--goldline);border-radius:0 7px 7px 0;font-size:14.2px;color:var(--ink2)}
-.rel-doc .md blockquote p{margin:7px 0}
-.rel-doc .md pre{background:var(--sheet2);border:1px solid var(--rule);border-radius:7px;padding:13px 15px;overflow-x:auto;font-size:12.4px;line-height:1.5}
-.rel-doc .md code{font-family:var(--mono);font-size:.9em;background:var(--sheet2);padding:1px 5px;border-radius:4px;color:var(--navy-t)}
-.rel-doc .md pre code{background:none;padding:0;color:var(--ink2)}
-.rel-doc .md .tw{margin:16px 0}
-.rel-doc .md strong{color:var(--ink)}
-
-.rel-doc .foot{font-size:12.5px;color:var(--muted);border-top:1px solid var(--rule);padding-top:18px;max-width:78ch}
-
-@media (max-width:760px){
-  .rel-doc .bar-in{gap:8px;padding:8px 16px}
-  .rel-doc .bar nav{order:3;width:100%;flex:none;flex-wrap:nowrap;overflow-x:auto;gap:2px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
-  .rel-doc .tools{margin-left:auto}
-  .rel-doc .tools button{padding:4px 8px;font-size:12px}
+/* ── tabelas: o padrão .bmais-table ─────────────────────────────────────── */
+.rel-doc .tw{
+  overflow-x:auto;border:1px solid var(--border);
+  border-radius:var(--r-md);background:var(--surface);
 }
+.rel-doc table{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--t-base)}
+.rel-doc thead th{
+  font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+  font-weight:600;text-align:left;padding:10px 12px;background:var(--surface-3);
+  border-bottom:1px solid var(--border);white-space:nowrap;
+}
+.rel-doc tbody td{
+  padding:10px 12px;border-bottom:1px solid var(--border-soft);
+  vertical-align:top;color:var(--ink-2);line-height:1.5;
+}
+.rel-doc tbody tr:last-child td{border-bottom:0}
+.rel-doc tbody tr:hover td{background:var(--surface-3)}
+
+/* ── gráficos e painéis de barra ────────────────────────────────────────── */
+.rel-doc .figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:12px}
+.rel-doc .fig{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:16px 18px;display:flex;flex-direction:column;gap:11px;
+}
+.rel-doc .fig h4{font-size:var(--rel-h3)}
+.rel-doc .leg{display:flex;gap:14px;flex-wrap:wrap;font-size:var(--t-base);color:var(--muted)}
+.rel-doc .leg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.rel-doc .panel{display:flex;flex-direction:column;gap:7px}
+.rel-doc .panel .ph,.rel-doc .pair .ph{
+  font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;
+}
+.rel-doc .row2{display:grid;grid-template-columns:76px 1fr;align-items:center;gap:10px;font-size:var(--t-base)}
+.rel-doc .row2 .k{color:var(--ink-2);text-align:right}
+.rel-doc .track{position:relative;height:20px;display:flex;align-items:center;gap:8px}
+.rel-doc .track .b{height:14px;border-radius:0 var(--r-xs) var(--r-xs) 0;min-width:3px}
+.rel-doc .track .v{
+  font-size:var(--t-base);color:var(--ink);font-weight:600;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.rel-doc .stack{display:flex;height:28px;border-radius:var(--r-sm);overflow:hidden;gap:2px}
+.rel-doc .stack i{display:block;height:100%}
+.rel-doc .stack .lbl{
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  font-size:var(--t-base);font-weight:600;font-variant-numeric:tabular-nums;
+}
+/* Tabela de conferência recolhida sob o gráfico. */
+.rel-doc details.tv{font-size:var(--t-base);border-top:1px solid var(--border-soft);padding-top:9px}
+.rel-doc details.tv summary{color:var(--muted);cursor:pointer}
+.rel-doc details.tv table{margin-top:9px}
+.rel-doc details.tv th,.rel-doc details.tv td{padding:6px 8px;font-variant-numeric:tabular-nums}
+
+/* ── quadro de processos (pontes manuais) ───────────────────────────────── */
+.rel-doc .bridges{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-md);overflow:hidden;
+}
+.rel-doc .bh,.rel-doc .br{
+  display:grid;grid-template-columns:150px 1.5fr 1.15fr 1.15fr;gap:14px;
+  padding:12px 18px;border-bottom:1px solid var(--border-soft);align-items:start;
+}
+.rel-doc .bh{
+  background:var(--surface-3);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;padding:9px 18px;border-bottom:1px solid var(--border);
+}
+.rel-doc .br:last-child{border-bottom:0}
+.rel-doc .br:hover{background:var(--surface-3)}
+.rel-doc .bp{font-size:var(--t-md);font-weight:600;color:var(--ink);line-height:1.35}
+.rel-doc .bp small{
+  display:block;font-size:var(--t-xs);color:var(--muted-2);
+  font-weight:400;margin-top:3px;letter-spacing:.04em;
+}
+.rel-doc .bc{display:flex;flex-wrap:wrap;gap:5px}
+.rel-doc .bv,.rel-doc .bm,.rel-doc .bl{font-size:var(--t-base);color:var(--ink-2);line-height:1.5}
+.rel-doc .bv b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* Chips: claro = ponte manual, escuro = já vive num sistema. É a leitura
+   central do quadro, então a distinção usa a cor institucional. */
+.rel-doc .c{
+  display:inline-block;font-size:var(--t-sm);line-height:1.3;
+  padding:3px 9px;border-radius:var(--r-xl);
+  border:1px solid var(--border-strong);background:var(--surface-3);
+  color:var(--muted);font-style:normal;white-space:nowrap;
+}
+.rel-doc .c.on{border-color:var(--primary);background:var(--primary);color:#fff}
+.rel-doc .c.gold{border-color:var(--caution);background:var(--caution-bg);color:var(--caution)}
+.rel-doc .est{font-size:var(--t-xs);color:var(--muted-2);margin-left:3px;white-space:nowrap}
+
+/* Regra/efeito em destaque: mesma faixa de aviso do sistema. */
+.rel-doc .rule{
+  background:var(--caution-bg);border-left:3px solid var(--caution);
+  padding:14px 20px;border-radius:0 var(--r-md) var(--r-md) 0;
+  font-size:var(--t-md);color:var(--ink-2);max-width:82ch;line-height:1.55;
+}
+
+/* ── princípios de desenho ──────────────────────────────────────────────── */
+.rel-doc .princ{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(min(310px,100%),1fr));gap:1px;
+  background:var(--border);border:1px solid var(--border);
+  border-radius:var(--r-md);overflow:hidden;
+}
+.rel-doc .pr{display:grid;grid-template-columns:30px 1fr;gap:12px;background:var(--surface);padding:15px 17px}
+.rel-doc .pn{font-family:var(--font-mono);font-size:var(--t-base);font-weight:600;color:var(--accent);padding-top:2px}
+.rel-doc .pr h4{font-size:var(--rel-h4);line-height:1.35;margin-bottom:4px}
+.rel-doc .pr p{font-size:var(--t-base);color:var(--muted)}
+
+/* ── fluxo numerado ─────────────────────────────────────────────────────── */
+.rel-doc .flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(215px,100%),1fr));gap:10px}
+.rel-doc .fs{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:15px 17px;display:flex;flex-direction:column;gap:5px;position:relative;
+}
+.rel-doc .fn{font-family:var(--font-mono);font-size:var(--t-sm);font-weight:600;color:var(--accent);letter-spacing:.08em}
+.rel-doc .fs h4{font-size:var(--rel-h4);line-height:1.35}
+.rel-doc .fs p{font-size:var(--t-base);color:var(--ink-2)}
+
+/* ── pacote de entrega e sequência ──────────────────────────────────────── */
+.rel-doc .steps,.rel-doc .seq{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:10px}
+.rel-doc .st{
+  background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--primary);
+  border-radius:var(--r-md);padding:15px 17px;display:flex;flex-direction:column;gap:6px;
+}
+.rel-doc .sn{font-family:var(--font-mono);font-size:var(--t-sm);font-weight:600;color:var(--muted);letter-spacing:.08em}
+.rel-doc .st h4{font-size:var(--rel-h4);line-height:1.35}
+.rel-doc .st p{font-size:var(--t-base);color:var(--ink-2)}
+
+.rel-doc .sq{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:14px 16px;display:flex;flex-direction:column;gap:6px;
+}
+.rel-doc .sq .top{display:flex;align-items:center;justify-content:space-between;gap:9px}
+.rel-doc .sq .id{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.rel-doc .sq h4{font-size:var(--rel-h3);line-height:1.3}
+.rel-doc .sq p{font-size:var(--t-base);color:var(--ink-2)}
+.rel-doc .sq .when{
+  font-family:var(--font-mono);font-size:var(--t-sm);color:var(--accent);font-weight:600;
+  border-top:1px solid var(--border-soft);padding-top:7px;margin-top:auto;
+}
+
+/* ── ajuste x melhoria, e cartões genéricos ─────────────────────────────── */
+.rel-doc .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:12px}
+.rel-doc .card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:16px 18px;display:flex;flex-direction:column;gap:11px;overflow:visible;
+}
+.rel-doc .card h4{font-size:var(--rel-h3)}
+.rel-doc .card>p{font-size:var(--t-md);color:var(--ink-2)}
+.rel-doc .card.ok{border-left:3px solid var(--success)}
+.rel-doc .card.adj{border-left:3px solid var(--warning)}
+/* Etiqueta do cartão: o badge do sistema. */
+.rel-doc .card .tag{
+  align-self:flex-start;font-size:var(--t-xs);font-weight:600;letter-spacing:.02em;
+  text-transform:uppercase;padding:2px 8px;border-radius:5px;
+}
+.rel-doc .card .tag.ok{background:var(--success-bg);color:var(--success-2)}
+.rel-doc .card .tag.adj{background:var(--warning-bg);color:var(--warning-2)}
+
+/* hierarquia do negócio (cliente > filial > hospital > serviço > prestador) */
+.rel-doc .hier{display:flex;flex-direction:column;gap:5px;padding:2px 0}
+.rel-doc .hier .lv{
+  display:grid;grid-template-columns:96px 1fr;align-items:center;gap:10px;
+  padding:8px 12px;border:1px solid var(--border);border-radius:var(--r-sm);
+  background:var(--surface-3);
+}
+/* O degrau mostra que cada nível vive dentro do anterior. Em tela estreita o
+   escalonamento é reduzido: em 56px ele empurrava o cartão para fora da janela. */
+.rel-doc .hier .lv:nth-child(2){margin-left:14px}
+.rel-doc .hier .lv:nth-child(3){margin-left:28px}
+.rel-doc .hier .lv:nth-child(4){margin-left:42px}
+.rel-doc .hier .lv:nth-child(5){margin-left:56px}
+.rel-doc .hier .k{font-weight:600;color:var(--primary);font-size:var(--t-md)}
+.rel-doc .hier .d{font-size:var(--t-base);color:var(--muted)}
+
+.rel-doc .pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.rel-doc .pair>div{border-left:2px solid var(--accent);padding:2px 0 2px 12px}
+.rel-doc .pair .ph{display:block;margin-bottom:3px}
+.rel-doc .pair p{font-size:var(--t-md);color:var(--ink-2)}
+
+/* ── caminhos por operadora ─────────────────────────────────────────────── */
+.rel-doc .paths{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:16px 18px;display:flex;flex-direction:column;gap:11px;
+}
+.rel-doc .pt-row{
+  display:grid;grid-template-columns:210px 1fr;gap:14px;align-items:center;
+  padding-bottom:11px;border-bottom:1px solid var(--border-soft);
+}
+.rel-doc .pt-lbl{font-weight:600;font-size:var(--t-md);color:var(--ink)}
+.rel-doc .pt-steps{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.rel-doc .arw{color:var(--muted-3);font-size:16px}
+.rel-doc .pt-join{display:grid;grid-template-columns:210px 1fr;gap:14px;align-items:stretch}
+.rel-doc .jl{border-left:2px solid var(--primary);border-radius:2px;margin-left:8px}
+.rel-doc .jbox{background:var(--primary-soft);border-radius:var(--r-md);padding:13px 17px}
+.rel-doc .jbox h4{font-size:var(--rel-h4);margin-bottom:4px}
+.rel-doc .jbox p{font-size:var(--t-base);color:var(--ink-2)}
+
+/* ── blocos com módulos dentro ──────────────────────────────────────────── */
+.rel-doc .blocos{display:flex;flex-direction:column;gap:12px}
+.rel-doc .bloco{
+  background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--border-strong);
+  border-radius:var(--r-md);padding:16px 18px;
+}
+.rel-doc .bloco.b1{border-left-color:var(--success)}
+.rel-doc .bloco.b2{border-left-color:var(--caution)}
+.rel-doc .bhd{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:12px}
+.rel-doc .bid{font-weight:600;font-size:var(--rel-h2);color:var(--ink);letter-spacing:-.02em}
+.rel-doc .bwhen{
+  font-family:var(--font-mono);font-size:var(--t-sm);color:var(--muted);
+  font-weight:600;margin-left:auto;white-space:nowrap;
+}
+.rel-doc .bmods{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(255px,100%),1fr));gap:10px}
+.rel-doc .bmods .sq{background:var(--surface-3);border-radius:var(--r-sm);padding:13px 15px}
+.rel-doc .bsub{
+  font-size:var(--t-base);color:var(--muted);margin-top:12px;
+  padding-top:10px;border-top:1px solid var(--border-soft);
+}
+.rel-doc .bsub b{color:var(--ink)}
+
+/* Pastilhas de situação do bloco: os badges do sistema. */
+.rel-doc .pill{
+  font-size:var(--t-xs);font-weight:600;letter-spacing:.02em;text-transform:uppercase;
+  padding:2px 8px;border-radius:5px;white-space:nowrap;
+}
+.rel-doc .pill.go{background:var(--success-bg);color:var(--success-2)}
+.rel-doc .pill.next{background:var(--caution-bg);color:var(--caution)}
+.rel-doc .pill.wait{background:var(--surface-3);color:var(--muted);border:1px solid var(--border)}
+
+/* quadro de blocos solto (.board/.blk), usado na visão resumida */
+.rel-doc .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr));gap:10px}
+.rel-doc .blk{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:15px 17px;display:flex;flex-direction:column;gap:8px;
+}
+.rel-doc .blk .top{display:flex;align-items:center;justify-content:space-between;gap:9px}
+.rel-doc .blk .id{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.rel-doc .blk h4{font-size:var(--rel-h3);line-height:1.3}
+.rel-doc .blk .mods{font-size:var(--t-md);color:var(--ink-2)}
+.rel-doc .blk .drop{font-size:var(--t-base);color:var(--muted);border-top:1px solid var(--border-soft);padding-top:7px}
+.rel-doc .blk .when{font-family:var(--font-mono);font-size:var(--t-sm);color:var(--accent);font-weight:600}
+
+/* ── trilha de substituição dos sistemas ────────────────────────────────── */
+.rel-doc .trilha{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-md);overflow:hidden;
+}
+.rel-doc .th,.rel-doc .tr{display:grid;grid-template-columns:172px repeat(4,1fr);gap:8px;padding:9px 18px;align-items:stretch}
+.rel-doc .th{
+  background:var(--surface-3);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;align-items:center;border-bottom:1px solid var(--border);
+}
+.rel-doc .tr{border-top:1px solid var(--border-soft)}
+.rel-doc .tr:first-of-type{border-top:0}
+.rel-doc .trilha .tn{font-weight:600;font-size:var(--t-md);color:var(--ink);line-height:1.3;align-self:center;font-family:var(--font-sans)}
+.rel-doc .trilha .tn small{
+  display:block;font-size:var(--t-xs);color:var(--muted-2);font-weight:400;
+  margin-top:3px;letter-spacing:.03em;text-transform:none;
+}
+/* Os quatro estados da transição, no vocabulário de cor do sistema. */
+.rel-doc .tc{font-size:var(--t-base);line-height:1.45;padding:9px 11px;border-radius:var(--r-sm);border:1px solid transparent}
+.rel-doc .tc.use{background:var(--primary-soft);border-color:var(--primary);color:var(--ink-2)}
+.rel-doc .tc.part{background:var(--caution-bg);border-color:var(--caution);color:var(--ink-2)}
+.rel-doc .tc.par{background:var(--info-bg);border-color:var(--info);color:var(--ink-2)}
+.rel-doc .tc.out{background:var(--success-bg);border-color:var(--success);color:var(--success-2);font-weight:600}
+.rel-doc .tleg{
+  display:flex;flex-wrap:wrap;gap:16px;padding:10px 18px;
+  border-top:1px solid var(--border);font-size:var(--t-base);
+  color:var(--muted);background:var(--surface-3);
+}
+.rel-doc .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid}
+.rel-doc .sw.use{background:var(--primary-soft);border-color:var(--primary)}
+.rel-doc .sw.part{background:var(--caution-bg);border-color:var(--caution)}
+.rel-doc .sw.par{background:var(--info-bg);border-color:var(--info)}
+.rel-doc .sw.out{background:var(--success-bg);border-color:var(--success)}
+
+/* marco: o momento em que os dois sistemas saem */
+.rel-doc .marco{display:flex}
+.rel-doc .mk{
+  background:var(--success-bg);border-left:3px solid var(--success);
+  border-radius:0 var(--r-md) var(--r-md) 0;padding:16px 22px;
+  display:flex;flex-direction:column;gap:5px;max-width:84ch;
+}
+.rel-doc .mn{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--success-2);font-weight:600}
+.rel-doc .mk h4{font-size:var(--rel-h2)}
+.rel-doc .mk p{font-size:var(--t-md);color:var(--ink-2)}
+
+/* ── antes e depois ─────────────────────────────────────────────────────── */
+.rel-doc .antes{display:grid;grid-template-columns:1fr 38px 1fr;gap:10px;align-items:center}
+.rel-doc .ad{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-height:100%;
+}
+.rel-doc .ad.depois{border-color:var(--primary)}
+.rel-doc .al{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.rel-doc .anodes{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:42px}
+.rel-doc .c.big{font-size:var(--t-lg);font-weight:600;padding:10px 20px;border-radius:var(--r-md)}
+.rel-doc .ad p{font-size:var(--t-base);color:var(--ink-2)}
+.rel-doc .aseta{text-align:center;font-size:26px;color:var(--muted-3)}
+
+/* ── relatório completo: índice + corpo ─────────────────────────────────── */
+.rel-doc .split{display:grid;grid-template-columns:230px 1fr;gap:28px;align-items:start}
+.rel-doc .toc{
+  position:sticky;top:120px;display:flex;flex-direction:column;gap:1px;
+  font-size:var(--t-base);max-height:calc(100vh - 150px);overflow-y:auto;padding-right:6px;
+}
+.rel-doc .toc a{
+  color:var(--muted);padding:4px 9px;border-radius:var(--r-sm);
+  border-left:2px solid transparent;line-height:1.45;
+}
+.rel-doc .toc a:hover{background:var(--surface-3);color:var(--ink);text-decoration:none}
+.rel-doc .toc a.n1{font-weight:600;color:var(--ink);margin-top:10px;font-size:var(--t-md)}
+
+.rel-doc .md{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:4px 30px 30px;min-width:0;
+}
+.rel-doc .mdsec{padding-top:20px;scroll-margin-top:150px}
+.rel-doc .md h2{font-size:var(--rel-h1);margin:12px 0 4px;padding-top:14px;border-top:2px solid var(--ink);letter-spacing:-.02em}
+.rel-doc .md h3{font-size:var(--rel-h2);margin:22px 0 4px;color:var(--primary)}
+.rel-doc .md h4{font-size:var(--rel-h3);margin:18px 0 3px}
+.rel-doc .md h5{font-size:var(--rel-h4);margin:14px 0 3px;color:var(--ink-2)}
+.rel-doc .md p{margin:10px 0;color:var(--ink-2);max-width:var(--rel-medida)}
+.rel-doc .md ul,.rel-doc .md ol{margin:10px 0;padding-left:22px;color:var(--ink-2);max-width:var(--rel-medida)}
+.rel-doc .md li{margin:5px 0}
+.rel-doc .md blockquote{
+  margin:14px 0;padding:12px 18px;background:var(--surface-3);
+  border-left:2px solid var(--accent);border-radius:0 var(--r-sm) var(--r-sm) 0;
+  font-size:var(--t-md);color:var(--ink-2);
+}
+.rel-doc .md blockquote p{margin:6px 0}
+.rel-doc .md pre{
+  background:var(--surface-3);border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:12px 14px;overflow-x:auto;font-size:var(--t-sm);line-height:1.55;
+}
+.rel-doc .md code{
+  font-family:var(--font-mono);font-size:.92em;background:var(--surface-3);
+  padding:1px 5px;border-radius:var(--r-xs);color:var(--primary);
+}
+.rel-doc .md pre code{background:none;padding:0;color:var(--ink-2)}
+.rel-doc .md .tw{margin:14px 0}
+
+.rel-doc .foot{
+  font-size:var(--t-base);color:var(--muted);
+  border-top:1px solid var(--border);padding-top:16px;max-width:80ch;
+}
+
+/* ── responsivo ─────────────────────────────────────────────────────────── */
 @media (max-width:900px){
-  .rel-doc .cover{grid-template-columns:1fr;gap:24px}
-  .rel-doc .cover h1{font-size:33px}
+  .rel-doc .cover{grid-template-columns:1fr;gap:20px}
+  .rel-doc .cover h1{font-size:27px}
   .rel-doc .split{grid-template-columns:1fr}
   .rel-doc .toc{position:static;max-height:none;flex-direction:row;flex-wrap:wrap;gap:4px}
   .rel-doc .toc a.n1{margin-top:0}
-  .rel-doc .md{padding:8px 20px 26px}
-  .rel-doc .doc{padding:26px 16px 70px}
-  .rel-doc .bar-in{padding:9px 16px}
+  .rel-doc .md{padding:4px 18px 22px}
+  .rel-doc .doc{padding:0 16px 40px;gap:30px}
+  /* Em tela estreita os onze links empilhados comiam meia dobra. Viram uma
+     faixa que rola na horizontal, como no documento de origem. */
+  .rel-doc .bar-in{padding:8px 16px;flex-wrap:nowrap;gap:10px}
+  .rel-doc .bar nav{
+    flex-wrap:nowrap;overflow-x:auto;gap:2px;
+    padding-bottom:2px;-webkit-overflow-scrolling:touch;
+  }
+  /* minmax(0,1fr) e não 1fr: uma coluna `1fr` não encolhe abaixo do conteúdo
+     dela, e uma tabela larga dentro do cartão empurrava a página para fora da
+     janela em vez de ganhar rolagem própria. */
+  .rel-doc .two,.rel-doc .pair{grid-template-columns:minmax(0,1fr)}
+  .rel-doc .bh,.rel-doc .th{display:none}
+  .rel-doc .br,.rel-doc .tr{grid-template-columns:1fr;gap:8px}
+  .rel-doc .pt-row,.rel-doc .pt-join{grid-template-columns:1fr;gap:8px}
+  .rel-doc .jl{display:none}
+  .rel-doc .antes{grid-template-columns:1fr}
+  .rel-doc .hier .lv{grid-template-columns:78px 1fr;gap:8px;padding:7px 10px}
+  .rel-doc .hier .lv:nth-child(2){margin-left:7px}
+  .rel-doc .hier .lv:nth-child(3){margin-left:14px}
+  .rel-doc .hier .lv:nth-child(4){margin-left:21px}
+  .rel-doc .hier .lv:nth-child(5){margin-left:28px}
+  .rel-doc .aseta{transform:rotate(90deg)}
+  /* Sem o cabeçalho da grade, cada célula precisa dizer o que é. */
+  .rel-doc .bm::before{content:"Como passa a funcionar: "}
+  .rel-doc .bl::before{content:"O que libera: "}
+  .rel-doc .bm::before,.rel-doc .bl::before{
+    font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600;
+  }
 }
 
+/* ── impressão ──────────────────────────────────────────────────────────
+   O documento volta a ser folha: fundo branco, sem barras e sem grades que o
+   Chrome não pagina bem. */
 @media print{
-  .rel-doc{--ground:#fff;--sheet:#fff;--sheet2:#fafafa;--shadow:none}
-  .rel-doc .bar,.rel-doc .tools,.rel-doc .toc,.rel-doc details.tv{display:none!important}
-  .rel-doc{font-size:10.5pt;background:#fff}
-  /* flex e grid nao paginam bem no Chrome: o miolo vira bloco para o PDF sair inteiro */
-  .rel-doc .doc,.rel-doc .sec,.rel-doc .split,.rel-doc .md{display:block;max-width:none}
-  .rel-doc .doc{padding:0}
-  .rel-doc .sec{margin-bottom:26px}
-  .rel-doc .sec-h,.rel-doc .thesis,.rel-doc .tw,.rel-doc .board,.rel-doc .tiles,.rel-doc .finds,.rel-doc .figs{margin-bottom:16px}
-  .rel-doc .md{border:0;padding:0}
+  .rel-doc{margin:0;font-size:10.5pt}
+  .rel-doc .bar,.rel-doc .toc,.rel-doc details.tv{display:none!important}
+  .rel-doc .doc,.rel-doc .sec,.rel-doc .split,.rel-doc .md{display:block;max-width:none;padding:0}
+  .rel-doc .sec{margin-bottom:24px}
+  .rel-doc .sec-h,.rel-doc .thesis,.rel-doc .tw,.rel-doc .board,
+  .rel-doc .tiles,.rel-doc .finds,.rel-doc .figs{margin-bottom:14px}
+  .rel-doc .two,.rel-doc .pair,.rel-doc .flow,.rel-doc .blocos,
+  .rel-doc .qa,.rel-doc .antes,.rel-doc .princ,.rel-doc .steps,
+  .rel-doc .seq,.rel-doc .bmods{display:block}
+  .rel-doc .md{border:0}
   .rel-doc .md p,.rel-doc .md ul,.rel-doc .md ol{max-width:none}
-  .rel-doc .sec,.rel-doc .find,.rel-doc .tile,.rel-doc .blk,.rel-doc .fig,.rel-doc .mdsec{break-inside:avoid}
+  .rel-doc .sec,.rel-doc .find,.rel-doc .tile,.rel-doc .blk,.rel-doc .fig,
+  .rel-doc .mdsec,.rel-doc .card,.rel-doc .br,.rel-doc .pr,.rel-doc .st,
+  .rel-doc .sq,.rel-doc .fs,.rel-doc .bloco,.rel-doc .q,.rel-doc .ad,
+  .rel-doc .tr,.rel-doc .mk{break-inside:avoid}
+  .rel-doc .pr,.rel-doc .st,.rel-doc .sq,.rel-doc .fs,.rel-doc .bloco,
+  .rel-doc .q,.rel-doc .ad,.rel-doc .tr,.rel-doc .mk{margin-bottom:8px}
   .rel-doc .md h2{break-before:page;padding-top:0}
   .rel-doc .cover{break-after:avoid}
   .rel-doc a{color:inherit;text-decoration:none}
+  .rel-doc .aseta{display:none}
+  /* Sem as cores, os quatro estados da trilha e os chips perdem o sentido. */
+  .rel-doc .tc,.rel-doc .c,.rel-doc .sw,.rel-doc .mk,.rel-doc .jbox,
+  .rel-doc .pill,.rel-doc .thesis{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
-
-/* ---------- o negócio ---------- */
-.rel-doc .two{display:grid;grid-template-columns:1fr 1.25fr;gap:16px}
-.rel-doc .card{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:18px 20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
-.rel-doc .card h4{font-size:16.5px}
-.rel-doc .card .cap{font-size:12.8px;color:var(--muted)}
-.rel-doc .hier{display:flex;flex-direction:column;gap:6px;padding:4px 0}
-.rel-doc .hier .lv{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--rule2);border-radius:7px;background:var(--sheet2)}
-.rel-doc .hier .lv:nth-child(2){margin-left:14px}.rel-doc .hier .lv:nth-child(3){margin-left:28px}.rel-doc .hier .lv:nth-child(4){margin-left:42px}.rel-doc .hier .lv:nth-child(5){margin-left:56px}
-.rel-doc .hier .k{font-family:var(--serif);font-weight:700;color:var(--navy-t);font-size:15px}
-.rel-doc .hier .d{font-size:12.8px;color:var(--muted)}
-.rel-doc .pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.rel-doc .pair>div{border-left:3px solid var(--goldline);padding:4px 0 4px 12px}
-.rel-doc .pair .ph{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:600;display:block;margin-bottom:3px}
-.rel-doc .pair p{font-size:13.5px;color:var(--ink2)}
-.rel-doc .finds.three{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
-
-/* ---------- pontes manuais ---------- */
-.rel-doc .bridges{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
-.rel-doc .bh,.rel-doc .br{display:grid;grid-template-columns:150px 1.5fr 1.15fr 1.15fr;gap:14px;padding:13px 18px;border-bottom:1px solid var(--rule);align-items:start}
-.rel-doc .bh{background:var(--sheet2);font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:9px 18px}
-.rel-doc .br:last-child{border-bottom:0}
-.rel-doc .bp{font-family:var(--serif);font-weight:700;font-size:15px;color:var(--ink);line-height:1.25}
-.rel-doc .bp small{display:block;font-family:var(--mono);font-size:10px;color:var(--faint);font-weight:500;margin-top:3px;letter-spacing:.04em}
-.rel-doc .bc{display:flex;flex-wrap:wrap;gap:5px}
-.rel-doc .c{display:inline-block;font-size:11.5px;line-height:1.2;padding:4px 8px;border-radius:14px;border:1px solid var(--goldline);background:var(--goldfill);color:var(--gold);font-style:normal;white-space:nowrap}
-.rel-doc .c.on{border-color:var(--navy);background:var(--navy);color:#fff}
-.rel-doc .bv,.rel-doc .bm{font-size:13px;color:var(--ink2);line-height:1.45}
-.rel-doc .bv b{color:var(--ink);font-variant-numeric:tabular-nums}
-.rel-doc .est{display:inline-block;font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.04em;margin-left:3px;white-space:nowrap}
-.rel-doc .rule{background:var(--goldfill);border-left:4px solid var(--goldline);padding:16px 22px;border-radius:0 8px 8px 0;font-size:14.5px;color:var(--ink2);max-width:80ch}
-.rel-doc .rule b{color:var(--ink)}
-.rel-doc .sec>.cap{font-size:12.5px;color:var(--muted)}
-
-@media (max-width:900px){
-  .rel-doc .two{grid-template-columns:1fr}
-  .rel-doc .bh{display:none}
-  .rel-doc .br{grid-template-columns:1fr;gap:8px}
-  }
-@media print{
-  .rel-doc .two,.rel-doc .pair{display:block}
-  .rel-doc .card,.rel-doc .br{break-inside:avoid}
-  .rel-doc .c.on{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-}
-
-/* ---------- subtítulo dentro de seção ---------- */
-.rel-doc .sec-h.sub{margin-top:14px;border-top:1px solid var(--rule);padding-top:22px}
-.rel-doc .sec-h.sub h3{font-size:21px;line-height:1.25}
-
-/* ---------- princípios de desenho ---------- */
-.rel-doc .princ{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:2px;background:var(--rule);border:1px solid var(--rule);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-.rel-doc .pr{display:grid;grid-template-columns:34px 1fr;gap:12px;background:var(--sheet);padding:16px 18px}
-.rel-doc .pn{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--gold);padding-top:2px}
-.rel-doc .pr h4{font-size:15.5px;line-height:1.3;margin-bottom:4px}
-.rel-doc .pr p{font-size:13.2px;color:var(--muted)}
-
-/* ---------- pacote de entrega ---------- */
-.rel-doc .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
-.rel-doc .st{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:17px 19px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:7px;border-top:3px solid var(--navy)}
-.rel-doc .sn{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--faint);letter-spacing:.09em}
-.rel-doc .st h4{font-size:16px;line-height:1.28}
-.rel-doc .st p{font-size:13.3px;color:var(--ink2)}
-
-/* ---------- sequência de módulos ---------- */
-.rel-doc .seq{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:13px}
-.rel-doc .sq{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;border-left:3px solid var(--rule2)}
-.rel-doc .sq.done{border-left-color:var(--ok)}
-.rel-doc .sq.next{border-left-color:var(--gold)}
-.rel-doc .sq.trans{border-left-style:dashed}
-.rel-doc .sq .top{display:flex;align-items:center;justify-content:space-between;gap:9px}
-.rel-doc .sq .id{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:600}
-.rel-doc .sq h4{font-size:16.5px;line-height:1.25}
-.rel-doc .sq p{font-size:13.2px;color:var(--ink2)}
-.rel-doc .sq .when{font-family:var(--mono);font-size:10.5px;color:var(--gold);font-weight:600;border-top:1px dashed var(--rule);padding-top:8px;margin-top:auto}
-
-/* ---------- ajuste x melhoria ---------- */
-.rel-doc .card.ok{border-left:3px solid var(--ok)}
-.rel-doc .card.adj{border-left:3px solid var(--adj)}
-.rel-doc .card .tag{align-self:flex-start;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:20px;font-weight:600}
-.rel-doc .card .tag.ok{background:var(--okfill);color:var(--ok)}
-.rel-doc .card .tag.adj{background:var(--adjfill);color:var(--adj)}
-.rel-doc .card>p{font-size:13.6px;color:var(--ink2)}
-
-/* ---------- quarta coluna do quadro de processos ---------- */
-.rel-doc .bl{font-size:13px;color:var(--ink2);line-height:1.45}
-
-@media (max-width:900px){
-  .rel-doc .bm::before{content:"Como passa a funcionar: ";font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em}
-  .rel-doc .bl::before{content:"O que libera: ";font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em}
-  .rel-doc .pr{grid-template-columns:28px 1fr}
-}
-@media print{
-  .rel-doc .princ,.rel-doc .steps,.rel-doc .seq{display:block}
-  .rel-doc .pr,.rel-doc .st,.rel-doc .sq{break-inside:avoid;margin-bottom:8px;border:1px solid var(--rule)}
-  .rel-doc .sq .when{margin-top:6px}
-}
-
-/* ---------- fluxo numerado ---------- */
-.rel-doc .flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;position:relative}
-.rel-doc .fs{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px;position:relative}
-.rel-doc .fs::after{content:"\203A";position:absolute;right:-11px;top:50%;transform:translateY(-50%);font-size:22px;color:var(--rule2);font-family:var(--serif);z-index:2}
-.rel-doc .fs:last-child::after{display:none}
-.rel-doc .fn{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.09em}
-.rel-doc .fs h4{font-size:15.5px;line-height:1.28}
-.rel-doc .fs p{font-size:13px;color:var(--ink2)}
-
-/* ---------- caminhos por operadora ---------- */
-.rel-doc .paths{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:18px 20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
-.rel-doc .pt-row{display:grid;grid-template-columns:210px 1fr;gap:14px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--rule)}
-.rel-doc .pt-lbl{font-family:var(--serif);font-weight:700;font-size:14.5px;color:var(--ink)}
-.rel-doc .pt-steps{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-.rel-doc .arw{color:var(--rule2);font-size:17px;font-family:var(--serif)}
-.rel-doc .c.gold{border-color:var(--goldline);background:var(--goldfill);color:var(--gold)}
-.rel-doc .pt-join{display:grid;grid-template-columns:210px 1fr;gap:14px;align-items:stretch}
-.rel-doc .jl{border-left:3px solid var(--navy);border-radius:2px;margin-left:8px}
-.rel-doc .jbox{background:var(--navyfill);border-radius:8px;padding:14px 18px}
-.rel-doc .jbox h4{font-size:15.5px;margin-bottom:4px}
-.rel-doc .jbox p{font-size:13.2px;color:var(--ink2)}
-
-/* ---------- blocos com módulos dentro ---------- */
-.rel-doc .blocos{display:flex;flex-direction:column;gap:16px}
-.rel-doc .bloco{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--rule2)}
-.rel-doc .bloco.b1{border-left-color:var(--ok)}
-.rel-doc .bloco.b2{border-left-color:var(--gold)}
-.rel-doc .bhd{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:13px}
-.rel-doc .bid{font-family:var(--serif);font-weight:700;font-size:19px;color:var(--ink)}
-.rel-doc .bwhen{font-family:var(--mono);font-size:11px;color:var(--gold);font-weight:600;margin-left:auto;white-space:nowrap}
-.rel-doc .bmods{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:12px}
-.rel-doc .bmods .sq{background:var(--sheet2);border:1px solid var(--rule);border-radius:9px;padding:14px 16px;display:flex;flex-direction:column;gap:5px;box-shadow:none;border-left:1px solid var(--rule)}
-.rel-doc .bmods .sq .id{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:600}
-.rel-doc .bmods .sq h4{font-size:15.5px;line-height:1.28}
-.rel-doc .bmods .sq p{font-size:13px;color:var(--ink2)}
-.rel-doc .bsub{font-size:13px;color:var(--muted);margin-top:13px;padding-top:11px;border-top:1px dashed var(--rule)}
-.rel-doc .bsub b{color:var(--ink)}
-
-/* ---------- trilha de substituição ---------- */
-.rel-doc .trilha{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
-.rel-doc .th,.rel-doc .tr{display:grid;grid-template-columns:172px repeat(4,1fr);gap:8px;padding:10px 18px;align-items:stretch}
-.rel-doc .th{background:var(--sheet2);font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);font-weight:600;align-items:center}
-.rel-doc .tr{border-top:1px solid var(--rule)}
-.rel-doc .tn{font-family:var(--serif);font-weight:700;font-size:14.5px;color:var(--ink);line-height:1.25;align-self:center}
-.rel-doc .tn small{display:block;font-family:var(--mono);font-size:9.5px;color:var(--faint);font-weight:500;margin-top:3px;letter-spacing:.03em;text-transform:none}
-.rel-doc .tc{font-size:12.4px;line-height:1.4;padding:10px 12px;border-radius:7px;border:1px solid transparent}
-.rel-doc .tc.use{background:var(--navyfill);border-color:var(--navy);color:var(--ink2)}
-.rel-doc .tc.part{background:var(--goldfill);border-color:var(--goldline);color:var(--ink2)}
-.rel-doc .tc.par{background:color-mix(in srgb,var(--s1) 14%,transparent);border-color:var(--s1);color:var(--ink2)}
-.rel-doc .tc.out{background:var(--okfill);border-color:var(--ok);color:var(--ok);font-weight:700}
-.rel-doc .tleg{display:flex;flex-wrap:wrap;gap:16px;padding:11px 18px;border-top:1px solid var(--rule);font-size:12px;color:var(--muted);background:var(--sheet2)}
-.rel-doc .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid}
-.rel-doc .sw.use{background:var(--navyfill);border-color:var(--navy)}
-.rel-doc .sw.part{background:var(--goldfill);border-color:var(--goldline)}
-.rel-doc .sw.par{background:color-mix(in srgb,var(--s1) 14%,transparent);border-color:var(--s1)}
-.rel-doc .sw.out{background:var(--okfill);border-color:var(--ok)}
-
-/* ---------- marco ---------- */
-.rel-doc .marco{display:flex}
-.rel-doc .mk{background:var(--okfill);border-left:4px solid var(--ok);border-radius:0 10px 10px 0;padding:18px 24px;display:flex;flex-direction:column;gap:6px;max-width:82ch}
-.rel-doc .mn{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ok);font-weight:700}
-.rel-doc .mk h4{font-size:18px}
-.rel-doc .mk p{font-size:14px;color:var(--ink2)}
-
-/* ---------- perguntas e respostas ---------- */
-.rel-doc .qa{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:13px}
-.rel-doc .q{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow)}
-.rel-doc .q h4{font-size:15.5px;line-height:1.3;margin-bottom:6px;color:var(--navy-t)}
-.rel-doc .q p{font-size:13.4px;color:var(--ink2)}
-
-/* ---------- antes e depois ---------- */
-.rel-doc .antes{display:grid;grid-template-columns:1fr 38px 1fr;gap:10px;align-items:center}
-.rel-doc .ad{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:17px 19px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px;min-height:100%}
-.rel-doc .ad.depois{border-color:var(--navy)}
-.rel-doc .al{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:600}
-.rel-doc .anodes{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:42px}
-.rel-doc .c.big{font-size:15px;font-weight:700;padding:11px 22px;border-radius:9px;font-family:var(--serif)}
-.rel-doc .ad p{font-size:13.2px;color:var(--ink2)}
-.rel-doc .aseta{text-align:center;font-size:30px;color:var(--rule2);font-family:var(--serif)}
-
-@media (max-width:900px){
-  .rel-doc .fs::after{display:none}
-  .rel-doc .pt-row,.rel-doc .pt-join{grid-template-columns:1fr;gap:8px}
-  .rel-doc .jl{display:none}
-  .rel-doc .th{display:none}
-  .rel-doc .tr{grid-template-columns:1fr;gap:7px}
-  .rel-doc .antes{grid-template-columns:1fr}
-  .rel-doc .aseta{transform:rotate(90deg)}
-}
-@media print{
-  .rel-doc .flow,.rel-doc .blocos,.rel-doc .qa,.rel-doc .antes{display:block}
-  .rel-doc .fs,.rel-doc .bloco,.rel-doc .q,.rel-doc .ad,.rel-doc .tr,.rel-doc .mk{break-inside:avoid;margin-bottom:9px}
-  .rel-doc .fs::after,.rel-doc .aseta{display:none}
-  .rel-doc .bmods{display:block}
-  .rel-doc .bmods .sq{margin-bottom:7px}
-  .rel-doc .tc,.rel-doc .c,.rel-doc .sw,.rel-doc .mk,.rel-doc .jbox{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-}
-
-
-/* ---------- acomodação dentro do sistema ----------
-   Ajustes de encaixe, não de desenho: o documento nasceu como arquivo solto e
-   agora vive dentro de uma tela que já tem sidebar, topbar e recuo próprios. */
-
-/* O documento traz margens próprias (`.doc`), então o recuo do `.scope` do
-   layout é cancelado aqui: somar os dois estreitaria o texto. O recuo do
-   `.scope` é de 28px em qualquer largura. */
-.rel-doc{
-  margin:-18px -28px -48px;
-  /* `auto` em vez de um `calc` sobre 100%: a porcentagem resolveria contra a
-     caixa do `.scope` e a soma dos recuos sairia duas vezes, alargando o bloco
-     além da janela (rolagem lateral no telefone). Com `auto`, o bloco preenche
-     o que a margem negativa abriu, e nada mais. */
-  width:auto;
-  min-height:100%;
-}
-
-/* A barra de seções do documento cola ABAIXO do topbar do sistema, e não no
-   topo da janela: com `top:0` ela ficaria escondida atrás dele. O z-index fica
-   um degrau abaixo do topbar (20) pelo mesmo motivo. */
-.rel-doc .bar{top:54px;z-index:19}
-/* Mesma correção para o que se posiciona pela barra: o índice lateral do
-   relatório completo e o alvo de rolagem das âncoras. O recuo de rolagem é a
-   soma das duas barras mais uma folga, senão o título da seção para colado
-   nelas e parece cortado. */
-.rel-doc .toc{top:120px;max-height:calc(100vh - 150px)}
-.rel-doc .sec,.rel-doc .mdsec{scroll-margin-top:140px}
-
-/* Na impressão o documento volta a ser folha: sem o recuo negativo e sem o
-   sticky, que o navegador repetiria em toda página. */
-@media print{
-  .rel-doc{margin:0}
-  .rel-doc .bar{position:static}
-}
-

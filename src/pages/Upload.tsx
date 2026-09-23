@@ -8,9 +8,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { invalidarPorEvento } from '../lib/invalidation'
 import { lerPasso1, salvarPasso1 } from '../lib/envioPersistido'
-import {
-  type EstadoProgresso, ProgressoEnvio, progressoStyles,
-} from '../components/upload/ProgressoEnvio'
+import { type EstadoProgresso, progressoStyles } from '../components/upload/ProgressoEnvio'
 import { ehSomenteLeitura } from '../auth/permissions'
 import { useAuth } from '../auth/AuthContext'
 import { enviarCensos, reverterEnvioCenso } from '../services/censos.service'
@@ -145,7 +143,7 @@ export default function Upload() {
     e.preventDefault()
     if (!files.length) return
     setBusy(true)
-    setProgresso({ fase: 'enviando', feitos: 0, total: files.length })
+    setProgresso({ fase: 'enviando', feitos: 0, total: files.length, fracao: 0 })
     try {
       // O hospital do lote vale para TODOS os arquivos deste envio. O backend usa a
       // key para escolher o leitor e carimbar o resultado.
@@ -158,6 +156,9 @@ export default function Upload() {
       setResult(data)
       setPendentes(pend)
       setWizardAberto(pend.length + faltaHosp > 0)
+      // Só agora a lista é esvaziada: durante o processamento a caixa de
+      // arrastar mostra estes mesmos arquivos com o estado de cada um, e
+      // limpá-la antes deixaria a barra sem a fila a que ela se refere.
       setFiles([])
       setIgnorados([])
       invalidarDados()
@@ -302,6 +303,9 @@ export default function Upload() {
     <>
       <style>{localStyles}</style>
       <div>
+        {/* O andamento acontece DENTRO da caixa de arrastar (ver DropZone): a
+            caixa troca de conteúdo no lugar onde os arquivos foram soltos, em
+            vez de a página ganhar outro bloco em outro canto. */}
         <FormularioEnvio
           operadoras={operadoras}
           hospitaisDaOperadora={hospitaisDaOperadora}
@@ -311,16 +315,12 @@ export default function Upload() {
           hospital={hospital}
           files={files}
           busy={busy}
+          progresso={progresso}
           onTrocarOperadora={trocarOperadora}
           onHospital={setHospital}
           onFiles={setFiles}
           onSubmit={processar}
         />
-
-        {/* Logo abaixo do formulário, onde o resultado vai nascer: o progresso
-            ocupa o lugar do que ele está produzindo, então a vista não precisa
-            procurar em outro canto da tela para saber se ainda está rodando. */}
-        {progresso && <ProgressoEnvio estado={progresso} />}
 
         {result && visiveis.length > 0 && (
           <>

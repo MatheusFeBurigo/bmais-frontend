@@ -115,10 +115,12 @@ export default function InternadosTable({
             {paginados.map((p) => {
               const sr = p.status_relatorio || 'EM_DIA'
               return (
-                <tr key={p.id} className={rowFlagClass(sr)} style={{ cursor: 'pointer' }} onClick={() => onSelecionar(p.id)}
+                <tr key={p.id} className={rowFlagClass(sr, vendoAltas)} style={{ cursor: 'pointer' }} onClick={() => onSelecionar(p.id)}
                   onMouseEnter={onPrefetch ? () => onPrefetch(p.id) : undefined}
                   onFocus={onPrefetch ? () => onPrefetch(p.id) : undefined}>
-                  <td><StatusBadge sr={sr} /></td>
+                  {/* Na lista de altas o badge diz só "Alta"; a pendência de
+                      relatório fica para a ficha do paciente. */}
+                  <td><StatusBadge sr={sr} resumido={vendoAltas} /></td>
                   {mostrarOperadora && (
                     <td>
                       <span className="row" style={{ gap: 6, alignItems: 'center' }} title={p.operadora_nome || p.operadora_key || undefined}>
@@ -163,11 +165,13 @@ export default function InternadosTable({
                       value={p.dias_sem_relatorio}
                       limit={p.janela_relatorio}
                       tone={
-                        sr === 'SEM_RELATORIO' || sr === 'ALTA_SEM_REL'
-                          ? 'danger'
-                          : sr === 'VENCIDO' || sr === 'ALTA_REL_VENCIDO'
-                            ? 'warning'
-                            : 'neutral'
+                        vendoAltas
+                          ? 'neutral'
+                          : sr === 'SEM_RELATORIO' || sr === 'ALTA_SEM_REL'
+                            ? 'danger'
+                            : sr === 'VENCIDO' || sr === 'ALTA_REL_VENCIDO'
+                              ? 'warning'
+                              : 'neutral'
                       }
                     />
                   </td>

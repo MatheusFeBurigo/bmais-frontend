@@ -12,6 +12,7 @@ import { useTravarScroll } from '../../lib/travarScroll'
 import { HospitalCombobox } from '../HospitalCombobox'
 import { Badge, OpAvatar } from '../ui'
 import QuebraDemandas from './QuebraDemandas'
+import TempoPorTarefa from './TempoPorTarefa'
 import {
   NIVEL_BADGE, NIVEL_LABEL, NIVEL_VAR, fmt1, fmtDias, fmtHoras, hospitaisPorRegiao, iniciais,
   linhasQuebra, rotuloGrupo,
@@ -125,6 +126,18 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
             </div>
           )}
 
+          {/* Contagem acima, TEMPO aqui: é o que mostra em que tipo de tarefa
+              a semana da pessoa está presa, que a contagem não revela. */}
+          {!pessoa.sem_vinculo && (
+            <div style={{ marginBottom: 16 }}>
+              <TempoPorTarefa
+                role={grupo.role_operacional}
+                minutosCategoria={pessoa.minutos_categoria}
+                titulo="Onde o tempo está indo"
+              />
+            </div>
+          )}
+
           {/* Capacidade: a referência dos "dias de fila". Própria da pessoa ou a do grupo. */}
           <div className="vol-cap">
             <span>Capacidade:</span>
@@ -185,35 +198,35 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
                 </div>
               )}
               {hospitais.map((h) => (
-            <div className="vol-hosp" key={h.hospital_key}>
-              {h.operadora_key ? <OpAvatar opKey={h.operadora_key} size={28} /> : <span />}
-              <span style={{ minWidth: 0 }}>
-                <div className="vol-hosp-nome" title={h.hospital_nome}>{h.hospital_nome}</div>
-                <div className="vol-hosp-sub">
-                  {tecnico
-                    ? `${h.internados ?? 0} ${h.internados === 1 ? 'paciente' : 'pacientes'}`
-                    : (h.dias_sem_censo != null ? `sem censo há ${h.dias_sem_censo} ${h.dias_sem_censo === 1 ? 'dia' : 'dias'}` : 'sem censo')}
-                  {h.compartilhado_com > 0 && (
-                    <> · compartilhado com {h.compartilhado_com} {h.compartilhado_com === 1 ? 'pessoa' : 'pessoas'}</>
-                  )}
+                <div className="vol-hosp" key={h.hospital_key}>
+                  {h.operadora_key ? <OpAvatar opKey={h.operadora_key} size={28} /> : <span />}
+                  <span style={{ minWidth: 0 }}>
+                    <div className="vol-hosp-nome" title={h.hospital_nome}>{h.hospital_nome}</div>
+                    <div className="vol-hosp-sub">
+                      {tecnico
+                        ? `${h.internados ?? 0} ${h.internados === 1 ? 'paciente' : 'pacientes'}`
+                        : (h.dias_sem_censo != null ? `sem censo há ${h.dias_sem_censo} ${h.dias_sem_censo === 1 ? 'dia' : 'dias'}` : 'sem censo')}
+                      {h.compartilhado_com > 0 && (
+                        <> · compartilhado com {h.compartilhado_com} {h.compartilhado_com === 1 ? 'pessoa' : 'pessoas'}</>
+                      )}
+                    </div>
+                    <QuebraDemandas linhas={linhasQuebra(grupo.role_operacional, h.quebra)} compacto />
+                  </span>
+                  {/* O maior da lista em destaque: é onde a carga desta pessoa se concentra. */}
+                  <span className="vol-hosp-n" style={{ color: h.horas > 0 && h.horas === maxHorasHosp ? 'var(--danger)' : undefined }}>
+                    {fmtHoras(h.horas)}
+                  </span>
+                  <button
+                    type="button"
+                    className="vol-x"
+                    disabled={ocupado}
+                    onClick={() => remover(h.hospital_key)}
+                    title={`Remover ${h.hospital_nome} de ${pessoa.nome}`}
+                    aria-label={`Remover ${h.hospital_nome}`}
+                  >
+                    ×
+                  </button>
                 </div>
-                <QuebraDemandas linhas={linhasQuebra(grupo.role_operacional, h.quebra)} compacto />
-              </span>
-              {/* O maior da lista em destaque: é onde a carga desta pessoa se concentra. */}
-              <span className="vol-hosp-n" style={{ color: h.horas > 0 && h.horas === maxHorasHosp ? 'var(--danger)' : undefined }}>
-                {fmtHoras(h.horas)}
-              </span>
-              <button
-                type="button"
-                className="vol-x"
-                disabled={ocupado}
-                onClick={() => remover(h.hospital_key)}
-                title={`Remover ${h.hospital_nome} de ${pessoa.nome}`}
-                aria-label={`Remover ${h.hospital_nome}`}
-              >
-                ×
-              </button>
-            </div>
               ))}
             </div>
           ))}

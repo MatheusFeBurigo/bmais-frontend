@@ -39,11 +39,15 @@ export function ModuloOperacoes() {
       <ul>
         <li>A lista tem busca por nome e filtro por tipo, com a contagem de cada categoria.</li>
         <li>O cadastro exige apenas o tipo e o nome completo. Na mesma tela já é possível indicar
-          os <strong>hospitais sob responsabilidade</strong> do profissional, um a um (operadora,
-          hospital e serviço), antes de confirmar.</li>
+          os <strong>hospitais sob responsabilidade</strong> do profissional: escolha a cidade,
+          marque os hospitais dela e confirme o serviço. Vários hospitais entram de uma vez.</li>
+        <li>Um hospital que atende <strong>mais de uma operadora</strong> aparece uma única vez na
+          lista. Marcá-lo vale para todas as operadoras dele; para restringir a algumas, abra o
+          contador de operadoras ao lado do nome e marque só as que valem para o profissional.</li>
         <li>Ao abrir um profissional, é possível editar nome e cargo e ajustar a <strong>escala de
-          hospitais</strong>: em quais unidades ele atende e em qual serviço, entre análise de
-          conta, auditoria concorrente, ambulatório e pronto socorro.</li>
+          hospitais</strong> pelo mesmo caminho: em quais unidades ele atende e em qual serviço,
+          entre análise de conta, auditoria concorrente, ambulatório e pronto socorro. O que já
+          está na escala aparece marcado, para não ser incluído duas vezes.</li>
         <li>Um profissional pode ser desativado em vez de excluído, preservando o histórico dele.</li>
       </ul>
 
@@ -75,7 +79,8 @@ export function ModuloOperacoes() {
           ou escala vinculados ao registro, com a indicação do motivo.</li>
         <li>Ao abrir um hospital, é apresentada a ficha cadastral com nome, CNPJ, telefone, e-mail,
           endereço, cidade, estado, CEP, região e observações.</li>
-        <li>A <strong>região é escolhida de uma lista fechada</strong>, tanto ao cadastrar o hospital
+        <li>A região é o que define em que <strong>cidade</strong> o hospital aparece nas telas de
+          escolha de escopo e de escala. A <strong>região é escolhida de uma lista fechada</strong>, tanto ao cadastrar o hospital
           quanto na ficha. É ela que agrupa os hospitais na definição do escopo de dados de um
           usuário, e também o recorte geográfico do painel do Gestor.</li>
       </ul>
@@ -110,7 +115,7 @@ export function ModuloUsuario() {
         <tr><Key>Senha</Key><td><Chip tom="critical" plain>Obrigatória</Chip>, mínimo de 6 caracteres</td><td><Chip tom="neutral" plain>Não se aplica</Chip></td></tr>
         <tr><Key>Redefinir senha</Key><td><Chip tom="neutral" plain>Não se aplica</Chip></td><td>Opcional. Em branco, mantém a senha atual</td></tr>
         <tr><Key>Nível de acesso</Key><td colSpan={2}>Obrigatório. Cartões selecionáveis, do mais restrito ao mais amplo, cada um com a descrição do que o papel enxerga.</td></tr>
-        <tr><Key>Regiões e hospitais</Key><td colSpan={2}>Seleção múltipla, que define o escopo de dados da conta. Escolha a região e marque os hospitais dela, ou a região inteira de uma vez. A busca alcança tanto o nome da região quanto o do hospital. Sem seleção, a conta enxerga toda a operação.</td></tr>
+        <tr><Key>Cidades e hospitais</Key><td colSpan={2}>Seleção múltipla, que define o escopo de dados da conta. Escolha a cidade e marque os hospitais dela, ou a cidade inteira de uma vez. A busca alcança tanto o nome da cidade quanto o do hospital. Sem seleção, a conta enxerga toda a operação.</td></tr>
       </Tabela>
     </>
   )

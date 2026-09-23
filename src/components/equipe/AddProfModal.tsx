@@ -6,13 +6,18 @@
 // cara: "este médico cuida destes hospitais". A modal acumula as escolhas
 // numa lista e manda tudo num pedido só; o backend grava o profissional e os
 // hospitais com o id recém-criado.
-import { useState } from 'react'
+//
+// A escolha é por CIDADE (ver SeletorEscala): um médico auditor costuma cobrir
+// vários hospitais de uma cidade, em mais de uma operadora, e o formulário
+// antigo pedia um por vez tendo a operadora como primeiro passo.
+import { useMemo, useState } from 'react'
 import type { ProfissionalCriado, ProfTipo } from '../../types/api'
 import { Modal } from '../ui'
 import { criarProfissional } from '../../services/equipe.service'
+import { useTodosHospitais } from '../../hooks/useEquipe'
 import type { EntradaEscala } from '../../services/escala.service'
 import { SERVICO_LABEL } from './equipe.styles'
-import FormEscala from './FormEscala'
+import SeletorEscala from './SeletorEscala'
 import { IconX } from './icons'
 
 const labelStyle = { display: 'block', marginBottom: 5, fontSize: 10, letterSpacing: '.1em', fontWeight: 600 } as const
@@ -41,13 +46,22 @@ export default function AddProfModal({ opsLista, onClose, onDone, onError }: {
   const [escala, setEscala] = useState<EntradaEscala[]>([])
   const [saving, setSaving] = useState(false)
 
+  // Todos os hospitais de uma vez: a escolha é por cidade, não por operadora,
+  // então não há um passo anterior que estreite a lista.
+  const { data: hospitais, isLoading: carregandoHospitais } = useTodosHospitais()
+
   const nomeDaOperadora = (key: string) => opsLista.find((o) => o.key === key)?.nome ?? key
 
-  function incluirNaLista(e: EntradaEscala) {
-    const repetido = escala.some((x) =>
-      x.hospital_key === e.hospital_key && x.operadora_key === e.operadora_key && x.servico === e.servico)
-    if (repetido) { onError('Este hospital já está na lista com este serviço'); return }
-    setEscala((prev) => [...prev, e])
+  // O que já está na lista sai do seletor: marcado e explicado, em vez de
+  // aceitar de novo e recusar com um erro depois.
+  const jaNaLista = useMemo(() => escala.map((e) => e.hospital_key), [escala])
+
+  function incluirNaLista(entradas: EntradaEscala[]) {
+    setEscala((prev) => {
+      const vistos = new Set(prev.map((x) => `${x.hospital_key}|${x.servico}`))
+      const novas = entradas.filter((e) => !vistos.has(`${e.hospital_key}|${e.servico}`))
+      return [...prev, ...novas]
+    })
   }
 
   function tirarDaLista(i: number) {
@@ -92,7 +106,7 @@ export default function AddProfModal({ opsLista, onClose, onDone, onError }: {
           <input type="text" className="bm-input" placeholder="Ex: Ana Clara Souza" value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
         </div>
 
-        {/* Hospitais sob responsabilidade: o mesmo formulário da ficha, mas a
+        {/* Hospitais sob responsabilidade: o mesmo seletor da ficha, mas a
             escolha vai para uma lista local e só é gravada junto do cadastro. */}
         <div>
           <label className="uppercase t-muted" style={labelStyle}>
@@ -100,13 +114,14 @@ export default function AddProfModal({ opsLista, onClose, onDone, onError }: {
             {escala.length > 0 && <span style={{ marginLeft: 6, color: 'var(--primary-3)' }}>{escala.length}</span>}
           </label>
           <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)', marginBottom: 8 }}>
-            Opcional. Inclua os hospitais que ficam com este profissional. Dá para ajustar depois na ficha.
+            Opcional. Escolha a cidade e marque os hospitais que ficam com este profissional. Dá para ajustar depois na ficha.
           </div>
-          <FormEscala
+          <SeletorEscala
+            hospitais={hospitais ?? []}
             opsLista={opsLista}
+            jaNaEscala={jaNaLista}
             onAdicionar={incluirNaLista}
-            onToast={onError}
-            aposAdicionar="limpar"
+            loading={carregandoHospitais}
             rotuloBotao="Incluir na lista"
           />
           {escala.map((e, i) => (

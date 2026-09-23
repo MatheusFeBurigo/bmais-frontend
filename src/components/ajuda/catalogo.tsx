@@ -110,7 +110,7 @@ export const MODULOS: readonly ModuloAjuda[] = [
 
   {
     id: 'volumetria',
-    titulo: 'Volumetria',
+    titulo: 'Distribuição de tarefas',
     subtitulo: 'A carga de trabalho de cada pessoa da equipe',
     secao: 'Gestão',
     screen: 'volumetria',

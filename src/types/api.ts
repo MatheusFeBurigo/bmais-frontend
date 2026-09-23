@@ -299,9 +299,16 @@ export interface VolumetriaHospitalDaPessoa {
   compartilhado_com: number
   /** Região do cadastro do hospital; "Sem região" quando em branco. */
   regiao: string
+  /** Minutos estimados por categoria de demanda. Só categorias da FILA. */
+  minutos_categoria: VolumetriaMinutosCategoria
 }
 
 /** Uma região coberta por uma pessoa: a parte DELA naquela região. */
+/** Minutos estimados por categoria de demanda: onde o tempo está sendo gasto.
+ *  As chaves são as mesmas de `VolumetriaQuebra` (que conta casos), mas só as
+ *  que entram na fila — categoria sem tempo simplesmente não aparece. */
+export type VolumetriaMinutosCategoria = Partial<Record<keyof VolumetriaQuebra, number>>
+
 export interface VolumetriaRegiaoDaPessoa {
   regiao: string
   hospitais: number
@@ -356,6 +363,8 @@ export interface VolumetriaPessoa {
   pacientes: number | null
   /** Regiões que a pessoa cobre, derivadas dos hospitais dela. */
   regioes: VolumetriaRegiaoDaPessoa[]
+  /** Minutos estimados por categoria: onde o tempo dela está indo. */
+  minutos_categoria: VolumetriaMinutosCategoria
 }
 
 export interface VolumetriaHospitalSemCobertura {
@@ -368,6 +377,7 @@ export interface VolumetriaHospitalSemCobertura {
   /** Só no grupo administrativo: há quantos dias o hospital está sem censo. */
   dias_sem_censo?: number | null
   quebra: VolumetriaQuebra
+  minutos_categoria: VolumetriaMinutosCategoria
 }
 
 // Um grupo (técnico OU administrativo). `papel` identifica o grupo
@@ -387,6 +397,8 @@ export interface VolumetriaGrupo {
   sem_cobertura: VolumetriaHospitalSemCobertura[]
   /** Quem responde por cada região, com o peso da região. */
   regioes: VolumetriaRegiaoDoGrupo[]
+  /** Minutos estimados por categoria no grupo inteiro. */
+  minutos_categoria: VolumetriaMinutosCategoria
   parametros: VolumetriaParametros
   parametros_meta: VolumetriaParametrosMeta
 }

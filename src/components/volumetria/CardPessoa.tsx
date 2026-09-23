@@ -3,6 +3,7 @@
 import type { VolumetriaGrupo, VolumetriaPessoa } from '../../types/api'
 import { Badge, ProgressBar } from '../ui'
 import QuebraDemandas from './QuebraDemandas'
+import TempoPorTarefa from './TempoPorTarefa'
 import {
   NIVEL_BADGE, NIVEL_LABEL, NIVEL_VAR, fmtDias, fmtHoras, iniciais, linhasQuebra,
   resumoRegiao, rotuloGrupo,
@@ -58,6 +59,13 @@ export default function CardPessoa({ pessoa, grupo, maxHoras, onAbrir }: {
             <span>{fmtDias(pessoa.dias_fila)} de fila</span>
           </div>
           <QuebraDemandas linhas={linhasQuebra(grupo.role_operacional, pessoa.quebra)} compacto />
+          {/* A mesma fila em TEMPO: dois cartões com a mesma contagem podem
+              ter semanas bem diferentes, e a barra mostra isso de relance. */}
+          <TempoPorTarefa
+            role={grupo.role_operacional}
+            minutosCategoria={pessoa.minutos_categoria}
+            compacto
+          />
           {/* Por onde a área da pessoa se espalha. As duas mais pesadas
               cabem no cartão; o resto fica no drawer, que tem espaço. */}
           {pessoa.regioes.length > 0 && (

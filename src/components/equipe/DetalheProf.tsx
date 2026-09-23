@@ -1,14 +1,15 @@
 // Painel de detalhe/edição de um profissional (dados + escala + ativar/desativar).
 // Extraído de pages/Equipe.tsx.
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ProfTipo, ProfissionalDetalhe } from '../../types/api'
 import { Badge } from '../ui'
 import { atualizarProfissional, definirAtivoProfissional } from '../../services/equipe.service'
 import { adicionarEscala } from '../../services/escala.service'
+import { useTodosHospitais } from '../../hooks/useEquipe'
 import { TIPO_LABEL, isAtivo } from './equipe.styles'
 import { IconPlus, IconCheck } from './icons'
 import EscalaList from './EscalaList'
-import FormEscala from './FormEscala'
+import SeletorEscala from './SeletorEscala'
 
 export default function DetalheProf({ detalhe, opsLista, onToast, onChanged }: {
   detalhe: ProfissionalDetalhe
@@ -22,6 +23,15 @@ export default function DetalheProf({ detalhe, opsLista, onToast, onChanged }: {
   const [tipo, setTipo] = useState<ProfTipo>(p.tipo)
   const [formEscala, setFormEscala] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  // Hospitais só quando o seletor está aberto: a ficha costuma ser aberta para
+  // ver ou renomear, e a lista inteira é um pedido grande para pagar sempre.
+  const { data: hospitais, isLoading: carregandoHospitais } = useTodosHospitais(formEscala)
+
+  const jaNaEscala = useMemo(
+    () => detalhe.escala.map((e) => e.hospital_key).filter(Boolean) as string[],
+    [detalhe.escala],
+  )
 
   async function salvarEdicao() {
     const n = nome.trim()
@@ -93,15 +103,36 @@ export default function DetalheProf({ detalhe, opsLista, onToast, onChanged }: {
       </div>
 
       {formEscala && (
-        <FormEscala
+        <SeletorEscala
+          hospitais={hospitais ?? []}
           opsLista={opsLista}
-          onAdicionar={async (entrada) => {
-            await adicionarEscala({ ...entrada, profissional_id: p.id })
-            onToast('✓ Hospital adicionado à escala')
+          jaNaEscala={jaNaEscala}
+          loading={carregandoHospitais}
+          onAdicionar={async (entradas) => {
+            // Um POST por entrada: a API grava uma linha de escala por vez e
+            // não há transação (PostgREST). Se uma falhar, as outras já estão
+            // gravadas, então o aviso conta o que entrou em vez de dizer só
+            // "erro" e deixar a pessoa sem saber o que refazer.
+            let ok = 0
+            const falhas: string[] = []
+            for (const entrada of entradas) {
+              try {
+                await adicionarEscala({ ...entrada, profissional_id: p.id })
+                ok += 1
+              } catch {
+                falhas.push(entrada.hospital_nome)
+              }
+            }
             onChanged()
+            if (falhas.length === 0) {
+              onToast(`✓ ${ok} ${ok === 1 ? 'hospital adicionado' : 'hospitais adicionados'} à escala`)
+              setFormEscala(false)
+            } else {
+              const nomes = Array.from(new Set(falhas)).join(', ')
+              onToast(`${ok} ${ok === 1 ? 'hospital entrou' : 'hospitais entraram'} na escala. Não foi possível incluir: ${nomes}. Tente de novo.`)
+            }
           }}
           onClose={() => setFormEscala(false)}
-          onToast={onToast}
         />
       )}
 

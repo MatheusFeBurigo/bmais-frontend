@@ -1,10 +1,15 @@
 // Bloco "Equipe": busca, ordem e a grade de cartões — quem tem área definida
 // primeiro (na ordem que o backend já dá: sobrecarga → atenção → normal), quem
 // não tem no fim, esmaecido.
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { VolumetriaGrupo } from '../../types/api'
 import CardPessoa from './CardPessoa'
 import { ORDENS, maxHoras, normalizar, rotuloGrupo, type OrdemPessoas } from './volumetria.model'
+
+// Mesmo desenho da lupa das Movimentações: um só símbolo de busca no sistema.
+const IconBusca = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+)
 
 export default function GradePessoas({ grupo, onAbrir }: {
   grupo: VolumetriaGrupo
@@ -12,6 +17,26 @@ export default function GradePessoas({ grupo, onAbrir }: {
 }) {
   const [busca, setBusca] = useState('')
   const [ordem, setOrdem] = useState<OrdemPessoas>('carga')
+  // A busca nasce fechada (só a lupa): a equipe cabe na tela e o campo vazio
+  // só ocupava espaço ao lado do seletor de ordem.
+  const [aberta, setAberta] = useState(false)
+  const campo = useRef<HTMLInputElement>(null)
+
+  // Abriu pelo clique na lupa: o cursor já vai para o campo.
+  useEffect(() => {
+    if (aberta) campo.current?.focus()
+  }, [aberta])
+
+  // Fecha ao sair do campo, mas só com a busca vazia: com texto digitado, o
+  // campo tem de continuar visível, senão o filtro fica ativo e escondido.
+  function aoSair() {
+    if (!busca.trim()) setAberta(false)
+  }
+
+  function limpar() {
+    setBusca('')
+    setAberta(false)
+  }
   const rotulo = rotuloGrupo(grupo.papel)
   const maximo = useMemo(() => maxHoras(grupo), [grupo])
 
@@ -37,17 +62,34 @@ export default function GradePessoas({ grupo, onAbrir }: {
           </p>
         </div>
         <div className="vol-toolbar">
-          <input
-            className="bm-input"
-            style={{ fontSize: 'var(--t-sm)', width: 190 }}
-            placeholder="Buscar pessoa…"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            aria-label={`Buscar ${rotulo.singular}`}
-          />
+          <div className={`vol-busca${aberta ? ' aberta' : ''}`}>
+            <input
+              ref={campo}
+              className="bm-input"
+              placeholder="Buscar pessoa…"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              onBlur={aoSair}
+              onKeyDown={(e) => { if (e.key === 'Escape') limpar() }}
+              // Fechada, o campo sai da navegação por teclado e de leitores de
+              // tela: quem chega pelo Tab encontra a lupa, que o abre.
+              tabIndex={aberta ? 0 : -1}
+              aria-hidden={!aberta}
+              aria-label={`Buscar ${rotulo.singular}`}
+            />
+            <button
+              type="button"
+              className="vol-busca-btn"
+              onClick={() => (aberta ? limpar() : setAberta(true))}
+              aria-expanded={aberta}
+              aria-label={aberta ? 'Fechar a busca' : `Buscar ${rotulo.singular}`}
+              title={aberta ? 'Fechar a busca' : `Buscar ${rotulo.singular}`}
+            >
+              {IconBusca}
+            </button>
+          </div>
           <select
             className="bm-input bm-select"
-            style={{ fontSize: 'var(--t-sm)' }}
             value={ordem}
             onChange={(e) => setOrdem(e.target.value as OrdemPessoas)}
             aria-label="Ordenar por"

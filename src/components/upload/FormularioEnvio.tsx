@@ -14,6 +14,8 @@ import { useRef, useState } from 'react'
 import type { Hospital, Operadora } from '../../types/api'
 import { HospitalCombobox } from '../HospitalCombobox'
 import { Spinner } from '../ui'
+import { varsOperadora } from '../../lib/coresOperadora'
+import { type EstadoProgresso, ProgressoEnvio } from './ProgressoEnvio'
 import { plural } from './comuns'
 
 export const formularioStyles = `
@@ -21,6 +23,13 @@ export const formularioStyles = `
 .up-drop{position:relative;border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:34px 24px;text-align:center;cursor:pointer;background:var(--surface-3);transition:border-color .14s,background .14s}
 .up-drop:hover{border-color:var(--primary-3);background:var(--primary-soft)}
 .up-drop.dragover{border-color:var(--primary-3);border-style:solid;background:var(--primary-soft);box-shadow:0 0 0 3px rgba(21,92,168,.1)}
+/* Trabalhando: a MESMA caixa, com o andamento dentro. A borda vira sólida na
+   cor da operadora (tracejada é o convite a soltar arquivos, e aqui não há mais
+   o que soltar), o padding encolhe porque o conteúdo agora é dado e não um
+   convite centralizado, e o cursor deixa de ser de clique — a caixa não abre
+   mais o seletor de arquivos enquanto o lote roda. */
+.up-drop.trabalhando{cursor:default;border-style:solid;border-color:var(--op-cor,var(--primary-3));background:var(--op-fundo,var(--primary-soft));padding:16px 18px;text-align:left}
+.up-drop.trabalhando:hover{border-color:var(--op-cor,var(--primary-3));background:var(--op-fundo,var(--primary-soft))}
 .up-drop-icon{width:44px;height:44px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;color:var(--primary-3);margin:0 auto 10px;box-shadow:var(--shadow-xs)}
 .up-drop-titulo{font-size:var(--t-md);font-weight:600;color:var(--ink-2);letter-spacing:-.01em}
 .up-drop-hint{font-size:var(--t-sm);color:var(--muted);margin-top:3px}
@@ -67,7 +76,18 @@ const IcoPdf = (
   </svg>
 )
 
-function DropZone({ files, onFiles }: { files: File[]; onFiles: (files: File[]) => void }) {
+// A caixa de arrastar tem DOIS estados, e é a mesma caixa nos dois: parada, ela
+// convida a soltar arquivos; trabalhando, ela mostra o andamento do lote dentro
+// de si. O progresso não é um bloco que nasce em outro lugar da página — ele
+// acontece onde os arquivos foram soltos, que é para onde o usuário já está
+// olhando.
+function DropZone({ files, onFiles, progresso, operadoraKey }: {
+  files: File[]
+  onFiles: (files: File[]) => void
+  /** Andamento do envio (`null` = parada, aceitando arquivos). */
+  progresso: EstadoProgresso | null
+  operadoraKey?: string | null
+}) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragover, setDragover] = useState(false)
 
@@ -76,6 +96,17 @@ function DropZone({ files, onFiles }: { files: File[]; onFiles: (files: File[]) 
   function receber(novos: File[]) {
     if (inputRef.current) inputRef.current.value = ''
     if (novos.length) onFiles([...files, ...novos])
+  }
+
+  // Trabalhando: a caixa para de aceitar arquivos e de abrir o seletor. Soltar
+  // um PDF aqui agora não o incluiria neste lote (que já subiu), e aceitá-lo em
+  // silêncio faria o usuário acreditar que ele entrou.
+  if (progresso) {
+    return (
+      <div className="up-drop trabalhando" style={varsOperadora(operadoraKey)}>
+        <ProgressoEnvio estado={progresso} arquivos={files.map((f) => f.name)} />
+      </div>
+    )
   }
 
   return (
@@ -110,6 +141,10 @@ function DropZone({ files, onFiles }: { files: File[]; onFiles: (files: File[]) 
 
 // Conferência antes de enviar: o usuário vê o que anexou e tira o que veio errado.
 // O hospital NÃO aparece aqui — ele é único para o lote e foi escolhido no passo 1.
+//
+// Some durante o processamento: a caixa de arrastar já lista os mesmos arquivos
+// com o estado de cada um, e manter as duas listas na tela mostraria o lote em
+// duplicidade — uma viva e outra parada.
 function ListaArquivos({ files, onFiles }: {
   files: File[]
   onFiles: (files: File[]) => void
@@ -141,7 +176,7 @@ function ListaArquivos({ files, onFiles }: {
 
 export function FormularioEnvio({
   operadoras, hospitaisDaOperadora, hospitalEscolhido, carregandoHospitais,
-  operadora, hospital, files, busy,
+  operadora, hospital, files, busy, progresso,
   onTrocarOperadora, onHospital, onFiles, onSubmit,
 }: {
   operadoras: Operadora[]
@@ -152,6 +187,8 @@ export function FormularioEnvio({
   hospital: string
   files: File[]
   busy: boolean
+  /** Andamento do envio em curso (`null` = nenhum). */
+  progresso: EstadoProgresso | null
   onTrocarOperadora: (key: string) => void
   onHospital: (key: string) => void
   onFiles: (files: File[]) => void
@@ -222,8 +259,13 @@ export function FormularioEnvio({
               </label>
               {hospital ? (
                 <>
-                  <DropZone files={files} onFiles={onFiles} />
-                  <ListaArquivos files={files} onFiles={onFiles} />
+                  <DropZone
+                    files={files}
+                    onFiles={onFiles}
+                    progresso={progresso}
+                    operadoraKey={operadora}
+                  />
+                  {!progresso && <ListaArquivos files={files} onFiles={onFiles} />}
                 </>
               ) : (
                 <div className="up-bloqueado">Escolha o hospital acima para liberar o envio.</div>

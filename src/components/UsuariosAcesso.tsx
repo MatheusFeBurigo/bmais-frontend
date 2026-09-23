@@ -109,9 +109,11 @@ export default function UsuariosAcesso() {
 
       {data && (
         <div className="card" style={{ padding: 0 }}>
-          {/* Rola internamente (vertical + horizontal) para não empurrar o resto da
-              página quando há muitos usuários. Cabeçalho fixo no topo do scroll. */}
-          <div style={{ overflow: 'auto', maxHeight: 340 }}>
+          {/* Rola internamente (horizontal sempre, vertical só quando a lista passa
+              do teto) para não empurrar o resto da página. Cabeçalho fixo no topo.
+              O teto cabe 35 linhas (~58px cada, mais o cabeçalho), que é o quanto a
+              tela mostra de uma vez; daí em diante a lista rola por dentro. */}
+          <div style={{ overflow: 'auto', maxHeight: 35 * 58 + 38 }}>
             <table className="bmais-table" style={{ minWidth: 560 }}>
               <thead>
                 <tr>

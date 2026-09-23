@@ -60,7 +60,7 @@ export function ModuloVisao({ irPara }: Props) {
           <td>
             <Link para="diretoria">Dashboard da Diretoria</Link>,{' '}
             <Link para="gestor">Painel do Gestor</Link>,{' '}
-            <Link para="volumetria">Volumetria</Link>
+            <Link para="volumetria">Distribuição de tarefas</Link>
           </td>
           <td>O acompanhamento: nível de serviço por operadora, volume de alertas, fluxo de
             entradas e altas, concentração da rede e a carga de trabalho de cada pessoa da
@@ -178,7 +178,7 @@ export function ModuloNavegacao() {
         </tr>
         <tr>
           <td><Chip tom="neutral">Coordenador técnico</Chip></td>
-          <td>Acompanha a carga de trabalho dos técnicos na Volumetria e define quais hospitais
+          <td>Acompanha a carga de trabalho dos técnicos na Distribuição de tarefas e define quais hospitais
             cada um cobre. Enxerga o Painel Operacional como contexto, sem alterar nada nele.</td>
         </tr>
         <tr>
@@ -208,7 +208,7 @@ export function ModuloNavegacao() {
           <td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td></tr>
         <tr><Key>Painel do Gestor</Key>
           <td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td></tr>
-        <tr><Key>Volumetria</Key>
+        <tr><Key>Distribuição de tarefas</Key>
           <td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Sim /></td></tr>
         <tr><Key>Configurações</Key>
           <td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td></tr>
@@ -223,7 +223,7 @@ export function ModuloNavegacao() {
       <p>
         A coluna <strong>Coord.</strong> vale para os dois perfis de coordenação, técnico e
         administrativo, que têm o mesmo recorte de telas e se distinguem pela equipe que acompanham
-        na Volumetria.
+        na Distribuição de tarefas.
       </p>
 
       <Callout tipo="rule" titulo="Telas de decisão seguem o cargo">
@@ -238,7 +238,8 @@ export function ModuloNavegacao() {
       <p>
         Três perfis <strong>não alteram dado nenhum</strong>: o analista e os dois de coordenação.
         Eles enxergam as telas às quais têm acesso, mas os controles que gravariam alguma coisa não
-        são oferecidos a eles. A única exceção é a definição da área de cada pessoa na Volumetria,
+        são oferecidos a eles. A única exceção é a definição da área de cada pessoa na Distribuição
+        de tarefas,
         que pertence à coordenação.
       </p>
 

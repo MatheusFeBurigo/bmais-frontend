@@ -1,16 +1,22 @@
-// Seleção de escopo de dados de um usuário — REGIÃO → HOSPITAIS.
-// Primeiro o admin escolhe UMA região; os hospitais dela aparecem no lugar e
+// Seleção de escopo de dados de um usuário — CIDADE → HOSPITAIS.
+// Primeiro o admin escolhe UMA cidade; os hospitais dela aparecem no lugar e
 // ele marca alguns, todos ou apenas um. A saída continua sendo hospital_keys
 // (gravadas em profile_hospitais). Vazio = sem restrição.
 //
-// POR QUE REGIÃO E NÃO OPERADORA: um hospital atende várias operadoras, e o
+// POR QUE CIDADE E NÃO OPERADORA: um hospital atende várias operadoras, e o
 // cadastro materializa isso como uma LINHA POR OPERADORA (AACD existe como
 // aacd_br, aacd_po, aacd_ms). Agrupar por operadora obrigava o admin a saber de
 // qual operadora era o hospital que ele queria — e a marcá-lo várias vezes para
-// cobrir o hospital inteiro, porque cada linha é uma key diferente. Região é o
+// cobrir o hospital inteiro, porque cada linha é uma key diferente. Cidade é o
 // recorte de quem de fato usa a tela: a pessoa cuida dos hospitais de uma área.
 //
-// DEDUPLICAÇÃO POR NOME: dentro da região, as linhas do mesmo hospital viram UM
+// A cidade é DERIVADA da região gravada no hospital (ver lib/cidades.ts): as
+// zonas da capital colapsam em "São Paulo", e o que é estado fica identificado
+// como pendência em vez de virar uma cidade inventada. O mesmo agrupamento
+// vale na escolha de hospitais de um profissional (SeletorEscala), para que
+// "dar acesso" e "atribuir hospitais" não sejam duas geografias diferentes.
+//
+// DEDUPLICAÇÃO POR NOME: dentro da cidade, as linhas do mesmo hospital viram UM
 // item, e marcá-lo marca TODAS as keys dele. Sem isso o admin veria "AACD" três
 // vezes, sem nada na tela que distinguisse uma da outra, e marcar a errada
 // daria a ele um escopo que só enxerga parte dos pacientes do hospital.
@@ -19,7 +25,7 @@
 // motivo: "3 hospitais" é o que o admin escolheu; 7 seria o número interno.
 import { useMemo, useState, useRef, useEffect } from 'react'
 import type { Hospital } from '../types/api'
-import { grupoDaRegiao, SEM_REGIAO } from '../lib/regioes'
+import { cidadeDaRegiao, ordenarCidades, CIDADE_A_DEFINIR, SEM_CIDADE } from '../lib/cidades'
 
 interface Props {
   hospitais: Hospital[]
@@ -39,10 +45,8 @@ interface HospitalAgrupado {
   operadoras: string[]
 }
 
-interface Regiao {
+interface Cidade {
   nome: string
-  /** Macro-região (Sudeste, Grande São Paulo…), só para ordenar e rotular. */
-  grupo: string
   hosp: HospitalAgrupado[]
 }
 
@@ -81,18 +85,18 @@ function TriCheck({ checked, indeterminate, onChange }: {
 
 export default function MultiSelectHospitais({ hospitais, selecionados, onChange, loading }: Props) {
   const [busca, setBusca] = useState('')
-  // Região aberta (null = tela de regiões). Uma de cada vez.
-  const [regiaoAtiva, setRegiaoAtiva] = useState<string | null>(null)
+  // Cidade aberta (null = tela de cidades). Uma de cada vez.
+  const [cidadeAtiva, setCidadeAtiva] = useState<string | null>(null)
   const sel = useMemo(() => new Set(selecionados), [selecionados])
 
-  // Regiões, cada uma com seus hospitais já deduplicados por nome.
-  const regioes = useMemo(() => {
-    const porRegiao = new Map<string, Map<string, HospitalAgrupado>>()
+  // Cidades, cada uma com seus hospitais já deduplicados por nome.
+  const cidades = useMemo(() => {
+    const porCidade = new Map<string, Map<string, HospitalAgrupado>>()
     for (const h of hospitais) {
-      const reg = h.regiao || SEM_REGIAO
+      const cidade = cidadeDaRegiao(h.regiao)
       const id = normalizar(h.nome)
-      if (!porRegiao.has(reg)) porRegiao.set(reg, new Map())
-      const mapa = porRegiao.get(reg)!
+      if (!porCidade.has(cidade)) porCidade.set(cidade, new Map())
+      const mapa = porCidade.get(cidade)!
       const existente = mapa.get(id)
       if (existente) {
         existente.keys.push(h.key)
@@ -103,47 +107,43 @@ export default function MultiSelectHospitais({ hospitais, selecionados, onChange
         mapa.set(id, { id, nome: h.nome, keys: [h.key], operadoras: operadorasDe(h) })
       }
     }
-    const lista: Regiao[] = []
-    for (const [nome, mapa] of porRegiao) {
-      const hosp = Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome))
-      for (const x of hosp) x.operadoras.sort((a, b) => a.localeCompare(b))
-      lista.push({ nome, grupo: grupoDaRegiao(nome === SEM_REGIAO ? null : nome), hosp })
+    const lista: Cidade[] = []
+    for (const [nome, mapa] of porCidade) {
+      const hosp = Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+      for (const x of hosp) x.operadoras.sort((a, b) => a.localeCompare(b, 'pt-BR'))
+      lista.push({ nome, hosp })
     }
-    // Agrupadas pela macro-região, e "Sem região" sempre por último: é uma
-    // pendência de cadastro, não um lugar.
-    return lista.sort((a, b) => {
-      if ((a.nome === SEM_REGIAO) !== (b.nome === SEM_REGIAO)) return a.nome === SEM_REGIAO ? 1 : -1
-      return a.grupo.localeCompare(b.grupo) || a.nome.localeCompare(b.nome)
-    })
+    // Alfabética, com as pendências de cadastro no fim (ver lib/cidades.ts).
+    return lista.sort((a, b) => ordenarCidades(a.nome, b.nome))
   }, [hospitais])
 
-  const regiaoAberta = useMemo(
-    () => regioes.find((r) => r.nome === regiaoAtiva) ?? null,
-    [regioes, regiaoAtiva],
+  const cidadeAberta = useMemo(
+    () => cidades.find((c) => c.nome === cidadeAtiva) ?? null,
+    [cidades, cidadeAtiva],
   )
 
-  // Dentro da região aberta, a busca filtra os hospitais por nome.
+  // Dentro da cidade aberta, a busca filtra os hospitais por nome.
   const hospitaisVisiveis = useMemo(() => {
-    if (!regiaoAberta) return []
+    if (!cidadeAberta) return []
     const q = normalizar(busca)
-    if (!q) return regiaoAberta.hosp
-    return regiaoAberta.hosp.filter((h) => h.id.includes(q))
-  }, [regiaoAberta, busca])
+    if (!q) return cidadeAberta.hosp
+    return cidadeAberta.hosp.filter((h) => h.id.includes(q))
+  }, [cidadeAberta, busca])
 
-  // Na tela de regiões a busca alcança os HOSPITAIS, não só o nome da região:
-  // quem procura "Einstein" não sabe (nem deveria precisar saber) que ele está
-  // em "SP - Zona Sul". A região aparece com os hospitais que casaram.
-  const regioesVisiveis = useMemo(() => {
+  // Na tela de cidades a busca alcança os HOSPITAIS, não só o nome da cidade:
+  // quem procura "Einstein" não sabe (nem deveria precisar saber) em que
+  // cidade ele está. A cidade aparece com os hospitais que casaram.
+  const cidadesVisiveis = useMemo(() => {
     const q = normalizar(busca)
-    if (!q) return regioes.map((r) => ({ regiao: r, achados: [] as HospitalAgrupado[] }))
-    const out: Array<{ regiao: Regiao; achados: HospitalAgrupado[] }> = []
-    for (const r of regioes) {
-      if (normalizar(r.nome).includes(q)) { out.push({ regiao: r, achados: [] }); continue }
-      const achados = r.hosp.filter((h) => h.id.includes(q))
-      if (achados.length) out.push({ regiao: r, achados })
+    if (!q) return cidades.map((c) => ({ cidade: c, achados: [] as HospitalAgrupado[] }))
+    const out: Array<{ cidade: Cidade; achados: HospitalAgrupado[] }> = []
+    for (const c of cidades) {
+      if (normalizar(c.nome).includes(q)) { out.push({ cidade: c, achados: [] }); continue }
+      const achados = c.hosp.filter((h) => h.id.includes(q))
+      if (achados.length) out.push({ cidade: c, achados })
     }
     return out
-  }, [regioes, busca])
+  }, [cidades, busca])
 
   /** Marca/desmarca um hospital — todas as keys dele de uma vez. */
   function toggleHosp(h: HospitalAgrupado) {
@@ -167,59 +167,59 @@ export default function MultiSelectHospitais({ hospitais, selecionados, onChange
     onChange(Array.from(next))
   }
 
-  function abrirRegiao(nome: string) {
-    setRegiaoAtiva(nome)
-    setBusca('')  // a busca passa a valer para os hospitais desta região
+  function abrirCidade(nome: string) {
+    setCidadeAtiva(nome)
+    setBusca('')  // a busca passa a valer para os hospitais desta cidade
   }
 
-  function voltarParaRegioes() {
-    setRegiaoAtiva(null)
+  function voltarParaCidades() {
+    setCidadeAtiva(null)
     setBusca('')
   }
 
   /** Um hospital conta como marcado quando TODAS as keys dele estão no escopo. */
   const marcado = (h: HospitalAgrupado) => h.keys.every((k) => sel.has(k))
 
-  const todosHosp = useMemo(() => regioes.flatMap((r) => r.hosp), [regioes])
+  const todosHosp = useMemo(() => cidades.flatMap((c) => c.hosp), [cidades])
   const todosMarcados = todosHosp.length > 0 && todosHosp.every(marcado)
   const nSelecionados = todosHosp.filter(marcado).length
-  const nRegioes = new Set(
-    regioes.filter((r) => r.hosp.some(marcado)).map((r) => r.nome),
+  const nCidades = new Set(
+    cidades.filter((c) => c.hosp.some(marcado)).map((c) => c.nome),
   ).size
 
-  // Contagens da região aberta (cabeçalho + botão "marcar todos").
-  const marcadosAtivos = regiaoAberta ? regiaoAberta.hosp.filter(marcado).length : 0
-  const todosAtivos = !!regiaoAberta && regiaoAberta.hosp.length > 0
-    && marcadosAtivos === regiaoAberta.hosp.length
+  // Contagens da cidade aberta (cabeçalho + botão "marcar todos").
+  const marcadosAtivos = cidadeAberta ? cidadeAberta.hosp.filter(marcado).length : 0
+  const todosAtivos = !!cidadeAberta && cidadeAberta.hosp.length > 0
+    && marcadosAtivos === cidadeAberta.hosp.length
 
   return (
     <div style={{ border: '1px solid var(--border-strong)', borderRadius: 10, overflow: 'hidden' }}>
       <div style={{ display: 'flex', gap: 8, padding: 8, borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
-        {regiaoAberta && (
+        {cidadeAberta && (
           <button
             type="button"
             className="btn btn-outline btn-sm"
-            onClick={voltarParaRegioes}
-            title="Voltar para a lista de regiões"
+            onClick={voltarParaCidades}
+            title="Voltar para a lista de cidades"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-            Regiões
+            Cidades
           </button>
         )}
         <input
           className="bm-input"
-          placeholder={regiaoAberta ? `Buscar hospital em ${regiaoAberta.nome}…` : 'Buscar região ou hospital…'}
+          placeholder={cidadeAberta ? `Buscar hospital em ${cidadeAberta.nome}…` : 'Buscar cidade ou hospital…'}
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           style={{ flex: 1, minWidth: 0 }}
         />
-        {regiaoAberta ? (
+        {cidadeAberta ? (
           <button
             type="button"
             className="btn btn-outline btn-sm"
-            onClick={() => toggleVarios(regiaoAberta.hosp, todosAtivos)}
-            disabled={loading || regiaoAberta.hosp.length === 0}
+            onClick={() => toggleVarios(cidadeAberta.hosp, todosAtivos)}
+            disabled={loading || cidadeAberta.hosp.length === 0}
             style={{ flexShrink: 0 }}
           >
             {todosAtivos ? 'Desmarcar todos' : 'Marcar todos'}
@@ -238,67 +238,59 @@ export default function MultiSelectHospitais({ hospitais, selecionados, onChange
       </div>
 
       <div style={{ maxHeight: 420, overflowY: 'auto' }}>
-        {loading && <div style={{ color: 'var(--muted-2)', padding: 14, fontSize: 'var(--t-base)' }}>Carregando regiões…</div>}
+        {loading && <div style={{ color: 'var(--muted-2)', padding: 14, fontSize: 'var(--t-base)' }}>Carregando cidades…</div>}
 
-        {/* Nível 1 — escolher a região */}
-        {!loading && !regiaoAberta && regioesVisiveis.length === 0 && (
-          <div style={{ color: 'var(--muted-2)', padding: 12, fontSize: 'var(--t-sm)' }}>Nenhuma região ou hospital encontrado.</div>
+        {/* Nível 1 — escolher a cidade */}
+        {!loading && !cidadeAberta && cidadesVisiveis.length === 0 && (
+          <div style={{ color: 'var(--muted-2)', padding: 12, fontSize: 'var(--t-sm)' }}>Nenhuma cidade ou hospital encontrado.</div>
         )}
-        {!loading && !regiaoAberta && regioesVisiveis.map(({ regiao: r, achados }, i) => {
-          const marcados = r.hosp.filter(marcado).length
-          const todos = marcados === r.hosp.length && r.hosp.length > 0
+        {!loading && !cidadeAberta && cidadesVisiveis.map(({ cidade: c, achados }) => {
+          const marcados = c.hosp.filter(marcado).length
+          const todos = marcados === c.hosp.length && c.hosp.length > 0
           const alguns = marcados > 0 && !todos
-          // Cabeçalho da macro-região quando ela muda (só sem busca: filtrando,
-          // a lista é curta e o agrupamento só atrapalharia).
-          const grupoNovo = !busca.trim()
-            && (i === 0 || regioesVisiveis[i - 1].regiao.grupo !== r.grupo)
+          // As duas pendências de cadastro não são lugares: ficam apagadas para
+          // não disputarem atenção com as cidades de verdade.
+          const pendencia = c.nome === SEM_CIDADE || c.nome === CIDADE_A_DEFINIR
           return (
-            <div key={r.nome}>
-              {grupoNovo && (
-                <div className="uppercase" style={{
-                  padding: '8px 14px 4px', fontSize: 10, letterSpacing: '.1em',
-                  fontWeight: 700, color: 'var(--muted)',
-                }}>{r.grupo}</div>
-              )}
-              <div
-                onClick={() => abrirRegiao(r.nome)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
-              >
-                <TriCheck checked={todos} indeterminate={alguns} onChange={() => toggleVarios(r.hosp, todos)} />
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontWeight: 600, fontSize: 'var(--t-md)', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {r.nome}
+            <div
+              key={c.nome}
+              onClick={() => abrirCidade(c.nome)}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
+            >
+              <TriCheck checked={todos} indeterminate={alguns} onChange={() => toggleVarios(c.hosp, todos)} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontWeight: 600, fontSize: 'var(--t-md)', color: pendencia ? 'var(--muted)' : 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {c.nome}
+                </span>
+                {achados.length > 0 && (
+                  <span style={{ display: 'block', fontSize: 'var(--t-sm)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {achados.slice(0, 3).map((h) => h.nome).join(', ')}
+                    {achados.length > 3 ? ` e mais ${achados.length - 3}` : ''}
                   </span>
-                  {achados.length > 0 && (
-                    <span style={{ display: 'block', fontSize: 'var(--t-sm)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {achados.slice(0, 3).map((h) => h.nome).join(', ')}
-                      {achados.length > 3 ? ` e mais ${achados.length - 3}` : ''}
-                    </span>
-                  )}
-                </span>
-                <span style={{ fontSize: 'var(--t-sm)', color: marcados ? 'var(--primary-3)' : 'var(--muted)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                  {marcados}/{r.hosp.length}
-                </span>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--muted)' }}>
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
-              </div>
+                )}
+              </span>
+              <span style={{ fontSize: 'var(--t-sm)', color: marcados ? 'var(--primary-3)' : 'var(--muted)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                {marcados}/{c.hosp.length}
+              </span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--muted)' }}>
+                <path d="m9 18 6-6-6-6" />
+              </svg>
             </div>
           )
         })}
 
-        {/* Nível 2 — hospitais da região escolhida */}
-        {!loading && regiaoAberta && (
+        {/* Nível 2 — hospitais da cidade escolhida */}
+        {!loading && cidadeAberta && (
           <div>
             <div style={{ padding: '10px 14px', background: 'var(--surface-2)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 'var(--t-md)', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {regiaoAberta.nome}
+                {cidadeAberta.nome}
               </span>
               <span style={{ fontSize: 'var(--t-sm)', color: marcadosAtivos ? 'var(--primary-3)' : 'var(--muted)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                {marcadosAtivos}/{regiaoAberta.hosp.length} hospitais
+                {marcadosAtivos}/{cidadeAberta.hosp.length} hospitais
               </span>
             </div>
-            {/* Lista DENSA em colunas: a maior região tem dezenas de hospitais,
+            {/* Lista DENSA em colunas: a maior cidade tem dezenas de hospitais,
                 e uma linha por item obrigaria a rolar às cegas. */}
             <div style={{
               padding: '6px 12px 12px', display: 'grid', gap: '1px 14px',
@@ -306,7 +298,7 @@ export default function MultiSelectHospitais({ hospitais, selecionados, onChange
             }}>
               {hospitaisVisiveis.length === 0 && (
                 <div style={{ color: 'var(--muted-2)', padding: '10px 2px', fontSize: 'var(--t-sm)' }}>
-                  {regiaoAberta.hosp.length === 0 ? 'Esta região não tem hospitais cadastrados.' : 'Nenhum hospital encontrado.'}
+                  {cidadeAberta.hosp.length === 0 ? 'Esta cidade não tem hospitais cadastrados.' : 'Nenhum hospital encontrado.'}
                 </div>
               )}
               {hospitaisVisiveis.map((h) => (
@@ -347,7 +339,7 @@ export default function MultiSelectHospitais({ hospitais, selecionados, onChange
       <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
         {nSelecionados === 0
           ? 'Nenhum hospital selecionado: o usuário verá TODOS os hospitais.'
-          : `${nSelecionados} hospital(is) de ${nRegioes} região(ões): o usuário verá apenas estes.`}
+          : `${nSelecionados} hospital(is) de ${nCidades} cidade(s): o usuário verá apenas estes.`}
       </div>
     </div>
   )

@@ -12,8 +12,15 @@ const BADGE: Record<string, { cls: string; label: string; dot: boolean }> = {
   ALTA_AUTO: { cls: 'muted', label: 'Alta Auto?', dot: false },
 }
 
-export function StatusBadge({ sr }: { sr: string }) {
-  const b = BADGE[sr]
+// Status de paciente que já saiu. Na lista do Painel Operacional eles viram um
+// único "Alta": ali interessa saber que o paciente saiu, e a pendência de
+// relatório aparece na ficha dele, onde há o que fazer a respeito.
+const ALTA = new Set(['ALTA_SEM_REL', 'ALTA_REL_VENCIDO', 'ALTA_OK', 'ALTA_AUTO'])
+
+const BADGE_ALTA = { cls: 'muted', label: 'Alta', dot: false }
+
+export function StatusBadge({ sr, resumido = false }: { sr: string; resumido?: boolean }) {
+  const b = resumido && ALTA.has(sr) ? BADGE_ALTA : BADGE[sr]
   if (!b) return <span className="badge muted">{sr}</span>
   return (
     <span className={`badge ${b.cls}`}>
@@ -23,7 +30,10 @@ export function StatusBadge({ sr }: { sr: string }) {
   )
 }
 
-export function rowFlagClass(sr: string): string {
+export function rowFlagClass(sr: string, resumido = false): string {
+  // No modo resumido a alta não pinta a linha: o vermelho é o mesmo aviso que o
+  // badge, dito de outro jeito.
+  if (resumido && ALTA.has(sr)) return ''
   if (sr === 'SEM_RELATORIO' || sr === 'ALTA_SEM_REL') return 'flag-danger'
   if (sr === 'VENCIDO' || sr === 'ALTA_REL_VENCIDO') return 'flag-warning'
   if (sr === 'PROXIMO_VENCER') return 'flag-caution'

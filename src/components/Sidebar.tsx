@@ -54,10 +54,6 @@ const IconLogs = () => (
 const IconProgresso = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16" /><circle cx="5.5" cy="12" r="2.5" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" /><circle cx="18.5" cy="12" r="2.5" /></svg>
 )
-// Relatório: folha de documento com linhas de texto — a peça da auditoria.
-const IconRelatorio = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M9 12h6" /><path d="M9 16h6" /></svg>
-)
 // Volumetria: barras de tamanhos diferentes — a carga de trabalho por hospital.
 const IconVolumetria = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><rect x="5" y="13" width="4" height="8" /><rect x="11" y="8" width="4" height="13" /><rect x="17" y="4" width="4" height="17" /></svg>
@@ -225,7 +221,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
           {mostrar('volumetria') && (
             <NavLink to="/volumetria" className={itemClass} {...prefetchProps('/volumetria')}>
               <span className="sb-item-icon"><IconVolumetria /></span>
-              <span className="sb-item-label">Volumetria</span>
+              <span className="sb-item-label">Distribuição de tarefas</span>
             </NavLink>
           )}
           {mostrar('diretoria') && (
@@ -274,15 +270,6 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
             <NavLink to="/progresso" className={itemClass} {...prefetchProps('/progresso')}>
               <span className="sb-item-icon"><IconProgresso /></span>
               <span className="sb-item-label">Progresso</span>
-            </NavLink>
-          )}
-          {/* Relatório da auditoria: vizinho do Progresso porque responde à
-              mesma pergunta em outra escala — um mostra onde a obra está, o
-              outro o plano inteiro de que ela faz parte. */}
-          {mostrar('relatorio') && (
-            <NavLink to="/relatorio" className={itemClass} {...prefetchProps('/relatorio')}>
-              <span className="sb-item-icon"><IconRelatorio /></span>
-              <span className="sb-item-label">Relatório</span>
             </NavLink>
           )}
         </div>
