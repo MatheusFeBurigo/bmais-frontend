@@ -188,7 +188,8 @@ export function ModuloNavegacao() {
         </tr>
         <tr>
           <td><Chip tom="brand">Administrador</Chip></td>
-          <td>Acesso completo, incluindo as contas de acesso e a trilha de Movimentações.</td>
+          <td>Manutenção do sistema: cadastros, contas de acesso e a trilha de Movimentações.
+            Não acessa a Diretoria nem o Painel do Gestor, que são telas de decisão.</td>
         </tr>
       </Tabela>
 
@@ -204,9 +205,9 @@ export function ModuloNavegacao() {
         <tr><Key>Envio de Censos</Key>
           <td><Sim /></td><td><Sim /></td><td><Sim /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td></tr>
         <tr><Key>Dashboard da Diretoria</Key>
-          <td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td></tr>
+          <td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td></tr>
         <tr><Key>Painel do Gestor</Key>
-          <td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td></tr>
+          <td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td></tr>
         <tr><Key>Volumetria</Key>
           <td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Sim /></td></tr>
         <tr><Key>Configurações</Key>
@@ -224,6 +225,14 @@ export function ModuloNavegacao() {
         administrativo, que têm o mesmo recorte de telas e se distinguem pela equipe que acompanham
         na Volumetria.
       </p>
+
+      <Callout tipo="rule" titulo="Telas de decisão seguem o cargo">
+        O Dashboard da Diretoria e o Painel do Gestor acompanham desempenho de operadora e fluxo de
+        internações, e por isso alcançam apenas <strong>a diretoria e, no caso do Gestor, a
+        gestão</strong>. Nem mesmo a administração do sistema entra: quem mantém cadastros e contas
+        não é, por isso, destinatário da informação gerencial. É a única exceção à ideia de que o
+        administrador enxerga o sistema inteiro.
+      </Callout>
 
       <h3>Perfis de observação</h3>
       <p>

@@ -66,7 +66,6 @@ export default function Volumetria() {
     return <div className="card"><div className="vol-vazio">Nenhum grupo para mostrar.</div></div>
   }
 
-  const rotulo = rotuloGrupo(grupo.papel)
   const tecnico = grupo.role_operacional === 'tecnico'
   const semCobertura = grupo.sem_cobertura.length
   const sobrecarregados = pessoasComVinculo.filter((p) => p.nivel === 'sobrecarga').length

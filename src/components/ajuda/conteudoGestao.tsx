@@ -20,8 +20,10 @@ export function ModuloDiretoria() {
 
       <h3>Quem acessa</h3>
       <p>
-        Diretoria e administração do sistema. É a visão consolidada do serviço, e por isso fica
-        fora do alcance dos perfis de operação, que trabalham paciente a paciente.
+        Exclusiva da <strong>diretoria</strong>. É a visão consolidada do serviço, e por isso fica
+        fora do alcance dos perfis de operação, que trabalham paciente a paciente, e também da
+        administração do sistema, cuja função é manter cadastros e contas, não acompanhar
+        desempenho.
       </p>
 
       <h3>Os quatro indicadores principais</h3>
@@ -101,8 +103,9 @@ export function ModuloGestor() {
 
       <h3>Quem acessa</h3>
       <p>
-        Gestão e diretoria. É a tela inicial do gestor, que acompanha o movimento sem trabalhar a
-        lista de pacientes um a um.
+        <strong>Gestão e diretoria</strong>. É a tela inicial do gestor, que acompanha o movimento
+        sem trabalhar a lista de pacientes um a um. Os perfis de operação e a administração do
+        sistema não entram.
       </p>
 
       <h3>Os cinco indicadores</h3>
