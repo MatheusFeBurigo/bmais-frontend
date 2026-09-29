@@ -17,11 +17,15 @@ const EVENTO_INVALIDA: Record<string, QueryRoot[]> = {
   // Relatório adicionado a um paciente muda seu status_relatorio → sai das colunas
   // "Sem relatório"/"Vencidos" do Kanban e recomputa os agregados por status.
   relatorioAdicionado: ['kanban', 'dashboard', 'dashboardOverview', 'diretoria', 'gestor', 'sidebar'],
-  // Mudança de configuração de operadora/hospital afeta stats e sidebar.
-  configuracaoAlterada: ['configuracoes', 'sidebar', 'dashboard', 'dashboardOverview', 'diretoria'],
+  // Mudança de configuração de operadora/hospital afeta stats e sidebar. Inclui
+  // a ficha de cada hospital: sem isso, reabrir a ficha logo após salvar
+  // mostrava o valor velho (a query dela guarda cache por 5 min).
+  configuracaoAlterada: ['configuracoes', 'hospital', 'sidebar', 'dashboard', 'dashboardOverview', 'diretoria'],
   // Paciente adicionado manualmente entra na contagem de internados → recompõe os
   // agregados operacionais (Visão Geral, panorama, gestor/diretoria) e a sidebar.
-  pacienteAdicionado: ['dashboard', 'dashboardOverview', 'gestor', 'diretoria', 'sidebar', 'kanban'],
+  // Cadastrado já com alta, conta nas altas e na permanência: a ficha do hospital
+  // e a volumetria também mudam.
+  pacienteAdicionado: ['dashboard', 'dashboardOverview', 'gestor', 'diretoria', 'sidebar', 'kanban', 'hospital', 'volumetria'],
   // Visita agendada/desmarcada move o card entre as colunas do quadro e nada
   // mais: agendar NÃO muda status_relatorio nem agregado nenhum (ver a decisão em
   // domain/avaliacao.py), então invalidar dashboard/diretoria aqui seria refetch

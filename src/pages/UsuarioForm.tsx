@@ -2,10 +2,10 @@
 // sem :id → criar (pede e-mail/senha); com :id → editar (só papel + escopo).
 // Substitui as antigas modais de UsuariosAcesso. Admin-only (guard na rota + aqui).
 import { useMemo, useState } from 'react'
-import { useNavigate, useParams, Navigate } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, Navigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../auth/AuthContext'
-import { rotaFallback } from '../auth/permissions'
+import { podeGerirConta, podeGerirOperacoes, rotaFallback } from '../auth/permissions'
 import { usePageHeader } from '../components/PageHeader'
 import { LoadingState } from '../components/ui'
 import Toast from '../components/Toast'
@@ -23,12 +23,19 @@ export default function UsuarioForm() {
   const { id } = useParams<{ id: string }>()
   const editando = !!id
   const navigate = useNavigate()
+  // Volta para a aba/filtro de onde a pessoa veio (UsuariosAcesso manda em
+  // state.voltar); acesso direto pela URL cai na aba de usuários.
+  const location = useLocation()
+  const voltar = (location.state as { voltar?: string } | null)?.voltar ?? '/equipe?aba=usuarios'
   const qc = useQueryClient()
   const { role: minhaRole } = useAuth()
-  const admin = minhaRole === 'admin'
+  // Admin e analista interno gerem contas; o analista não cria nem altera
+  // conta de administrador (o backend recusa com 403).
+  const gestor = podeGerirOperacoes(minhaRole)
+  const rolesOferecidos = ROLES_ORDEM.filter((r) => podeGerirConta(minhaRole, r))
 
-  const { data: usuariosData, isLoading: carregandoUsuarios } = useUsuarios(admin && editando)
-  const { data: hospitais } = useTodosHospitais(admin)
+  const { data: usuariosData, isLoading: carregandoUsuarios } = useUsuarios(gestor && editando)
+  const { data: hospitais } = useTodosHospitais(gestor)
   const usuario = editando ? usuariosData?.usuarios.find((u) => u.user_id === id) : undefined
 
   const [nome, setNome] = useState('')
@@ -58,17 +65,20 @@ export default function UsuarioForm() {
       title: titulo,
       subtitle: editando ? 'Papel e escopo de dados da conta' : 'Conta de login: e-mail, senha e nível de acesso',
       actions: (
-        <button className="btn btn-outline btn-sm" onClick={() => navigate('/equipe')}>
+        <button className="btn btn-outline btn-sm" onClick={() => navigate(voltar)}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
           Voltar
         </button>
       ),
-    }), [titulo, editando, navigate]),
+    }), [titulo, editando, navigate, voltar]),
   )
 
-  if (!admin) return <Navigate to={rotaFallback(minhaRole)} replace />
+  if (!gestor) return <Navigate to={rotaFallback(minhaRole)} replace />
   if (editando && carregandoUsuarios) return <LoadingState label="Carregando usuário…" />
   if (editando && !usuario) return <div className="empty-state">Usuário não encontrado.</div>
+  if (editando && usuario && !podeGerirConta(minhaRole, usuario.role)) {
+    return <div className="empty-state">Somente um administrador pode alterar esta conta.</div>
+  }
 
   const podeSalvar = editando || (email.trim().length > 0 && password.length >= 6)
 
@@ -94,7 +104,7 @@ export default function UsuarioForm() {
       // Evento de domínio (não a key crua): criar/editar usuário também muda a
       // trilha de auditoria, e o evento já invalida `auditoria`+`auditoriaResumo`.
       invalidarPorEvento(qc, 'usuariosAlterados')
-      navigate('/equipe')  // volta à Equipe com a lista atualizada
+      navigate(voltar)  // volta à aba de onde veio, com a lista atualizada
     } catch (err) {
       setToast(`Erro: ${(err as Error).message}`)
       setSaving(false)
@@ -159,7 +169,7 @@ export default function UsuarioForm() {
             <div>
               <label className="uppercase t-muted" style={labelStyle}>Nível de acesso *</label>
               <div style={{ display: 'grid', gap: 8 }}>
-                {ROLES_ORDEM.map((r) => (
+                {rolesOferecidos.map((r) => (
                   <label key={r} style={{
                     display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 13px', cursor: 'pointer',
                     border: `1px solid ${role === r ? 'var(--primary)' : 'var(--border-strong)'}`,
@@ -186,7 +196,7 @@ export default function UsuarioForm() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-            <button className="btn btn-outline" onClick={() => navigate('/equipe')}>Cancelar</button>
+            <button className="btn btn-outline" onClick={() => navigate(voltar)}>Cancelar</button>
             <button className="btn btn-primary" onClick={salvar} disabled={saving || !podeSalvar}>
               {saving ? (editando ? 'Salvando…' : 'Criando…') : (editando ? 'Salvar' : 'Criar usuário')}
             </button>

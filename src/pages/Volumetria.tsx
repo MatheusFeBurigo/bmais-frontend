@@ -8,8 +8,9 @@
 // colunas de Tarefas), e é avisado de quem passou da capacidade. Clicar no
 // cartão abre o drawer para ver e ajustar a área da pessoa.
 //
-// Blocos: resumo (KPIs) → equipe (cartões) → onde o tempo está indo (barra por
-// tipo de tarefa) → por região (quem responde por cada uma) → hospitais sem
+// Blocos: resumo (KPIs) → equipe (cartões) → demandas x distribuição →
+// produtividade (e, para o admin, entre as equipes) → onde o tempo está indo
+// (barra por tipo de tarefa) → por região (quem responde por cada uma) → hospitais sem
 // cobertura (se houver) → comparativo (gráfico, recolhido) → parâmetros
 // (recolhido).
 // Admin vê os dois grupos num seletor; cada coordenador vê só o seu.
@@ -19,10 +20,13 @@ import { KpiCard, LoadingState } from '../components/ui'
 import Toast from '../components/Toast'
 import { useVolumetria } from '../hooks/useVolumetria'
 import ComparativoCarga from '../components/volumetria/ComparativoCarga'
+import DemandaXDistribuicao from '../components/volumetria/DemandaXDistribuicao'
+import DividirCarga from '../components/volumetria/DividirCarga'
 import DrawerPessoa from '../components/volumetria/DrawerPessoa'
 import GradePessoas from '../components/volumetria/GradePessoas'
 import HospitaisSemCobertura from '../components/volumetria/HospitaisSemCobertura'
 import ParametrosCarga from '../components/volumetria/ParametrosCarga'
+import { ConcluidasPorDia, EntreEquipes, ProdutividadePorPessoa } from '../components/volumetria/ProdutividadeCharts'
 import PorRegiao from '../components/volumetria/PorRegiao'
 import TempoPorTarefa from '../components/volumetria/TempoPorTarefa'
 import { localStyles } from '../components/volumetria/volumetria.styles'
@@ -37,6 +41,7 @@ export default function Volumetria() {
   const { data, isLoading } = useVolumetria()
   const [grupoIdx, setGrupoIdx] = useState(0)
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null)
+  const [dividirId, setDividirId] = useState<string | null>(null)
   const [aviso, setAviso] = useState('')
 
   usePageHeader(useMemo(() => ({
@@ -48,6 +53,7 @@ export default function Volumetria() {
   const grupo = grupos[Math.min(grupoIdx, Math.max(grupos.length - 1, 0))] ?? null
   const pessoasComVinculo = useMemo(() => (grupo ? comVinculo(grupo) : []), [grupo])
   const pessoa = grupo?.pessoas.find((p) => p.user_id === selecionadoId) ?? null
+  const pessoaDividir = grupo?.pessoas.find((p) => p.user_id === dividirId) ?? null
 
   // A pessoa selecionada pode sumir do grupo (mudou de papel, foi apagada):
   // solta a seleção em vez de deixar o drawer apontando para ninguém.
@@ -60,6 +66,7 @@ export default function Volumetria() {
   function trocarGrupo(i: number) {
     setGrupoIdx(i)
     setSelecionadoId(null)
+    setDividirId(null)
   }
 
   if (isLoading || !data) {
@@ -138,9 +145,58 @@ export default function Volumetria() {
       </div>
 
       {/* Bloco 2: equipe */}
-      <GradePessoas grupo={grupo} onAbrir={setSelecionadoId} />
+      <GradePessoas grupo={grupo} onAbrir={setSelecionadoId} onDividir={setDividirId} />
 
-      {/* Bloco 3: onde o tempo da equipe está indo */}
+      {/* Bloco 3: demandas x distribuição e produtividade */}
+      <div className="card" style={{ marginTop: 16 }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">Demandas x distribuição</div>
+            <p className="card-sub">Parte das demandas abertas e parte dos hospitais de cada pessoa.</p>
+          </div>
+        </div>
+        <DemandaXDistribuicao grupo={grupo} onAbrir={setSelecionadoId} />
+      </div>
+
+      <div className="card" style={{ marginTop: 16 }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">Produtividade</div>
+            <p className="card-sub">
+              {tecnico ? 'Relatórios registrados' : 'Cobranças de censo feitas'} nos últimos {grupo.produtividade.dias} dias.
+            </p>
+          </div>
+        </div>
+        <div className="vol-prod">
+          <div>
+            <div className="vol-sub">Por pessoa</div>
+            <ProdutividadePorPessoa grupo={grupo} onAbrir={setSelecionadoId} />
+          </div>
+          <div>
+            <div className="vol-sub">Concluídas por dia</div>
+            <ConcluidasPorDia grupo={grupo} />
+          </div>
+        </div>
+        {grupo.produtividade.fora_do_grupo > 0 && (
+          <p className="vol-prod-nota">
+            Mais {grupo.produtividade.fora_do_grupo} feitas por quem não é da equipe (administrador ou coordenador).
+          </p>
+        )}
+      </div>
+
+      {grupos.length > 1 && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="card-header">
+            <div>
+              <div className="card-title">Entre as equipes</div>
+              <p className="card-sub">Demandas abertas e concluídas de cada equipe.</p>
+            </div>
+          </div>
+          <EntreEquipes grupos={grupos} />
+        </div>
+      )}
+
+      {/* Bloco 4: onde o tempo da equipe está indo */}
       <div className="card" style={{ marginTop: 16 }}>
         <div className="card-header">
           <div>
@@ -166,6 +222,16 @@ export default function Volumetria() {
 
       {pessoa && (
         <DrawerPessoa pessoa={pessoa} grupo={grupo} onClose={() => setSelecionadoId(null)} onErro={setAviso} />
+      )}
+
+      {pessoaDividir && (
+        <DividirCarga
+          pessoa={pessoaDividir}
+          grupo={grupo}
+          onClose={() => setDividirId(null)}
+          onErro={setAviso}
+          onAviso={setAviso}
+        />
       )}
 
       {aviso && <Toast message={aviso} onDone={() => setAviso('')} />}

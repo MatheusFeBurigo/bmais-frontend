@@ -44,10 +44,6 @@ export const IconRede = () => (
   <Svg><circle cx="12" cy="5" r="2.2" /><circle cx="5" cy="19" r="2.2" /><circle cx="19" cy="19" r="2.2" />
     <path d="M12 7.2v3.6M11 12.6 6.6 16.8M13 12.6l4.4 4.2" /></Svg>
 )
-export const IconCracha = () => (
-  <Svg><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M9 3h6v2.5H9z" />
-    <circle cx="12" cy="11.6" r="2" /><path d="M8.6 16.8a3.7 3.7 0 0 1 6.8 0" /></Svg>
-)
 export const IconAjustes = () => (
   <Svg><path d="M4 6h9M19 6h1M4 12h3M13 12h7M4 18h7M17 18h3" />
     <circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="14" cy="18" r="2" /></Svg>

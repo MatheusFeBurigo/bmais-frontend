@@ -37,6 +37,19 @@ export const localStyles = `
 .vol-card:hover{border-color:var(--primary-3);box-shadow:0 6px 18px rgba(21,92,168,.14);transform:translateY(-2px)}
 .vol-card:focus-visible{outline:2px solid var(--primary-3);outline-offset:2px}
 .vol-card.sem-area{opacity:.75;border-style:dashed}
+/* Casca do cartão: segura o ⋮ por cima do canto, fora do <button>. */
+.vol-card-wrap{position:relative;display:flex;flex-direction:column}
+.vol-card-wrap>.vol-card{flex:1}
+.vol-card-wrap .vol-card-head{padding-right:26px}
+.vol-menu{position:absolute;top:10px;right:6px}
+.vol-menu-btn{width:26px;height:26px;display:grid;place-items:center;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer}
+.vol-menu-btn:hover,.vol-menu-btn[aria-expanded="true"]{background:var(--surface-3);color:var(--ink)}
+.vol-menu-btn:focus-visible{outline:2px solid var(--primary-3);outline-offset:1px}
+.vol-menu-lista{position:absolute;right:0;top:30px;z-index:5;min-width:170px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);box-shadow:0 8px 24px rgba(11,26,38,.14);padding:4px}
+.vol-menu-lista button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:7px 10px;border-radius:6px;font:inherit;font-size:var(--t-sm);color:var(--ink);cursor:pointer}
+.vol-menu-lista button:hover:not(:disabled){background:var(--surface-2)}
+.vol-menu-lista button:disabled{color:var(--muted);cursor:default}
+.vol-card-div{font-size:var(--t-sm);color:var(--primary-3);background:var(--primary-bg);border-radius:var(--r-sm);padding:4px 8px;align-self:flex-start}
 .vol-card-head{display:flex;align-items:flex-start;gap:10px}
 .vol-card-id{flex:1;min-width:0}
 .vol-card-nome{font-weight:600;font-size:var(--t-md);line-height:1.3;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -91,8 +104,30 @@ export const localStyles = `
 .vol-x:disabled{opacity:.4;cursor:default}
 
 /* Hospitais sem cobertura */
-.vol-sc{display:grid;grid-template-columns:28px 1fr auto minmax(180px,220px);gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-soft)}
+.vol-sc{display:grid;grid-template-columns:28px 1fr minmax(180px,220px);gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-soft)}
 .vol-sc:last-child{border-bottom:0}
+
+/* Produtividade e distribuição */
+.vol-prod{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+@media (max-width:900px){.vol-prod{grid-template-columns:1fr}}
+.vol-sub{font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--muted);margin-bottom:10px}
+.vol-prod-nota{margin-top:10px;font-size:var(--t-sm);color:var(--muted);line-height:1.45}
+/* Demandas x distribuição: barra = parcela das demandas, traço = dos hospitais */
+.vol-dxd{display:flex;flex-direction:column}
+.vol-dxd-row{display:grid;grid-template-columns:minmax(120px,200px) 1fr 76px 76px;gap:12px;align-items:center;padding:7px 4px;border:0;border-bottom:1px solid var(--border-soft);background:transparent;font:inherit;color:inherit;text-align:left;width:100%}
+button.vol-dxd-row{cursor:pointer;border-radius:6px}
+button.vol-dxd-row:hover{background:var(--surface-2)}
+button.vol-dxd-row:focus-visible{outline:2px solid var(--primary-3);outline-offset:-2px}
+.vol-dxd-row b{font-family:var(--font-mono);font-weight:600;font-size:var(--t-sm);font-variant-numeric:tabular-nums;color:var(--ink);text-align:right}
+.vol-dxd-cab{padding-top:0;cursor:default}
+.vol-dxd-cab span{font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:600;color:var(--muted)}
+.vol-dxd-cab span:nth-child(n+3){text-align:right}
+.vol-dxd-nome{font-size:var(--t-sm);color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vol-dxd-row.sem .vol-dxd-nome{color:var(--danger);font-weight:600}
+.vol-dxd-trilha{position:relative;height:14px;background:var(--surface-3);border-radius:4px}
+.vol-dxd-barra{position:absolute;left:0;top:0;bottom:0;border-radius:4px;min-width:2px}
+.vol-dxd-traco{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--ink);border-radius:1px;box-shadow:0 0 0 1px var(--surface)}
+.vol-legenda i.vol-dxd-traco-leg{width:2px;height:12px;border-radius:1px;background:var(--ink)}
 
 /* Legenda textual do semáforo (gráfico): a cor nunca vai sozinha */
 .vol-legenda{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:var(--t-sm);color:var(--muted)}
@@ -123,7 +158,7 @@ export const localStyles = `
 .vol-reg-head span:last-child{text-transform:none;letter-spacing:0;font-weight:600;font-size:var(--t-sm)}
 
 /* Bloco "Por região": uma linha por região com os responsáveis */
-.vol-reg-lista{display:flex;flex-direction:column}
+.vol-reg-lista{display:flex;flex-direction:column;padding:0 18px 6px}
 .vol-reg-linha{display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:4px 12px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--border-soft)}
 .vol-reg-linha:last-child{border-bottom:0}
 .vol-reg-nome{display:flex;align-items:center;gap:6px;font-size:var(--t-base);font-weight:600;color:var(--ink);min-width:0}
@@ -160,5 +195,46 @@ export const localStyles = `
 .vol-tpt.compacto .vol-tpt-pct{display:none}
 @media (prefers-reduced-motion:reduce){
   .vol-tpt-fatia{transition:none}
+}
+`
+
+// Modal "Dividir a carga". Separado do CSS da tela porque só o modal (e a
+// réplica dele na Ajuda) o usa.
+export const dividirStyles = `
+.dv-sec{margin-bottom:18px}
+.dv-sec:last-child{margin-bottom:0}
+.dv-lbl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;font-size:var(--t-sm);font-weight:600;color:var(--ink)}
+.dv-lbl span{font-weight:400;color:var(--muted)}
+.dv-lista{border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.dv-colega{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;border-bottom:1px solid var(--border-soft);background:var(--surface);cursor:pointer;text-align:left;font:inherit;font-size:var(--t-sm);color:var(--ink)}
+.dv-colega:last-child{border-bottom:0}
+.dv-colega:hover{background:var(--surface-2)}
+.dv-colega[aria-pressed="true"]{background:var(--primary-bg)}
+.dv-colega input{margin:0;accent-color:var(--primary);flex-shrink:0}
+.dv-colega-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.dv-colega-nivel{font-size:var(--t-xs);font-weight:600;white-space:nowrap}
+.dv-colega-fila{font-size:var(--t-xs);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.dv-periodo{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.dv-chip{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:4px 11px;font:inherit;font-size:var(--t-sm);color:var(--ink-2);cursor:pointer}
+.dv-chip:hover{border-color:var(--primary-3)}
+.dv-chip[aria-pressed="true"]{border-color:var(--primary);background:var(--primary-bg);color:var(--primary-3);font-weight:600}
+.dv-datas{display:flex;gap:6px;align-items:center;font-size:var(--t-sm);color:var(--muted);margin-top:8px}
+.dv-datas .bm-input{width:150px}
+.dv-prev{border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.dv-prev-item{display:flex;align-items:center;gap:12px;padding:8px 12px;border-bottom:1px solid var(--border-soft);font-size:var(--t-sm)}
+.dv-prev-item:last-child{border-bottom:0}
+.dv-prev-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.dv-prev-num{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.dv-prev-num b{font-weight:600}
+.dv-ajustar{margin-top:8px;padding:0;border:0;background:none;font:inherit;font-size:var(--t-sm);color:var(--primary-3);cursor:pointer}
+.dv-ajustar:hover{text-decoration:underline}
+.dv-hosp{display:grid;grid-template-columns:1fr minmax(140px,180px);gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border-soft);font-size:var(--t-sm)}
+.dv-hosp:last-child{border-bottom:0}
+.dv-hosp-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.dv-and{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border-soft);border-radius:var(--r-sm);background:var(--surface-2);font-size:var(--t-sm);margin-bottom:6px}
+.dv-and span{flex:1;min-width:0}
+.dv-vazio{font-size:var(--t-sm);color:var(--muted);line-height:1.5}
+@media (max-width:560px){
+  .dv-hosp{grid-template-columns:1fr}
 }
 `

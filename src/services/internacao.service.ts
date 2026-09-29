@@ -1,6 +1,6 @@
 // Serviço de dados do domínio "internação" (detalhe do paciente no drawer).
 import { apiDownload, apiFetch } from '../api/client'
-import type { InternacaoDados, InternacaoRelatorios, InternacaoTimeline } from '../types/api'
+import type { Cid, InternacaoDados, InternacaoRelatorios, InternacaoTimeline } from '../types/api'
 
 export interface RelatorioRapido {
   data_visita: string
@@ -141,6 +141,26 @@ export function agendarVisita(id: number, data: string, medico: string, hora: st
 /** Desfaz o agendamento: o card volta para a fila de "Sem relatório". */
 export function desmarcarVisita(id: number): Promise<unknown> {
   return apiFetch(`/internacao/${id}/visita-agendada`, { method: 'DELETE' })
+}
+
+/** Busca no catálogo CID-10: código ("J18.9", "j189", "J1") ou palavras da descrição. */
+export function buscarCid(q: string): Promise<{ itens: Cid[] }> {
+  return apiFetch(`/cid?q=${encodeURIComponent(q)}`)
+}
+
+/** Um CID exato, com categoria, grupo e capítulo. */
+export function consultarCid(codigo: string): Promise<Cid> {
+  return apiFetch(`/cid/${encodeURIComponent(codigo)}`)
+}
+
+/** Atribui (ou troca) o CID do paciente. O backend confere o código no catálogo. */
+export function atribuirCid(id: number, codigo: string): Promise<unknown> {
+  return apiFetch(`/internacao/${id}/cid`, { method: 'PUT', body: { codigo } })
+}
+
+/** Tira o CID do paciente. */
+export function removerCid(id: number): Promise<unknown> {
+  return apiFetch(`/internacao/${id}/cid`, { method: 'DELETE' })
 }
 
 /** Um convênio que a tela pode oferecer. Vem de duas fontes (ver `listarConvenios`). */

@@ -215,6 +215,11 @@ export type UserRole =
   /** Coordenador técnico: vê a Volumetria (pacientes sem relatório/aguardando visita
    *  por hospital), sem recorte de escopo. Somente leitura. */
   | 'coordenador_tecnico'
+  /** Médico e enfermeiro da equipe assistencial, com conta ligada ao cadastro do
+   *  profissional (papel sai do tipo M/E). Não veem nada interno: entram num portal
+   *  próprio. Separados desde já porque as visões futuras de cada um vão divergir. */
+  | 'medico'
+  | 'enfermeiro'
 
 // Payload de GET /api/volumetria (tela Volumetria, coordenadores).
 // Centrado na PESSOA: quanto cada técnico/administrativo carrega em TEMPO
@@ -301,6 +306,31 @@ export interface VolumetriaHospitalDaPessoa {
   regiao: string
   /** Minutos estimados por categoria de demanda. Só categorias da FILA. */
   minutos_categoria: VolumetriaMinutosCategoria
+  /** Presente quando o hospital chegou por divisão temporária de carga: de
+   *  quem veio e até quando (inclusive). Some sozinho ao fim do período. */
+  temporario?: { de_user_id: string; de_nome: string; fim: string; lote: string } | null
+}
+
+/** Uma divisão temporária de carga (um lote): quem cedeu, o período e para
+ *  quem foi cada hospital. Vigente = o período já começou. */
+export interface VolumetriaDivisao {
+  lote: string
+  de_user_id: string
+  de_nome: string
+  inicio: string
+  fim: string
+  vigente: boolean
+  criado_por: string | null
+  itens: Array<{ hospital_key: string; hospital_nome: string; para_user_id: string; para_nome: string }>
+}
+
+/** Corpo de POST /api/volumetria/divisoes. */
+export interface VolumetriaDividirCorpo {
+  de_user_id: string
+  /** hospital_key → user_id de quem recebe. Ausente = fica com a pessoa. */
+  distribuicao: Record<string, string>
+  inicio: string
+  fim: string
 }
 
 /** Uma região coberta por uma pessoa: a parte DELA naquela região. */
@@ -365,6 +395,9 @@ export interface VolumetriaPessoa {
   regioes: VolumetriaRegiaoDaPessoa[]
   /** Minutos estimados por categoria: onde o tempo dela está indo. */
   minutos_categoria: VolumetriaMinutosCategoria
+  /** Entregas nos últimos `produtividade.dias` dias: relatórios gravados
+   *  (técnico) ou cobranças marcadas como cobradas (administrativo). */
+  concluidas: number
 }
 
 export interface VolumetriaHospitalSemCobertura {
@@ -395,12 +428,24 @@ export interface VolumetriaGrupo {
   pessoas: VolumetriaPessoa[]
   /** Pendência > 0 e nenhum vínculo explícito no grupo. Ordenado por horas desc. */
   sem_cobertura: VolumetriaHospitalSemCobertura[]
+  /** Divisões temporárias de carga do grupo, vigentes e agendadas. */
+  divisoes?: VolumetriaDivisao[]
   /** Quem responde por cada região, com o peso da região. */
   regioes: VolumetriaRegiaoDoGrupo[]
   /** Minutos estimados por categoria no grupo inteiro. */
   minutos_categoria: VolumetriaMinutosCategoria
   parametros: VolumetriaParametros
   parametros_meta: VolumetriaParametrosMeta
+  produtividade: VolumetriaProdutividade
+}
+
+/** Entregas do grupo na janela: série diária sem buracos (dia sem entrega vem
+ *  0) e o que foi feito por gente de fora do grupo (admin, coordenador). */
+export interface VolumetriaProdutividade {
+  dias: number
+  por_dia: Array<{ dia: string; concluidas: number }>
+  total: number
+  fora_do_grupo: number
 }
 
 export interface VolumetriaPayload {
@@ -626,6 +671,22 @@ export interface Profissional {
   tipo: ProfTipo
   ativo: boolean | number
   criado_em?: string
+  /** Só para o admin: o profissional tem conta de login na plataforma. */
+  tem_acesso?: boolean
+  /** Só para o admin, quando há conta: o atalho "Senha" da linha abre direto. */
+  acesso_user_id?: string
+  acesso_email?: string
+  /** Hospitais distintos na escala dele. */
+  n_hospitais?: number
+}
+
+/** Conta de login de um médico/enfermeiro (ficha do profissional, admin). */
+export interface AcessoProfissional {
+  user_id: string
+  email: string | null
+  role: UserRole
+  /** False quando o profissional está desativado (a conta acompanha o cadastro). */
+  ativo: boolean
 }
 
 export interface Escala {
@@ -651,6 +712,9 @@ export interface EquipePayload {
 export interface ProfissionalDetalhe {
   profissional: Profissional
   escala: Escala[]
+  /** Ausente = quem vê não gere contas (a ficha esconde a seção);
+   *  null = profissional sem conta (a ficha oferece criar). */
+  acesso?: AcessoProfissional | null
 }
 
 /** Resposta do POST /api/profissionais. */
@@ -663,6 +727,10 @@ export interface ProfissionalCriado {
   escala_adicionada?: number
   /** ...e quais não entraram (não há transação, o resto fica gravado). */
   escala_falhas?: Array<{ hospital_nome: string; operadora_key: string; servico: string; erro: string }>
+  /** Conta de login criada junto do cadastro... */
+  acesso?: { user_id: string; email: string; role: UserRole }
+  /** ...ou por que não foi (o cadastro fica gravado mesmo assim). */
+  acesso_erro?: string
 }
 
 // ── Gestor / Fluxo (GET /api/gestor) ────────────────────────────────────────
@@ -1215,9 +1283,12 @@ export interface CompletarPendenciaResponse {
 // hospital_key/atendimento/nome/data_entrada são obrigatórios; o resto é opcional.
 export interface PacienteNovo {
   hospital_key: string
+  /** Operadora escolhida no modal; o hospital sozinho não a define (N-N). */
+  operadora_key?: string | null
   atendimento: string
   nome: string
   data_entrada: string
+  /** Preenchida = paciente cadastrado já com alta (status ALTA no backend). */
   data_alta?: string | null
   tipo_leito?: string | null
   especialidade?: string | null
@@ -1261,6 +1332,8 @@ export interface InternacaoDados {
   gatilho?: number | null
   data_entrada?: string | null
   data_ultima_visita?: string | null
+  /** Data da alta, quando houve (censo de altas ou alta por ausência). */
+  data_alta?: string | null
   status?: string | null
   status_relatorio?: string | null
   longa_10?: boolean
@@ -1274,6 +1347,13 @@ export interface InternacaoDados {
   visita_agendada_medico?: string | null
   visita_agendada_hora?: string | null
   visita_agendada_vencida?: boolean | null
+  // ── CID (migration 0041) ──────────────────────────────────────────────────
+  /** Código na grafia do catálogo ("J18.9"). Atribuído pelo técnico. */
+  cid_codigo?: string | null
+  /** Descrição copiada do catálogo no momento da atribuição. */
+  cid_descricao?: string | null
+  cid_atribuido_por?: string | null
+  cid_atribuido_em?: string | null
 }
 
 export type TimelineVariante =
@@ -1329,4 +1409,27 @@ export interface RelatorioItem {
 export interface InternacaoRelatorios {
   internacao_id: number
   relatorios: RelatorioItem[]
+}
+
+/** Uma linha do catálogo CID-10 (GET /api/cid), com a hierarquia resolvida. */
+export interface Cid {
+  codigo: string
+  tipo: 'categoria' | 'subcategoria'
+  descricao: string
+  categoria: string
+  categoria_descricao: string
+  grupo?: string | null
+  grupo_descricao?: string | null
+  capitulo?: number | null
+  capitulo_romano?: string | null
+  capitulo_descricao?: string | null
+  /** '+' = etiologia (cruz), '*' = manifestação (asterisco). */
+  classificacao?: '+' | '*' | null
+  /** Só vale para um sexo. */
+  restricao_sexo?: 'F' | 'M' | null
+  /** false = não aceito como causa básica de óbito. */
+  causa_obito?: boolean | null
+  /** Código associado (par cruz/asterisco), ex.: "J99.8*". */
+  referencia?: string | null
+  excluidos?: string | null
 }

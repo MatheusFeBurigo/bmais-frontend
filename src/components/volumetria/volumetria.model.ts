@@ -5,7 +5,7 @@
 // é calculado em horas contra a capacidade da pessoa, com limiares absolutos.
 // Aqui só se apresenta.
 import type {
-  UserRole, VolumetriaGrupo, VolumetriaHospitalDaPessoa, VolumetriaNivel, VolumetriaPessoa,
+  UserRole, VolumetriaDivisao, VolumetriaGrupo, VolumetriaHospitalDaPessoa, VolumetriaNivel, VolumetriaPessoa,
   VolumetriaQuebra, VolumetriaRegiaoDaPessoa,
 } from '../../types/api'
 import { COR } from '../gestor/gestor.styles'
@@ -30,6 +30,12 @@ export const NIVEL_VAR: Record<VolumetriaNivel, string> = {
   sobrecarga: 'var(--danger)',
 }
 export const NIVEIS: readonly VolumetriaNivel[] = ['normal', 'atencao', 'sobrecarga']
+
+// Cores dos gráficos de produtividade, por IDENTIDADE (as mesmas nos três).
+// Par validado para daltonismo; laranja/vermelho ficam de fora porque nesta
+// tela já são "atenção" e "sobrecarga".
+export const COR_ABERTAS = COR.azul
+export const COR_CONCLUIDAS = COR.verde
 
 /** Pessoas com área definida: as que entram no gráfico e nas médias. */
 export function comVinculo(g: VolumetriaGrupo): VolumetriaPessoa[] {
@@ -169,4 +175,102 @@ export function descreverLimiares(g: VolumetriaGrupo): string {
   const fila = `fila acima de ${fmt1(l.fila_sobrecarga_dias)} dias`
   if (g.role_operacional === 'administrativo') return `Sobrecarga: ${fila}`
   return `Sobrecarga: ${fila} ou prazo acima de ${fmt1(l.pressao_sobrecarga_pct)}%`
+}
+
+// ── Dividir a carga de uma pessoa (temporário) ───────────────────────────
+// A carga vem dos HOSPITAIS, então dividir é repartir os hospitais da pessoa
+// entre ela e os colegas escolhidos, por um período. Cada pessoa enxerga o
+// hospital inteiro (o backend não fraciona o compartilhado): quem recebe ganha
+// as horas cheias dele, e quem já o cobria não ganha nada.
+
+/** hospital_key → user_id de quem fica com ele no período (a própria pessoa inclusive). */
+export type PlanoDivisao = Record<string, string>
+
+/** Hospitais que podem ser repartidos: os PERMANENTES da pessoa. O que ela
+ *  recebeu de outra divisão volta para o dono ao fim dela; não se repassa. */
+export function hospitaisDivisiveis(p: VolumetriaPessoa): VolumetriaHospitalDaPessoa[] {
+  return p.hospitais.filter((h) => !h.temporario)
+}
+
+/** Quem pode receber: colegas do grupo COM área definida. Dar um hospital a
+ *  quem não tem área a recortaria a ele, em vez de somar trabalho. */
+export function colegasParaDividir(g: VolumetriaGrupo, origemId: string): VolumetriaPessoa[] {
+  return comVinculo(g).filter((p) => p.user_id !== origemId)
+}
+
+/** Repartição sugerida: do hospital mais pesado ao mais leve, cada um vai para
+ *  quem tem MENOS horas recebidas nesta divisão (a pessoa começa, então fica
+ *  com o mais pesado e nunca sai sem hospital). Hospital sem demanda não pesa
+ *  e fica com a pessoa. */
+export function repartir(origem: VolumetriaPessoa, participantes: string[]): PlanoDivisao {
+  const ids = [origem.user_id, ...participantes.filter((u) => u !== origem.user_id)]
+  const soma = new Map(ids.map((u) => [u, 0]))
+  const plano: PlanoDivisao = {}
+  const ordem = [...hospitaisDivisiveis(origem)].sort((a, b) => b.horas - a.horas)
+  for (const h of ordem) {
+    if (h.horas <= 0) { plano[h.hospital_key] = origem.user_id; continue }
+    let alvo = ids[0]
+    for (const u of ids) if ((soma.get(u) ?? 0) < (soma.get(alvo) ?? 0)) alvo = u
+    plano[h.hospital_key] = alvo
+    soma.set(alvo, (soma.get(alvo) ?? 0) + h.horas)
+  }
+  return plano
+}
+
+export interface PrevisaoParticipante {
+  pessoa: VolumetriaPessoa
+  hospitais: VolumetriaHospitalDaPessoa[]
+  horasAntes: number
+  horasDepois: number
+  diasAntes: number
+  diasDepois: number
+  /** Só pela fila: a pressão de prazo depende dos vencimentos caso a caso e
+   *  não dá para refazer aqui. É estimativa, e a tela diz isso. */
+  nivelDepois: VolumetriaNivel
+}
+
+/** Fila de cada participante durante o período, se o plano for aplicado. */
+export function preverDivisao(
+  g: VolumetriaGrupo, origem: VolumetriaPessoa, participantes: VolumetriaPessoa[], plano: PlanoDivisao,
+): PrevisaoParticipante[] {
+  const l = g.parametros.limiares
+  const nivel = (d: number): VolumetriaNivel =>
+    d > l.fila_sobrecarga_dias ? 'sobrecarga' : d > l.fila_atencao_dias ? 'atencao' : 'normal'
+  const divisiveis = hospitaisDivisiveis(origem)
+  return [origem, ...participantes].map((p) => {
+    const cap = p.capacidade_horas_dia > 0 ? p.capacidade_horas_dia : 1
+    const meus = divisiveis.filter((h) => (plano[h.hospital_key] ?? origem.user_id) === p.user_id)
+    const horasAntes = p.horas ?? 0
+    let horasDepois: number
+    if (p.user_id === origem.user_id) {
+      const saem = divisiveis.filter((h) => !meus.includes(h)).reduce((s, h) => s + h.horas, 0)
+      horasDepois = Math.max(0, horasAntes - saem)
+    } else {
+      const ja = new Set(p.hospitais.map((h) => h.hospital_key))
+      horasDepois = horasAntes + meus.filter((h) => !ja.has(h.hospital_key)).reduce((s, h) => s + h.horas, 0)
+    }
+    return {
+      pessoa: p, hospitais: meus, horasAntes, horasDepois,
+      diasAntes: p.dias_fila ?? horasAntes / cap,
+      diasDepois: horasDepois / cap,
+      nivelDepois: nivel(horasDepois / cap),
+    }
+  })
+}
+
+/** "26/09" a partir de "2026-09-26". */
+export function fmtDiaMes(iso: string): string {
+  const [, m, d] = iso.split('-')
+  return d && m ? `${d}/${m}` : iso
+}
+
+/** Data de hoje em Brasília, em ISO: é o "hoje" que o backend usa para a divisão. */
+export function hojeIso(desloc = 0): string {
+  const d = new Date(Date.now() - 3 * 3600_000 + desloc * 86400_000)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Divisões do grupo que envolvem a pessoa, como quem cedeu. */
+export function divisoesDe(g: VolumetriaGrupo, userId: string): VolumetriaDivisao[] {
+  return (g.divisoes ?? []).filter((d) => d.de_user_id === userId)
 }

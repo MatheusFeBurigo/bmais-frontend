@@ -6,7 +6,31 @@
 // encontra no índice:
 // números consolidados de desempenho e de rede são informação de gestão, e a
 // documentação respeita a mesma divisão de responsabilidades da aplicação.
+import { lazy, Suspense, type ReactNode } from 'react'
 import { Callout, Chip, Key, Metric, Metrics, Tabela } from './blocos'
+import { ComoFazer, Tela } from './replica'
+import {
+  ReplicaDemandaXDistribuicao, ReplicaDividirCarga, ReplicaEquipe, ReplicaPainelPessoa,
+  ReplicaParametros, ReplicaPorRegiao, ReplicaSemCobertura,
+} from './exemplosDistribuicao'
+
+// As réplicas do Gestor usam os gráficos reais, que puxam o Chart.js. Este
+// arquivo também serve a Distribuição de tarefas, e o coordenador que só abre
+// aquele módulo não deve baixar os gráficos: por isso entram sob demanda.
+const gestor = () => import('./exemplosGestor')
+const ReplicaMovimento = lazy(async () => ({ default: (await gestor()).ReplicaMovimento }))
+const ReplicaFluxo = lazy(async () => ({ default: (await gestor()).ReplicaFluxo }))
+const ReplicaFiltros = lazy(async () => ({ default: (await gestor()).ReplicaFiltros }))
+const ReplicaPacientes = lazy(async () => ({ default: (await gestor()).ReplicaPacientes }))
+// O bloco de produtividade da Distribuição de tarefas também é Chart.js.
+const ReplicaProdutividade = lazy(async () => ({
+  default: (await import('./exemplosProdutividade')).ReplicaProdutividade,
+}))
+
+/** Espaço reservado enquanto os gráficos carregam, para a página não pular. */
+function Carregando({ altura, children }: { altura: number; children: ReactNode }) {
+  return <Suspense fallback={<div style={{ height: altura }} />}>{children}</Suspense>
+}
 
 export function ModuloDiretoria() {
   return (
@@ -21,9 +45,7 @@ export function ModuloDiretoria() {
       <h3>Quem acessa</h3>
       <p>
         Exclusiva da <strong>diretoria</strong>. É a visão consolidada do serviço, e por isso fica
-        fora do alcance dos perfis de operação, que trabalham paciente a paciente, e também da
-        administração do sistema, cuja função é manter cadastros e contas, não acompanhar
-        desempenho.
+        fora do alcance dos perfis de operação, que trabalham paciente a paciente.
       </p>
 
       <h3>Os quatro indicadores principais</h3>
@@ -104,9 +126,96 @@ export function ModuloGestor() {
       <h3>Quem acessa</h3>
       <p>
         <strong>Gestão e diretoria</strong>. É a tela inicial do gestor, que acompanha o movimento
-        sem trabalhar a lista de pacientes um a um. Os perfis de operação e a administração do
-        sistema não entram.
+        sem trabalhar a lista de pacientes um a um. Os perfis de operação não entram.
       </p>
+
+      <h3>Passo a passo</h3>
+      <ComoFazer
+        titulo="Ler o movimento do dia"
+        passos={[
+          { n: 1, titulo: 'Internados até o momento', corpo: <>Quantos pacientes estão internados agora, na operadora escolhida no topo. Clicar no cartão volta a lista de baixo para todos eles.</> },
+          { n: 2, titulo: 'As faixas de permanência', corpo: <>Os três cartões do meio repartem os internados por tempo de internação: até 9 dias, de 10 a 29 e <strong>30 ou mais</strong>, que é a faixa crítica. Clicar num deles lista só aqueles pacientes.</> },
+          { n: 3, titulo: 'Altas e entradas do dia', corpo: <>O número grande são as altas; abaixo, as novas entradas. Quando entram mais pacientes do que saem, a ocupação sobe.</> },
+          { n: 4, titulo: 'As médias da janela', corpo: <>Resumem os dias da janela do gráfico de fluxo: internados por dia, entradas e altas no período. Somem quando um dia ou período específico é escolhido, porque aí as médias não se aplicam.</> },
+        ]}
+      >
+        <Tela nome="Painel do Gestor" largura={960}
+          descricao="Topo da tela no modo geral: todas as operadoras, os números de hoje e as médias dos últimos 30 dias.">
+          <Carregando altura={300}><ReplicaMovimento marcas={{ internados: 1, faixas: 2, altas: 3, medias: 4 }} /></Carregando>
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Analisar um dia ou um período no gráfico de fluxo"
+        passos={[
+          { n: 1, titulo: 'Escolha a janela', corpo: <>30 dias, 90 dias, 6 meses ou 1 ano. Nas janelas longas as colunas agrupam semana ou mês.</> },
+          { n: 2, titulo: 'Ocupação', corpo: <>Quantos pacientes estavam internados em cada dia. Mostra o nível, não o movimento.</> },
+          { n: 3, titulo: 'Fluxo diário: clique numa coluna', corpo: <>Entradas e altas lado a lado, com a linha do saldo, que fica vermelha quando saem mais do que entram. <strong>Clicar numa coluna</strong> leva o painel inteiro para aquele dia, ou para aquela semana ou mês.</> },
+          { n: 4, titulo: 'Ou escolha a data no calendário', corpo: <>Para ir direto a um dia, sem procurar a coluna.</> },
+          { n: 5, titulo: 'Recolher', corpo: <>Fecha o gráfico e devolve o espaço aos números. Ao escolher um período ele se recolhe sozinho.</> },
+          { n: 6, titulo: 'O período em análise', corpo: <>Com um período escolhido, indicadores, gráficos e lista passam a falar dele, e esta etiqueta diz qual é. O <strong>×</strong> dela desfaz a escolha.</> },
+          { n: 7, titulo: 'Ver todo o período', corpo: <>Volta ao modo geral, com os números de hoje e as médias da janela.</> },
+        ]}
+      >
+        <Tela nome="Painel do Gestor" largura={960}
+          destaques={{
+            '.janela-pills': 1,
+            '.chart-card > div:nth-of-type(3)': 2,
+            '.chart-card > div:nth-of-type(6)': 3,
+            '.chart-date': 4,
+            '.chart-toggle': 5,
+          }}
+          descricao="Gráfico de fluxo aberto, com os últimos 30 dias.">
+          <Carregando altura={520}><ReplicaFluxo aberto /></Carregando>
+        </Tela>
+        <Tela nome="Painel do Gestor" largura={960}
+          destaques={{ '.dia-abaixo .dia-chip': 6, '.dia-abaixo .btn-primary': 7 }}
+          descricao="Depois de clicar numa coluna: o gráfico recolhe e o painel passa a mostrar o dia escolhido.">
+          <Carregando altura={120}><ReplicaFluxo aberto={false} /></Carregando>
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Filtrar por operadora, hospital ou região"
+        passos={[
+          { n: 1, titulo: 'Escolha a operadora', corpo: <>É o filtro que refaz a consulta do painel inteiro. Trocar de operadora limpa o hospital escolhido, que pode não pertencer à nova.</> },
+          { n: 2, titulo: 'Clique na barra de um hospital', corpo: <>O painel passa a mostrar só aquele hospital, e as outras barras ficam claras. Clicar de novo na mesma barra desfaz.</> },
+          { n: 3, titulo: 'Ou na barra de uma região', corpo: <>Funciona igual. O gráfico só aparece quando os hospitais estão em mais de uma região.</> },
+          { n: 4, titulo: 'Confira os filtros ativos', corpo: <>Cada filtro em vigor vira uma etiqueta; clicar nela remove só aquele filtro.</> },
+          { n: 5, titulo: 'Limpar tudo', corpo: <>Tira todos os filtros de uma vez e volta ao painel completo.</> },
+        ]}
+      >
+        <Tela nome="Painel do Gestor" largura={960}
+          destaques={{
+            '.op-pills': 1,
+            '.aj-graficos > .chart-card:first-child > div:last-child': 2,
+            '.aj-graficos > .chart-card:last-child > div:last-child': 3,
+            '.filtros-ativos .filtro-chip': 4,
+            '.filtros-limpar': 5,
+          }}
+          descricao="CarePlus escolhida no topo e o Hospital Santa Clara selecionado no gráfico.">
+          <Carregando altura={420}><ReplicaFiltros /></Carregando>
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Listar os pacientes de uma faixa de permanência"
+        passos={[
+          { n: 1, titulo: 'Clique numa faixa do gráfico', corpo: <>A lista ao lado passa a mostrar só os internados daquela faixa. O mesmo vale para os cartões de faixa do topo.</> },
+          { n: 2, titulo: 'Ou use as pastilhas da lista', corpo: <>São a mesma escolha, e ficam sincronizadas com o gráfico e com os cartões. <strong>Altas</strong> lista quem saiu no período.</> },
+          { n: 3, titulo: 'Clique no paciente', corpo: <>Abre a ficha rápida dele, sem sair do painel.</> },
+        ]}
+      >
+        <Tela nome="Painel do Gestor" largura={960}
+          destaques={{
+            '.chart-card > div:last-child': 1,
+            '.aj-pills-faixa': 2,
+            '.tbl-gestor tbody tr:first-child td:first-child': 3,
+          }}
+          descricao="Faixa de 30 dias ou mais escolhida: a lista mostra só esses pacientes.">
+          <Carregando altura={340}><ReplicaPacientes /></Carregando>
+        </Tela>
+      </ComoFazer>
 
       <h3>Os cinco indicadores</h3>
       <Metrics>
@@ -175,11 +284,170 @@ export function ModuloVolumetria() {
 
       <h3>Quem acessa</h3>
       <p>
-        Os perfis de <strong>coordenação</strong>, administrativa e técnica, e a administração do
-        sistema. Cada coordenador enxerga apenas o seu grupo; a administração vê os dois e alterna
-        entre eles por um seletor no topo, com os nomes <strong>Técnicos</strong> e{' '}
-        <strong>Administrativos</strong>.
+        Os perfis de <strong>coordenação</strong>, administrativa e técnica. Cada coordenador
+        enxerga apenas o seu grupo.
       </p>
+
+      <h3>Passo a passo</h3>
+      <p>
+        Os exemplos mostram o grupo de técnicos. No grupo de administrativos a tela é a mesma, e a
+        demanda de cada pessoa são os hospitais sem censo que ela precisa cobrar.
+      </p>
+
+      <ComoFazer
+        titulo="Descobrir quem está sobrecarregado"
+        passos={[
+          { n: 1, titulo: 'Olhe o indicador Equipe', corpo: <>Ele diz quantas pessoas estão em <strong>sobrecarga</strong> e quantas em <strong>atenção</strong>. Fica vermelho quando há alguém em sobrecarga.</> },
+          { n: 2, titulo: 'Leia o cartão de cada pessoa', corpo: <>O selo no canto é o nível. Abaixo vêm as demandas, as horas estimadas e os <strong>dias de fila</strong>: quanto tempo ela levaria para zerar o que tem, no ritmo dela. A quebra usa os mesmos nomes das colunas de Tarefas, e a barra colorida mostra em que tipo de tarefa o tempo está indo.</> },
+          { n: 3, titulo: 'Ordene por Maior carga', corpo: <>É a ordem padrão: quem está em sobrecarga vem primeiro. <strong>Nome</strong> serve para achar alguém específico, e a lupa ao lado busca pelo nome.</> },
+          { n: 4, titulo: 'Repare em quem está sem área', corpo: <>O cartão esmaecido, no fim, é de quem não tem hospitais: vê a rede inteira e por isso <strong>não entra na conta</strong> de carga. Clique nele para definir a área.</> },
+        ]}
+      >
+        <Tela nome="Distribuição de tarefas" largura={960}
+          destaques={{
+            '.vol-grade > .vol-card-wrap:first-child .vol-card': 2,
+            '.vol-toolbar select': 3,
+            '.vol-card.sem-area': 4,
+          }}
+          descricao="Grupo de técnicos com uma pessoa em cada situação: sobrecarga, atenção, normal e sem área definida.">
+          <ReplicaEquipe marcas={{ equipe: 1 }} />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Redistribuir os hospitais de quem está sobrecarregado"
+        passos={[
+          { n: 1, titulo: 'Clique no cartão da pessoa', corpo: <>Abre o painel dela ao lado, sem sair da tela.</> },
+          { n: 2, titulo: 'Veja onde a carga se concentra', corpo: <>Os números do topo repetem o cartão, com o percentual do <strong>prazo</strong>: quanto da capacidade dos próximos dias os casos que vencem nesse período consomem. Na lista, o hospital com mais horas aparece em vermelho.</> },
+          { n: 3, titulo: 'Remova o hospital que vai sair dela', corpo: <>O <strong>×</strong> desfaz o vínculo e a carga dele sai da conta dela na hora. Se ninguém mais cobrir o hospital, ele passa para <strong>Hospitais sem cobertura</strong>. Cuidado: tirar o último hospital de alguém faz a pessoa voltar a ver a rede inteira.</> },
+          { n: 4, titulo: 'Adicione o hospital a quem tem folga', corpo: <>Abra o cartão de quem está em nível <strong>Normal</strong> e escolha o hospital neste campo. Outra forma é atribuí-lo pela lista de hospitais sem cobertura, logo depois de removê-lo.</> },
+          { n: 5, titulo: 'Ajuste a capacidade, se for o caso', corpo: <>São as horas de análise por dia da pessoa, a referência dos dias de fila. Quem trabalha meio período, por exemplo, precisa de uma capacidade menor que a do grupo, senão a fila dela parece mais curta do que é.</> },
+        ]}
+      >
+        <Tela nome="Distribuição de tarefas" largura={960}
+          destaques={{ '.vol-grade > .vol-card-wrap:first-child .vol-card': 1 }}
+          descricao="Juliana Prado está em sobrecarga, com quatro dias e meio de fila.">
+          <ReplicaEquipe />
+        </Tela>
+        <Tela nome="Distribuição de tarefas" largura={640}
+          descricao="Painel da pessoa: a carga, a capacidade e os hospitais sob responsabilidade dela.">
+          <ReplicaPainelPessoa marcas={{ indicadores: 2, remover: 3, adicionar: 4, capacidade: 5 }} />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Atribuir um hospital que ficou sem ninguém"
+        passos={[
+          { n: 1, titulo: 'Clique em Hospitais sem cobertura', corpo: <>O indicador fica vermelho quando algum hospital tem demanda e ninguém responsável. O clique leva direto à lista deles.</> },
+          { n: 2, titulo: 'Escolha a pessoa em Atribuir a…', corpo: <>A lista traz só os nomes do grupo. Para saber quem está mais folgado, olhe os cartões da equipe antes. O hospital sai desta lista e entra na carga da pessoa na hora.</> },
+        ]}
+      >
+        <Tela nome="Distribuição de tarefas" largura={960}
+          destaques={{ '.vol-sc:first-child select': 2 }}
+          descricao="Dois hospitais com demanda e nenhum técnico vinculado.">
+          <ReplicaSemCobertura marcas={{ semCobertura: 1 }} />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Dividir a carga de alguém por alguns dias"
+        passos={[
+          { n: 1, titulo: 'Clique no ⋮ do cartão e em Dividir a carga', corpo: <>Serve para cobrir férias, folga ou um pico de trabalho. A opção só libera para quem tem ao menos dois hospitais e quando há colega com área definida para receber.</> },
+          { n: 2, titulo: 'Marque com quem dividir', corpo: <>A lista traz os colegas do grupo com área definida, com os dias de fila de cada um. Marcar um colega divide em duas partes; marcar dois, em três.</> },
+          { n: 3, titulo: 'Escolha o período', corpo: <><strong>Só hoje</strong>, <strong>Hoje e amanhã</strong>, <strong>7 dias</strong> ou <strong>Outro</strong>, para escolher as datas. O período não pode começar no passado.</> },
+          { n: 4, titulo: 'Confira como fica', corpo: <>Mostra, para cada participante, quantos hospitais terá e a fila antes e depois da divisão. A sugestão manda o hospital mais pesado para quem está recebendo menos.</> },
+          { n: 5, titulo: 'Troque hospitais de mão, se quiser', corpo: <>Abre a lista dos hospitais da pessoa com quem fica cada um. Pelo menos um tem de continuar com ela.</> },
+          { n: 6, titulo: 'Clique em Dividir', corpo: <>O botão diz em quantas partes a carga será dividida. A divisão vale na hora: o quadro de Tarefas de cada um já mostra os hospitais do período.</> },
+          { n: 7, titulo: 'Acompanhe pelos cartões', corpo: <>Quem cedeu mostra <strong>Carga dividida até</strong> a data final; quem recebeu, <strong>Ajudando com</strong> o número de hospitais. No fim do período tudo volta sozinho.</> },
+        ]}
+      >
+        <Tela nome="Distribuição de tarefas" largura={960}
+          destaques={{ '.vol-grade > .vol-card-wrap:first-child .vol-menu-btn': 1 }}
+          descricao="Juliana Prado está em sobrecarga. O ⋮ no canto do cartão abre as ações sobre ela.">
+          <ReplicaEquipe />
+        </Tela>
+        <Tela nome="Distribuição de tarefas" largura={560}
+          descricao="Juliana divide a carga com Beatriz por dois dias. Dois hospitais passam para Beatriz.">
+          <ReplicaDividirCarga marcas={{ colegas: 2, periodo: 3, previa: 4, trocar: 5, dividir: 6 }} />
+        </Tela>
+        <Tela nome="Distribuição de tarefas" largura={960}
+          destaques={{
+            '.vol-grade > .vol-card-wrap:first-child .vol-card-div': 7,
+            '.vol-grade > .vol-card-wrap:nth-child(3) .vol-card-div': 7,
+          }}
+          descricao="A equipe durante a divisão: os dois cartões avisam o que está acontecendo.">
+          <ReplicaEquipe dividida />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Comparar demandas com a distribuição dos hospitais"
+        passos={[
+          { n: 1, titulo: 'Compare a barra com o traço', corpo: <>A barra é a parte das demandas abertas do grupo que está com a pessoa; o traço é a parte dos hospitais que ela recebeu. <strong>Barra além do traço</strong> quer dizer hospitais mais pesados que a média; barra aquém, hospitais leves. Clicar na linha abre o painel da pessoa.</> },
+          { n: 2, titulo: 'Olhe a linha Sem responsável', corpo: <>São as demandas de hospitais que ninguém do grupo cobre. Elas existem, mas não estão na carga de ninguém. Atribua esses hospitais pela lista de hospitais sem cobertura.</> },
+        ]}
+      >
+        <Tela nome="Distribuição de tarefas" largura={900}
+          destaques={{
+            '.vol-dxd > button.vol-dxd-row:nth-child(2) .vol-dxd-trilha': 1,
+            '.vol-dxd-row.sem .vol-dxd-nome': 2,
+          }}
+          descricao="Juliana tem 44% dos hospitais e 49% das demandas. Beatriz tem 22% dos hospitais e só 12% das demandas.">
+          <ReplicaDemandaXDistribuicao />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Acompanhar a produtividade da equipe"
+        passos={[
+          { n: 1, titulo: 'Compare abertas e concluídas por pessoa', corpo: <>Azul é o que está aberto agora; verde, o que a pessoa concluiu nos últimos 30 dias. Quem concluiu mais aparece primeiro. Clicar numa pessoa abre o painel dela.</> },
+          { n: 2, titulo: 'Veja o ritmo dia a dia', corpo: <>As entregas do grupo por dia. Passe o mouse sobre a linha para ver o número de cada dia.</> },
+          { n: 3, titulo: 'Repare no que foi feito por fora', corpo: <>Entregas feitas por quem não é da equipe, como o coordenador, não entram na conta de ninguém e aparecem nesta nota.</> },
+        ]}
+      >
+        <Tela nome="Distribuição de tarefas" largura={960}
+          descricao="Relatórios registrados pelos técnicos nos últimos 30 dias.">
+          <Carregando altura={420}>
+            <ReplicaProdutividade marcas={{ porPessoa: 1, porDia: 2, fora: 3 }} />
+          </Carregando>
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Ver quem responde por cada região"
+        passos={[
+          { n: 1, titulo: 'Leia o peso de cada região', corpo: <>Pacientes, hospitais, demandas e horas somados da região. Um hospital dividido entre duas pessoas conta uma vez só aqui.</> },
+          { n: 2, titulo: 'Clique num nome para abrir a área da pessoa', corpo: <>São os responsáveis pela região, deduzidos dos hospitais de cada um. Quem cobre duas regiões aparece nas duas.</> },
+          { n: 3, titulo: 'Corrija o que está em Sem região', corpo: <>São hospitais sem região no cadastro. A região se define na ficha do hospital, em Configurações; não se atribui região a pessoas.</> },
+        ]}
+      >
+        <Tela nome="Distribuição de tarefas" largura={900}
+          destaques={{
+            '.vol-reg-linha:first-child .vol-reg-nums': 1,
+            '.vol-reg-linha:first-child .vol-reg-resp': 2,
+            '.vol-reg-linha:last-child .vol-reg-nome': 3,
+          }}
+          descricao="Bloco Por região: quem responde por cada uma e o que há sob a responsabilidade dela.">
+          <ReplicaPorRegiao />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Calibrar os parâmetros de carga"
+        passos={[
+          { n: 1, titulo: 'Clique em Ajustar', corpo: <>O bloco fica recolhido no fim da tela. Aberto, o botão vira <strong>Recolher</strong>.</> },
+          { n: 2, titulo: 'Minutos por tipo de leito', corpo: <>Quanto tempo, em média, um caso leva conforme o leito. UTI costuma levar mais.</> },
+          { n: 3, titulo: 'Multiplicadores', corpo: <>Aumentam o tempo de quem está internado há muito tempo e diminuem o de quem já tem relatório anterior (reanálise).</> },
+          { n: 4, titulo: 'Capacidade e limiares', corpo: <>A capacidade padrão vale para quem não tem uma própria. Os limiares separam Normal, Atenção e Sobrecarga, em dias de fila e em percentual do prazo. São absolutos: se a equipe inteira estiver sobrecarregada, todos aparecem assim.</> },
+          { n: 5, titulo: 'Clique em Salvar parâmetros', corpo: <>Os cartões são recalculados com os valores novos. O bloco passa a dizer quem calibrou e quando, e a mudança fica em Movimentações.</> },
+          { n: 6, titulo: 'Restaurar padrão, se precisar recomeçar', corpo: <>Volta tudo aos valores de fábrica, <strong>inclusive as capacidades próprias</strong> das pessoas. Pede confirmação antes.</> },
+        ]}
+      >
+        <Tela nome="Distribuição de tarefas" largura={900}
+          descricao="Bloco de parâmetros aberto, com a calibração do grupo de técnicos.">
+          <ReplicaParametros marcas={{ ajustar: 1, minutos: 2, fatores: 3, limiares: 4, salvar: 5, restaurar: 6 }} />
+        </Tela>
+      </ComoFazer>
 
       <h3>Como a carga é montada</h3>
       <p>
@@ -239,7 +507,12 @@ export function ModuloVolumetria() {
         <li><strong>Resumo</strong>, com os indicadores acima.</li>
         <li><strong>Equipe</strong>: um cartão por pessoa, com o nível de carga, as horas estimadas
           e a quebra das demandas pelos mesmos nomes das colunas de Tarefas. A lista pode ser
-          ordenada por <strong>Maior carga</strong> ou por <strong>Nome</strong>.</li>
+          ordenada por <strong>Maior carga</strong> ou por <strong>Nome</strong>. O ⋮ de cada cartão
+          traz <strong>Dividir a carga</strong>.</li>
+        <li><strong>Demandas x distribuição</strong>: a parte das demandas abertas e a parte dos
+          hospitais de cada pessoa, lado a lado.</li>
+        <li><strong>Produtividade</strong>: abertas e concluídas por pessoa, e as entregas do grupo
+          por dia, nos últimos 30 dias.</li>
         <li><strong>Onde o tempo está indo</strong>: o tempo estimado da fila repartido por tipo
           de tarefa, numa barra única. A quebra dos cartões conta casos; esta conta horas.</li>
         <li><strong>Por região</strong>: uma linha por região, com quem responde por ela e o que
@@ -249,6 +522,63 @@ export function ModuloVolumetria() {
         <li><strong>Comparativo</strong>, gráfico da carga pessoa a pessoa, recolhido por padrão.</li>
         <li><strong>Parâmetros de carga</strong>, também recolhido, descrito adiante.</li>
       </ol>
+
+      <h3>Demandas x distribuição</h3>
+      <p>
+        Dividir o <strong>número de hospitais</strong> por igual não divide o trabalho por igual: um
+        hospital pode ter duzentos pacientes e outro, cinco. Este bloco põe as duas medidas lado a
+        lado. A barra é a parte das demandas abertas do grupo que está com a pessoa, e o traço, a
+        parte dos hospitais. Quando a barra passa do traço, a pessoa ficou com hospitais mais
+        pesados que a média.
+      </p>
+      <p>
+        Um hospital compartilhado conta para cada pessoa que o cobre, como no resto da tela. As
+        demandas de hospitais sem ninguém responsável aparecem numa linha própria, em vermelho,
+        para a equipe não parecer dividir tudo quando parte do trabalho está sem dono. Quem está
+        sem área definida fica de fora.
+      </p>
+
+      <h3>Produtividade</h3>
+      <p>
+        Conta o que cada pessoa <strong>concluiu nos últimos 30 dias</strong>. O sistema não marca
+        uma tarefa como concluída: ele registra o gesto que a tira do quadro, com o nome de quem
+        o fez.
+      </p>
+      <Tabela cabecalho={['Grupo', 'O que conta como concluído']} larguras={['175px']}>
+        <tr><Key>Técnicos</Key><td>Relatório registrado.</td></tr>
+        <tr><Key>Administrativos</Key><td>Cobrança de censo marcada como cobrada.</td></tr>
+      </Tabela>
+      <p>
+        O envio de censo não entra na conta, porque o sistema não guarda quem enviou cada arquivo.
+        Quem está sem área definida aparece no gráfico se tiver concluído algo. O gráfico por dia
+        mostra os 30 dias inteiros, com zero nos dias sem entrega.
+      </p>
+
+      <h3>Divisão temporária da carga</h3>
+      <p>
+        <strong>Dividir a carga</strong> empresta hospitais de uma pessoa a colegas do mesmo grupo
+        por um período. É diferente de redistribuir no painel da pessoa: <strong>a área definida
+        não muda</strong>, e no fim do período tudo volta sozinho.
+      </p>
+      <Tabela cabecalho={['Situação', 'O que acontece']} larguras={['215px']}>
+        <tr><Key>Durante o período</Key>
+          <td>Os hospitais emprestados entram na carga e no quadro de Tarefas de quem recebeu, e saem
+            dos de quem cedeu. Os números da tela já refletem a divisão.</td></tr>
+        <tr><Key>No fim do período</Key>
+          <td>Cada hospital volta para quem o cedeu, sem nenhuma ação.</td></tr>
+        <tr><Key>Cancelar antes do fim</Key>
+          <td>Abra de novo <strong>Dividir a carga</strong> na pessoa que cedeu: as divisões dela
+            aparecem no topo, em andamento ou agendadas, cada uma com <strong>Cancelar
+            divisão</strong>.</td></tr>
+        <tr><Key>No painel de quem recebeu</Key>
+          <td>O hospital emprestado diz de quem veio e até quando, e não tem o <strong>×</strong> de
+            remover: ele sai sozinho.</td></tr>
+      </Tabela>
+      <Callout tipo="caution" titulo="Regras da divisão">
+        Só recebe quem já tem área definida. Quem cede fica sempre com ao menos um hospital, e um
+        hospital recebido não pode ser repassado de novo. O mesmo hospital não entra em duas
+        divisões com períodos que se sobrepõem.
+      </Callout>
 
       <h3>Onde o tempo está indo</h3>
       <p>
@@ -324,10 +654,10 @@ export function ModuloVolumetria() {
 
       <h3>Hospitais sem cobertura</h3>
       <p>
-        Lista as unidades que <strong>têm demanda aberta e ninguém responsável</strong>, com as
-        horas estimadas que estão sem dono. Cada linha traz um seletor para atribuir o hospital a
-        alguém do grupo ali mesmo, e cada pessoa da lista aparece com os dias de fila dela, para a
-        escolha recair sobre quem está mais folgado sem sair da tela.
+        Lista as unidades que <strong>têm demanda aberta e ninguém responsável</strong>, com o
+        número de casos ou há quantos dias estão sem censo. Cada linha traz um seletor para
+        atribuir o hospital a alguém do grupo ali mesmo. O seletor mostra só os nomes: a carga de
+        cada um está nos cartões da equipe.
       </p>
 
       <h3>Parâmetros de carga</h3>
@@ -351,8 +681,8 @@ export function ModuloVolumetria() {
 
       <Callout tipo="info" titulo="Única tela em que o coordenador escreve">
         Os perfis de coordenação observam as demais telas sem alterá-las. Definir a área de cada
-        pessoa e calibrar os parâmetros, aqui, são as únicas alterações que eles executam no
-        sistema, e ficam registradas em Movimentações. Cada coordenador atua apenas sobre o próprio
+        pessoa, dividir a carga por um período e calibrar os parâmetros, aqui, são as únicas
+        alterações que eles executam no sistema, e ficam registradas em Movimentações. Cada coordenador atua apenas sobre o próprio
         grupo, e a restrição vale também fora da tela.
       </Callout>
     </>

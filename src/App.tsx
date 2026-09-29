@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
-import { podeVer, rotaFallback } from './auth/permissions'
+import { ehProfissional, podeGerirOperacoes, podeVer, podeVerFichaPaciente, rotaFallback } from './auth/permissions'
 import type { Screen } from './auth/permissions'
 import Login from './pages/Login'
 import { LoadingState } from './components/ui'
@@ -12,7 +12,7 @@ import {
   importDashboard, importDiretoria, importGestor,
   importEquipe, importConfiguracoes, importUpload,
   importKanban, importPaciente, importUsuarioForm, importLogs, importAjuda,
-  importProgresso, importVolumetria, importRelatorio,
+  importProgresso, importVolumetria, importRelatorio, importPortalProfissional,
 } from './routes'
 
 // Páginas carregadas sob demanda (code-splitting). Diretoria e Gestor arrastam
@@ -32,6 +32,7 @@ const Ajuda = lazy(importAjuda)
 const Progresso = lazy(importProgresso)
 const Volumetria = lazy(importVolumetria)
 const Relatorio = lazy(importRelatorio)
+const PortalProfissional = lazy(importPortalProfissional)
 
 function PageFallback() {
   return <LoadingState style={{ minHeight: '100vh' }} />
@@ -52,12 +53,19 @@ function GatedRoute({ screen, children }: { screen: Screen; children: ReactNode 
   return <>{children}</>
 }
 
-// Restringe uma rota a administradores (gestão de usuários). Redireciona quem
-// não for admin — defesa por rota, além do gating de UI.
-function RequireAdmin({ children }: { children: ReactNode }) {
+// Ficha completa do paciente: fechada ao analista interno (cobre a URL direta).
+function RequireFichaPaciente({ children }: { children: ReactNode }) {
   const { role, perfilCarregando } = useAuth()
   if (perfilCarregando) return <PageFallback />
-  if (role !== 'admin') return <Navigate to={rotaFallback(role)} replace />
+  if (!podeVerFichaPaciente(role)) return <Navigate to={rotaFallback(role)} replace />
+  return <>{children}</>
+}
+
+// Gestão de usuários (tela Operações): administrador e analista interno.
+function RequireGestaoOperacoes({ children }: { children: ReactNode }) {
+  const { role, perfilCarregando } = useAuth()
+  if (perfilCarregando) return <PageFallback />
+  if (!podeGerirOperacoes(role)) return <Navigate to={rotaFallback(role)} replace />
   return <>{children}</>
 }
 
@@ -65,7 +73,7 @@ function RequireAdmin({ children }: { children: ReactNode }) {
 // com sessão, renderiza o AppLayout persistente (Sidebar + topbar) e as rotas
 // filhas caem no <Outlet/> dele. Preserva a origem em location.state.
 function RequireAuth() {
-  const { authenticated, loading } = useAuth()
+  const { authenticated, loading, role, perfilCarregando } = useAuth()
   const location = useLocation()
 
   // Boot otimista: com token tido como válido, renderiza o app sem esperar /me.
@@ -75,6 +83,21 @@ function RequireAuth() {
   }
   if (!authenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
+  }
+  // Papel ainda desconhecido (1º login, nada salvo): esperar o /me em vez de
+  // montar o AppLayout, que num médico/enfermeiro pintaria a Sidebar e dispararia
+  // consultas que o backend recusa, para logo depois trocar pelo portal.
+  if (perfilCarregando && !role) {
+    return <PageFallback />
+  }
+  // Médico/enfermeiro: portal próprio em QUALQUER rota, sem Sidebar nem telas
+  // internas. A URL fica como veio; não há rota interna para onde mandá-lo.
+  if (ehProfissional(role)) {
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <PortalProfissional papel={role} />
+      </Suspense>
+    )
   }
   return <AppLayout />
 }
@@ -124,7 +147,9 @@ function ProtectedRoutes() {
           element={<GatedRoute screen="equipe"><Equipe /></GatedRoute>}
         />
         <Route path="/upload" element={<GatedRoute screen="upload"><Upload /></GatedRoute>} />
-        <Route path="/kanban" element={<GatedRoute screen="kanban"><Kanban /></GatedRoute>} />
+        <Route path="/tarefas" element={<GatedRoute screen="kanban"><Kanban /></GatedRoute>} />
+        {/* Endereço antigo da tela (era "Kanban"): mantém favoritos funcionando. */}
+        <Route path="/kanban" element={<Navigate to="/tarefas" replace />} />
         {/* Movimentações (auditoria): analista interno e admin (EXCLUSIVAS.logs). */}
         <Route path="/logs" element={<GatedRoute screen="logs"><Logs /></GatedRoute>} />
         {/* Progresso (avanço do projeto): administração e diretoria. */}
@@ -143,14 +168,14 @@ function ProtectedRoutes() {
           path="/volumetria"
           element={<GatedRoute screen="volumetria"><Volumetria /></GatedRoute>}
         />
-        <Route path="/paciente/:id" element={<Paciente />} />
+        <Route path="/paciente/:id" element={<RequireFichaPaciente><Paciente /></RequireFichaPaciente>} />
         {/* Ajuda (documentação das telas): sem GatedRoute — todo papel acessa.
             O recorte é POR MÓDULO dentro da tela, pela mesma hierarquia das
             demais (components/ajuda/catalogo.tsx). */}
         <Route path="/ajuda" element={<Ajuda />} />
-        {/* Gestão de usuários (admin-only): /novo antes de /:id p/ o literal vencer. */}
-        <Route path="/usuarios/novo" element={<RequireAdmin><UsuarioForm /></RequireAdmin>} />
-        <Route path="/usuarios/:id" element={<RequireAdmin><UsuarioForm /></RequireAdmin>} />
+        {/* Gestão de usuários (admin e analista): /novo antes de /:id p/ o literal vencer. */}
+        <Route path="/usuarios/novo" element={<RequireGestaoOperacoes><UsuarioForm /></RequireGestaoOperacoes>} />
+        <Route path="/usuarios/:id" element={<RequireGestaoOperacoes><UsuarioForm /></RequireGestaoOperacoes>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

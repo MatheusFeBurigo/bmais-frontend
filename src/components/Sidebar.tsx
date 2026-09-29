@@ -213,7 +213,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
           </div>
           )}
           {mostrar('kanban') && (
-            <NavLink to="/kanban" className={itemClass} {...prefetchProps('/kanban')}>
+            <NavLink to="/tarefas" className={itemClass} {...prefetchProps('/tarefas')}>
               <span className="sb-item-icon"><IconKanban /></span>
               <span className="sb-item-label">Tarefas</span>
             </NavLink>

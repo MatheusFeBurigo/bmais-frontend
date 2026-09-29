@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Profissional, ProfTipo } from '../types/api'
 import { usePageHeader } from '../components/PageHeader'
@@ -7,14 +8,17 @@ import Toast from '../components/Toast'
 import UsuariosAcesso from '../components/UsuariosAcesso'
 import CadastroMalha from '../components/equipe/CadastroMalha'
 import { useAuth } from '../auth/AuthContext'
+import { podeGerirOperacoes } from '../auth/permissions'
 import { useEquipe, useProfissional } from '../hooks/useEquipe'
 import { queryKeys } from '../lib/queryKeys'
 import { invalidarPorEvento } from '../lib/invalidation'
 import { localStyles, isAtivo } from '../components/equipe/equipe.styles'
-import { IconPlus, IconUsers } from '../components/equipe/icons'
-import ProfItem from '../components/equipe/ProfItem'
+import { IconPlus } from '../components/equipe/icons'
+import ProfTabela from '../components/equipe/ProfTabela'
 import DetalheProf from '../components/equipe/DetalheProf'
 import AddProfModal from '../components/equipe/AddProfModal'
+import ResetSenhaModal from '../components/equipe/ResetSenhaModal'
+import { definirAtivoProfissional } from '../services/equipe.service'
 
 // HIERARQUIA VISUAL — o que esta tela deliberadamente NAO faz:
 // antes havia duas fileiras de pilulas identicas empilhadas (as secoes e o
@@ -32,16 +36,38 @@ const IconSearch = (
 export default function Equipe() {
   const qc = useQueryClient()
   const { role } = useAuth()
-  const admin = role === 'admin'
-  // Analista entra direto na malha: é o que ele veio fazer aqui (não gerencia
-  // profissionais nem contas), então abrir em "Profissionais" seria um desvio.
-  const [aba, setAba] = useState<Aba>(admin ? 'profissionais' : 'malha')
-  const [tipoFiltro, setTipoFiltro] = useState<'todos' | ProfTipo>('todos')
+  // Admin e analista interno veem a tela completa; a restrição do analista (contas
+  // de administrador) é por linha, em UsuariosAcesso e UsuarioForm.
+  const gestor = podeGerirOperacoes(role)
+  //
+  // Aba e filtro de tipo vivem na URL: editar um usuário abre outra página
+  // (/usuarios/:id) e, na volta, a tela tem de reabrir onde a pessoa estava.
+  const [params, setParams] = useSearchParams()
+  const abaPadrao: Aba = gestor ? 'profissionais' : 'malha'
+  const abaUrl = params.get('aba') as Aba | null
+  const aba: Aba = gestor && abaUrl && ['profissionais', 'usuarios', 'malha'].includes(abaUrl) ? abaUrl : abaPadrao
+  const tipoUrl = params.get('tipo')
+  const tipoFiltro: 'todos' | ProfTipo = tipoUrl === 'E' || tipoUrl === 'M' ? tipoUrl : 'todos'
+
+  function mudarParam(chave: string, valor: string | null) {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (valor == null) next.delete(chave)
+      else next.set(chave, valor)
+      return next
+    }, { replace: true })
+  }
+  // Trocar de aba limpa os filtros da aba anterior (tipo, nível).
+  const setAba = (a: Aba) => setParams(a === abaPadrao ? {} : { aba: a }, { replace: true })
+  const setTipoFiltro = (t: 'todos' | ProfTipo) => mudarParam('tipo', t === 'todos' ? null : t)
   const [busca, setBusca] = useState('')
   const [showInativos, setShowInativos] = useState(false)
   const [selId, setSelId] = useState<number | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  // Atalho "Senha" da linha: a mesma modal de Usuários de acesso. Sem conta
+  // não há senha a redefinir: ela explica e leva à ficha (e-mail + senha inicial).
+  const [senhaAlvo, setSenhaAlvo] = useState<Profissional | null>(null)
 
   const { data, isLoading, isError } = useEquipe()
   const { data: detalhe } = useProfissional(selId)
@@ -69,6 +95,21 @@ export default function Equipe() {
     if (selId != null) qc.invalidateQueries({ queryKey: queryKeys.profissional(selId) })
   }
 
+  // Mesmo confirm da ficha (DetalheProf.toggleAtivo).
+  async function alternarAtivo(p: Profissional) {
+    const novo = !isAtivo(p)
+    const aviso = p.tem_acesso && !novo ? ' O acesso dele à plataforma será suspenso.' : ''
+    if (!confirm(`${novo ? 'Reativar' : 'Desativar'} ${p.nome}?${aviso}`)) return
+    try {
+      await definirAtivoProfissional(p.id, novo)
+      setToast(novo ? '✓ Profissional reativado' : 'Profissional desativado')
+      invalidarPorEvento(qc, 'equipeAlterada')
+      qc.invalidateQueries({ queryKey: queryKeys.profissional(p.id) })
+    } catch (err) {
+      setToast(`Erro: ${(err as Error).message}`)
+    }
+  }
+
   // Subtitulo por aba: cada secao resume a si mesma, em vez de a tela inteira
   // herdar a contagem de profissionais (que nada diz nas outras abas).
   const subtitle = aba === 'profissionais'
@@ -79,8 +120,8 @@ export default function Equipe() {
 
   usePageHeader({ title: 'Operações', subtitle })
 
-  // Abas visíveis por papel: o analista só mantém a malha de atendimento.
-  const abas: readonly (readonly [Aba, string, number | null])[] = admin
+  // Abas visíveis por papel: quem gere Operações vê as três.
+  const abas: readonly (readonly [Aba, string, number | null])[] = gestor
     ? [
       ['profissionais', 'Profissionais', total],
       ['usuarios', 'Usuários de acesso', null],
@@ -196,31 +237,16 @@ export default function Equipe() {
             )}
           </div>
 
-          {/* Scroll interno: limita a altura para nao empurrar o resto da pagina
-              quando a lista e longa; abaixo disso o bloco encolhe naturalmente. */}
-          <div className="prof-lista-scroll">
-            {visiveis.map((p) => (
-              <ProfItem key={p.id} p={p} active={selId === p.id} onClick={() => setSelId(p.id)} />
-            ))}
-            {visiveis.length === 0 && (
-              <div className="empty-state" style={{ padding: '36px 16px' }}>
-                <div style={{ marginBottom: 8, opacity: 0.4, display: 'flex', justifyContent: 'center' }}><IconUsers /></div>
-                {busca.trim() ? (
-                  <>
-                    <div className="fw-6">Nenhum profissional encontrado</div>
-                    <div style={{ fontSize: 'var(--t-sm)', marginTop: 4 }}>
-                      Nada corresponde a “{busca.trim()}”.
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="fw-6">Nenhum profissional cadastrado</div>
-                    <div style={{ fontSize: 'var(--t-sm)', marginTop: 4 }}>Use o botão “Adicionar” para cadastrar.</div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          <ProfTabela
+            lista={visiveis}
+            onAbrir={(p) => setSelId(p.id)}
+            acoes={gestor ? {
+              onEditar: (p) => setSelId(p.id),
+              onSenha: setSenhaAlvo,
+              onAtivo: alternarAtivo,
+            } : undefined}
+            vazio={busca.trim() ? `Nenhum profissional corresponde a “${busca.trim()}”.` : 'Nenhum profissional cadastrado.'}
+          />
         </>
       )}
 
@@ -242,6 +268,17 @@ export default function Equipe() {
           opsLista={data?.ops_lista ?? []}
           onClose={() => setAddOpen(false)}
           onDone={(msg) => { setAddOpen(false); setToast(msg); invalidar() }}
+          onError={setToast}
+        />
+      )}
+      {senhaAlvo && (
+        <ResetSenhaModal
+          userId={senhaAlvo.acesso_user_id ?? null}
+          email={senhaAlvo.acesso_email ?? null}
+          nome={senhaAlvo.nome}
+          onInformarEmail={() => { setSelId(senhaAlvo.id); setSenhaAlvo(null) }}
+          onClose={() => setSenhaAlvo(null)}
+          onDone={(msg) => { setSenhaAlvo(null); setToast(msg) }}
           onError={setToast}
         />
       )}

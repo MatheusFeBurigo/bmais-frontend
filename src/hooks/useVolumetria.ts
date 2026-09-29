@@ -3,9 +3,9 @@
 // parâmetros e vínculos que afetam as outras, então recalcular tudo é o certo.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../lib/queryKeys'
-import type { VolumetriaParametrosCorpo } from '../types/api'
+import type { VolumetriaDividirCorpo, VolumetriaParametrosCorpo } from '../types/api'
 import {
-  desvincularPessoa, fetchVolumetria, restaurarParametros, salvarParametros, vincularPessoa,
+  cancelarDivisao, desvincularPessoa, dividirCarga, fetchVolumetria, restaurarParametros, salvarParametros, vincularPessoa,
   type GrupoVolumetria,
 } from '../services/volumetria.service'
 
@@ -53,6 +53,22 @@ export function useRestaurarParametrosVolumetria() {
   const invalidar = useInvalidarVolumetria()
   return useMutation({
     mutationFn: (grupo: GrupoVolumetria) => restaurarParametros(grupo),
+    onSuccess: invalidar,
+  })
+}
+
+export function useDividirCarga() {
+  const invalidar = useInvalidarVolumetria()
+  return useMutation({
+    mutationFn: (corpo: VolumetriaDividirCorpo) => dividirCarga(corpo),
+    onSuccess: invalidar,
+  })
+}
+
+export function useCancelarDivisao() {
+  const invalidar = useInvalidarVolumetria()
+  return useMutation({
+    mutationFn: (lote: string) => cancelarDivisao(lote),
     onSuccess: invalidar,
   })
 }

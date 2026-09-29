@@ -2,6 +2,11 @@
 // Cada módulo declara no catálogo a tela que documenta, e só chega a quem
 // acessa essa tela.
 import { Callout, Chip, Key, Metric, Metrics, Passo, Passos, Tabela } from './blocos'
+import { ComoFazer, Tela } from './replica'
+import {
+  ReplicaAdicionarPaciente, ReplicaCobranca, ReplicaConferencia, ReplicaDadosPaciente, ReplicaFichaRapida,
+  ReplicaFormularioEnvio, ReplicaPainel, ReplicaQuadro, ReplicaResultadoEnvio,
+} from './exemplosOperacao'
 
 interface Props {
   irPara: (id: string) => void
@@ -17,6 +22,57 @@ export function ModuloOperacional({ irPara }: Props) {
         paciente, registra relatórios, cadastra pacientes manualmente e exporta a planilha de
         controle.
       </p>
+
+      <h3>Passo a passo</h3>
+      <ComoFazer
+        titulo="Descobrir quem precisa de visita hoje"
+        passos={[
+          { n: 1, titulo: "Escolha a operadora, ou deixe todas", corpo: <>A tela abre com todas as operadoras juntas. Troque aqui para ver só uma delas.</> },
+          { n: 2, titulo: "Clique no cartão da situação que quer atacar", corpo: <><strong>Sem Relatório</strong> e <strong>Atrasado</strong> são os mais urgentes. O cartão clicado ganha um contorno e a lista passa a mostrar só aqueles pacientes. Clique de novo para voltar a ver todos.</> },
+          { n: 3, titulo: "Afine com os filtros rápidos, se precisar", corpo: <>Por exemplo, <strong>UTI / CTI</strong> para começar pelos leitos de terapia intensiva, ou{' '} <strong>Longa 10d+</strong> para quem está internado há mais tempo.</> },
+          { n: 4, titulo: "Clique na linha do paciente", corpo: <>Abre a ficha rápida ao lado, sem sair da lista. É ali que se registra o relatório e se agenda a visita (veja{' '} <button type="button" className="aj-link" onClick={() => irPara('ficha-do-paciente')}>Ficha do Paciente</button>).</> },
+        ]}
+      >
+        <Tela nome="Painel Operacional" largura={960}
+          descricao="Cartão Sem Relatório clicado: a lista mostra só os pacientes que nunca receberam visita.">
+          <ReplicaPainel kpiAtivo="sem_relatorio" marcas={{ operadora: 1, kpi: 2, filtros: 3, linha: 4 }} />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Encontrar um paciente específico"
+        passos={[
+          { n: 1, titulo: "Digite no campo de busca", corpo: <>Vale o nome do segurado, o número de atendimento ou a senha de autorização. Não precisa digitar o nome inteiro.</> },
+          { n: 2, titulo: "Não achou? Ligue o filtro Altas", corpo: <>A lista mostra só quem está internado. Um paciente que já saiu só aparece na busca com o filtro <strong>Altas</strong> ligado.</> },
+          { n: 3, titulo: "Clique na linha para abrir a ficha", corpo: <>Se nem assim aparecer, confira se a operadora e o hospital escolhidos no topo são os dele.</> },
+        ]}
+      >
+        <Tela nome="Painel Operacional" largura={960}
+          descricao="A busca procura por nome, número de atendimento e senha de autorização.">
+          <ReplicaPainel marcas={{ busca: 1, filtros: 2, linha: 3 }} />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Cadastrar um paciente que não veio no censo"
+        passos={[
+          { n: 1, titulo: "Clique em Adicionar paciente", corpo: <>Abre o formulário de cadastro manual. Quem tem perfil somente leitura não vê o botão.</> },
+          { n: 2, titulo: "Escolha a operadora e o hospital", corpo: <>O hospital só libera depois da operadora, e a lista traz apenas os hospitais dela.</> },
+          { n: 3, titulo: "Informe nome e atendimento", corpo: <>Os dois são obrigatórios. O atendimento é o que impede o mesmo paciente de ser cadastrado duas vezes no hospital.</> },
+          { n: 4, titulo: "Marque a situação e as datas", corpo: <><strong>Internado</strong> pede só a data de entrada, que é a base de todo o cálculo de dias. <strong>Alta</strong> serve para quem já saiu: pede também a data de alta, entre a entrada e hoje, e o paciente entra direto nos indicadores de altas e de permanência.</> },
+          { n: 5, titulo: "Complete o resto, se souber", corpo: <>Leito, especialidade e médico são opcionais e podem ser completados depois, na ficha. O leito define o gatilho de monitoramento, então vale informar.</> },
+          { n: 6, titulo: "Clique em Adicionar", corpo: <>Se o atendimento já existir naquele hospital, o sistema avisa e não cria um paciente repetido.</> },
+        ]}
+      >
+        <Tela nome="Painel Operacional" largura={960}
+          descricao="O botão Adicionar paciente fica no topo da lista de internados.">
+          <ReplicaPainel marcas={{ adicionar: 1 }} />
+        </Tela>
+        <Tela nome="Painel Operacional" largura={560}
+          descricao="Formulário de cadastro manual, preenchido para um paciente que já teve alta.">
+          <ReplicaAdicionarPaciente marcas={{ origem: 2, paciente: 3, situacao: 4, opcionais: 5, adicionar: 6 }} />
+        </Tela>
+      </ComoFazer>
 
       <h3>Os cinco indicadores</h3>
       <Metrics>
@@ -51,7 +107,7 @@ export function ModuloOperacional({ irPara }: Props) {
       <h3>Colunas da tabela</h3>
       <Tabela cabecalho={['Coluna', 'Conteúdo']} larguras={['150px']}>
         <tr><Key>Relatório</Key><td>Pastilha colorida de status, detalhada no{' '}
-          <button type="button" className="aj-link" onClick={() => irPara('regras')}>anexo de regras</button>.
+          <button type="button" className="aj-link" onClick={() => irPara('calculo-do-status')}>anexo de regras</button>.
           A linha inteira recebe uma faixa da mesma cor.</td></tr>
         <tr><Key>Operadora</Key><td>Só na visão consolidada. Identifica a operadora do paciente.</td></tr>
         <tr><Key>Hospital</Key><td>Clicável, abre a ficha de contato do hospital sem sair da tela.</td></tr>
@@ -69,7 +125,7 @@ export function ModuloOperacional({ irPara }: Props) {
       <Tabela cabecalho={['Ação', 'Efeito']} larguras={['185px']}>
         <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação e, para o perfil técnico, o formulário de registrar relatório.</td></tr>
         <tr><Key>Clicar no hospital</Key><td>Abre a ficha do hospital, com indicadores, operadoras atendidas, dados cadastrais e histórico de censos sob demanda.</td></tr>
-        <tr><Key>Adicionar paciente</Key><td>Cadastro manual: operadora, hospital, nome, atendimento, data de entrada e, opcionalmente, leito, especialidade e médico. Não duplica: se o atendimento já existir no hospital, avisa que o paciente não foi duplicado.</td></tr>
+        <tr><Key>Adicionar paciente</Key><td>Cadastro manual: operadora, hospital, nome, atendimento, situação (internado ou alta), data de entrada, data de alta quando for o caso e, opcionalmente, leito, especialidade e médico. Não duplica: se o atendimento já existir no hospital, avisa que o paciente não foi duplicado.</td></tr>
         <tr><Key>Exportar</Key><td>Gera a planilha de controle de auditoria, da operadora aberta ou de todas num único arquivo, com uma aba por hospital.</td></tr>
         <tr><Key>Atualizar</Key><td>Recarrega lista, indicadores e contagens da barra lateral.</td></tr>
       </Tabela>
@@ -77,7 +133,7 @@ export function ModuloOperacional({ irPara }: Props) {
   )
 }
 
-export function ModuloPaciente() {
+export function ModuloPaciente({ irPara }: Props) {
   return (
     <>
       <h3>Objetivo</h3>
@@ -92,6 +148,51 @@ export function ModuloPaciente() {
         ficha em si não é restrita por perfil, mas <strong>o registro de relatório é exclusivo do
         perfil técnico</strong>, e cada pessoa continua vendo apenas os pacientes dos hospitais do
         seu escopo.
+      </p>
+
+      <h3>Passo a passo</h3>
+      <ComoFazer
+        titulo="Registrar o relatório de uma visita"
+        passos={[
+          { n: 1, titulo: "Informe a data em que a visita aconteceu", corpo: <>O calendário só aceita hoje ou datas passadas. Visita futura se marca no bloco{' '} <strong>Agendar visita</strong>, logo abaixo.</> },
+          { n: 2, titulo: "Escolha o médico auditor", corpo: <>Comece a digitar o nome. A lista traz os médicos ativos do cadastro, e um nome fora dela também é aceito.</> },
+          { n: 3, titulo: "Escreva a observação, se houver", corpo: <>Texto livre, que aparece no histórico do paciente.</> },
+          { n: 4, titulo: "Clique em Registrar relatório", corpo: <>O status do paciente é recalculado na hora e ele sai das listas de pendência. O relatório aparece na timeline com a cor do seu perfil.</> },
+        ]}
+      >
+        <Tela nome="Ficha rápida do paciente" largura={640}
+          descricao="A ficha rápida abre ao clicar num paciente do Painel Operacional ou do quadro de Tarefas.">
+          <ReplicaFichaRapida preenchido esconderAgenda
+            marcas={{ dataVisita: 1, medico: 2, obs: 3, registrar: 4 }} />
+        </Tela>
+      </ComoFazer>
+      <Callout tipo="info" titulo="Só o perfil técnico registra">
+        Os demais perfis veem a ficha, mas o bloco de registrar não aparece para eles.
+      </Callout>
+
+      <ComoFazer
+        titulo="Corrigir um dado que veio errado ou faltando"
+        passos={[
+          { n: 1, titulo: "Veja o que falta", corpo: <>O aviso amarelo diz quais campos importantes o censo não trouxe. Eles também ficam destacados na grade.</> },
+          { n: 2, titulo: "Clique em Editar", corpo: <>Chega-se à ficha completa pelo botão <strong>Detalhes</strong> da ficha rápida.</> },
+          { n: 3, titulo: "Corrija ou complete os campos", corpo: <>O destaque amarelo some assim que o campo é preenchido.</> },
+          { n: 4, titulo: "Clique em Salvar", corpo: <>A alteração fica registrada na timeline, com o seu nome. <strong>Cancelar</strong> descarta tudo o que foi digitado.</> },
+        ]}
+      >
+        <>
+          <Tela nome="Ficha do paciente" largura={720}
+            descricao="Campo importante que o censo não trouxe fica em amarelo, com um aviso acima do card.">
+            <ReplicaDadosPaciente marcas={{ aviso: 1, editar: 2 }} />
+          </Tela>
+          <Tela nome="Ficha do paciente (editando)" largura={720}
+            descricao="Em edição, todos os campos corrigíveis viram caixas de texto de uma vez.">
+            <ReplicaDadosPaciente editando marcas={{ campo: 3, salvar: 4 }} />
+          </Tela>
+        </>
+      </ComoFazer>
+      <p>
+        Para marcar uma visita futura, veja o passo a passo em{' '}
+        <button type="button" className="aj-link" onClick={() => irPara('tarefas')}>Tarefas</button>.
       </p>
 
       <h3>Os quatro indicadores</h3>
@@ -133,8 +234,8 @@ export function ModuloPaciente() {
       </p>
       <ul>
         <li><strong>Data da visita</strong>, obrigatória, já preenchida com a data de hoje.</li>
-        <li><strong>Médico auditor</strong>, campo com busca entre os médicos ativos cadastrados em
-          Cadastros, aceitando também texto livre.</li>
+        <li><strong>Médico auditor</strong>, campo com busca entre os médicos auditores ativos do
+          cadastro, aceitando também texto livre.</li>
         <li><strong>Observação</strong>, em texto livre.</li>
       </ul>
       <p>
@@ -153,7 +254,7 @@ export function ModuloPaciente() {
   )
 }
 
-export function ModuloKanban() {
+export function ModuloKanban({ irPara }: Props) {
   return (
     <>
       <h3>Objetivo</h3>
@@ -162,6 +263,57 @@ export function ModuloKanban() {
         precisam de relatório, visitas já marcadas, visitas cujo horário passou e hospitais que não
         enviaram o censo.
       </p>
+
+      <h3>Passo a passo</h3>
+      <ComoFazer
+        titulo="Agendar a visita de um paciente"
+        passos={[
+          { n: 1, titulo: "Clique no card do paciente", corpo: <>Na coluna <strong>Sem relatório</strong>. Para conferir um dado sem sair do quadro, use{' '} <strong>Mais detalhes</strong>, que abre dentro do próprio card.</> },
+          { n: 2, titulo: "Escolha o dia da visita", corpo: <>O calendário só oferece datas a partir de hoje.</> },
+          { n: 3, titulo: "Informe o horário", corpo: <>É ele que define quando a visita passa a contar como atrasada.</> },
+          { n: 4, titulo: "Escolha o médico responsável", corpo: <>Entre os médicos auditores ativos do cadastro. É a pessoa que será cobrada se a visita não acontecer.</> },
+          { n: 5, titulo: "Clique em Agendar visita", corpo: <>O botão só libera com os três campos preenchidos.</> },
+          { n: 6, titulo: "Confira o card em Aguardando visita", corpo: <>O card sai de <strong>Sem relatório</strong> e passa a mostrar a data, o horário e o responsável. Ele deixa o quadro quando o relatório da visita for registrado.</> },
+        ]}
+      >
+        <>
+          <Tela nome="Tarefas" largura={960}
+            descricao="Quadro do perfil técnico: pacientes sem relatório, visitas marcadas e visitas atrasadas.">
+            <ReplicaQuadro marcas={{ card: 1, aguardando: 6 }} />
+          </Tela>
+          <Tela nome="Ficha rápida do paciente" largura={640}
+            descricao="O bloco Agendar visita fica no fim da ficha rápida. Os três campos são obrigatórios.">
+            <ReplicaFichaRapida preenchido esconderRelatorio
+              marcas={{ agendaData: 2, agendaHora: 3, agendaMedico: 4, agendar: 5 }} />
+          </Tela>
+        </>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Resolver uma visita atrasada"
+        passos={[
+          { n: 1, titulo: "Veja de quem era a visita", corpo: <>O card no quadro e a ficha dizem quando era e quem é o responsável. Cobre essa pessoa.</> },
+          { n: 2, titulo: "A visita aconteceu? Registre o relatório", corpo: <>Com a data em que ela de fato ocorreu. O paciente sai do quadro.</> },
+          { n: 3, titulo: "Não vai acontecer? Cancele e marque de novo", corpo: <><strong>Cancelar</strong> devolve o card para <strong>Sem relatório</strong>, e o bloco de agendar volta a aparecer para uma nova data.</> },
+        ]}
+      >
+        <Tela nome="Ficha rápida do paciente" largura={640}
+          descricao="Paciente da coluna Visitas atrasadas: o horário combinado passou e nenhum relatório foi registrado.">
+          <ReplicaFichaRapida atrasada marcas={{ agendaResumo: 1, registrar: 2, cancelar: 3 }} />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Registrar a cobrança de um censo que não chegou"
+        passos={[
+          { n: 1, titulo: "Contate o hospital e clique em Marcar como cobrado", corpo: <>O card mostra de que dia é o censo que falta e até quando os dados do hospital estão atualizados. Marcado como cobrado, ele sai do quadro. Quando o arquivo chegar, ele entra pelo{' '} <button type="button" className="aj-link" onClick={() => irPara('envio-de-censos')}>Envio de Censos</button>.</> },
+        ]}
+      >
+        <Tela nome="Tarefas"
+          descricao="Coluna do perfil administrativo. O card é por hospital, não por paciente.">
+          <ReplicaCobranca marcas={{ card: 1 }} />
+        </Tela>
+      </ComoFazer>
 
       <h3>Como o quadro funciona</h3>
       <p>
@@ -197,7 +349,6 @@ export function ModuloKanban() {
           visitas dele, sem a cobrança de censo.</li>
         <li>O perfil <strong>administrativo</strong> vê a coluna de cobrança de censo, que é a
           providência dele junto aos hospitais.</li>
-        <li>A <strong>administração do sistema</strong> vê o quadro completo, para supervisão.</li>
         <li>O perfil <strong>analista</strong> acompanha o quadro sem executar as tarefas, por ser
           um perfil de observação.</li>
       </ul>
@@ -213,7 +364,7 @@ export function ModuloKanban() {
         <li>O <strong>horário</strong>, porque é ele que define quando a visita passa a estar
           atrasada.</li>
         <li>O <strong>médico responsável</strong>, escolhido entre os médicos auditores ativos
-          cadastrados em Cadastros, que são os mesmos oferecidos ao registrar um relatório.</li>
+          do cadastro, que são os mesmos oferecidos ao registrar um relatório.</li>
       </ul>
       <p>
         Marcada a visita, o card <strong>sai de "Sem relatório" e passa para "Aguardando
@@ -223,9 +374,8 @@ export function ModuloKanban() {
       </p>
 
       <Callout tipo="rule" titulo="Quem marca a visita">
-        O agendamento pertence a quem realiza a visita, e por isso é feito pelo perfil técnico, com
-        a administração do sistema supervisionando. Os perfis de observação acompanham o quadro,
-        mas não marcam nem cancelam visitas.
+        O agendamento pertence a quem realiza a visita, e por isso é feito pelo perfil técnico. Os
+        perfis de observação acompanham o quadro, mas não marcam nem cancelam visitas.
       </Callout>
 
       <h3>O que o card mostra</h3>
@@ -282,6 +432,68 @@ export function ModuloUpload() {
         automaticamente os pacientes, gravar as internações e altas, e dar ao usuário a chance de
         conferir e corrigir o que foi entendido antes de considerar o envio concluído.
       </p>
+
+      <h3>Passo a passo</h3>
+      <ComoFazer
+        titulo="Enviar os censos do dia"
+        passos={[
+          { n: 1, titulo: "Escolha a operadora", corpo: <>A lista de hospitais do passo seguinte passa a mostrar só os daquela operadora.</> },
+          { n: 2, titulo: "Escolha o hospital", corpo: <>Digite parte do nome. Vale para todos os arquivos do envio: censos de hospitais diferentes vão em envios separados.</> },
+          { n: 3, titulo: "Arraste os arquivos para a caixa", corpo: <>Ou clique nela para escolher. PDF, CSV e Excel, vários de uma vez. Confira a lista que aparece embaixo; o <strong>X</strong> tira um arquivo que veio errado.</> },
+          { n: 4, titulo: "Clique em Processar censos", corpo: <>O andamento aparece dentro da própria caixa. Não feche a página até terminar.</> },
+        ]}
+      >
+        <Tela nome="Envio de Censos" largura={760}
+          destaques={{
+            '.up-passo:nth-of-type(1) .up-passo-campo': 1,
+            '.up-passo:nth-of-type(2) .up-passo-campo': 2,
+            '.up-passo:nth-of-type(3) .up-drop': 3,
+            '.up-acoes .btn-primary': 4,
+          }}
+          descricao="Formulário pronto para processar. Cada passo só libera depois que o anterior é respondido.">
+          <ReplicaFormularioEnvio />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Conferir o resultado do envio"
+        passos={[
+          { n: 1, titulo: "Leia o resumo do lote", corpo: <>Hospital, quantos pacientes entraram, de que dia é o censo e, à direita, as etiquetas do que precisa de atenção.</> },
+          { n: 2, titulo: "Resolva as pendências", corpo: <><strong>Completar agora</strong> abre o assistente com os pacientes que vieram com dado faltando. Cada um precisa ser gravado ou descartado: o que ficar sem decisão não entra no sistema.</> },
+          { n: 3, titulo: "Abra os arquivos marcados", corpo: <>Os arquivos que pedem atenção vêm primeiro. <strong>Detalhes</strong> abre os avisos e a lista de pacientes daquele arquivo.</> },
+          { n: 4, titulo: "Foi o hospital errado? Desfaça", corpo: <><strong>Desfazer envio</strong> apaga os pacientes que este envio criou. Quem já existia antes permanece, e a frase ao lado diz quantos são.</> },
+        ]}
+      >
+        <Tela nome="Envio de Censos" largura={760}
+          destaques={{
+            '.up-placar': 1,
+            '.up-faixa.atencao .btn': 2,
+            '.up-faixa.atencao + .up-arquivo .up-detalhes': 3,
+            '.up-faixa:not(.atencao) .btn': 4,
+          }}
+          descricao="Resultado logo depois de processar: um arquivo pede atenção e o outro foi lido sem pendências.">
+          <ReplicaResultadoEnvio />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Corrigir um paciente na lista de conferência"
+        passos={[
+          { n: 1, titulo: "Clique no alerta para saber o problema", corpo: <>O ícone antes do nome explica o que há de errado: convênio fora do cadastro, paciente de outra operadora ou sem convênio.</> },
+          { n: 2, titulo: "Use o lápis para corrigir", corpo: <>Nome, atendimento, leito, convênio, operadora e datas. A correção vale para a ficha do paciente, e o alerta da linha some quando o problema é resolvido.</> },
+          { n: 3, titulo: "Use a lixeira para tirar quem não deveria estar ali", corpo: <>Tira o paciente deste censo. A ficha só é apagada se ele nasceu deste envio e não consta em nenhum outro, e um aviso permite desfazer por alguns segundos.</> },
+        ]}
+      >
+        <Tela nome="Envio de Censos" largura={820}
+          destaques={{
+            '.up-pac-ico-alerta': 1,
+            '.up-pac-sec:first-child tbody tr:first-child .up-pac-lapis': 2,
+            '.up-pac-sec:first-child tbody tr:nth-child(3) .up-pac-lixeira': 3,
+          }}
+          descricao="Lista de um arquivo aberto. Linhas com problema sobem para o topo da sua seção.">
+          <ReplicaConferencia />
+        </Tela>
+      </ComoFazer>
 
       <h3>Fluxo do envio</h3>
       <p>

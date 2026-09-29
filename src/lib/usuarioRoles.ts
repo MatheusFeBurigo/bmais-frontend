@@ -11,6 +11,8 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   analista: 'Analista interno',
   coordenador_administrativo: 'Coordenador administrativo',
   coordenador_tecnico: 'Coordenador técnico',
+  medico: 'Médico',
+  enfermeiro: 'Enfermeiro',
 }
 
 export const ROLE_VARIANT: Record<UserRole, 'danger' | 'info' | 'success' | 'caution' | 'muted'> = {
@@ -23,17 +25,23 @@ export const ROLE_VARIANT: Record<UserRole, 'danger' | 'info' | 'success' | 'cau
   analista: 'muted',
   coordenador_administrativo: 'info',
   coordenador_tecnico: 'info',
+  medico: 'muted',
+  enfermeiro: 'muted',
 }
 
 export const ROLE_DESC: Record<UserRole, string> = {
   admin: 'Acesso total: Operações (equipe, contas e cadastro), Movimentações e ações destrutivas.',
   diretor: 'Diretoria, Gestor e Configurações. Não vê Operações.',
-  gestor: 'Gestor/Fluxo, Upload e Configurações. Não vê Diretoria, Operacional nem Operações.',
+  gestor: 'Gestor/Fluxo, Operacional, Tarefas e Configurações. Não vê Diretoria, Envio de censos nem Operações.',
   administrativo: 'Operacional, Upload e Kanban. Não vê Diretoria, Gestor nem Operações.',
   tecnico: 'Análise técnica dos relatórios do auditor externo. Emite o parecer interno.',
   analista: 'Consulta o Operacional, o Kanban e as Movimentações (trilha de auditoria) e mantém hospitais e operadoras em Operações. Não registra relatórios nem altera dados de paciente. Não vê Diretoria nem Gestor.',
   coordenador_administrativo: 'Distribuição de tarefas: vê a carga de cobranças de censo de cada administrativo em horas (rede inteira), define quais hospitais cada um cobre e calibra capacidade e parâmetros de carga. Não altera pacientes, censos nem cadastros.',
   coordenador_tecnico: 'Distribuição de tarefas: vê a carga de pacientes de cada técnico em horas de análise (rede inteira), define quais hospitais cada um cobre e calibra capacidade e parâmetros de carga. Não altera pacientes, censos nem cadastros.',
+  // Não aparecem na escolha de papel (ROLES_ORDEM): a conta nasce na ficha do
+  // profissional e o papel sai do tipo dele.
+  medico: 'Médico da equipe assistencial. Entra no portal do profissional; não vê dados internos.',
+  enfermeiro: 'Enfermeiro da equipe assistencial. Entra no portal do profissional; não vê dados internos.',
 }
 
 // Ordem de exibição dos papéis nos cards de seleção (mais básico → mais amplo).

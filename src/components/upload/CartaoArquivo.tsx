@@ -269,6 +269,14 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // imutável (veio do backend), então a linha lê daqui quando há uma edição —
   // sem isto o usuário salvaria e continuaria vendo o valor antigo até recarregar.
   const [editados, setEditados] = useState<Record<number, PacienteGravado>>({})
+  // Avisos que o usuário fechou (o × no fim de cada um), por uma chave estável
+  // do aviso. Fechar é "já vi, não preciso mais disto": o aviso some e deixa de
+  // contar no número da linha fechada, que tem de bater com o que se vê ao
+  // abrir. Não vai ao servidor: vale para este resultado de envio, como o
+  // resto do que se corrige nesta tela.
+  const [fechados, setFechados] = useState<Set<string>>(() => new Set())
+  const fechar = (chave: string) => setFechados((atual) => new Set(atual).add(chave))
+  const aberto = (chave: string) => !fechados.has(chave)
 
 
   async function desfazerRemocao() {
@@ -429,8 +437,8 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // Os avisos do leitor entram classificados: o que significa "faltou paciente"
   // deixa de ter a mesma cara de "dia sem internados".
   const avisos = classificarAvisos(res.avisos ?? [])
-  const acionaveis = avisos.filter((a) => a.nivel !== 'nota')
-  const notas = avisos.filter((a) => a.nivel === 'nota')
+  const acionaveis = avisos.filter((a) => a.nivel !== 'nota' && aberto(`av:${a.texto}`))
+  const notas = avisos.filter((a) => a.nivel === 'nota' && aberto(`nt:${a.texto}`))
   // Dupla checagem da operadora: um censo é do HOSPITAL e pode trazer pacientes
   // de vários convênios. Cada um foi gravado na operadora do convênio dele, e não
   // na que o usuário escolheu no passo 1 — o que é o certo, mas tem de ser dito.
@@ -712,6 +720,7 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // mexia. Sem `atendimentos` (resultado de servidor antigo), desconta o que a
   // amostra permite, que é o comportamento anterior.
   const divergentesAbertos = divergentes
+    .filter((d) => aberto(`div:${d.operadora_key}`))
     .map((d) => {
       const amostra = d.pacientes ?? []
       const abertos = visiveis(amostra)
@@ -739,18 +748,22 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // usuário abrir para encontrar dois alertas.
   // `mantidos_com_alta` NÃO entra: é nível `nota` (o censo repetindo quem já
   // saiu), e notas nunca viram número — seria o alarme falso que a tela evita.
+  const mostrarConvenio = naoReconhecidosAbertos.length > 0 && aberto('convenio')
+  const mostrarSemConvenio = semConvenioAbertos.length > 0 && aberto('sem-convenio')
+  const mostrarPendentes = pendentes > 0 && aberto('pendentes')
+  const mostrarConflitos = conflitos.length > 0 && aberto('conflitos')
   const nCriticos = acionaveis.filter((a) => a.nivel === 'critico').length
   // As divergências só contam quando o painel de fato as EXIBE como alerta. Com
   // as abas por operadora no lugar delas, contá-las faria a linha fechada
   // prometer "3 avisos" e o usuário abrir para encontrar nenhum.
   const nAtencoes = acionaveis.filter((a) => a.nivel === 'atencao').length
     + (censoMisto ? 0 : divergentesAbertos.length)
-    + (naoReconhecidosAbertos.length > 0 ? 1 : 0)
-    + (semConvenioAbertos.length > 0 ? 1 : 0)
-    + (pendentes > 0 ? 1 : 0)
+    + (mostrarConvenio ? 1 : 0)
+    + (mostrarSemConvenio ? 1 : 0)
+    + (mostrarPendentes ? 1 : 0)
     // O conflito de operadora conta: é um alerta que o painel exibe, e o número
     // da linha fechada tem de bater com o que se encontra ao abrir.
-    + (conflitos.length > 0 ? 1 : 0)
+    + (mostrarConflitos ? 1 : 0)
 
   // A cor do cartão pelo estado ATUAL, e não pelo retrato do processamento.
   //
@@ -883,7 +896,7 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               por todos os nomes até achá-lo. Ficam visíveis com o cartão aberto ou
               fechado: são a razão de ele não estar limpo. */}
           {acionaveis.map((a, j) => (
-            <Alerta key={`av-${j}`} nivel={a.nivel}>{a.texto}</Alerta>
+            <Alerta key={`av-${j}`} nivel={a.nivel} onFechar={() => fechar(`av:${a.texto}`)}>{a.texto}</Alerta>
           ))}
 
           {/* Censo misto: parte dos pacientes é de outra operadora. Nível `atencao`,
@@ -903,7 +916,7 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               não formam grupo nenhum, `censoMisto` fica falso e os avisos voltam a
               ser a única forma de a divergência ser dita. */}
           {!censoMisto && divergentesAbertos.map((d) => (
-            <Alerta key={d.operadora_key} nivel="atencao">
+            <Alerta key={d.operadora_key} nivel="atencao" onFechar={() => fechar(`div:${d.operadora_key}`)}>
               O convênio {plural(d.total, 'de', 'de')} <b>{d.total}{' '}
               {plural(d.total, 'paciente')}</b> deste censo é da{' '}
               <b>{d.operadora_nome || d.operadora_key}</b>, e não{' '}
@@ -938,7 +951,7 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
           {/* Convênio impresso que o cadastro não reconhece: o paciente entrou sob a
               operadora escolhida. É falha de CADASTRO (falta vincular esse convênio),
               e some sozinha quando alguém o cadastra — por isso atenção, não erro. */}
-          {naoReconhecidosAbertos.length > 0 && (() => {
+          {mostrarConvenio && (() => {
             // Os convênios que não casaram, sem repetir a mesma grafia.
             const convenios = [...new Set(
               naoReconhecidosAbertos.map((p) => p.convenio).filter(Boolean),
@@ -956,7 +969,7 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               // para um caso em que nada se perdeu. As saídas (o lápis da
               // linha, o cadastro de convênios) continuam onde sempre
               // estiveram, para quem quiser agir.
-              <Alerta nivel="atencao">
+              <Alerta nivel="atencao" onFechar={() => fechar('convenio')}>
                 Convênio não identificado:{' '}
                 <b>{convenios.join(', ')}</b>, em{' '}
                 <b>{naoReconhecidosAbertos.length}{' '}
@@ -980,8 +993,8 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               usuário via o alerta na lista e não achava a explicação em lugar
               nenhum. Nível `atencao` como os vizinhos: o paciente ENTROU, nada
               se perdeu; o que falta é o dado que define as regras dele. */}
-          {semConvenioAbertos.length > 0 && (
-            <Alerta nivel="atencao">
+          {mostrarSemConvenio && (
+            <Alerta nivel="atencao" onFechar={() => fechar('sem-convenio')}>
               O censo não trouxe o convênio de <b>{semConvenioAbertos.length}{' '}
                 {plural(semConvenioAbertos.length, 'paciente')}</b>.{' '}
               {plural(semConvenioAbertos.length, 'Ele entrou', 'Eles entraram')} normalmente,
@@ -1014,8 +1027,8 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               A frase completa ("N vieram com dado faltando e aguardam sua
               decisão") mora na FAIXA do lote, que tem o botão "Completar agora";
               aqui o cartão diz só a parte que é DELE. */}
-          {pendentes > 0 && (
-            <Alerta nivel="atencao">
+          {mostrarPendentes && (
+            <Alerta nivel="atencao" onFechar={() => fechar('pendentes')}>
               {pendentes} {plural(pendentes, 'paciente', 'pacientes')}{' '}
               {plural(pendentes, 'deste arquivo aguarda', 'deste arquivo aguardam')}{' '}
               sua decisão.
@@ -1028,8 +1041,8 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               Os nomes vêm junto porque é por eles que se reconhece o caso. */}
           {/* Antes dos demais avisos: é o único que fala de um dado que ficou
               DIFERENTE do que o censo mandou, e a decisão é do usuário. */}
-          {conflitos.length > 0 && (
-            <Alerta nivel="atencao">
+          {mostrarConflitos && (
+            <Alerta nivel="atencao" onFechar={() => fechar('conflitos')}>
               {conflitos.length} {plural(conflitos.length, 'paciente')}{' '}
               {plural(conflitos.length, 'está', 'estão')} em outra operadora e{' '}
               {plural(conflitos.length, 'continuou', 'continuaram')} onde{' '}
@@ -1044,8 +1057,8 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               pelo lápis na linha do paciente.
             </Alerta>
           )}
-          {mantidos.length > 0 && (
-            <Alerta nivel="nota">
+          {mantidos.length > 0 && aberto('mantidos') && (
+            <Alerta nivel="nota" onFechar={() => fechar('mantidos')}>
               {mantidos.length} {plural(mantidos.length, 'paciente')} já{' '}
               {plural(mantidos.length, 'tinha', 'tinham')} alta e{' '}
               {plural(mantidos.length, 'continua', 'continuam')} como{' '}
@@ -1109,7 +1122,9 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
             {notas.length} {plural(notas.length, 'nota')} da leitura
           </summary>
           <div className="up-arquivo-notas">
-            {notas.map((a, j) => <Alerta key={`nt-${j}`} nivel="nota">{a.texto}</Alerta>)}
+            {notas.map((a, j) => (
+              <Alerta key={`nt-${j}`} nivel="nota" onFechar={() => fechar(`nt:${a.texto}`)}>{a.texto}</Alerta>
+            ))}
           </div>
         </details>
       )}

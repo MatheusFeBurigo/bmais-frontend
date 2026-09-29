@@ -1,6 +1,8 @@
 // Serviço de dados do domínio "equipe" (profissionais + escala + hospitais).
 import { apiFetch } from '../api/client'
-import type { EquipePayload, ProfissionalDetalhe, ProfissionalCriado, ProfTipo, Hospital } from '../types/api'
+import type {
+  AcessoProfissional, EquipePayload, ProfissionalDetalhe, ProfissionalCriado, ProfTipo, Hospital,
+} from '../types/api'
 import type { EntradaEscala } from './escala.service'
 
 /** Lista de profissionais + resumo da equipe. */
@@ -23,11 +25,32 @@ export function fetchTodosHospitais(): Promise<Hospital[]> {
   return apiFetch<Hospital[]>('/hospitais')
 }
 
-/** Cria um novo profissional, já com os hospitais da escala dele (opcional).
+/** E-mail e senha da conta de login do profissional na plataforma. */
+export interface CredenciaisAcesso {
+  email: string
+  password: string
+}
+
+/** Cria um novo profissional, já com os hospitais da escala dele (opcional) e
+ *  a conta de acesso à plataforma (opcional, só o admin pode mandar).
  *  Uma chamada só: o backend grava o profissional e cada hospital com o id
- *  recém-criado, e devolve quantos entraram e quais não entraram. */
-export function criarProfissional(nome: string, tipo: ProfTipo, escala: EntradaEscala[] = []): Promise<ProfissionalCriado> {
-  return apiFetch<ProfissionalCriado>('/profissionais', { method: 'POST', body: { nome, tipo, escala } })
+ *  recém-criado, e devolve quantos entraram e quais não entraram; a conta que
+ *  não pôde ser criada vem em `acesso_erro`, com o cadastro já gravado. */
+export function criarProfissional(
+  nome: string, tipo: ProfTipo, escala: EntradaEscala[] = [], acesso?: CredenciaisAcesso,
+): Promise<ProfissionalCriado> {
+  const body = acesso
+    ? { nome, tipo, escala, acesso: { email: acesso.email.trim(), password: acesso.password } }
+    : { nome, tipo, escala }
+  return apiFetch<ProfissionalCriado>('/profissionais', { method: 'POST', body })
+}
+
+/** Dá acesso à plataforma a um profissional já cadastrado (só admin).
+ *  O papel (médico/enfermeiro) sai do tipo do cadastro. */
+export function criarAcessoProfissional(id: number, acesso: CredenciaisAcesso): Promise<AcessoProfissional> {
+  return apiFetch<AcessoProfissional>(`/profissionais/${id}/acesso`, {
+    method: 'POST', body: { email: acesso.email.trim(), password: acesso.password },
+  })
 }
 
 /** Atualiza nome/tipo de um profissional. */

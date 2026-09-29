@@ -6,7 +6,101 @@
 // assuntos de manutenção do sistema, e quem não administra não os encontra no
 // índice. O anexo de status é transversal,
 // porque a pastilha que ele explica aparece em praticamente toda tela.
-import { Callout, Chip, Key, Metric, Metrics, Tabela } from './blocos'
+import { useState } from 'react'
+import type { UserRole } from '../../types/api'
+import { ROLE_LABEL, temEscopoHospital } from '../../lib/usuarioRoles'
+import { Callout, Chip, Key, Metric, Metrics, SoGestao, Tabela } from './blocos'
+import { ComoFazer, Tela, type PassoAjuda } from './replica'
+import { PAPEIS_CADASTRO } from './acessoAjuda'
+import {
+  ReplicaAdicionarProfissional, ReplicaCriarAcesso, ReplicaNovoUsuario, ReplicaProfissionais,
+  ReplicaUsuarios,
+} from './exemplosCadastros'
+
+// O que marcar em "Nível de acesso", papel a papel. O rótulo e a descrição do
+// cartão vêm da própria tela (lib/usuarioRoles); aqui fica só o "para quem é".
+const PARA_QUEM: Partial<Record<UserRole, string>> = {
+  tecnico: 'Para quem faz as visitas de auditoria e registra os relatórios.',
+  administrativo: 'Para quem envia os censos e cobra os hospitais que atrasam.',
+  coordenador_tecnico: 'Para quem distribui os hospitais entre os técnicos, na Distribuição de tarefas.',
+  coordenador_administrativo: 'Para quem distribui os hospitais entre os administrativos, na Distribuição de tarefas.',
+  analista: 'Para quem acompanha a operação sem alterar pacientes e mantém os cadastros desta tela.',
+  // Gestor e diretor sem descrição de função: o que a gestão vê e faz só é
+  // contado a quem tem essa competência (acessoAjuda.ts), e quem lê este
+  // módulo é o analista.
+  gestor: 'Para a gestão.',
+  diretor: 'Para a diretoria.',
+}
+
+function passosDaConta(papel: UserRole): PassoAjuda[] {
+  const escopo = temEscopoHospital(papel)
+  const passos: PassoAjuda[] = [
+    { n: 1, titulo: 'Clique em Novo usuário', corpo: <>Na aba <strong>Usuários de acesso</strong> da tela Operações. Abre a página de cadastro da conta.</> },
+    { n: 2, titulo: 'Informe nome, e-mail e senha', corpo: <>A pessoa entra com esse e-mail e essa senha, de no mínimo 6 caracteres. O e-mail não pode ser trocado depois; a senha, sim, pelo botão <strong>Senha</strong> da lista.</> },
+    {
+      n: 3,
+      titulo: `Marque ${ROLE_LABEL[papel]}`,
+      corpo: (
+        <>
+          {PARA_QUEM[papel]}{' '}
+          {escopo
+            ? <>Este papel <strong>tem escopo por hospital</strong>: o campo de cidades e hospitais aparece logo abaixo.</>
+            : <>Este papel <strong>não tem escopo por hospital</strong>: enxerga a operação inteira, e o campo de hospitais não aparece.</>}
+        </>
+      ),
+    },
+  ]
+  if (escopo) {
+    passos.push({
+      n: 4,
+      titulo: 'Escolha as cidades e os hospitais',
+      corpo: <>A pessoa verá só os pacientes, censos e tarefas desses hospitais. Marque a cidade inteira de uma vez ou só alguns hospitais dela. <strong>Sem nenhum marcado, ela vê a operação inteira.</strong></>,
+    })
+  }
+  passos.push({
+    n: passos.length + 1,
+    titulo: 'Clique em Criar usuário',
+    corpo: <>A conta já pode entrar. O papel e os hospitais podem ser mudados depois pelo botão <strong>Editar</strong> da lista.</>,
+  })
+  return passos
+}
+
+/** "Criar conta para a equipe interna", com a escolha do tipo de usuário: a
+ *  réplica e os passos mudam conforme o papel, porque o formulário real muda
+ *  (o escopo por hospital só existe para técnico e administrativo). */
+function CadastroDeConta() {
+  const [papel, setPapel] = useState<UserRole>('tecnico')
+  const passos = passosDaConta(papel)
+  const escopo = temEscopoHospital(papel)
+  return (
+    <>
+      <ComoFazer titulo={`Criar uma conta de ${ROLE_LABEL[papel]}`} passos={passos}>
+        <div className="aj-tipos" role="group" aria-label="Tipo de usuário">
+          <span className="aj-tipos-lbl">Tipo de usuário:</span>
+          {PAPEIS_CADASTRO.map((r) => (
+            <button key={r} type="button" aria-pressed={papel === r}
+              className={`aj-tipo${papel === r ? ' ativo' : ''}`} onClick={() => setPapel(r)}>
+              {ROLE_LABEL[r]}
+            </button>
+          ))}
+        </div>
+        <Tela nome="Operações" largura={900}
+          descricao="Aba Usuários de acesso: as contas da equipe interna e o papel de cada uma.">
+          <ReplicaUsuarios marcas={{ novo: 1 }} />
+        </Tela>
+        <Tela nome="Novo usuário de acesso" largura={700}
+          descricao={escopo
+            ? `Cadastro de ${ROLE_LABEL[papel]}: com escopo de cidades e hospitais.`
+            : `Cadastro de ${ROLE_LABEL[papel]}: sem escopo, enxerga a operação inteira.`}>
+          <ReplicaNovoUsuario papel={papel}
+            marcas={escopo
+              ? { credenciais: 2, papel: 3, escopo: 4, criar: 5 }
+              : { credenciais: 2, papel: 3, criar: 4 }} />
+        </Tela>
+      </ComoFazer>
+    </>
+  )
+}
 
 export function ModuloOperacoes() {
   return (
@@ -17,51 +111,99 @@ export function ModuloOperacoes() {
         dia a dia: são os registros que precisam existir antes, para que o restante da plataforma
         funcione.
       </p>
-      <Tabela cabecalho={['O que se cadastra', 'Para que serve']} larguras={['210px']}>
+      <Tabela cabecalho={['Aba', 'O que se cadastra']} larguras={['210px']}>
         <tr><Key>Profissionais</Key>
-          <td>Os enfermeiros e médicos auditores. Os médicos ativos são os que aparecem como opção
-            ao registrar um relatório na ficha do paciente.</td></tr>
-        <tr><Key>Contas de acesso</Key>
-          <td>Quem entra na plataforma e com qual perfil. Define o que cada pessoa vê.</td></tr>
+          <td>Os enfermeiros e médicos auditores, os hospitais que cada um cobre e o acesso deles ao
+            portal do profissional. Os médicos ativos são os oferecidos ao registrar um relatório e
+            ao agendar uma visita.</td></tr>
+        <tr><Key>Usuários de acesso</Key>
+          <td>As contas da equipe interna e o papel de cada uma, que define o que a pessoa vê e o
+            que pode fazer.</td></tr>
         <tr><Key>Hospitais e operadoras</Key>
-          <td>Quais unidades existem e a qual operadora cada uma atende. É o que permite que um
-            censo enviado seja reconhecido e vinculado corretamente.</td></tr>
+          <td>Quais unidades existem e quais operadoras cada uma atende. É o que permite que um
+            censo enviado seja reconhecido e vinculado ao hospital certo.</td></tr>
       </Tabela>
 
       <h3>Quem acessa</h3>
       <p>
-        Administração do sistema e o perfil analista, que mantém a malha de hospitais e operadoras.
-        Os perfis de operação e de gestão não entram aqui.
+        O perfil analista, que mantém os três cadastros. Os demais perfis não entram aqui.
       </p>
 
+      <h3>Passo a passo</h3>
+      <p>
+        Há dois caminhos para criar o acesso de alguém, conforme quem é a pessoa.{' '}
+        <strong>Médicos e enfermeiros</strong> são cadastrados como profissionais, e a conta nasce
+        junto, levando ao portal do profissional. <strong>A equipe interna</strong> (técnicos,
+        administrativos, coordenadores, analistas, gestores e diretores) recebe uma conta de acesso,
+        com o papel escolhido no cadastro.
+      </p>
+
+      <ComoFazer
+        titulo="Cadastrar um médico auditor ou um enfermeiro"
+        passos={[
+          { n: 1, titulo: 'Clique em Adicionar', corpo: <>Na aba <strong>Profissionais</strong> da tela Operações.</> },
+          { n: 2, titulo: 'Escolha o tipo e informe o nome', corpo: <><strong>Médico(a) Auditor(a)</strong> ou <strong>Enfermeiro(a)</strong>. O tipo decide o portal que a pessoa vai usar, e só médicos ativos aparecem como auditor ao registrar relatório.</> },
+          { n: 3, titulo: 'Informe o e-mail e a senha inicial', corpo: <>São obrigatórios: com eles o profissional entra no portal dele, que não mostra nenhuma informação interna. A senha tem no mínimo 6 caracteres.</> },
+          { n: 4, titulo: 'Marque os hospitais que ele cobre', corpo: <>Escolha a cidade e marque os hospitais dela; vários entram de uma vez. Um hospital que atende mais de uma operadora aparece uma vez só e vale para todas; na ficha dele dá para deixar só algumas. A escala também pode ficar para depois.</> },
+          { n: 5, titulo: 'Escolha o serviço', corpo: <>Aparece quando há hospital marcado e vale para todos eles: análise de conta, auditoria concorrente, ambulatório ou pronto socorro. Serviço diferente por hospital se ajusta na ficha.</> },
+          { n: 6, titulo: 'Clique em Adicionar', corpo: <>O aviso diz o que entrou. Se o e-mail já estiver em uso, o profissional é gravado sem acesso, e o acesso se cria depois pelo <strong>Editar</strong>.</> },
+        ]}
+      >
+        <Tela nome="Operações" largura={900}
+          descricao="Aba Profissionais: a equipe assistencial, com o e-mail de acesso e o número de hospitais de cada um.">
+          <ReplicaProfissionais marcas={{ adicionar: 1 }} />
+        </Tela>
+        <Tela nome="Operações" largura={600}
+          descricao="Formulário de novo profissional, preenchido com um médico auditor e dois hospitais.">
+          <ReplicaAdicionarProfissional marcas={{ tipo: 2, acesso: 3, hospitais: 4, servico: 5, adicionar: 6 }} />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Dar acesso a um profissional que ainda não tem"
+        passos={[
+          { n: 1, titulo: 'Clique em Editar, na linha dele', corpo: <>Quem ainda não tem acesso aparece com <strong>Sem acesso</strong> na coluna de e-mail.</> },
+          { n: 2, titulo: 'Informe o e-mail e a senha inicial', corpo: <>O campo de senha aparece ao digitar o e-mail. A senha tem no mínimo 6 caracteres. O papel (médico ou enfermeiro) sai do tipo do cadastro.</> },
+          { n: 3, titulo: 'Clique em Salvar', corpo: <>O profissional já pode entrar no portal. Desativar o profissional suspende o acesso, e reativar o devolve.</> },
+        ]}
+      >
+        <Tela nome="Operações" largura={900}
+          destaques={{ 'tbody tr:nth-child(2) td:last-child .btn:nth-child(2)': 1 }}
+          descricao="Paulo Mendes ainda não tem acesso à plataforma.">
+          <ReplicaProfissionais />
+        </Tela>
+        <Tela nome="Operações" largura={560} descricao="Ficha do profissional com o e-mail de acesso preenchido.">
+          <ReplicaCriarAcesso marcas={{ dados: 2, salvar: 3 }} />
+        </Tela>
+      </ComoFazer>
+
+      <CadastroDeConta />
+
       <h3>Profissionais</h3>
-      <p>Cadastro dos enfermeiros e médicos auditores que atuam na auditoria.</p>
       <ul>
         <li>A lista tem busca por nome e filtro por tipo, com a contagem de cada categoria.</li>
-        <li>O cadastro exige apenas o tipo e o nome completo. Na mesma tela já é possível indicar
-          os <strong>hospitais sob responsabilidade</strong> do profissional: escolha a cidade,
-          marque os hospitais dela e confirme o serviço. Vários hospitais entram de uma vez.</li>
-        <li>Um hospital que atende <strong>mais de uma operadora</strong> aparece uma única vez na
-          lista. Marcá-lo vale para todas as operadoras dele; para restringir a algumas, abra o
-          contador de operadoras ao lado do nome e marque só as que valem para o profissional.</li>
-        <li>Ao abrir um profissional, é possível editar nome e cargo e ajustar a <strong>escala de
-          hospitais</strong> pelo mesmo caminho: em quais unidades ele atende e em qual serviço,
-          entre análise de conta, auditoria concorrente, ambulatório e pronto socorro. O que já
-          está na escala aparece marcado, para não ser incluído duas vezes.</li>
-        <li>Um profissional pode ser desativado em vez de excluído, preservando o histórico dele.</li>
+        <li>Cada linha mostra o tipo, o e-mail de acesso (ou <strong>Sem acesso</strong>) e quantos
+          hospitais o profissional cobre, com três atalhos: <strong>Senha</strong> (só redefine a senha de quem já tem acesso),{' '}
+          <strong>Editar</strong> e <strong>Desativar</strong>.</li>
+        <li>Clicar na linha abre a ficha do profissional, com a <strong>escala de hospitais</strong>:
+          em quais unidades ele atende e em qual serviço. O que já está na escala aparece marcado,
+          para não ser incluído duas vezes.</li>
+        <li>Um hospital pode atender várias operadoras sem que o profissional cubra todas. No
+          cartão do hospital, o botão <strong>Operadoras</strong> abre a lista das que o hospital
+          atende: marque as que ele cobre e clique em <strong>Salvar</strong>.</li>
+        <li>Profissional não é apagado, é desativado, preservando o histórico dele. Desativar
+          também suspende o acesso ao portal.</li>
       </ul>
 
-      <h3>Contas de acesso</h3>
-      <p>Cadastro de quem entra na plataforma e do perfil de cada conta.</p>
+      <h3>Usuários de acesso</h3>
       <ul>
-        <li>A lista tem busca por nome ou e-mail e filtro por nível de acesso.</li>
-        <li>A tabela apresenta nome, e-mail, nível de acesso e a coluna de <strong>hospitais</strong>,
-          que indica se a conta enxerga toda a operação ou apenas as unidades vinculadas a ela.</li>
-        <li>As ações disponíveis são redefinir senha, editar e excluir.</li>
-        <li>A exclusão é irreversível, e a confirmação declara essa condição. O histórico de ações
-          da pessoa na trilha de auditoria é preservado.</li>
-        <li>A exclusão não é oferecida para a conta em uso, e a última conta de manutenção não pode
-          ser removida.</li>
+        <li>A lista tem busca por nome ou e-mail e filtro por papel, com a contagem de cada um.</li>
+        <li>A coluna de <strong>hospitais</strong> diz se a conta enxerga toda a operação
+          (<strong>Todos</strong>) ou só as unidades vinculadas a ela.</li>
+        <li>Os atalhos da linha são <strong>Senha</strong>, <strong>Editar</strong> (papel,
+          hospitais e nome) e <strong>Apagar</strong>. A exclusão é irreversível, mas o histórico de
+          ações da pessoa na trilha de auditoria é preservado. A própria conta não pode ser
+          apagada.</li>
       </ul>
 
       <h3>Hospitais e operadoras</h3>
@@ -82,41 +224,8 @@ export function ModuloOperacoes() {
         <li>A região é o que define em que <strong>cidade</strong> o hospital aparece nas telas de
           escolha de escopo e de escala. A <strong>região é escolhida de uma lista fechada</strong>, tanto ao cadastrar o hospital
           quanto na ficha. É ela que agrupa os hospitais na definição do escopo de dados de um
-          usuário, e também o recorte geográfico do painel do Gestor.</li>
+          usuário<SoGestao>, e também o recorte geográfico do painel do Gestor</SoGestao>.</li>
       </ul>
-
-      <Callout tipo="caution" titulo="Pontos de atenção do cadastro de hospitais">
-        <strong>A ficha grava apenas o que for digitado.</strong> Os campos de contato e endereço
-        abrem em branco, mesmo quando já preenchidos, e os deixados em branco permanecem como estão.
-        <br />
-        <strong>Uma unidade pode atender várias operadoras.</strong> O mesmo hospital constar sob
-        mais de uma operadora na lista é o comportamento esperado.
-      </Callout>
-    </>
-  )
-}
-
-export function ModuloUsuario() {
-  return (
-    <>
-      <h3>Objetivo</h3>
-      <p>Criar uma conta de login, definir o papel dela e delimitar quais dados essa pessoa enxerga.</p>
-
-      <h3>Quem acessa</h3>
-      <p>
-        Exclusiva da administração do sistema. O recebimento do link direto não autoriza o acesso:
-        quem não administra contas é redirecionado à primeira tela do seu perfil.
-      </p>
-
-      <h3>Dois modos, um formulário</h3>
-      <Tabela cabecalho={['Campo', 'Criação', 'Edição']} larguras={['185px', '200px']}>
-        <tr><Key>Nome</Key><td><Chip tom="positive" plain>Editável</Chip></td><td><Chip tom="positive" plain>Editável</Chip></td></tr>
-        <tr><Key>E-mail</Key><td><Chip tom="critical" plain>Obrigatório</Chip></td><td><Chip tom="neutral" plain>Não editável</Chip></td></tr>
-        <tr><Key>Senha</Key><td><Chip tom="critical" plain>Obrigatória</Chip>, mínimo de 6 caracteres</td><td><Chip tom="neutral" plain>Não se aplica</Chip></td></tr>
-        <tr><Key>Redefinir senha</Key><td><Chip tom="neutral" plain>Não se aplica</Chip></td><td>Opcional. Em branco, mantém a senha atual</td></tr>
-        <tr><Key>Nível de acesso</Key><td colSpan={2}>Obrigatório. Cartões selecionáveis, do mais restrito ao mais amplo, cada um com a descrição do que o papel enxerga.</td></tr>
-        <tr><Key>Cidades e hospitais</Key><td colSpan={2}>Seleção múltipla, que define o escopo de dados da conta. Escolha a cidade e marque os hospitais dela, ou a cidade inteira de uma vez. A busca alcança tanto o nome da cidade quanto o do hospital. Sem seleção, a conta enxerga toda a operação.</td></tr>
-      </Tabela>
     </>
   )
 }
@@ -134,8 +243,8 @@ export function ModuloConfiguracoes() {
 
       <h3>Quem acessa</h3>
       <p>
-        Gestão, diretoria e administração do sistema. É a tela que altera a régua de cobrança do
-        contrato, por isso fica fora do alcance dos perfis de operação.
+        Gestão e diretoria. É a tela que altera a régua de cobrança do contrato, por isso fica fora
+        do alcance dos perfis de operação.
       </p>
 
       <h3>As duas regras que governam o sistema</h3>
@@ -227,8 +336,8 @@ export function ModuloMovimentacoes() {
 
       <h3>Quem acessa</h3>
       <p>
-        Administração do sistema e o perfil analista, que existe justamente para observar. Os
-        perfis de operação e de gestão não acessam a trilha.
+        O perfil analista, que existe justamente para observar. Os demais perfis não acessam a
+        trilha.
       </p>
 
       <Callout tipo="info" titulo="O que a trilha registra">
@@ -273,14 +382,10 @@ export function ModuloMovimentacoes() {
         <Chip tom="positive">Ativo</Chip>, <Chip tom="warn">Suspenso</Chip> e{' '}
         <Chip tom="neutral">Removido</Chip>.
       </p>
-
-      <Tabela cabecalho={['Ação', 'Efeito']} larguras={['175px']}>
-        <tr><Key>Ver atividade</Key><td>Leva à aba de movimentações já filtrada por aquele usuário.</td></tr>
-        <tr><Key>Editar</Key><td>Abre o cadastro da conta.</td></tr>
-        <tr><Key>Redefinir senha</Key><td>Define uma nova senha para a conta.</td></tr>
-        <tr><Key>Suspender</Key><td>A conta continua existindo, mas todo acesso passa a ser recusado a partir daquele momento. É reversível, e o histórico de ações é mantido.</td></tr>
-        <tr><Key>Apagar</Key><td>Irreversível. A trilha de ações da pessoa permanece.</td></tr>
-      </Tabela>
+      <p>
+        <strong>Ver atividade</strong> leva à aba de movimentações já filtrada por aquele usuário. A
+        aba é de consulta: as contas não são alteradas por aqui.
+      </p>
     </>
   )
 }
@@ -331,7 +436,8 @@ export function ModuloRegras() {
       <p>
         Independente do relatório, o sistema marca internações longas em dois níveis configuráveis
         por operadora, prolongada e avançada. Esses marcadores aparecem na coluna de permanência do
-        Painel Operacional, nos filtros rápidos e nos indicadores da Diretoria. São calculados
+        Painel Operacional<SoGestao>, nos indicadores da Diretoria</SoGestao> e nos filtros
+        rápidos. São calculados
         apenas para pacientes ainda internados.
       </p>
 
@@ -356,15 +462,12 @@ export function ModuloProgresso() {
 
       <h3>Quem acessa</h3>
       <p>
-        <strong>Diretoria</strong>, para acompanhar o andamento da obra, e a{' '}
-        <strong>administração do sistema</strong>, que é quem mantém os números em dia. O conteúdo
-        diz respeito ao que foi contratado e ao que já foi entregue, e por isso não alcança quem
-        trabalha na assistência.
+        <strong>Diretoria</strong>, para acompanhar o andamento da obra. O conteúdo diz respeito ao
+        que foi contratado e ao que já foi entregue, e por isso não alcança quem trabalha na
+        assistência.
       </p>
       <p>
-        Para a diretoria a tela é <strong>somente leitura</strong>: os números são acompanhados,
-        não editados. A manutenção deles é feita pela administração do sistema, e a restrição vale
-        também fora da tela, porque quem decide é o servidor.
+        A tela é <strong>somente leitura</strong>: os números são acompanhados, não editados.
       </p>
 
       <Callout tipo="info" titulo="Nenhum número desta tela vem da operação">
@@ -412,8 +515,8 @@ export function ModuloProgresso() {
       <h3>Duas etiquetas que aparecem na linha do módulo</h3>
       <Tabela cabecalho={['Etiqueta', 'O que indica']} larguras={['175px']}>
         <tr><Key>Ajustado</Key>
-          <td>O valor exibido foi atualizado pela administração do sistema depois da conferência de
-            origem, e é o mais recente. O nome de quem atualizou aparece ao passar o cursor.</td></tr>
+          <td>O valor exibido foi atualizado depois da conferência de origem, e é o mais recente. O
+            nome de quem atualizou aparece ao passar o cursor.</td></tr>
         <tr><Key>Etapa estimada</Key>
           <td>A conferência registrou o percentual do módulo, mas não em qual etapa ele estava, e a
             posição na trilha foi deduzida do avanço. Esses módulos não devem ser lidos como
@@ -424,8 +527,8 @@ export function ModuloProgresso() {
       <h3>De onde vêm os números</h3>
       <p>
         O ponto de partida é a <strong>conferência do que já está construído</strong>, feita contra
-        o código, cuja data aparece no rodapé da tela. A partir dela, a administração do sistema
-        mantém o avanço em dia, e os módulos atualizados desse modo ficam marcados como{' '}
+        o código, cuja data aparece no rodapé da tela. A partir dela o avanço é mantido em dia, e
+        os módulos atualizados desse modo ficam marcados como{' '}
         <strong>ajustado</strong>, com o nome de quem os atualizou.
       </p>
       <p>

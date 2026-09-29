@@ -59,7 +59,7 @@ function operadoraDe(h: Hospital, nomePorKey: Map<string, string>) {
 
 export default function SeletorEscala({
   hospitais, opsLista, jaNaEscala = [], onAdicionar, onClose,
-  loading, rotuloBotao = 'Adicionar',
+  loading, rotuloBotao = 'Adicionar', marcados, onMarcar,
 }: {
   hospitais: Hospital[]
   opsLista: Array<{ key: string; nome: string }>
@@ -71,6 +71,10 @@ export default function SeletorEscala({
   onClose?: () => void
   loading?: boolean
   rotuloBotao?: string
+  /** Modo controlado (modal de cadastro): a marcação JÁ é a escolha, sem o
+   *  passo "incluir na lista" nem o rodapé de serviço, que ficam com o pai. */
+  marcados?: Set<string>
+  onMarcar?: (s: Set<string>) => void
 }) {
   const [busca, setBusca] = useState('')
   const [cidadeAtiva, setCidadeAtiva] = useState<string | null>(null)
@@ -78,7 +82,10 @@ export default function SeletorEscala({
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   /** hospital_keys marcadas nesta sessão de escolha (uma por operadora). */
-  const [sel, setSel] = useState<Set<string>>(new Set())
+  const [selLocal, setSelLocal] = useState<Set<string>>(new Set())
+  const controlado = marcados !== undefined && onMarcar !== undefined
+  const sel = controlado ? marcados : selLocal
+  const setSel = controlado ? onMarcar : setSelLocal
   /** Hospitais (por id) cuja lista de operadoras está aberta. */
   const [abertos, setAbertos] = useState<Set<string>>(new Set())
 
@@ -156,6 +163,26 @@ export default function SeletorEscala({
     setSel(next)
   }
 
+  /** Estado de um grupo de hospitais (a cidade inteira, ou o que a busca
+   *  deixou visível nela): tudo marcado, parte, ou nada. */
+  function estadoGrupo(hs: HospitalAgrupado[]): 'todos' | 'parte' | 'nenhum' {
+    const livres = hs.flatMap(disponiveis)
+    const n = livres.filter((o) => sel.has(o.key)).length
+    if (livres.length > 0 && n === livres.length) return 'todos'
+    return n > 0 ? 'parte' : 'nenhum'
+  }
+
+  /** Marca/desmarca todos os hospitais do grupo, em todas as operadoras livres. */
+  function toggleGrupo(hs: HospitalAgrupado[]) {
+    const next = new Set(sel)
+    const tirar = estadoGrupo(hs) === 'todos'
+    for (const o of hs.flatMap(disponiveis)) {
+      if (tirar) next.delete(o.key)
+      else next.add(o.key)
+    }
+    setSel(next)
+  }
+
   function toggleOperadora(hospKey: string) {
     const next = new Set(sel)
     if (next.has(hospKey)) next.delete(hospKey)
@@ -225,16 +252,16 @@ export default function SeletorEscala({
           <button
             type="button" className="btn btn-outline btn-sm"
             onClick={() => { setCidadeAtiva(null); setBusca('') }}
-            title="Voltar para a lista de cidades"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
+            title="Voltar para as cidades"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, maxWidth: '45%' }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-            Cidades
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+            <span className="truncate">{cidadeAberta.nome}</span>
           </button>
         )}
         <input
           className="bm-input"
-          placeholder={cidadeAberta ? `Buscar hospital em ${cidadeAberta.nome}…` : 'Buscar cidade ou hospital…'}
+          placeholder={cidadeAberta ? 'Buscar hospital' : 'Buscar cidade ou hospital'}
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-sm)' }}
@@ -251,12 +278,24 @@ export default function SeletorEscala({
         {!loading && !cidadeAberta && cidadesVisiveis.map(({ cidade: c, achados }) => {
           const nMarcados = c.hosp.filter((h) => totalMarcado(h) > 0).length
           const pendencia = c.nome === SEM_CIDADE || c.nome === CIDADE_A_DEFINIR
+          const estado = estadoGrupo(c.hosp)
           return (
             <div
               key={c.nome}
               onClick={() => abrirCidade(c.nome)}
               style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
             >
+              {/* Marca a cidade inteira sem precisar entrar nela. */}
+              <input
+                type="checkbox"
+                aria-label={`Marcar todos os hospitais de ${c.nome}`}
+                checked={estado === 'todos'}
+                ref={(el) => { if (el) el.indeterminate = estado === 'parte' }}
+                onClick={(e) => e.stopPropagation()}
+                onChange={() => toggleGrupo(c.hosp)}
+                disabled={c.hosp.flatMap(disponiveis).length === 0}
+                style={{ accentColor: 'var(--primary)', width: 14, height: 14, flexShrink: 0, cursor: 'pointer' }}
+              />
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', fontWeight: 600, fontSize: 'var(--t-sm)', color: pendencia ? 'var(--muted)' : 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {c.nome}
@@ -284,14 +323,26 @@ export default function SeletorEscala({
         {/* Nível 2 — hospitais da cidade, com as operadoras de cada um */}
         {!loading && cidadeAberta && (
           <div>
-            <div style={{ padding: '8px 14px', background: 'var(--surface-2)', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 'var(--t-sm)', color: 'var(--ink)' }}>
-              {cidadeAberta.nome}
-            </div>
             {hospitaisVisiveis.length === 0 && (
               <div style={{ color: 'var(--muted-2)', padding: 12, fontSize: 'var(--t-sm)' }}>
                 {cidadeAberta.hosp.length === 0 ? 'Esta cidade não tem hospitais cadastrados.' : 'Nenhum hospital encontrado.'}
               </div>
             )}
+            {hospitaisVisiveis.length > 1 && (() => {
+              const estado = estadoGrupo(hospitaisVisiveis)
+              return (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', cursor: 'pointer', fontSize: 'var(--t-sm)', fontWeight: 600, color: 'var(--ink)' }}>
+                  <input
+                    type="checkbox"
+                    checked={estado === 'todos'}
+                    ref={(el) => { if (el) el.indeterminate = estado === 'parte' }}
+                    onChange={() => toggleGrupo(hospitaisVisiveis)}
+                    style={{ accentColor: 'var(--primary)', width: 14, height: 14, flexShrink: 0 }}
+                  />
+                  Todos
+                </label>
+              )
+            })()}
             {hospitaisVisiveis.map((h) => {
               const livres = disponiveis(h)
               const nMarcadas = totalMarcado(h)
@@ -300,6 +351,8 @@ export default function SeletorEscala({
               return (
                 <div key={h.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px' }}>
+                    {/* Label: clicar no nome marca, não só a caixinha. */}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, cursor: todasNaEscala ? 'default' : 'pointer' }}>
                     <input
                       type="checkbox"
                       checked={cheio(h)}
@@ -316,6 +369,7 @@ export default function SeletorEscala({
                         <span style={{ display: 'block', fontSize: 'var(--t-xs)', color: 'var(--muted)' }}>Já está na escala</span>
                       )}
                     </span>
+                    </label>
                     {/* Hospital de uma operadora só não tem o que escolher: o
                         detalhe fica escondido e a linha diz de onde ele vem. */}
                     {h.ops.length === 1 ? (
@@ -326,7 +380,7 @@ export default function SeletorEscala({
                         onClick={() => toggleAberto(h.id)}
                         style={{ background: 'none', border: 0, cursor: 'pointer', color: nMarcadas ? 'var(--primary-3)' : 'var(--muted)', fontSize: 'var(--t-xs)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, padding: '2px 4px' }}
                       >
-                        {nMarcadas || livres.length} de {h.ops.length} operadoras
+                        {nMarcadas > 0 && nMarcadas < livres.length ? `${nMarcadas} de ${h.ops.length}` : h.ops.length} operadoras
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: aberto ? 'rotate(180deg)' : 'none' }}>
                           <path d="m6 9 6 6 6-6" />
                         </svg>
@@ -364,7 +418,7 @@ export default function SeletorEscala({
 
       {/* Serviço + confirmação. O serviço vale para tudo que foi marcado: quem
           precisa de serviços diferentes marca em duas rodadas. */}
-      <div style={{ padding: 10, borderTop: '1px solid var(--border)', background: 'var(--surface-3)', display: 'grid', gap: 8 }}>
+      {!controlado && <div style={{ padding: 10, borderTop: '1px solid var(--border)', background: 'var(--surface-3)', display: 'grid', gap: 8 }}>
         <div>
           <label style={labelStyle}>Serviço</label>
           <select className="bm-input bm-select" style={{ fontSize: 'var(--t-sm)' }} value={servico} onChange={(e) => setServico(e.target.value)}>
@@ -383,7 +437,7 @@ export default function SeletorEscala({
             {saving ? 'Adicionando…' : rotuloBotao}
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   )
 }

@@ -9,11 +9,12 @@ import { lazy, type ComponentType } from 'react'
 import { podeVer } from '../../auth/permissions'
 import type { UserRole } from '../../types/api'
 import {
-  IconAjustes, IconBalanca, IconCracha, IconEnvio, IconEquilibrio, IconFluxo,
+  IconAjustes, IconBalanca, IconEnvio, IconEquilibrio, IconFluxo,
   IconGrafico, IconHistorico, IconObra, IconPaciente, IconPerfis, IconPulso,
   IconQuadro, IconRede, IconVisao,
 } from './modulos'
 import type { ModuloAjuda } from './tipos'
+import { veTudo } from './acessoAjuda'
 // Os CORPOS entram por lazy(): a Sidebar consome este catálogo em toda tela (é
 // ela que vira o índice na Ajuda), e importar o texto dos 16 módulos aqui
 // colocaria a documentação inteira no bundle inicial do app. Assim a barra
@@ -31,7 +32,7 @@ const administracao = () => import('./conteudoAdministracao')
 export const MODULOS: readonly ModuloAjuda[] = [
   // ── Introdução: valem para todos os papéis ────────────────────────────────
   {
-    id: 'visao',
+    id: 'visao-geral-do-sistema',
     titulo: 'Visão geral do sistema',
     subtitulo: 'O que é a plataforma, do que ela é feita e o que ela entrega',
     secao: 'Introdução',
@@ -39,7 +40,7 @@ export const MODULOS: readonly ModuloAjuda[] = [
     corpo: lazyCorpo(introducao, 'ModuloVisao'),
   },
   {
-    id: 'navegacao',
+    id: 'perfis-de-acesso',
     titulo: 'Perfis de acesso e permissões',
     subtitulo: 'Quais telas cada perfil acessa e o que pode fazer em cada uma',
     secao: 'Introdução',
@@ -49,7 +50,7 @@ export const MODULOS: readonly ModuloAjuda[] = [
 
   // ── Operação ──────────────────────────────────────────────────────────────
   {
-    id: 'operacional',
+    id: 'painel-operacional',
     titulo: 'Painel Operacional',
     subtitulo: 'A tela de trabalho diário do controle de relatórios',
     secao: 'Operação',
@@ -61,7 +62,7 @@ export const MODULOS: readonly ModuloAjuda[] = [
     // A ficha do paciente é alcançada a partir da Visão Geral e do Kanban, e a
     // rota não é gated por papel. Fica presa a 'operacional' porque é ali que
     // ela começa: quem não vê a lista não chega à ficha por navegação.
-    id: 'paciente',
+    id: 'ficha-do-paciente',
     titulo: 'Ficha do Paciente',
     subtitulo: 'Ficha completa e editável de uma internação',
     secao: 'Operação',
@@ -70,8 +71,8 @@ export const MODULOS: readonly ModuloAjuda[] = [
     corpo: lazyCorpo(operacao, 'ModuloPaciente'),
   },
   {
-    id: 'kanban',
-    titulo: 'Quadro de Tarefas',
+    id: 'tarefas',
+    titulo: 'Tarefas',
     subtitulo: 'As pendências da equipe, separadas por tipo',
     secao: 'Operação',
     screen: 'kanban',
@@ -79,7 +80,7 @@ export const MODULOS: readonly ModuloAjuda[] = [
     corpo: lazyCorpo(operacao, 'ModuloKanban'),
   },
   {
-    id: 'upload',
+    id: 'envio-de-censos',
     titulo: 'Envio de Censos',
     subtitulo: 'A porta de entrada de todos os dados de internação',
     secao: 'Operação',
@@ -90,7 +91,7 @@ export const MODULOS: readonly ModuloAjuda[] = [
 
   // ── Gestão: números consolidados, restritos à hierarquia de gestão ────────
   {
-    id: 'diretoria',
+    id: 'dashboard-da-diretoria',
     titulo: 'Dashboard da Diretoria',
     subtitulo: 'Visão consolidada de desempenho, para decisão',
     secao: 'Gestão',
@@ -99,7 +100,7 @@ export const MODULOS: readonly ModuloAjuda[] = [
     corpo: lazyCorpo(gestao, 'ModuloDiretoria'),
   },
   {
-    id: 'gestor',
+    id: 'painel-do-gestor',
     titulo: 'Painel do Gestor',
     subtitulo: 'Fluxo de internações e permanência, com recorte por período',
     secao: 'Gestão',
@@ -109,7 +110,7 @@ export const MODULOS: readonly ModuloAjuda[] = [
   },
 
   {
-    id: 'volumetria',
+    id: 'distribuicao-de-tarefas',
     titulo: 'Distribuição de tarefas',
     subtitulo: 'A carga de trabalho de cada pessoa da equipe',
     secao: 'Gestão',
@@ -121,25 +122,17 @@ export const MODULOS: readonly ModuloAjuda[] = [
   // ── Administração: manutenção do sistema ──────────────────────────────────
   {
     id: 'operacoes',
-    titulo: 'Cadastros',
+    titulo: 'Operações',
     subtitulo: 'Profissionais, contas de acesso, hospitais e operadoras',
     secao: 'Administração',
     screen: 'equipe',
     icone: IconRede,
     corpo: lazyCorpo(administracao, 'ModuloOperacoes'),
   },
-  {
-    // Cadastro de conta é exclusivo do admin, e não tem Screen própria (a rota
-    // /usuarios é guardada por RequireAdmin). Fica sob 'equipe', que é a tela de
-    // onde se chega a ele — e que já é restrita a admin e analista.
-    id: 'usuario',
-    titulo: 'Cadastro de Usuário',
-    subtitulo: 'Criação e edição de contas de acesso',
-    secao: 'Administração',
-    screen: 'equipe',
-    icone: IconCracha,
-    corpo: lazyCorpo(administracao, 'ModuloUsuario'),
-  },
+  // Sem módulo para o perfil Admin (25/09/2026, a pedido do usuário): a Ajuda
+  // não documenta nada exclusivo dele. O cadastro de contas entra no módulo de
+  // Operações porque o analista também o faz (só a conta de administrador é
+  // exclusiva do admin, e essa a Ajuda não mostra).
   {
     id: 'configuracoes',
     titulo: 'Configurações de Operadoras',
@@ -173,7 +166,7 @@ export const MODULOS: readonly ModuloAjuda[] = [
   {
     // Transversal de propósito: a pastilha de status aparece em quase toda tela,
     // então todo papel precisa poder consultar o que ela significa.
-    id: 'regras',
+    id: 'calculo-do-status',
     titulo: 'Anexo: como o status é calculado',
     subtitulo: 'A regra central do sistema, visível em quase todas as telas',
     secao: 'Referência',
@@ -182,7 +175,28 @@ export const MODULOS: readonly ModuloAjuda[] = [
   },
 ]
 
+/** Ids antigos → atuais. O id vai para a URL (`/ajuda?modulo=`), e até
+ *  25/09/2026 vários não batiam com o nome da tela (`kanban` para Tarefas,
+ *  `upload` para Envio de Censos). Links salvos com o id antigo continuam
+ *  abrindo o módulo certo, e a URL é trocada pela atual. */
+export const IDS_ANTIGOS: Readonly<Record<string, string>> = {
+  visao: 'visao-geral-do-sistema',
+  navegacao: 'perfis-de-acesso',
+  operacional: 'painel-operacional',
+  paciente: 'ficha-do-paciente',
+  kanban: 'tarefas',
+  upload: 'envio-de-censos',
+  diretoria: 'dashboard-da-diretoria',
+  gestor: 'painel-do-gestor',
+  volumetria: 'distribuicao-de-tarefas',
+  regras: 'calculo-do-status',
+  usuario: 'operacoes',
+}
+
 /** Módulos que o papel pode ler. Transversais (sem `screen`) entram sempre. */
 export function modulosVisiveis(role: UserRole | null): ModuloAjuda[] {
+  // O admin lê a Ajuda inteira, inclusive Diretoria e Gestor, que ele não abre
+  // como tela (ver acessoAjuda.ts).
+  if (veTudo(role)) return [...MODULOS]
   return MODULOS.filter((m) => !m.screen || podeVer(role, m.screen))
 }

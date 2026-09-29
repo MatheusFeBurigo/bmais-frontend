@@ -1,6 +1,8 @@
 // Serviço de dados do painel de Volumetria (carga de trabalho por pessoa).
 import { apiFetch } from '../api/client'
-import type { VolumetriaParametros, VolumetriaParametrosCorpo, VolumetriaPayload } from '../types/api'
+import type {
+  VolumetriaDividirCorpo, VolumetriaParametros, VolumetriaParametrosCorpo, VolumetriaPayload,
+} from '../types/api'
 
 export function fetchVolumetria(): Promise<VolumetriaPayload> {
   return apiFetch<VolumetriaPayload>('/volumetria')
@@ -20,6 +22,16 @@ export function desvincularPessoa(hospitalKey: string, userId: string): Promise<
     `/volumetria/hospital/${encodeURIComponent(hospitalKey)}/pessoas/${encodeURIComponent(userId)}`,
     { method: 'DELETE' },
   )
+}
+
+/** Divide a carga de uma pessoa entre colegas do grupo por um período. */
+export function dividirCarga(corpo: VolumetriaDividirCorpo): Promise<{ ok: boolean; lote: string }> {
+  return apiFetch('/volumetria/divisoes', { method: 'POST', body: corpo })
+}
+
+/** Cancela uma divisão: os hospitais voltam para quem os cedeu. */
+export function cancelarDivisao(lote: string): Promise<{ ok: boolean }> {
+  return apiFetch(`/volumetria/divisoes/${encodeURIComponent(lote)}`, { method: 'DELETE' })
 }
 
 export type GrupoVolumetria = 'tecnico' | 'administrativo'

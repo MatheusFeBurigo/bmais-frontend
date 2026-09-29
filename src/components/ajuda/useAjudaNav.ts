@@ -5,10 +5,10 @@
 // paginador. Como as duas montam em ramos diferentes da árvore, a origem da
 // verdade é a URL (?modulo=) — e não um estado local que uma passaria à outra
 // por props.
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
-import { modulosVisiveis } from './catalogo'
+import { IDS_ANTIGOS, modulosVisiveis } from './catalogo'
 import type { ModuloAjuda } from './tipos'
 
 export interface AjudaNav {
@@ -32,8 +32,20 @@ export function useAjudaNav(): AjudaNav {
     [role, perfilCarregando],
   )
 
-  const moduloUrl = params.get('modulo') || ''
+  const moduloBruto = params.get('modulo') || ''
+  const moduloUrl = IDS_ANTIGOS[moduloBruto] ?? moduloBruto
   const indice = Math.max(0, modulos.findIndex((m) => m.id === moduloUrl))
+
+  // Link com o id antigo: abre o módulo certo e troca a URL pela atual, para
+  // o endereço copiado dali em diante já sair com o nome da tela.
+  useEffect(() => {
+    if (moduloUrl === moduloBruto) return
+    setParams((p) => {
+      const novo = new URLSearchParams(p)
+      novo.set('modulo', moduloUrl)
+      return novo
+    }, { replace: true })
+  }, [moduloBruto, moduloUrl, setParams])
 
   const irPara = useCallback((id: string) => {
     setParams((p) => {

@@ -1,11 +1,12 @@
 // Seção de gestão de usuários de acesso (contas de login), exibida na tela Equipe.
 // Distinto dos profissionais (E/M/O): aqui são as contas que autenticam, com
-// papel admin/diretor/gestor/analista. Visível apenas para administradores.
+// papel admin/diretor/gestor/analista. Visível para administrador e analista interno.
 // Criar/editar acontecem em PÁGINAS dedicadas (/usuarios/novo, /usuarios/:id).
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../auth/AuthContext'
+import { podeGerirConta, podeGerirOperacoes } from '../auth/permissions'
 import type { Usuario, UserRole } from '../types/api'
 import { Badge, LoadingState } from './ui'
 import Toast from './Toast'
@@ -31,7 +32,18 @@ export default function UsuariosAcesso() {
   const { role, username } = useAuth()
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const [roleFiltro, setRoleFiltro] = useState<'todos' | UserRole>('todos')
+  const location = useLocation()
+  // Nível filtrado fica na URL (?nivel=) para sobreviver à ida à página de
+  // edição; a página volta para `voltar`, que é esta URL com aba e nível.
+  const [params, setParams] = useSearchParams()
+  const nivelUrl = (params.get('nivel') as UserRole | null) ?? 'todos'
+  const setRoleFiltro = (r: 'todos' | UserRole) => setParams((prev) => {
+    const next = new URLSearchParams(prev)
+    if (r === 'todos') next.delete('nivel')
+    else next.set('nivel', r)
+    return next
+  }, { replace: true })
+  const irPara = (rota: string) => navigate(rota, { state: { voltar: location.pathname + location.search } })
   const [busca, setBusca] = useState('')
   // Usuário cuja senha está sendo redefinida na modal (null = fechada).
   const [resetAlvo, setResetAlvo] = useState<Usuario | null>(null)
@@ -43,18 +55,23 @@ export default function UsuariosAcesso() {
   // também bloqueia por user_id; aqui só evita oferecer a ação sem sentido).
   const meuEmail = (username || '').trim().toLowerCase()
 
-  // Só admin gerencia usuários. Para os demais, a seção nem é renderizada.
-  const { data, isLoading, isError } = useUsuarios(role === 'admin')
-  const { data: hospitais } = useTodosHospitais(role === 'admin')
+  // Admin e analista gerenciam usuários. Para os demais, a seção nem é renderizada.
+  const gestor = podeGerirOperacoes(role)
+  const { data, isLoading, isError } = useUsuarios(gestor)
+  const { data: hospitais } = useTodosHospitais(gestor)
   const nomePorKey = useMemo(
     () => new Map((hospitais ?? []).map((h) => [h.key, h.nome])),
     [hospitais],
   )
 
-  if (role !== 'admin') return null
+  if (!gestor) return null
 
   const usuarios = data?.usuarios ?? []
   const contagem = (r: UserRole) => usuarios.filter((u) => u.role === r).length
+  const papeisPresentes = ROLES_ORDEM.filter((r) => contagem(r) > 0)
+  // Papel da URL que não existe na lista (link antigo, conta apagada, ou
+  // administrador para o analista, que não os recebe) vale como "todos".
+  const roleFiltro: 'todos' | UserRole = nivelUrl !== 'todos' && papeisPresentes.includes(nivelUrl) ? nivelUrl : 'todos'
   const q = busca.trim().toLowerCase()
   const usuariosVisiveis = usuarios.filter((u) => {
     if (roleFiltro !== 'todos' && u.role !== roleFiltro) return false
@@ -66,35 +83,38 @@ export default function UsuariosAcesso() {
     // Sem marginTop/título próprios: isto é uma ABA da tela Operações, e o
     // cabeçalho da página já diz o que é (antes era uma seção empilhada).
     <div>
-      {/* Barra unica: busca + papel + acao. Antes eram 7 pilulas de papel numa
-          fileira que quebrava em duas linhas — com nomes longos ("Administrativo",
-          "Analista interno") viravam um amontoado de tags sem hierarquia. Um
-          select diz "isto e UM filtro com opcoes" no lugar de 7 botoes soltos. */}
+      {/* Barra única: busca + papel + ação. O filtro de papel é o mesmo
+          controle segmentado da aba Profissionais e só lista os papéis que
+          existem: o select antigo mostrava os 10 papéis com quase todos
+          desabilitados (zero contas), e clicar neles não fazia nada. */}
       <div className="ops-toolbar">
         <div className="ops-search">
           {IconSearch}
           <input
             className="bm-input"
-            placeholder="Buscar por nome ou e-mail…"
+            placeholder="Buscar"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
         </div>
-        <select
-          className="bm-input"
-          value={roleFiltro}
-          onChange={(e) => setRoleFiltro(e.target.value as 'todos' | UserRole)}
-          style={{ width: 'auto', flexShrink: 0 }}
-          aria-label="Filtrar por nível de acesso"
-        >
-          <option value="todos">Todos os níveis ({usuarios.length})</option>
-          {ROLES_ORDEM.map((r) => (
-            <option key={r} value={r} disabled={contagem(r) === 0}>
-              {ROLE_LABEL[r]} ({contagem(r)})
-            </option>
-          ))}
-        </select>
-        <button className="btn btn-primary btn-sm" onClick={() => navigate('/usuarios/novo')} style={{ flexShrink: 0 }}>
+        {papeisPresentes.length > 1 && (
+          <div className="ops-seg" role="group" aria-label="Filtrar por papel">
+            {(['todos', ...papeisPresentes] as const).map((r) => (
+              <button
+                key={r}
+                type="button"
+                className={`ops-seg-btn${roleFiltro === r ? ' active' : ''}`}
+                onClick={() => setRoleFiltro(r)}
+              >
+                {r === 'todos' ? 'Todos' : ROLE_LABEL[r]}{' '}
+                <span style={{ fontVariantNumeric: 'tabular-nums', opacity: 0.65 }}>
+                  {r === 'todos' ? usuarios.length : contagem(r)}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        <button className="btn btn-primary btn-sm" onClick={() => irPara('/usuarios/novo')} style={{ flexShrink: 0 }}>
           {IconPlus}
           Novo usuário
         </button>
@@ -135,6 +155,8 @@ export default function UsuariosAcesso() {
                     </td>
                     <td><HospitaisResumo keys={u.hospitais ?? []} nomePorKey={nomePorKey} /></td>
                     <td>
+                      {/* Conta de administrador: só o administrador mexe. */}
+                      {podeGerirConta(role, u.role) && (
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         <button
                           className="btn btn-outline btn-sm"
@@ -145,7 +167,7 @@ export default function UsuariosAcesso() {
                           {IconKey}
                           Senha
                         </button>
-                        <button className="btn btn-outline btn-sm" onClick={() => navigate('/usuarios/' + u.user_id)}>Editar</button>
+                        <button className="btn btn-outline btn-sm" onClick={() => irPara('/usuarios/' + u.user_id)}>Editar</button>
                         {(u.email || '').trim().toLowerCase() !== meuEmail && (
                           <button
                             className="btn btn-outline btn-sm"
@@ -157,20 +179,14 @@ export default function UsuariosAcesso() {
                           </button>
                         )}
                       </div>
+                      )}
                     </td>
                   </tr>
                 ))}
                 {usuariosVisiveis.length === 0 && (
                   <tr>
                     <td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 12px' }}>
-                      {/* A mensagem tem de citar o filtro que de fato esvaziou a
-                          lista: com busca ativa e nivel "todos", falar do nivel
-                          seria enganoso (e ROLE_LABEL['todos'] nem existe). */}
-                      {usuarios.length === 0
-                        ? 'Nenhum usuário cadastrado ainda.'
-                        : busca.trim()
-                          ? `Nenhum usuário corresponde a “${busca.trim()}”${roleFiltro !== 'todos' ? ` no nível ${ROLE_LABEL[roleFiltro]}` : ''}.`
-                          : `Nenhum usuário com o nível ${ROLE_LABEL[roleFiltro as UserRole]}.`}
+                      {usuarios.length === 0 ? 'Nenhum usuário.' : 'Nenhum resultado.'}
                     </td>
                   </tr>
                 )}

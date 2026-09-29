@@ -14,7 +14,7 @@ import { Badge, OpAvatar } from '../ui'
 import QuebraDemandas from './QuebraDemandas'
 import TempoPorTarefa from './TempoPorTarefa'
 import {
-  NIVEL_BADGE, NIVEL_LABEL, NIVEL_VAR, fmt1, fmtDias, fmtHoras, hospitaisPorRegiao, iniciais,
+  NIVEL_BADGE, NIVEL_LABEL, NIVEL_VAR, fmt1, fmtDiaMes, fmtDias, fmtHoras, hospitaisPorRegiao, iniciais,
   linhasQuebra, rotuloGrupo,
 } from './volumetria.model'
 
@@ -206,6 +206,9 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
                       {tecnico
                         ? `${h.internados ?? 0} ${h.internados === 1 ? 'paciente' : 'pacientes'}`
                         : (h.dias_sem_censo != null ? `sem censo há ${h.dias_sem_censo} ${h.dias_sem_censo === 1 ? 'dia' : 'dias'}` : 'sem censo')}
+                      {h.temporario && (
+                        <> · de {h.temporario.de_nome} até {fmtDiaMes(h.temporario.fim)}</>
+                      )}
                       {h.compartilhado_com > 0 && (
                         <> · compartilhado com {h.compartilhado_com} {h.compartilhado_com === 1 ? 'pessoa' : 'pessoas'}</>
                       )}
@@ -216,7 +219,10 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
                   <span className="vol-hosp-n" style={{ color: h.horas > 0 && h.horas === maxHorasHosp ? 'var(--danger)' : undefined }}>
                     {fmtHoras(h.horas)}
                   </span>
-                  <button
+                  {/* Recebido por divisão temporária: sai sozinho ao fim do período
+                      (ou ao cancelar a divisão). Remover aqui não teria efeito,
+                      porque o hospital não está na área definida da pessoa. */}
+                  {h.temporario ? <span /> : <button
                     type="button"
                     className="vol-x"
                     disabled={ocupado}
@@ -225,7 +231,7 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
                     aria-label={`Remover ${h.hospital_nome}`}
                   >
                     ×
-                  </button>
+                  </button>}
                 </div>
               ))}
             </div>

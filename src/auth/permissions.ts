@@ -25,9 +25,11 @@ export type Screen =
 const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
   // Diretor vê tudo, exceto Equipe.
   diretor: ['equipe'],
-  // Gestor: só Gestor/Fluxo + Upload + Configurações (sem Operacional nem Equipe).
+  // Gestor: Gestor/Fluxo + Configurações, MAIS as visões do técnico e do
+  // administrativo (Visão Geral e Tarefas), para acompanhar quem ele gerencia.
+  // Fora Equipe e o envio de censos (espelha ROLES_ENVIO_CENSO no backend);
   // Diretoria sai pela allowlist EXCLUSIVAS, não daqui.
-  gestor: ['operacional', 'equipe'],
+  gestor: ['equipe', 'upload'],
   // Administrativo: Operacional + Upload + Kanban (suas tarefas). Sem Diretoria, Gestor, Equipe, Configurações.
   administrativo: ['diretoria', 'gestor', 'equipe', 'configuracoes'],
   // Técnico: mesmo recorte do administrativo (segundo papel operacional básico).
@@ -49,15 +51,13 @@ const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
 // bloqueio: quem não estiver aqui NÃO vê. Use para telas que pertencem à visão de
 // papéis específicos — o Kanban é dos papéis operacionais (admin também vê, p/ supervisão).
 const EXCLUSIVAS: Partial<Record<Screen, readonly UserRole[]>> = {
-  // Diretoria e Gestor são telas de DECISÃO, e o acesso segue o cargo, não o
-  // poder técnico: quem administra o sistema mantém cadastros e contas, não
-  // acompanha desempenho de operadora nem fluxo de internações. Por isso o admin
-  // NÃO entra — é a exceção à regra de que ele vê tudo (23/09/2026, a pedido do
-  // usuário). Allowlist, e não BLOQUEADAS, para nenhum papel novo herdar estas
-  // telas por omissão. Espelha ROLES_TELA_DIRETORIA/GESTOR no backend.
-  diretoria: ['diretor'],
-  gestor: ['gestor', 'diretor'],
-  kanban: ['administrativo', 'tecnico', 'admin', 'analista'],
+  // Diretoria e Gestor: o cargo MAIS o admin, que vê todas as telas (voltou em
+  // 27/09/2026, depois de ficar fora desde 23/09). Allowlist, e não BLOQUEADAS,
+  // para nenhum papel novo herdar estas telas por omissão. Espelha
+  // ROLES_TELA_DIRETORIA/GESTOR no backend.
+  diretoria: ['diretor', 'admin'],
+  gestor: ['gestor', 'diretor', 'admin'],
+  kanban: ['administrativo', 'tecnico', 'admin', 'analista', 'gestor'],
   // Operações (ex-Equipe): administrador e analista interno. Nem o diretor entra
   // — allowlist, para o papel novo não herdar a tela por omissão.
   equipe: ['admin', 'analista'],
@@ -80,6 +80,17 @@ const SOMENTE_LEITURA: ReadonlySet<UserRole> = new Set<UserRole>([
   'analista', 'coordenador_administrativo', 'coordenador_tecnico',
 ])
 
+// Papéis dos PROFISSIONAIS da equipe assistencial (médico, enfermeiro). Não veem
+// nenhuma tela interna: o RequireAuth os leva ao portal do profissional, fora do
+// AppLayout. Espelha ROLES_PROFISSIONAL do backend, que os deixa fora de todo
+// guard (403 em qualquer rota de dados).
+const PROFISSIONAL: ReadonlySet<UserRole> = new Set<UserRole>(['medico', 'enfermeiro'])
+
+/** True se a conta é de um médico/enfermeiro (portal próprio, sem telas internas). */
+export function ehProfissional(role: UserRole | null): role is 'medico' | 'enfermeiro' {
+  return !!role && PROFISSIONAL.has(role)
+}
+
 /** True se o papel não pode alterar dado nenhum (perfil de observação). */
 export function ehSomenteLeitura(role: UserRole | null): boolean {
   return !!role && SOMENTE_LEITURA.has(role)
@@ -88,6 +99,9 @@ export function ehSomenteLeitura(role: UserRole | null): boolean {
 /** True se o papel pode ver a tela. `role` null/desconhecido não restringe. */
 export function podeVer(role: UserRole | null, screen: Screen): boolean {
   if (!role) return true
+  // Antes de tudo: as telas sem restrição (BLOQUEADAS vazia) liberariam o
+  // profissional por omissão.
+  if (PROFISSIONAL.has(role)) return false
   // Telas exclusivas: só os papéis listados veem (allowlist vence tudo).
   const exclusiva = EXCLUSIVAS[screen]
   if (exclusiva) return exclusiva.includes(role)
@@ -103,7 +117,7 @@ const ROTA_DA_SCREEN: Record<Screen, string> = {
   equipe: '/equipe',
   configuracoes: '/configuracoes',
   upload: '/upload',
-  kanban: '/kanban',
+  kanban: '/tarefas',
   logs: '/logs',
   progresso: '/progresso',
   volumetria: '/volumetria',
@@ -134,22 +148,49 @@ const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
   // constante própria — as duas podem divergir (ex.: liberar o agendamento ao
   // administrativo) sem reabrir quem registra relatório.
   agendarVisita: ['tecnico', 'admin'],
+  // Atribuir o CID do paciente: trabalho do técnico (admin supervisiona). Os
+  // demais papéis VEEM o CID no drawer, só não o alteram.
+  atribuirCid: ['tecnico', 'admin'],
 }
 
-export type AcaoProtegida = 'registrarRelatorio' | 'criarConvenio' | 'agendarVisita'
+export type AcaoProtegida = 'registrarRelatorio' | 'criarConvenio' | 'agendarVisita' | 'atribuirCid'
 
 /** True se o papel pode executar a ação. `role` null/desconhecido NÃO libera:
  *  ação sensível exige papel resolvido (diferente de `podeVer`, que é permissivo). */
 export function podeExecutar(role: UserRole | null, acao: AcaoProtegida): boolean {
-  if (!role) return false
+  if (!role || PROFISSIONAL.has(role)) return false
   // Perfil de observação não executa ação alguma — vale para as ações atuais e
   // para as futuras, sem precisar excluí-lo de cada allowlist.
   if (SOMENTE_LEITURA.has(role)) return false
   return ACOES[acao].includes(role)
 }
 
+// Tela Operações completa (profissionais, escala, acesso à plataforma e contas):
+// administrador e analista interno. Espelha ROLES_GESTAO_OPERACOES do backend.
+// A única parte fora do analista são as contas de ADMINISTRADOR (criar, promover,
+// editar, suspender, trocar senha, apagar), que o backend recusa com 403.
+const GESTAO_OPERACOES: ReadonlySet<UserRole> = new Set<UserRole>(['admin', 'analista'])
+
+/** True se o papel gere a tela Operações inteira (inclusive contas de login). */
+export function podeGerirOperacoes(role: UserRole | null): boolean {
+  return !!role && GESTAO_OPERACOES.has(role)
+}
+
+/** True se o papel pode criar ou alterar uma conta com o papel informado.
+ *  Conta de administrador é só do administrador. */
+export function podeGerirConta(role: UserRole | null, alvo: UserRole | null | undefined): boolean {
+  if (!podeGerirOperacoes(role)) return false
+  return alvo !== 'admin' || role === 'admin'
+}
+
+/** True se o papel abre a ficha completa do paciente ("Detalhes"). O analista
+ *  interno não abre (espelha ROLES_DETALHE_PACIENTE); o drawer segue aberto a ele. */
+export function podeVerFichaPaciente(role: UserRole | null): boolean {
+  return role !== 'analista'
+}
+
 /** Rota de destino ao barrar o acesso: a 1ª tela que o papel PODE ver.
- *  Ex.: gestor não vê "/" (operacional) → cai em "/gestor". */
+ *  Ex.: coordenador barrado em "/kanban" cai em "/" (operacional). */
 export function rotaFallback(role: UserRole | null): string {
   const primeira = ORDEM_FALLBACK.find((s) => podeVer(role, s))
   return primeira ? ROTA_DA_SCREEN[primeira] : '/'

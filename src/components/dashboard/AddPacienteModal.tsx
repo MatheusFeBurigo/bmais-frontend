@@ -2,6 +2,8 @@
 // Reusa o endpoint de criação manual (dedupe por hospital+atendimento no backend).
 // Fluxo de dois níveis: escolhe-se a operadora e então o hospital dela (via um
 // combobox pesquisável de valor fechado — digita para filtrar, seleciona um item real).
+// Situação "Alta" cadastra quem já saiu: o backend grava status ALTA a partir da
+// data de alta, e o paciente entra nos indicadores de altas e permanência.
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Modal } from '../ui'
@@ -18,6 +20,15 @@ const LEITO_OPCOES = [
   { value: 'APARTAMENTO', label: 'Apartamento' },
   { value: 'ENFERMARIA', label: 'Enfermaria' },
 ] as const
+
+type Situacao = 'INTERNADO' | 'ALTA'
+
+// Hoje no fuso local, em ISO (o que o input date usa). toISOString() daria o dia
+// em UTC, que à noite no Brasil já é amanhã.
+function hojeIso(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 export default function AddPacienteModal({
   operadoras, hospitaisPorOperadora, operadoraInicial, hospitalInicial,
@@ -41,6 +52,8 @@ export default function AddPacienteModal({
   const [nome, setNome] = useState('')
   const [atendimento, setAtendimento] = useState('')
   const [dataEntrada, setDataEntrada] = useState('')
+  const [situacao, setSituacao] = useState<Situacao>('INTERNADO')
+  const [dataAlta, setDataAlta] = useState('')
   const [tipoLeito, setTipoLeito] = useState('')
   const [especialidade, setEspecialidade] = useState('')
   const [medico, setMedico] = useState('')
@@ -58,8 +71,11 @@ export default function AddPacienteModal({
     setHospital('')
   }
 
+  const comAlta = situacao === 'ALTA'
+  const hoje = hojeIso()
   const podeSalvar = hospital.trim() !== '' && nome.trim() !== ''
     && atendimento.trim() !== '' && dataEntrada.trim() !== ''
+    && (!comAlta || dataAlta.trim() !== '')
 
   async function salvar() {
     if (!operadora.trim()) { onError('Selecione a operadora do paciente.'); return }
@@ -67,13 +83,23 @@ export default function AddPacienteModal({
     if (!nome.trim()) { onError('Informe o nome do paciente.'); return }
     if (!atendimento.trim()) { onError('Informe o atendimento do paciente.'); return }
     if (!dataEntrada.trim()) { onError('Informe a data de entrada do paciente.'); return }
+    if (dataEntrada > hoje) { onError('A data de entrada não pode ser futura.'); return }
+    if (comAlta) {
+      if (!dataAlta.trim()) { onError('Informe a data de alta do paciente.'); return }
+      if (dataAlta < dataEntrada) { onError('A data de alta não pode ser anterior à entrada.'); return }
+      if (dataAlta > hoje) { onError('A data de alta não pode ser futura.'); return }
+    }
     setSaving(true)
     try {
       const payload: PacienteNovo = {
         hospital_key: hospital.trim(),
+        // Com hospital↔operadoras N-N, o hospital não diz a operadora do paciente:
+        // sem ela o paciente cairia na operadora legada do hospital.
+        operadora_key: operadora,
         atendimento: atendimento.trim(),
         nome: nome.trim(),
         data_entrada: dataEntrada,
+        data_alta: comAlta ? dataAlta : null,
         tipo_leito: tipoLeito || null,
         especialidade: especialidade || null,
         medico: medico || null,
@@ -83,7 +109,7 @@ export default function AddPacienteModal({
       invalidarPorEvento(qc, 'pacienteAdicionado')
       onDone(res.ja_existia
         ? 'Este atendimento já existia. O paciente não foi duplicado.'
-        : '✓ Paciente adicionado')
+        : comAlta ? '✓ Paciente adicionado com alta' : '✓ Paciente adicionado')
     } catch (err) {
       onError(`Erro: ${(err as Error).message}`)
     } finally {
@@ -132,17 +158,37 @@ export default function AddPacienteModal({
           <input type="text" className="bm-input" placeholder="Nome completo"
             value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
         </div>
+        <div>
+          <label className="uppercase t-muted" style={labelStyle}>Atendimento *</label>
+          <input type="text" className="bm-input" placeholder="Nº de atendimento"
+            value={atendimento} onChange={(e) => setAtendimento(e.target.value)} />
+        </div>
+        <div>
+          <label className="uppercase t-muted" style={labelStyle}>Situação *</label>
+          <div className="ops-seg" role="group" aria-label="Situação do paciente">
+            <button type="button" className={`ops-seg-btn${!comAlta ? ' active' : ''}`}
+              aria-pressed={!comAlta} onClick={() => setSituacao('INTERNADO')}>
+              Internado
+            </button>
+            <button type="button" className={`ops-seg-btn${comAlta ? ' active' : ''}`}
+              aria-pressed={comAlta} onClick={() => setSituacao('ALTA')}>
+              Alta
+            </button>
+          </div>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <label className="uppercase t-muted" style={labelStyle}>Atendimento *</label>
-            <input type="text" className="bm-input" placeholder="Nº de atendimento"
-              value={atendimento} onChange={(e) => setAtendimento(e.target.value)} />
-          </div>
-          <div>
             <label className="uppercase t-muted" style={labelStyle}>Data de entrada *</label>
-            <input type="date" className="bm-input"
+            <input type="date" className="bm-input" max={comAlta && dataAlta ? dataAlta : hoje}
               value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} />
           </div>
+          {comAlta && (
+            <div>
+              <label className="uppercase t-muted" style={labelStyle}>Data de alta *</label>
+              <input type="date" className="bm-input" min={dataEntrada || undefined} max={hoje}
+                value={dataAlta} onChange={(e) => setDataAlta(e.target.value)} />
+            </div>
+          )}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>

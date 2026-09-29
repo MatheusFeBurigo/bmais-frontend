@@ -38,6 +38,9 @@ export const queryKeys = {
   internacaoDados: (id: number) => ['internacao-dados', id] as const,
   internacaoTimeline: (id: number) => ['internacao-timeline', id] as const,
   internacaoRelatorios: (id: number) => ['internacao-relatorios', id] as const,
+  /** Busca no catálogo CID-10 (estático: pode ficar em cache à vontade). */
+  cidBusca: (q: string) => ['cid', 'busca', q] as const,
+  cidDetalhe: (codigo: string) => ['cid', 'codigo', codigo] as const,
 
   kanban: () => ['kanban'] as const,
 
@@ -64,6 +67,7 @@ export const queryRoots = {
   diretoria: ['diretoria'] as const,
   gestor: ['gestor'] as const,
   configuracoes: ['configuracoes'] as const,
+  hospital: ['hospital'] as const,
   equipe: ['equipe'] as const,
   usuarios: ['usuarios'] as const,
   kanban: ['kanban'] as const,

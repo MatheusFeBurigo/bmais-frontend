@@ -50,6 +50,13 @@ export const alertaStyles = `
 /* Ação dentro do alerta (ex.: "Completar agora"): o alerta deixa de ser só texto
    e passa a levar a algum lugar, sem virar uma faixa separada da tela. */
 .al-acao{flex-shrink:0;align-self:center;margin-left:4px}
+
+/* Fechar: no fim da linha, na cor do próprio alerta e apagado até o mouse
+   chegar, para não competir com o texto que o alerta existe para dizer. */
+.al-x{flex-shrink:0;display:grid;place-items:center;width:22px;height:22px;margin:-2px -5px -2px 2px;border:0;background:none;border-radius:5px;color:inherit;opacity:.55;cursor:pointer;transition:opacity .12s,background .12s}
+.al-x:hover{opacity:1;background:rgba(11,26,38,.07)}
+.al-x:focus-visible{opacity:1;outline:2px solid currentColor;outline-offset:1px}
+@media (prefers-reduced-motion:reduce){.al-x{transition:none}}
 `
 
 const IcoCritico = (
@@ -87,13 +94,17 @@ const ROTULO: Record<NivelAviso, string> = {
   nota: 'Nota:',
 }
 
-export function Alerta({ nivel, children, acao }: {
+export function Alerta({ nivel, children, acao, onFechar }: {
   nivel: NivelAviso
   children: React.ReactNode
   /** Botão à direita, quando o alerta LEVA a algum lugar (ex.: "Completar
    *  agora"). Fica dentro do alerta, e não numa faixa separada, para a ação
    *  nascer colada ao motivo dela. */
   acao?: React.ReactNode
+  /** Presente = o alerta ganha um × no fim e some ao ser clicado. Quem usa o
+   *  alerta guarda o que foi fechado: o componente não sabe o que o alerta
+   *  significa, nem se algum contador precisa descontá-lo. */
+  onFechar?: () => void
 }) {
   return (
     <div className={`al ${nivel}`} role={nivel === 'critico' ? 'alert' : undefined}>
@@ -103,6 +114,13 @@ export function Alerta({ nivel, children, acao }: {
         {children}
       </div>
       {acao && <span className="al-acao">{acao}</span>}
+      {onFechar && (
+        <button type="button" className="al-x" onClick={onFechar}
+          aria-label="Fechar aviso" title="Fechar aviso">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2.4" strokeLinecap="round" aria-hidden><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      )}
     </div>
   )
 }

@@ -7,14 +7,19 @@
 // A tela Configurações também edita esta ficha, mas cercada de regras de SLA e
 // da carteira de pacientes — coisas do gestor/diretor. Aqui fica só o cadastro,
 // que é o que o analista mantém.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Hospital } from '../../types/api'
-import { Modal } from '../ui'
+import { LoadingState, Modal } from '../ui'
 import { salvarFichaHospital } from '../../services/configuracoes.service'
+import { useHospital } from '../../hooks/useHospital'
+import SelectRegiao from '../SelectRegiao'
 
 // Campos livres da ficha, na ordem em que aparecem. `nome` fica fora: é o
 // identificador visível do hospital e ganha destaque próprio no topo.
-const CAMPOS: readonly { key: keyof Hospital; label: string; placeholder?: string; largura?: 'meia' }[] = [
+type CampoFicha = keyof Pick<Hospital,
+  'cnpj' | 'telefone' | 'email' | 'endereco' | 'cidade' | 'uf' | 'cep' | 'regiao' | 'observacoes'>
+
+const CAMPOS: readonly { key: CampoFicha; label: string; placeholder?: string; largura?: 'meia' }[] = [
   { key: 'cnpj', label: 'CNPJ', placeholder: '00.000.000/0000-00', largura: 'meia' },
   { key: 'telefone', label: 'Telefone', placeholder: '(00) 0000-0000', largura: 'meia' },
   { key: 'email', label: 'E-mail', placeholder: 'contato@hospital.com' },
@@ -22,8 +27,14 @@ const CAMPOS: readonly { key: keyof Hospital; label: string; placeholder?: strin
   { key: 'cidade', label: 'Cidade', largura: 'meia' },
   { key: 'uf', label: 'UF', placeholder: 'SP', largura: 'meia' },
   { key: 'cep', label: 'CEP', placeholder: '00000-000', largura: 'meia' },
-  { key: 'regiao', label: 'Região', placeholder: 'Capital, Interior…', largura: 'meia' },
+  { key: 'regiao', label: 'Região', largura: 'meia' },
 ]
+
+const TODOS: readonly CampoFicha[] = [...CAMPOS.map((c) => c.key), 'observacoes']
+
+function fichaParaForm(h: Hospital): Record<string, string> {
+  return Object.fromEntries(TODOS.map((k) => [k, typeof h[k] === 'string' ? (h[k] as string) : '']))
+}
 
 const labelStyle = {
   display: 'block', marginBottom: 4, fontSize: 10, textTransform: 'uppercase' as const,
@@ -40,24 +51,29 @@ interface Props {
 }
 
 export default function HospitalFichaModal({ hospital, opNome, onClose, onToast, onDone }: Props) {
-  // A ficha completa não vem na listagem (que traz só key/nome), então o estado
-  // começa com o que se sabe e os campos livres entram vazios; salvar envia
-  // apenas o que foi preenchido, sem apagar o que não foi tocado.
+  // A listagem traz só key/nome: a ficha completa vem de GET /api/hospital/{key}
+  // e preenche o formulário, que então é salvo por inteiro. Campo esvaziado
+  // grava null, ou seja, apagar um telefone apaga de fato.
+  const { data: ficha, isLoading, isError } = useHospital(hospital.key)
   const [nome, setNome] = useState(hospital.nome)
-  const [campos, setCampos] = useState<Record<string, string>>({})
+  const [campos, setCampos] = useState<Record<string, string> | null>(null)
   const [saving, setSaving] = useState(false)
 
+  useEffect(() => {
+    if (ficha && campos === null) {
+      setCampos(fichaParaForm(ficha))
+      setNome(ficha.nome)
+    }
+  }, [ficha, campos])
+
   async function salvar() {
+    if (!campos) return
     const n = nome.trim()
     if (!n) { onToast('Informe o nome do hospital'); return }
     setSaving(true)
     try {
-      // Só os campos com conteúdo: um PATCH com strings vazias apagaria dados
-      // que já estão gravados e que esta tela não carregou.
-      const patch: Record<string, string> = { nome: n }
-      for (const [k, v] of Object.entries(campos)) {
-        if (v.trim()) patch[k] = v.trim()
-      }
+      const patch: Record<string, string | null> = { nome: n }
+      for (const k of TODOS) patch[k] = campos[k]?.trim() || null
       await salvarFichaHospital(hospital.key, patch)
       onToast('✓ Hospital atualizado')
       onDone()
@@ -68,8 +84,17 @@ export default function HospitalFichaModal({ hospital, opNome, onClose, onToast,
     }
   }
 
+  const set = (k: string, v: string) => setCampos((cur) => ({ ...(cur ?? {}), [k]: v }))
+
   return (
     <Modal title={`${hospital.nome} · ${opNome}`} onClose={onClose}>
+      {isError ? (
+        <p style={{ margin: 0, fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
+          Não foi possível abrir a ficha. Feche e tente de novo.
+        </p>
+      ) : isLoading || !campos ? (
+        <LoadingState />
+      ) : (
       <div style={{ display: 'grid', gap: 12 }}>
         <div>
           <label style={labelStyle}>Nome *</label>
@@ -79,15 +104,19 @@ export default function HospitalFichaModal({ hospital, opNome, onClose, onToast,
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {CAMPOS.map((c) => (
-            <div key={String(c.key)} style={{ gridColumn: c.largura === 'meia' ? 'span 1' : 'span 2' }}>
+            <div key={c.key} style={{ gridColumn: c.largura === 'meia' ? 'span 1' : 'span 2' }}>
               <label style={labelStyle}>{c.label}</label>
-              <input
-                type="text"
-                className="bm-input"
-                placeholder={c.placeholder}
-                value={campos[String(c.key)] ?? ''}
-                onChange={(e) => setCampos((cur) => ({ ...cur, [String(c.key)]: e.target.value }))}
-              />
+              {c.key === 'regiao' ? (
+                <SelectRegiao value={campos.regiao ?? ''} onChange={(v) => set('regiao', v)} />
+              ) : (
+                <input
+                  type="text"
+                  className="bm-input"
+                  placeholder={c.placeholder}
+                  value={campos[c.key] ?? ''}
+                  onChange={(e) => set(c.key, e.target.value)}
+                />
+              )}
             </div>
           ))}
           <div style={{ gridColumn: 'span 2' }}>
@@ -96,15 +125,11 @@ export default function HospitalFichaModal({ hospital, opNome, onClose, onToast,
               className="bm-input"
               rows={2}
               value={campos.observacoes ?? ''}
-              onChange={(e) => setCampos((cur) => ({ ...cur, observacoes: e.target.value }))}
+              onChange={(e) => set('observacoes', e.target.value)}
               style={{ resize: 'vertical', fontFamily: 'inherit' }}
             />
           </div>
         </div>
-
-        <p style={{ margin: 0, fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
-          Campos em branco são mantidos como já estão. Preencha só o que quiser alterar.
-        </p>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
           <button className="btn btn-outline btn-sm" onClick={onClose} disabled={saving}>Cancelar</button>
@@ -113,6 +138,7 @@ export default function HospitalFichaModal({ hospital, opNome, onClose, onToast,
           </button>
         </div>
       </div>
+      )}
     </Modal>
   )
 }

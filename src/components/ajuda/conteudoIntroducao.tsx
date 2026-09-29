@@ -1,6 +1,7 @@
 // Conteúdo dos módulos de introdução: o que é a plataforma e quem acessa o quê.
 // Transversais — valem para todos os papéis.
-import { Callout, Chip, Key, Metric, Metrics, Nao, Sim, Tabela } from './blocos'
+import { Callout, Key, Metric, Metrics, Nao, Sim, SoGestao, Tabela } from './blocos'
+import { useVeGestao } from './acessoAjuda'
 
 interface Props {
   irPara: (id: string) => void
@@ -33,55 +34,61 @@ export function ModuloVisao({ irPara }: Props) {
           nota="Calculados a partir das regras de cada operadora" />
         <Metric tom="positive" label="O que foi feito" valor="Os relatórios de visita"
           nota="Registrados pelos auditores, com documento e parecer" />
-        <Metric tom="neutral" label="Como vai o serviço" valor="Indicadores e trilha"
-          nota="Nível de serviço, permanência e histórico de cada ação" />
+        <SoGestao>
+          <Metric tom="neutral" label="Como vai o serviço" valor="Indicadores e trilha"
+            nota="Nível de serviço, permanência e histórico de cada ação" />
+        </SoGestao>
       </Metrics>
 
       <h3>Como o sistema é organizado</h3>
       <p>
-        As telas distribuem-se em quatro áreas, conforme a organização apresentada no menu lateral.
-        Cada pessoa enxerga apenas as áreas compatíveis com o seu perfil de acesso, de modo que a
-        lista abaixo descreve a plataforma inteira, e não necessariamente o seu menu.
+        As telas distribuem-se em áreas, conforme a organização apresentada no menu lateral. Cada
+        pessoa enxerga apenas as áreas compatíveis com o seu perfil de acesso, de modo que a lista
+        abaixo pode incluir telas que não estão no seu menu.
       </p>
       <Tabela cabecalho={['Área', 'Telas', 'A que serve']} larguras={['150px', '210px']}>
         <tr>
           <Key>Operação</Key>
           <td>
-            <Link para="operacional">Painel Operacional</Link>,{' '}
-            <Link para="paciente">Ficha do Paciente</Link>,{' '}
-            <Link para="kanban">Quadro de Tarefas</Link>,{' '}
-            <Link para="upload">Envio de Censos</Link>
+            <Link para="painel-operacional">Painel Operacional</Link>,{' '}
+            <Link para="ficha-do-paciente">Ficha do Paciente</Link>,{' '}
+            <Link para="tarefas">Tarefas</Link>,{' '}
+            <Link para="envio-de-censos">Envio de Censos</Link>
           </td>
           <td>O trabalho do dia a dia: receber os censos dos hospitais, saber quem precisa de
             visita e registrar o que foi auditado.</td>
         </tr>
+        <SoGestao>
+          <tr>
+            <Key>Gestão</Key>
+            <td>
+              <Link para="dashboard-da-diretoria">Dashboard da Diretoria</Link>,{' '}
+              <Link para="painel-do-gestor">Painel do Gestor</Link>
+            </td>
+            <td>O acompanhamento: nível de serviço por operadora, volume de alertas, fluxo de
+              entradas e altas e concentração da rede.</td>
+          </tr>
+        </SoGestao>
         <tr>
-          <Key>Gestão</Key>
-          <td>
-            <Link para="diretoria">Dashboard da Diretoria</Link>,{' '}
-            <Link para="gestor">Painel do Gestor</Link>,{' '}
-            <Link para="volumetria">Distribuição de tarefas</Link>
-          </td>
-          <td>O acompanhamento: nível de serviço por operadora, volume de alertas, fluxo de
-            entradas e altas, concentração da rede e a carga de trabalho de cada pessoa da
-            equipe.</td>
+          <Key>Coordenação</Key>
+          <td><Link para="distribuicao-de-tarefas">Distribuição de tarefas</Link></td>
+          <td>A carga de trabalho de cada pessoa da equipe e os hospitais que cada uma cobre.</td>
         </tr>
         <tr>
           <Key>Administração</Key>
           <td>
-            <Link para="operacoes">Cadastros</Link>,{' '}
-            <Link para="usuario">Cadastro de Usuário</Link>,{' '}
+            <Link para="operacoes">Operações</Link>,{' '}
             <Link para="configuracoes">Configurações</Link>,{' '}
             <Link para="movimentacoes">Movimentações</Link>,{' '}
             <Link para="progresso">Progresso</Link>
           </td>
-          <td>Os cadastros que sustentam o resto: equipe, contas de acesso, hospitais, operadoras,
-            as regras de prazo, a trilha do que cada pessoa fez e o avanço da construção da própria
-            plataforma.</td>
+          <td>Os cadastros que sustentam o resto: equipe, contas de acesso, hospitais,
+            operadoras, as regras de prazo, a trilha do que cada pessoa fez e o avanço da
+            construção da própria plataforma.</td>
         </tr>
         <tr>
           <Key>Acesso</Key>
-          <td><Link para="navegacao">Perfis e permissões</Link></td>
+          <td><Link para="perfis-de-acesso">Perfis e permissões</Link></td>
           <td>Quem entra na plataforma e o que cada perfil pode ver e fazer.</td>
         </tr>
       </Tabela>
@@ -109,15 +116,17 @@ export function ModuloVisao({ irPara }: Props) {
           sistema aplica a regra certa a cada paciente, sem ninguém precisar lembrar dela.</li>
         <li><strong>Histórico completo</strong>: tudo o que aconteceu em cada internação, com os
           relatórios, seus documentos e quem os registrou.</li>
-        <li><strong>Visão gerencial</strong>: indicadores consolidados por operadora, para
-          negociação e prestação de contas.</li>
+        <SoGestao>
+          <li><strong>Visão gerencial</strong>: indicadores consolidados por operadora, para
+            negociação e prestação de contas.</li>
+        </SoGestao>
         <li><strong>Rastreabilidade</strong>: o registro de quem fez o quê e quando, em toda a
           plataforma.</li>
       </ul>
 
       <h3>Vocabulário da plataforma</h3>
       <p>
-        Nove termos recorrem em praticamente todas as telas e fundamentam a leitura das demais
+        Alguns termos recorrem em praticamente todas as telas e fundamentam a leitura das demais
         seções.
       </p>
       <Tabela cabecalho={['Conceito', 'O que significa']} larguras={['175px']}>
@@ -127,11 +136,61 @@ export function ModuloVisao({ irPara }: Props) {
         <tr><Key>Gatilho de monitoramento</Key><td>Quantos dias de internação o paciente precisa ter para passar a exigir relatório. Varia por tipo de leito e por operadora.</td></tr>
         <tr><Key>Janela entre relatórios</Key><td>Prazo máximo entre uma visita de auditoria e a seguinte. Passou da janela, o relatório está atrasado.</td></tr>
         <tr><Key>Longa permanência</Key><td>Dois marcos configuráveis por operadora, prolongada e avançada, que sinalizam internações que se estendem demais.</td></tr>
-        <tr><Key>Nível de serviço</Key><td>Percentual de pacientes com o relatório em conformidade, exibido como SLA.</td></tr>
+        <SoGestao>
+          <tr><Key>Nível de serviço</Key><td>Percentual de pacientes com o relatório em conformidade, exibido como SLA.</td></tr>
+        </SoGestao>
         <tr><Key>Censo</Key><td>O arquivo que o hospital envia com os pacientes do dia. É a fonte de todos os dados de internação.</td></tr>
         <tr><Key>Escopo de dados</Key><td>Recorte por hospital aplicado a cada usuário. Quem tem hospitais vinculados só enxerga esses; sem vínculo, enxerga tudo.</td></tr>
       </Tabela>
     </>
+  )
+}
+
+// Matriz de telas por papel. As colunas de Gestor e Diretor e as linhas das
+// telas de decisão só aparecem para quem tem essa competência (acessoAjuda.ts).
+const PAPEIS_MATRIZ = [
+  { nome: 'Técnico' },
+  { nome: 'Administrativo' },
+  { nome: 'Gestor', gestao: true },
+  { nome: 'Diretor', gestao: true },
+  { nome: 'Analista' },
+  { nome: 'Coordenador' },
+] as const
+
+// Uma letra por papel, na ordem de PAPEIS_MATRIZ: S = tem acesso, N = não tem.
+const TELAS_MATRIZ: { tela: string; acesso: string; gestao?: boolean }[] = [
+  { tela: 'Painel Operacional', acesso: 'SSNSSS' },
+  { tela: 'Ficha do Paciente', acesso: 'SSSSSS' },
+  { tela: 'Tarefas', acesso: 'SSNNSN' },
+  { tela: 'Envio de Censos', acesso: 'SSSSNN' },
+  { tela: 'Dashboard da Diretoria', acesso: 'NNNSNN', gestao: true },
+  { tela: 'Painel do Gestor', acesso: 'NNSSNN', gestao: true },
+  { tela: 'Distribuição de tarefas', acesso: 'NNNNNS' },
+  { tela: 'Configurações', acesso: 'NNSSNN' },
+  { tela: 'Operações', acesso: 'NNNNSN' },
+  { tela: 'Movimentações', acesso: 'NNNNSN' },
+  { tela: 'Progresso', acesso: 'NNNSNN' },
+]
+
+function MatrizTelas() {
+  const gestao = useVeGestao()
+  const colunas = PAPEIS_MATRIZ
+    .map((p, i) => ({ ...p, i }))
+    .filter((p) => gestao || !('gestao' in p))
+  const linhas = TELAS_MATRIZ
+    .filter((t) => gestao || !t.gestao)
+    // Sem as colunas de gestão, uma tela que só a gestão abre viraria uma
+    // linha inteira de "sem acesso", que não informa nada.
+    .filter((t) => colunas.some((c) => t.acesso[c.i] === 'S'))
+  return (
+    <Tabela matriz cabecalho={['Tela', ...colunas.map((c) => c.nome)]}>
+      {linhas.map((t) => (
+        <tr key={t.tela}>
+          <Key>{t.tela}</Key>
+          {colunas.map((c) => <td key={c.nome}>{t.acesso[c.i] === 'S' ? <Sim /> : <Nao />}</td>)}
+        </tr>
+      ))}
+    </Tabela>
   )
 }
 
@@ -145,103 +204,75 @@ export function ModuloNavegacao() {
       </p>
       <p>
         Esta documentação segue a mesma regra: os módulos listados no índice são os das telas que o
-        seu perfil acessa. Um perfil da operação não encontra aqui o texto sobre as telas de gestão,
-        pelo mesmo motivo que não as encontra no menu.
+        seu perfil acessa, pelo mesmo motivo que as demais não aparecem no menu.
       </p>
 
       <h3>Os perfis de acesso</h3>
-      <Tabela cabecalho={['Papel', 'Descrição funcional']} larguras={['160px']}>
+      <Tabela cabecalho={['Papel', 'Descrição funcional']} larguras={['220px']}>
         <tr>
-          <td><Chip tom="positive">Técnico</Chip></td>
+          <Key>Técnico</Key>
           <td>Análise técnica dos relatórios do auditor externo. É o papel que emite o parecer
             interno e registra relatórios.</td>
         </tr>
         <tr>
-          <td><Chip tom="positive">Administrativo</Chip></td>
-          <td>Operação do dia a dia: Painel Operacional, Envio de Censos e Quadro de Tarefas.</td>
+          <Key>Administrativo</Key>
+          <td>Operação do dia a dia: Painel Operacional, Envio de Censos e Tarefas.</td>
+        </tr>
+        <SoGestao>
+          <tr>
+            <Key>Gestor</Key>
+            <td>Painel do Gestor, Envio de Censos e Configurações. Não acessa a Diretoria nem o
+              Painel Operacional.</td>
+          </tr>
+          <tr>
+            <Key>Diretor</Key>
+            <td>Diretoria, Gestor, Painel Operacional e Configurações. Não acessa os cadastros de
+              manutenção do sistema.</td>
+          </tr>
+        </SoGestao>
+        <tr>
+          <Key>Analista</Key>
+          <td>Acompanha o Painel Operacional, as Tarefas e as Movimentações sem alterar nada
+            nelas, e mantém os cadastros da tela Operações: profissionais, contas de acesso,
+            hospitais e operadoras. Não registra relatório nem envia censo.</td>
         </tr>
         <tr>
-          <td><Chip tom="attention">Gestor</Chip></td>
-          <td>Painel do Gestor, Envio de Censos e Configurações. Não acessa a Diretoria nem o
-            Painel Operacional.</td>
-        </tr>
-        <tr>
-          <td><Chip tom="brand">Diretor</Chip></td>
-          <td>Diretoria, Gestor, Painel Operacional e Configurações. Não acessa os cadastros de
-            manutenção do sistema.</td>
-        </tr>
-        <tr>
-          <td><Chip tom="neutral">Analista</Chip></td>
-          <td>Perfil de observação: lê o Painel Operacional, o Quadro de Tarefas e as
-            Movimentações, e mantém o cadastro de hospitais e operadoras. Não registra relatório
-            nem envia censo.</td>
-        </tr>
-        <tr>
-          <td><Chip tom="neutral">Coordenador técnico</Chip></td>
+          <Key>Coordenador técnico</Key>
           <td>Acompanha a carga de trabalho dos técnicos na Distribuição de tarefas e define quais hospitais
             cada um cobre. Enxerga o Painel Operacional como contexto, sem alterar nada nele.</td>
         </tr>
         <tr>
-          <td><Chip tom="neutral">Coordenador administrativo</Chip></td>
+          <Key>Coordenador administrativo</Key>
           <td>O mesmo papel, do lado administrativo: acompanha a carga de cobrança de censo e
             distribui os hospitais entre os administrativos.</td>
-        </tr>
-        <tr>
-          <td><Chip tom="brand">Administrador</Chip></td>
-          <td>Manutenção do sistema: cadastros, contas de acesso e a trilha de Movimentações.
-            Não acessa a Diretoria nem o Painel do Gestor, que são telas de decisão.</td>
         </tr>
       </Tabela>
 
       <h3>Matriz de telas por papel</h3>
-      <Tabela matriz
-        cabecalho={['Tela', 'Técnico', 'Administrativo', 'Gestor', 'Diretor', 'Analista', 'Coord.', 'Admin.']}>
-        <tr><Key>Painel Operacional</Key>
-          <td><Sim /></td><td><Sim /></td><td><Nao /></td><td><Sim /></td><td><Sim /></td><td><Sim /></td><td><Sim /></td></tr>
-        <tr><Key>Ficha do Paciente</Key>
-          <td><Sim /></td><td><Sim /></td><td><Sim /></td><td><Sim /></td><td><Sim /></td><td><Sim /></td><td><Sim /></td></tr>
-        <tr><Key>Quadro de Tarefas</Key>
-          <td><Sim /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Nao /></td><td><Sim /></td></tr>
-        <tr><Key>Envio de Censos</Key>
-          <td><Sim /></td><td><Sim /></td><td><Sim /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td></tr>
-        <tr><Key>Dashboard da Diretoria</Key>
-          <td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td></tr>
-        <tr><Key>Painel do Gestor</Key>
-          <td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td></tr>
-        <tr><Key>Distribuição de tarefas</Key>
-          <td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Sim /></td></tr>
-        <tr><Key>Configurações</Key>
-          <td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td></tr>
-        <tr><Key>Cadastros</Key>
-          <td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Nao /></td><td><Sim /></td></tr>
-        <tr><Key>Movimentações</Key>
-          <td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Nao /></td><td><Sim /></td></tr>
-        <tr><Key>Progresso</Key>
-          <td><Nao /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td><td><Nao /></td><td><Nao /></td><td><Sim /></td></tr>
-      </Tabela>
+      <MatrizTelas />
       <p className="aj-legend"><Sim /> tem acesso <Nao /> sem acesso</p>
       <p>
-        A coluna <strong>Coord.</strong> vale para os dois perfis de coordenação, técnico e
+        A coluna <strong>Coordenador</strong> vale para os dois perfis de coordenação, técnico e
         administrativo, que têm o mesmo recorte de telas e se distinguem pela equipe que acompanham
         na Distribuição de tarefas.
       </p>
 
-      <Callout tipo="rule" titulo="Telas de decisão seguem o cargo">
-        O Dashboard da Diretoria e o Painel do Gestor acompanham desempenho de operadora e fluxo de
-        internações, e por isso alcançam apenas <strong>a diretoria e, no caso do Gestor, a
-        gestão</strong>. Nem mesmo a administração do sistema entra: quem mantém cadastros e contas
-        não é, por isso, destinatário da informação gerencial. É a única exceção à ideia de que o
-        administrador enxerga o sistema inteiro.
-      </Callout>
+      <SoGestao>
+        <Callout tipo="rule" titulo="Telas de decisão seguem o cargo">
+          O Dashboard da Diretoria e o Painel do Gestor acompanham desempenho de operadora e fluxo
+          de internações, e por isso alcançam apenas <strong>a diretoria e, no caso do Gestor, a
+          gestão</strong>. Quem mantém os cadastros não é, por isso, destinatário da informação
+          gerencial.
+        </Callout>
+      </SoGestao>
 
       <h3>Perfis de observação</h3>
-      <p>
-        Três perfis <strong>não alteram dado nenhum</strong>: o analista e os dois de coordenação.
-        Eles enxergam as telas às quais têm acesso, mas os controles que gravariam alguma coisa não
-        são oferecidos a eles. A única exceção é a definição da área de cada pessoa na Distribuição
-        de tarefas,
-        que pertence à coordenação.
-      </p>
+      <ul>
+        <li>Analista e coordenadores <strong>não alteram pacientes, censos nem relatórios</strong>.
+          Veem essas telas, mas sem os botões de edição.</li>
+        <li>O analista mantém os cadastros da tela Operações.</li>
+        <li>Os coordenadores definem os hospitais de cada pessoa na Distribuição de tarefas.</li>
+      </ul>
 
       <h3>Escopo por hospital</h3>
       <p>
@@ -249,13 +280,6 @@ export function ModuloNavegacao() {
         apenas os pacientes, censos e indicadores dessas unidades, em todas as telas. Sem vínculo, a
         conta enxerga a operação inteira. O vínculo é definido no cadastro da conta.
       </p>
-
-      <Callout tipo="rule" titulo="Regra de acesso">
-        O menu apresenta exclusivamente as telas que o papel pode acessar. O recebimento do link de
-        uma tela restrita não permite sua abertura: o usuário é direcionado à primeira tela
-        autorizada ao seu papel. A restrição permanece válida ainda que se tente contorná-la por
-        outro meio, porque quem decide é o servidor, e não o menu.
-      </Callout>
     </>
   )
 }

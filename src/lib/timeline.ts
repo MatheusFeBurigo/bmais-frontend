@@ -49,3 +49,58 @@ export function classeDoEvento(ev: TimelineEvento): string | undefined {
   }
   return TIPO_CLASSE[ev.tipo]
 }
+
+// Evento de relatório (externo OU parecer interno). O tipo é a fonte confiável:
+// o backend envia RELATORIO/RELATORIO_INTERNO. O regex no título é só fallback
+// para registros legados, e não casa "Parecer do técnico interno", por isso a
+// checagem por tipo vem primeiro.
+export function ehRelatorio(ev: TimelineEvento): boolean {
+  return ev.tipo === 'RELATORIO' || ev.tipo === 'RELATORIO_INTERNO' || /relat[óo]rio/i.test(ev.titulo)
+}
+
+/** Quem aparece no chip ao lado do título do evento. */
+export type ChipDoEvento =
+  | { tipo: 'medico'; nome: string; titulo?: string }
+  | { tipo: 'autor'; autor: string }
+
+/**
+ * Regra única de exibição de um evento da timeline, usada pela ficha do paciente
+ * e pelo drawer. As duas telas tinham cópias próprias que já divergiam (o drawer
+ * não reconhecia o parecer interno como relatório; a ficha escondia o autor das
+ * edições).
+ *
+ * Chip, por tipo de evento:
+ *   - relatório externo: o médico responsável;
+ *   - parecer interno: quem o fez (autor);
+ *   - visita agendada: o responsável pela visita, não quem clicou em agendar.
+ *     Continua aparecendo cancelada: "de quem era" a visita que não aconteceu
+ *     é útil tanto quanto "de quem é" a que ainda vai;
+ *   - demais eventos com autoria humana: o usuário que registrou. Marcos
+ *     sintéticos e eventos de sistema não têm autor e ficam sem chip.
+ */
+export function apresentacaoDoEvento(ev: TimelineEvento) {
+  const relatorio = ehRelatorio(ev)
+  const interno = ev.tipo === 'RELATORIO_INTERNO'
+  const visita = ev.tipo === 'VISITA_AGENDADA'
+  const cancelada = visita && ev.status_visita === 'cancelada'
+  // Tipos conhecidos viram card colorido; um tipo sem mapeamento (evento
+  // legado) fica em linha simples com a variante do backend no marcador.
+  const tipoClasse = classeDoEvento(ev)
+
+  let chip: ChipDoEvento | null = null
+  if (relatorio && interno && ev.autor) chip = { tipo: 'medico', nome: ev.autor, titulo: 'Autor' }
+  else if (relatorio && !interno && ev.medico) chip = { tipo: 'medico', nome: ev.medico }
+  else if (visita && ev.medico) chip = { tipo: 'medico', nome: ev.medico, titulo: 'Responsável' }
+  else if (!relatorio && !visita && ev.autor) chip = { tipo: 'autor', autor: ev.autor }
+
+  return {
+    relatorio,
+    cancelada,
+    cardClass: tipoClasse ? `tl-card ${tipoClasse}` : '',
+    dotClass: tipoClasse || ev.variante,
+    // Hora só em VISITA_AGENDADA (migration 0035): os demais tipos não têm hora
+    // registrada, e um "—" gratuito seria ruído.
+    hora: visita && ev.hora ? ev.hora.slice(0, 5) : null,
+    chip,
+  }
+}

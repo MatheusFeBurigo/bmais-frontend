@@ -5,6 +5,10 @@
 // sempre capitaliza (não começa nome com "de").
 const MINUSCULAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e'])
 
+// "RN" é a sigla de recém-nascido ("RN de Maria Silva", "RN 1 de...", "RN2 de...")
+// e não um nome: capitalizada, virava "Rn de Maria Silva".
+const SIGLA_RN = /^rn\d*$/
+
 /**
  * Converte um nome para "Maiúsculo/minúsculo" (Title Case) próprio para nomes
  * PT-BR. Os censos chegam em CAIXA ALTA ("TERESA VIEIRA SOUZA") — aqui vira
@@ -28,7 +32,9 @@ export function nomeProprio(valor?: string | null): string {
   const palavras = valor.trim().toLowerCase().split(/\s+/)
   return palavras
     .map((palavra, i) =>
-      i > 0 && MINUSCULAS.has(palavra) ? palavra : capitalizarToken(palavra),
+      SIGLA_RN.test(palavra)
+        ? palavra.toUpperCase()
+        : i > 0 && MINUSCULAS.has(palavra) ? palavra : capitalizarToken(palavra),
     )
     .join(' ')
 }

@@ -120,3 +120,93 @@
   .aj-pager-count{grid-column:1 / -1;grid-row:1;text-align:center;margin-bottom:4px}
   .aj-pager-hint{display:none}
 }
+
+
+/* ── "Como fazer": réplica da tela com números clicáveis ──────────────────
+   A réplica usa as classes e os componentes reais do sistema. O que vem aqui é
+   a moldura, a escala, os números, o popover e o isolamento do texto longo da
+   Ajuda (entrelinha e margens de leitura, erradas para uma tela). */
+.aj-como{margin:16px 0 26px;padding-top:4px}
+.aj-como-titulo{display:flex;align-items:center;gap:8px;font-size:var(--t-md);font-weight:600;color:var(--ink);margin:0 0 10px}
+.aj-body .aj-como-titulo{margin:0 0 10px}
+.aj-como-ico{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex-shrink:0}
+
+/* Sem overflow:hidden na moldura: o popover de um número perto da borda pode
+   passar dela, e cortado ele ficaria ilegível. Os cantos arredondados vêm das
+   próprias faixas de cima e de baixo. */
+.aj-tela{margin:0 0 14px;border:1px solid var(--border-strong);border-radius:var(--r-md);background:var(--bg);box-shadow:var(--shadow-sm)}
+.aj-tela-barra{display:flex;align-items:center;gap:10px;padding:7px 12px;background:var(--surface);border-bottom:1px solid var(--border);border-radius:var(--r-md) var(--r-md) 0 0}
+.aj-tela-pontos{display:inline-flex;gap:5px;flex-shrink:0}
+.aj-tela-pontos i{width:8px;height:8px;border-radius:50%;background:var(--border-strong)}
+.aj-tela-nome{font-size:var(--t-sm);font-weight:600;color:var(--ink-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aj-tela-selo{margin-left:auto;flex-shrink:0;font-size:var(--t-xs);font-weight:600;letter-spacing:.04em;color:var(--muted);background:var(--surface-3);border:1px solid var(--border);border-radius:99px;padding:1px 8px}
+@media(max-width:640px){.aj-tela-selo{display:none}}
+.aj-tela-area{position:relative}
+.aj-tela-palco{margin:0 auto;font-size:var(--t-base);line-height:normal;color:var(--ink-2);cursor:default;user-select:none}
+.aj-body .aj-tela-palco p{margin:0}
+.aj-body .aj-tela-palco ul,.aj-body .aj-tela-palco ol{margin:0;padding:0}
+.aj-body .aj-tela-palco li{margin:0}
+.aj-tela-legenda{padding:8px 12px;border-top:1px solid var(--border);background:var(--surface);font-size:var(--t-sm);color:var(--muted);line-height:1.5;border-radius:0 0 var(--r-md) var(--r-md)}
+.aj-tela-dica{color:var(--accent);font-weight:500}
+
+/* Contorno do que cada número aponta. `.aj-alvo` é o invólucro que a réplica
+   monta; o respiro interno deixa o número em cima do respiro, e não da 1ª letra
+   do que está marcado. Elementos de componente real reaproveitado recebem só
+   o atributo (via `destaques`). */
+.aj-tela-palco [data-aj-alvo]{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px;transition:outline-color .15s,box-shadow .15s}
+.aj-alvo{display:inline-flex;vertical-align:middle;padding:3px 4px}
+.aj-alvo.bloco{display:block;padding:7px}
+.aj-tela-palco [data-aj-alvo].aj-alvo-ativo{outline:3px solid var(--primary-3);box-shadow:0 0 0 7px rgba(31,111,190,.16)}
+
+/* Número clicável. Fica numa camada acima da réplica (que é inert). */
+.aj-marca{position:absolute;z-index:4;width:22px;height:22px;border-radius:50%;border:2px solid var(--surface);background:var(--accent);color:#fff;font:600 11px/1 var(--font-mono);display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 1px 4px rgba(11,26,38,.25);transition:transform .12s,background .12s}
+.aj-marca:hover{transform:scale(1.12)}
+.aj-marca:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.aj-marca.ativa{background:var(--primary);transform:scale(1.12)}
+.aj-marca:disabled{cursor:default;opacity:.6}
+@media (prefers-reduced-motion:reduce){.aj-marca{transition:none}}
+
+.aj-pop{position:absolute;z-index:5;width:min(320px,calc(100% - 16px));background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r-md);box-shadow:var(--shadow-lg);padding:11px 14px 12px;animation:aj-pop .16s cubic-bezier(.2,.7,.2,1)}
+.aj-pop:focus{outline:none}
+@keyframes aj-pop{from{opacity:0;transform:translateY(4px)}}
+@media (prefers-reduced-motion:reduce){.aj-pop{animation:none}}
+.aj-pop-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px}
+.aj-pop-conta{font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.09em;font-weight:600;color:var(--accent)}
+.aj-pop-x{display:grid;place-items:center;width:24px;height:24px;border:0;background:none;border-radius:6px;color:var(--muted);cursor:pointer}
+.aj-pop-x:hover{background:var(--surface-3);color:var(--ink)}
+.aj-pop-titulo{font-size:var(--t-md);font-weight:600;color:var(--ink);line-height:1.35;margin-bottom:4px}
+.aj-pop-corpo{font-size:var(--t-base);color:var(--ink-2);line-height:1.55}
+.aj-pop-corpo ul{margin:6px 0 0;padding-left:18px}
+.aj-pop-corpo li{margin:3px 0}
+.aj-pop-nav{display:flex;justify-content:space-between;gap:8px;margin-top:10px;padding-top:9px;border-top:1px solid var(--border-soft)}
+
+/* Réplica do painel lateral (ficha rápida): o drawer real é position:fixed, então
+   aqui ele é desenhado no fluxo, sobre um fundo que lembra a lista escurecida. */
+.aj-drawer-palco{display:grid;grid-template-columns:minmax(120px,1fr) 500px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--border)}
+.aj-drawer-fundo{background:rgba(11,26,38,.28);padding:14px;display:flex;flex-direction:column;gap:10px}
+.aj-drawer-fundo i{display:block;height:11px;border-radius:4px;background:rgba(255,255,255,.35)}
+.aj-drawer{background:var(--surface);display:flex;flex-direction:column;box-shadow:-10px 0 30px rgba(11,26,38,.16)}
+.aj-drawer-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.aj-drawer-body{padding:16px 18px}
+.aj-drawer-body .section-label:first-child{margin-top:0}
+.aj-campo-lbl{font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--muted);margin-bottom:5px}
+
+/* Réplica de modal: o card real mora num backdrop fixo; aqui ele fica no
+   fluxo, centrado sobre um fundo escurecido. */
+.aj-modal-palco{background:rgba(11,26,38,.28);border-radius:var(--r-sm);padding:22px;display:flex;justify-content:center}
+.aj-modal-palco .modal-card{max-height:none;margin:0}
+.aj-modal-palco .modal-body{overflow:visible}
+
+/* Os cartões do envio cortam o que passa da borda (overflow:hidden), e o
+   contorno do que está marcado ficava pela metade. */
+.aj-tela-palco .up-resultado,.aj-tela-palco .up-lista-pac,.aj-tela-palco .up-pac-sec,.aj-tela-palco .up-pac-tabela td{overflow:visible}
+
+/* Escolha do tipo de usuário no cadastro de conta: troca a réplica e os
+   passos. É controle da Ajuda (fica fora da réplica), por isso tem desenho
+   próprio, e não o do controle segmentado da tela. */
+.aj-tipos{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.aj-tipos-lbl{font-size:var(--t-sm);color:var(--muted);font-weight:500;margin-right:2px}
+.aj-tipo{border:1px solid var(--border);background:var(--surface);color:var(--ink-2);font:inherit;font-size:var(--t-sm);padding:4px 11px;border-radius:99px;cursor:pointer;transition:border-color .12s,background .12s,color .12s}
+.aj-tipo:hover{border-color:var(--accent)}
+.aj-tipo.ativo{background:var(--accent-soft);border-color:var(--accent);color:var(--primary);font-weight:600}
+.aj-tipo:focus-visible{outline:2px solid var(--accent);outline-offset:2px}

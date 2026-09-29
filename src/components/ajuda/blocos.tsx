@@ -4,6 +4,14 @@
 // Existem para que os 14 módulos sejam escritos como conteúdo, e não como
 // markup: um módulo novo compõe estes blocos em vez de repetir <div className>.
 import type { ReactNode } from 'react'
+import { useVeGestao } from './acessoAjuda'
+
+/** Trecho sobre diretoria e gestão: só aparece para Gestor, Diretor e Admin.
+ *  Serve tanto para um bloco inteiro quanto para uma frase dentro de um
+ *  parágrafo. */
+export function SoGestao({ children }: { children: ReactNode }) {
+  return useVeGestao() ? <>{children}</> : null
+}
 
 export type Tom = 'critical' | 'warn' | 'attention' | 'positive' | 'neutral' | 'brand'
 

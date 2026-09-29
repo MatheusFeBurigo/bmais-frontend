@@ -2,6 +2,7 @@
 import { useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../lib/queryKeys'
+import { invalidarPorEvento } from '../lib/invalidation'
 import {
   criarConvenio,
   editarInternacao,
@@ -9,7 +10,9 @@ import {
   listarConvenios,
   fetchInternacaoRelatorios,
   fetchInternacaoTimeline,
+  registrarRelatorioRapido,
   type InternacaoEdicao,
+  type RelatorioRapido,
 } from '../services/internacao.service'
 
 // Reabrir o mesmo paciente (ou um já pré-carregado no hover) não deve refazer a
@@ -50,6 +53,23 @@ export function useEditarInternacao(id: number) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.internacaoDados(id) })
       qc.invalidateQueries({ queryKey: queryKeys.internacaoTimeline(id) })
+    },
+  })
+}
+
+// Registro de relatório de visita, usado pela ficha e pelo drawer. Atualiza o
+// card de relatórios, a timeline e os dados deste paciente; e como o relatório
+// muda o status_relatorio, o evento de domínio recompõe Kanban e agregados por
+// status (Dashboard/Diretoria/Gestor/Sidebar).
+export function useRegistrarRelatorio(id: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (rel: RelatorioRapido) => registrarRelatorioRapido(id, rel),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.internacaoRelatorios(id) })
+      qc.invalidateQueries({ queryKey: queryKeys.internacaoTimeline(id) })
+      qc.invalidateQueries({ queryKey: queryKeys.internacaoDados(id) })
+      invalidarPorEvento(qc, 'relatorioAdicionado')
     },
   })
 }

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { VolumetriaGrupo } from '../../types/api'
 import { useVincularVolumetria } from '../../hooks/useVolumetria'
 import { OpAvatar } from '../ui'
-import { fmtDias, fmtHoras, rotuloGrupo } from './volumetria.model'
+import { rotuloGrupo } from './volumetria.model'
 
 export default function HospitaisSemCobertura({ grupo, onErro }: {
   grupo: VolumetriaGrupo
@@ -50,7 +50,6 @@ export default function HospitaisSemCobertura({ grupo, onErro }: {
                   : `${h.pendencias} ${h.pendencias === 1 ? 'caso' : 'casos'}`}
               </div>
             </span>
-            <span className="vol-hosp-n" style={{ color: 'var(--danger)' }}>{fmtHoras(h.horas)}</span>
             <select
               className="bm-input bm-select"
               style={{ fontSize: 'var(--t-sm)' }}
@@ -64,7 +63,7 @@ export default function HospitaisSemCobertura({ grupo, onErro }: {
               </option>
               {grupo.pessoas.map((p) => (
                 <option key={p.user_id} value={p.user_id}>
-                  {p.nome}{p.sem_vinculo ? ' (sem área definida)' : ` · ${fmtDias(p.dias_fila)} de fila`}
+                  {p.nome}
                 </option>
               ))}
             </select>
