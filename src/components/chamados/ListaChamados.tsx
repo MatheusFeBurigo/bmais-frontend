@@ -3,7 +3,7 @@
 import { Badge } from '../ui'
 import { ROLE_LABEL } from '../../lib/usuarioRoles'
 import type { Chamado } from '../../services/chamados.service'
-import { STATUS_LABEL, STATUS_VARIANT, finalizado, quando } from './rotulos'
+import { STATUS_LABEL, STATUS_VARIANT, finalizado, iniciais, quando } from './rotulos'
 
 export type FiltroChamados = 'abertos' | 'finalizados'
 
@@ -60,10 +60,23 @@ export default function ListaChamados({
                 <span className="chm-item-assunto">{c.assunto}</span>
                 <span className="chm-item-hora">{quando(c.atualizado_em)}</span>
               </span>
-              {atende && !c.meu && (
+              {/* Quem atende vê os chamados de todos, e a primeira pergunta
+                  diante de cada um é "de quem é?". Vale também para o chamado
+                  que a própria pessoa abriu: linha sem autor pareceria dado
+                  faltando. */}
+              {atende && (
                 <span className="chm-item-autor">
-                  {c.autor_nome}
-                  {c.autor_role && <> · {ROLE_LABEL[c.autor_role] ?? c.autor_role}</>}
+                  <span className="chm-avatar" aria-hidden="true">
+                    {iniciais(c.autor_nome, c.autor_email)}
+                  </span>
+                  <span className="chm-item-autor-nome">
+                    {c.meu ? 'Você' : (c.autor_nome ?? c.autor_email ?? 'Sem nome')}
+                  </span>
+                  {c.autor_role && (
+                    <span className="chm-item-autor-papel">
+                      {ROLE_LABEL[c.autor_role] ?? c.autor_role}
+                    </span>
+                  )}
                 </span>
               )}
               {c.previa && <span className="chm-item-previa">{c.previa}</span>}

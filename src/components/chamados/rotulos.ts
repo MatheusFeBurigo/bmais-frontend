@@ -24,6 +24,18 @@ export function finalizado(status: StatusChamado): boolean {
   return status === 'encerrado' || status === 'cancelado'
 }
 
+/** Iniciais de quem abriu o chamado, para o avatar ("Ricardino Junior" → "RJ").
+ *  Sem nome, cai no e-mail. */
+export function iniciais(nome: string | null | undefined, email?: string | null): string {
+  const base = (nome || (email || '').split('@')[0] || '').trim()
+  const partes = base.split(/[\s._-]+/).filter(Boolean)
+  if (partes.length === 0) return '?'
+  const letras = partes.length >= 2
+    ? partes[0][0] + partes[partes.length - 1][0]
+    : partes[0].slice(0, 2)
+  return letras.toUpperCase()
+}
+
 export const ASSUNTO_MAX = 120
 export const MENSAGEM_MAX = 4000
 

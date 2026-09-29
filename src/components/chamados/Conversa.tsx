@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Badge } from '../ui'
 import { ROLE_LABEL } from '../../lib/usuarioRoles'
 import type { ConversaChamado } from '../../services/chamados.service'
-import { MENSAGEM_MAX, STATUS_LABEL, STATUS_VARIANT, finalizado, quando } from './rotulos'
+import {
+  MENSAGEM_MAX, STATUS_LABEL, STATUS_VARIANT, finalizado, iniciais, quando,
+} from './rotulos'
 
 interface Props {
   conversa: ConversaChamado
@@ -65,14 +67,35 @@ export default function Conversa({
           <h2 className="chm-conv-assunto">{chamado.assunto}</h2>
           <p className="chm-conv-meta">
             <Badge variant={STATUS_VARIANT[chamado.status]} dot>{STATUS_LABEL[chamado.status]}</Badge>
-            {atende && !chamado.meu && (
-              <span>
-                {chamado.autor_nome}
-                {chamado.autor_role && <> · {ROLE_LABEL[chamado.autor_role] ?? chamado.autor_role}</>}
-              </span>
-            )}
-            <span>Aberto em {quando(chamado.criado_em)}</span>
+            {!atende && <span>Aberto em {quando(chamado.criado_em)}</span>}
           </p>
+          {/* Para quem atende: quem abriu o chamado, com papel e e-mail. É a
+              pessoa a quem a resposta vai, e o e-mail é o contato quando a
+              dúvida não se resolve por aqui. */}
+          {atende && (
+            <p className="chm-conv-autor">
+              <span className="chm-avatar" aria-hidden="true">
+                {iniciais(chamado.autor_nome, chamado.autor_email)}
+              </span>
+              <span className="chm-conv-autor-txt">
+                <span>
+                  Aberto por{' '}
+                  <strong>
+                    {chamado.meu
+                      ? 'você'
+                      : (chamado.autor_nome ?? chamado.autor_email ?? 'Sem nome')}
+                  </strong>
+                  {chamado.autor_role && (
+                    <> · {ROLE_LABEL[chamado.autor_role] ?? chamado.autor_role}</>
+                  )}
+                </span>
+                <span className="chm-conv-autor-sub">
+                  {chamado.autor_email && <>{chamado.autor_email} · </>}
+                  {quando(chamado.criado_em)}
+                </span>
+              </span>
+            </p>
+          )}
         </div>
         {/* O servidor diz o que esta pessoa pode fazer: cancelar é de quem
             abriu, encerrar é do suporte. Cancelar vem primeiro e sem destaque,
