@@ -1347,13 +1347,6 @@ export interface InternacaoDados {
   visita_agendada_medico?: string | null
   visita_agendada_hora?: string | null
   visita_agendada_vencida?: boolean | null
-  // ── CID (migration 0041) ──────────────────────────────────────────────────
-  /** Código na grafia do catálogo ("J18.9"). Atribuído pelo técnico. */
-  cid_codigo?: string | null
-  /** Descrição copiada do catálogo no momento da atribuição. */
-  cid_descricao?: string | null
-  cid_atribuido_por?: string | null
-  cid_atribuido_em?: string | null
 }
 
 export type TimelineVariante =
@@ -1432,4 +1425,22 @@ export interface Cid {
   /** Código associado (par cruz/asterisco), ex.: "J99.8*". */
   referencia?: string | null
   excluidos?: string | null
+}
+
+/** Um CID vinculado ao paciente (migration 0041): o vínculo mais a hierarquia do
+ *  catálogo, que falta quando o código gravado não está no catálogo. */
+export interface CidPaciente extends Partial<Omit<Cid, 'codigo' | 'descricao'>> {
+  /** Id do VÍNCULO: é por ele que se remove. */
+  id: number
+  /** Código na grafia do catálogo ("J18.9"). */
+  codigo: string
+  /** Descrição copiada do catálogo no momento do vínculo. */
+  descricao?: string | null
+  atribuido_por?: string | null
+  atribuido_em?: string | null
+}
+
+export interface InternacaoCids {
+  internacao_id: number
+  cids: CidPaciente[]
 }

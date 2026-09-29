@@ -37,10 +37,15 @@ export const queryKeys = {
 
   internacaoDados: (id: number) => ['internacao-dados', id] as const,
   internacaoTimeline: (id: number) => ['internacao-timeline', id] as const,
+  /** Timeline da ficha ("Detalhes"), que traz também os eventos de CID. Começa
+   *  pela chave da timeline do drawer DE PROPÓSITO: quem invalida aquela
+   *  (relatório, visita, edição) atualiza esta junto, sem saber que ela existe. */
+  internacaoTimelineFicha: (id: number) => ['internacao-timeline', id, 'ficha'] as const,
   internacaoRelatorios: (id: number) => ['internacao-relatorios', id] as const,
+  /** CIDs vinculados ao paciente (card "CID" da ficha). */
+  internacaoCids: (id: number) => ['internacao-cids', id] as const,
   /** Busca no catálogo CID-10 (estático: pode ficar em cache à vontade). */
   cidBusca: (q: string) => ['cid', 'busca', q] as const,
-  cidDetalhe: (codigo: string) => ['cid', 'codigo', codigo] as const,
 
   kanban: () => ['kanban'] as const,
 
@@ -55,6 +60,11 @@ export const queryKeys = {
 
   /** Carga de trabalho por hospital (tela Volumetria, coordenadores). */
   volumetria: () => ['volumetria'] as const,
+
+  /** Chamados ao suporte: a lista, uma conversa e a contagem do aviso no menu. */
+  chamados: () => ['chamados', 'lista'] as const,
+  chamado: (id: number) => ['chamados', 'conversa', id] as const,
+  chamadosNaoLidos: () => ['chamados', 'nao-lidos'] as const,
 } as const
 
 // Raiz (primeiro segmento) de cada domínio — usada para invalidar TODAS as
@@ -75,6 +85,7 @@ export const queryRoots = {
   auditoriaResumo: ['auditoria-resumo'] as const,
   progresso: ['progresso'] as const,
   volumetria: ['volumetria'] as const,
+  chamados: ['chamados'] as const,
 } as const
 
 export type QueryRoot = keyof typeof queryRoots

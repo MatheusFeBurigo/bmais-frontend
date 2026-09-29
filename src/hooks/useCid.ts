@@ -1,11 +1,15 @@
-// CID do paciente: busca no catálogo CID-10 e atribuição pelo técnico.
-import { useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+// CIDs do paciente: busca no catálogo CID-10 e vínculo pelo técnico.
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient,
+} from '@tanstack/react-query'
 import { queryKeys } from '../lib/queryKeys'
-import { atribuirCid, buscarCid, consultarCid, removerCid } from '../services/internacao.service'
+import { adicionarCid, buscarCid, fetchInternacaoCids, removerCid } from '../services/internacao.service'
 
 // O catálogo não muda com o uso: a mesma busca nunca precisa ser refeita.
 const CATALOGO_STALE = Infinity
+// Mesmo prazo dos demais dados da ficha (useInternacao).
+const FICHA_STALE = 60_000
 
 function useDebounce(valor: string, ms: number): string {
   const [v, setV] = useState(valor)
@@ -16,47 +20,65 @@ function useDebounce(valor: string, ms: number): string {
   return v
 }
 
-/** Sugestões do catálogo para o que está digitado. Uma letra só não busca:
- *  casaria o catálogo inteiro. */
-export function useCidBusca(texto: string) {
-  const q = useDebounce(texto.trim(), 250)
-  const query = useQuery({
+/** A lista de CIDs do campo: o catálogo inteiro quando nada foi digitado, ou o
+ *  que casa com o texto. Vem em páginas, pedidas conforme a rolagem: são 14 mil
+ *  códigos. Só busca com a lista aberta (`ativo`), para a ficha não carregar o
+ *  catálogo de quem nem clicou no campo. */
+export function useCidBusca(texto: string, ativo: boolean) {
+  const digitado = texto.trim()
+  const q = useDebounce(digitado, 250)
+  const query = useInfiniteQuery({
     queryKey: queryKeys.cidBusca(q),
-    queryFn: () => buscarCid(q),
-    enabled: q.length >= 2,
+    queryFn: ({ pageParam }) => buscarCid(q, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (ultima, paginas) =>
+      ultima.tem_mais ? paginas.reduce((n, p) => n + p.itens.length, 0) : undefined,
+    enabled: ativo,
     staleTime: CATALOGO_STALE,
+    // A lista anterior fica na tela até a nova chegar: sem isto ela sumia e
+    // voltava a cada tecla.
+    placeholderData: keepPreviousData,
   })
+  const itens = useMemo(() => query.data?.pages.flatMap((p) => p.itens) ?? [], [query.data])
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = query
+  const carregarMais = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
   return {
-    itens: q.length >= 2 ? query.data?.itens ?? [] : [],
-    // Também "carregando" enquanto o debounce não alcançou o que foi digitado:
-    // senão a lista diria "nenhum CID" por um instante a cada tecla.
-    carregando: texto.trim().length >= 2 && (query.isFetching || q !== texto.trim()),
+    itens,
+    // True enquanto `itens` ainda NÃO é a resposta ao que está digitado: a
+    // busca em curso e também a espera do debounce. Quem escolhe por conta
+    // própria (Enter, código completo) tem de esperar isto baixar, senão
+    // escolhe da lista anterior.
+    carregando: ativo && (q !== digitado || query.isPlaceholderData
+      || (query.isFetching && !isFetchingNextPage)),
+    carregandoMais: isFetchingNextPage,
+    carregarMais,
     erro: query.isError,
   }
 }
 
-/** Um CID exato do catálogo, com a hierarquia. Serve o CID já gravado no
- *  paciente, que o drawer mostra com categoria, grupo e capítulo. */
-export function useCidDetalhe(codigo: string | null | undefined) {
-  return useQuery({
-    queryKey: queryKeys.cidDetalhe(codigo ?? ''),
-    queryFn: () => consultarCid(codigo as string),
-    enabled: !!codigo,
-    staleTime: CATALOGO_STALE,
-  })
-}
-
-/** Atribuir / remover o CID. Ao terminar, o drawer relê os dados do paciente. */
-export function useCidPaciente(internacaoId: number) {
+/** Os CIDs do paciente, com adicionar e remover. Ao terminar, relê a lista e a
+ *  timeline da ficha, que ganha o evento do que acabou de acontecer. */
+export function useCidsPaciente(internacaoId: number) {
   const qc = useQueryClient()
-  const aoTerminar = () => qc.invalidateQueries({ queryKey: queryKeys.internacaoDados(internacaoId) })
-  const atribuir = useMutation({
-    mutationFn: (codigo: string) => atribuirCid(internacaoId, codigo),
+  const lista = useQuery({
+    queryKey: queryKeys.internacaoCids(internacaoId),
+    queryFn: () => fetchInternacaoCids(internacaoId),
+    staleTime: FICHA_STALE,
+  })
+  const aoTerminar = () => {
+    // A timeline não segura o fim da gravação: ela se atualiza por conta própria.
+    void qc.invalidateQueries({ queryKey: queryKeys.internacaoTimelineFicha(internacaoId) })
+    return qc.invalidateQueries({ queryKey: queryKeys.internacaoCids(internacaoId) })
+  }
+  const adicionar = useMutation({
+    mutationFn: (codigo: string) => adicionarCid(internacaoId, codigo),
     onSuccess: aoTerminar,
   })
   const remover = useMutation({
-    mutationFn: () => removerCid(internacaoId),
+    mutationFn: (cidId: number) => removerCid(internacaoId, cidId),
     onSuccess: aoTerminar,
   })
-  return { atribuir, remover }
+  return { lista, adicionar, remover }
 }

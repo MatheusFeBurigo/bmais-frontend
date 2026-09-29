@@ -35,6 +35,10 @@ export const TIPO_CLASSE: Record<string, string> = {
   // agendamento. Nada volta a criar este tipo — ver `classeDoEvento` abaixo,
   // que decide a cor de um VISITA_AGENDADA vigente pelo `status_visita`.
   VISITA_DESMARCADA: 'tp-visita-cancelada',
+  // CID vinculado/retirado pelo técnico. Só chegam na timeline da ficha: o
+  // backend os tira da do drawer.
+  CID_ADICIONADO: 'tp-cid',
+  CID_REMOVIDO: 'tp-cid-removido',
 }
 
 /**

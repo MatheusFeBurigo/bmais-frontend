@@ -9,12 +9,17 @@
 // menu normal. Assim não há duas colunas de navegação na mesma tela. Aqui ficam
 // só o módulo aberto e o paginador.
 import { Suspense, useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
+import { atendeChamados, rotaChamados } from '../auth/permissions'
 import { usePageHeader } from '../components/PageHeader'
 import { useAjudaNav } from '../components/ajuda/useAjudaNav'
+import { importChamados } from '../routes'
 import '../components/ajuda/ajuda.css'
 
 export default function Ajuda() {
   const { modulos, atual, indice, total, irPara } = useAjudaNav()
+  const { role } = useAuth()
 
   usePageHeader(useMemo(() => ({
     title: 'Ajuda',
@@ -75,6 +80,19 @@ export default function Ajuda() {
             <path d="M5 12h14M13 6l6 6-6 6" /></svg>
         </button>
       </nav>
+
+      {/* Fim da leitura de todo módulo: quem chegou aqui sem a resposta abre o
+          chamado já no formulário (?novo=1), sem passar pela lista. Quem atende
+          os chamados não recebe o convite: a dúvida chegaria a ele mesmo. */}
+      {!atendeChamados(role) && (
+        <p className="aj-suporte">
+          Não encontrou o que procurava?
+          <Link to={`${rotaChamados(role)}?novo=1`} className="aj-link"
+            onMouseEnter={() => { void importChamados() }}>
+            Abrir chamado
+          </Link>
+        </p>
+      )}
     </div>
   )
 }

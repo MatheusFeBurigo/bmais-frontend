@@ -1,6 +1,6 @@
 // Serviço de dados do domínio "internação" (detalhe do paciente no drawer).
 import { apiDownload, apiFetch } from '../api/client'
-import type { Cid, InternacaoDados, InternacaoRelatorios, InternacaoTimeline } from '../types/api'
+import type { Cid, InternacaoCids, InternacaoDados, InternacaoRelatorios, InternacaoTimeline } from '../types/api'
 
 export interface RelatorioRapido {
   data_visita: string
@@ -17,6 +17,12 @@ export function fetchInternacaoDados(id: number): Promise<InternacaoDados> {
 /** Timeline cronológica da internação (admissão, relatórios, alta, pendências). */
 export function fetchInternacaoTimeline(id: number): Promise<InternacaoTimeline> {
   return apiFetch<InternacaoTimeline>(`/internacao/${id}/timeline`)
+}
+
+/** Timeline da ficha completa ("Detalhes"): a do drawer mais os eventos de CID,
+ *  que o Painel Operacional não mostra. */
+export function fetchInternacaoTimelineFicha(id: number): Promise<InternacaoTimeline> {
+  return apiFetch<InternacaoTimeline>(`/internacao/${id}/timeline-ficha`)
 }
 
 /** Relatórios da internação (com anexo, autoria e data/hora do anexo). */
@@ -143,24 +149,38 @@ export function desmarcarVisita(id: number): Promise<unknown> {
   return apiFetch(`/internacao/${id}/visita-agendada`, { method: 'DELETE' })
 }
 
-/** Busca no catálogo CID-10: código ("J18.9", "j189", "J1") ou palavras da descrição. */
-export function buscarCid(q: string): Promise<{ itens: Cid[] }> {
-  return apiFetch(`/cid?q=${encodeURIComponent(q)}`)
+/** Uma página do catálogo CID-10, em ordem de código. */
+export interface PaginaCid {
+  itens: Cid[]
+  /** Há página seguinte: peça de novo com `inicio` somado do que já veio. */
+  tem_mais: boolean
 }
 
-/** Um CID exato, com categoria, grupo e capítulo. */
-export function consultarCid(codigo: string): Promise<Cid> {
-  return apiFetch(`/cid/${encodeURIComponent(codigo)}`)
+// Itens por página da lista de CIDs. É também o teto que o backend aceita.
+const PAGINA_CID = 50
+
+/** Busca no catálogo CID-10: código ("J18.9", "j189", "J") ou palavras da
+ *  descrição. Sem `q`, devolve o catálogo inteiro, do começo. `inicio` é quantos
+ *  itens pular. */
+export function buscarCid(q: string, inicio = 0): Promise<PaginaCid> {
+  const params = new URLSearchParams({ q, inicio: String(inicio), limite: String(PAGINA_CID) })
+  return apiFetch<PaginaCid>(`/cid?${params}`)
 }
 
-/** Atribui (ou troca) o CID do paciente. O backend confere o código no catálogo. */
-export function atribuirCid(id: number, codigo: string): Promise<unknown> {
-  return apiFetch(`/internacao/${id}/cid`, { method: 'PUT', body: { codigo } })
+/** CIDs vinculados ao paciente, cada um com categoria, grupo e capítulo. */
+export function fetchInternacaoCids(id: number): Promise<InternacaoCids> {
+  return apiFetch<InternacaoCids>(`/internacao/${id}/cids`)
 }
 
-/** Tira o CID do paciente. */
-export function removerCid(id: number): Promise<unknown> {
-  return apiFetch(`/internacao/${id}/cid`, { method: 'DELETE' })
+/** Vincula um CID ao paciente. O backend confere o código no catálogo e recusa
+ *  o que o paciente já tem. Só o técnico (403 aos demais). */
+export function adicionarCid(id: number, codigo: string): Promise<unknown> {
+  return apiFetch(`/internacao/${id}/cids`, { method: 'POST', body: { codigo } })
+}
+
+/** Tira um CID do paciente. `cidId` é o id do vínculo, que vem da listagem. */
+export function removerCid(id: number, cidId: number): Promise<unknown> {
+  return apiFetch(`/internacao/${id}/cids/${cidId}`, { method: 'DELETE' })
 }
 
 /** Um convênio que a tela pode oferecer. Vem de duas fontes (ver `listarConvenios`). */

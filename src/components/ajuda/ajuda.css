@@ -121,6 +121,10 @@
   .aj-pager-hint{display:none}
 }
 
+/* Saída para os Chamados, abaixo do paginador. `a.aj-link` porque aqui o link
+   sai da página (o .aj-link dos módulos é um botão que troca de módulo). */
+.aj-suporte{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin:18px 0 0;font-size:var(--t-base);color:var(--muted)}
+a.aj-link{text-decoration:none;font-weight:500}
 
 /* ── "Como fazer": réplica da tela com números clicáveis ──────────────────
    A réplica usa as classes e os componentes reais do sistema. O que vem aqui é

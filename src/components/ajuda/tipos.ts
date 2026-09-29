@@ -25,6 +25,11 @@ export interface ModuloAjuda {
 
 export type SecaoAjuda = 'Introdução' | 'Operação' | 'Gestão' | 'Administração' | 'Referência'
 
+/** Tela de Chamados (dúvidas ao suporte), aberta pelo atalho da Ajuda. Fica sob
+ *  /ajuda para a barra lateral seguir no modo Ajuda enquanto ela está em tela.
+ *  Quem ATENDE os chamados usa outro endereço (ver `rotaChamados`). */
+export { ROTA_CHAMADOS_AJUDA as ROTA_CHAMADOS } from '../../auth/permissions'
+
 /** Ordem das seções no índice — do primeiro contato ao anexo de referência. */
 export const SECOES: readonly SecaoAjuda[] = [
   'Introdução', 'Operação', 'Gestão', 'Administração', 'Referência',

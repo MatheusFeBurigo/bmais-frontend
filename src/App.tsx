@@ -2,7 +2,10 @@ import { lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
-import { ehProfissional, podeGerirOperacoes, podeVer, podeVerFichaPaciente, rotaFallback } from './auth/permissions'
+import {
+  ehProfissional, podeGerirOperacoes, podeVer, podeVerFichaPaciente, rotaChamados, rotaFallback,
+  ROTA_CHAMADOS_AJUDA, ROTA_CHAMADOS_ATENDIMENTO,
+} from './auth/permissions'
 import type { Screen } from './auth/permissions'
 import Login from './pages/Login'
 import { LoadingState } from './components/ui'
@@ -13,6 +16,7 @@ import {
   importEquipe, importConfiguracoes, importUpload,
   importKanban, importPaciente, importUsuarioForm, importLogs, importAjuda,
   importProgresso, importVolumetria, importRelatorio, importPortalProfissional,
+  importChamados,
 } from './routes'
 
 // Páginas carregadas sob demanda (code-splitting). Diretoria e Gestor arrastam
@@ -29,6 +33,7 @@ const Paciente = lazy(importPaciente)
 const UsuarioForm = lazy(importUsuarioForm)
 const Logs = lazy(importLogs)
 const Ajuda = lazy(importAjuda)
+const Chamados = lazy(importChamados)
 const Progresso = lazy(importProgresso)
 const Volumetria = lazy(importVolumetria)
 const Relatorio = lazy(importRelatorio)
@@ -67,6 +72,19 @@ function RequireGestaoOperacoes({ children }: { children: ReactNode }) {
   if (perfilCarregando) return <PageFallback />
   if (!podeGerirOperacoes(role)) return <Navigate to={rotaFallback(role)} replace />
   return <>{children}</>
+}
+
+// Chamados: a mesma tela em dois endereços, um por lado da conversa. Quem atende
+// (administrador) usa /chamados, aberto pelo menu Sistema; os demais usam
+// /ajuda/chamados, aberto pela Ajuda. Quem chega pelo endereço do outro lado
+// (link colado, favorito antigo) é levado ao seu, com a mesma conversa aberta.
+function RotaChamados() {
+  const { role, perfilCarregando } = useAuth()
+  const location = useLocation()
+  if (perfilCarregando) return <PageFallback />
+  const certa = rotaChamados(role)
+  if (location.pathname !== certa) return <Navigate to={certa + location.search} replace />
+  return <Chamados />
 }
 
 // Guarda a área autenticada como layout de rota: sem sessão, navega para /login;
@@ -173,6 +191,11 @@ function ProtectedRoutes() {
             O recorte é POR MÓDULO dentro da tela, pela mesma hierarquia das
             demais (components/ajuda/catalogo.tsx). */}
         <Route path="/ajuda" element={<Ajuda />} />
+        {/* Chamados (dúvidas ao suporte): todo papel acessa, cada um pelo seu
+            endereço (ver RotaChamados). Cada pessoa vê os próprios chamados e
+            o administrador vê os de todos; esse recorte é do servidor. */}
+        <Route path={ROTA_CHAMADOS_AJUDA} element={<RotaChamados />} />
+        <Route path={ROTA_CHAMADOS_ATENDIMENTO} element={<RotaChamados />} />
         {/* Gestão de usuários (admin e analista): /novo antes de /:id p/ o literal vencer. */}
         <Route path="/usuarios/novo" element={<RequireGestaoOperacoes><UsuarioForm /></RequireGestaoOperacoes>} />
         <Route path="/usuarios/:id" element={<RequireGestaoOperacoes><UsuarioForm /></RequireGestaoOperacoes>} />

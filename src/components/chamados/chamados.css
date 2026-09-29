@@ -1,0 +1,74 @@
+/* Tela de Chamados (dúvidas ao suporte). Escopada em .chm, em cima dos tokens
+   do design-system.
+
+   A tela ocupa a altura que sobra abaixo do topo (54px) e dentro do respiro do
+   .scope (18px em cima, 48px embaixo): numa conversa quem rola é a lista de
+   mensagens, e não a página. Se a página rolasse, o campo de resposta sairia
+   de vista a cada mensagem nova. */
+.chm{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:14px;height:calc(100vh - 120px);min-height:420px}
+
+/* ── Lista ──────────────────────────────────────────────────────────────── */
+.chm-lista{display:flex;flex-direction:column;min-height:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden}
+.chm-filtros{display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--border);flex-shrink:0}
+.chm-filtro{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 8px;border:0;border-radius:7px;background:transparent;font-family:inherit;font-size:var(--t-sm);font-weight:500;color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
+.chm-filtro:hover{background:var(--surface-3);color:var(--ink-2)}
+.chm-filtro.ativo{background:var(--primary-soft);color:var(--primary);font-weight:600}
+.chm-filtro-n{font-family:var(--font-mono);font-size:var(--t-xs);font-variant-numeric:tabular-nums;opacity:.75}
+.chm-itens{flex:1;min-height:0;overflow-y:auto}
+.chm-vazio{padding:28px 16px;text-align:center;color:var(--muted);font-size:var(--t-base)}
+
+.chm-item{display:flex;flex-direction:column;gap:4px;width:100%;padding:11px 13px;border:0;border-bottom:1px solid var(--border-soft);border-left:3px solid transparent;background:transparent;font-family:inherit;text-align:left;cursor:pointer;transition:background .12s}
+.chm-item:hover{background:var(--surface-3)}
+.chm-item.ativo{background:var(--primary-soft);border-left-color:var(--accent)}
+.chm-item-topo{display:flex;align-items:baseline;gap:8px}
+.chm-item-assunto{flex:1;min-width:0;font-size:var(--t-base);font-weight:500;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chm-item.nao-lido .chm-item-assunto{font-weight:700}
+.chm-item-hora{flex-shrink:0;font-family:var(--font-mono);font-size:var(--t-xs);color:var(--muted-2);font-variant-numeric:tabular-nums}
+.chm-item-autor{font-size:var(--t-sm);color:var(--ink-3)}
+.chm-item-previa{font-size:var(--t-sm);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chm-item-pe{display:flex;align-items:center;gap:8px;margin-top:2px}
+/* O não lido vem escrito, além do peso do assunto: cor sozinha não avisa
+   quem não a distingue. */
+.chm-item-novo{display:inline-flex;align-items:center;gap:5px;font-size:var(--t-xs);font-weight:600;color:var(--accent)}
+.chm-item-novo::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* ── Conversa ───────────────────────────────────────────────────────────── */
+.chm-conversa,.chm-sem-conversa{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden}
+.chm-sem-conversa{align-items:center;justify-content:center;gap:12px;padding:24px;color:var(--muted);font-size:var(--t-base);text-align:center}
+.chm-sem-conversa-icone{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--surface-3);border:1px solid var(--border);color:var(--muted-2)}
+
+.chm-conv-topo{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.chm-conv-voltar{display:none;padding:6px}
+.chm-conv-titulos{flex:1;min-width:0}
+.chm-conv-assunto{margin:0;font-size:var(--t-md);font-weight:600;letter-spacing:-.01em;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chm-conv-meta{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;margin:4px 0 0;font-size:var(--t-sm);color:var(--muted)}
+
+.chm-mensagens{flex:1;min-height:0;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;background:var(--surface-2)}
+.chm-msg{max-width:min(78%,640px);align-self:flex-start;display:flex;flex-direction:column;gap:4px}
+.chm-msg.minha{align-self:flex-end;align-items:flex-end}
+.chm-msg-quem{display:flex;align-items:center;gap:7px;font-size:var(--t-xs);color:var(--muted)}
+.chm-msg-nome{font-weight:600;color:var(--ink-3)}
+.chm-msg-selo{font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-size:9.5px;padding:1px 6px;border-radius:99px;background:var(--primary-soft);color:var(--primary)}
+.chm-msg-hora{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--muted-2)}
+/* pre-wrap: a mensagem aparece com as quebras de linha que a pessoa digitou. */
+.chm-msg-texto{padding:9px 12px;border-radius:12px;border-top-left-radius:4px;background:var(--surface);border:1px solid var(--border);color:var(--ink-2);font-size:var(--t-base);line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.chm-msg.minha .chm-msg-texto{border-radius:12px;border-top-right-radius:4px;background:var(--primary);border-color:var(--primary);color:#fff}
+
+.chm-escrever{display:flex;align-items:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0}
+.chm-campo{resize:vertical;min-height:38px;max-height:180px;line-height:1.5}
+.chm-escrever .chm-campo{flex:1;resize:none}
+.chm-encerrado{display:flex;align-items:center;justify-content:center;gap:12px;padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0;font-size:var(--t-base);color:var(--muted);background:var(--surface-3)}
+.chm-erro{margin:0;font-size:var(--t-sm);color:var(--danger)}
+/* A pastilha neutra do design-system não pinta o ponto: sem cor ele vira um
+   vão antes de "Encerrado". */
+.chm .badge.muted .bdot{background:var(--muted-2)}
+
+/* Tela estreita: uma coluna por vez. Com um chamado aberto a lista sai de cena
+   e a conversa ganha o "voltar"; sem nenhum, fica só a lista. */
+@media(max-width:900px){
+  .chm{grid-template-columns:minmax(0,1fr)}
+  .chm.com-conversa .chm-lista{display:none}
+  .chm:not(.com-conversa) .chm-sem-conversa{display:none}
+  .chm-conv-voltar{display:inline-flex}
+  .chm-msg{max-width:90%}
+}

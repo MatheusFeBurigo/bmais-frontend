@@ -3,11 +3,15 @@ import { NavLink, useSearchParams, useLocation } from 'react-router-dom'
 import { useSidebar, usePrefetchDashboard } from '../hooks/useDashboard'
 import { prefetchPorRota } from '../routes'
 import { useAuth } from '../auth/AuthContext'
-import { podeVer, rotaFallback } from '../auth/permissions'
+import {
+  atendeChamados, podeVer, rotaChamados, rotaFallback, ROTA_CHAMADOS_ATENDIMENTO,
+} from '../auth/permissions'
 import { ROLE_LABEL as ROTULO_PAPEL } from '../lib/usuarioRoles'
 import SidebarAjuda from './ajuda/SidebarAjuda'
+import { ROTA_CHAMADOS } from './ajuda/tipos'
 import { useAjudaNav } from './ajuda/useAjudaNav'
 import { useTrocaPainel } from './ajuda/useTrocaPainel'
+import { useChamadosNaoLidos } from '../hooks/useChamados'
 
 // Aquece o chunk da rota antes do clique (hover/foco), evitando o flash de
 // carregamento na navegação. Silencia falhas — é só otimização.
@@ -62,6 +66,11 @@ const IconVolumetria = () => (
 const IconAjuda = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.4-2.8 4" /><path d="M12 17.3h.01" /></svg>
 )
+// Chamados: balão de conversa. No rodapé ocupa o lugar da interrogação enquanto
+// a Ajuda está aberta; no menu Sistema é o item de quem atende os chamados.
+const IconChamados = ({ size = 15 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" /><path d="M8.5 10.5h7M8.5 13.8h4.5" /></svg>
+)
 // Chevrons duplos: apontam para a esquerda (recolher) ou direita (expandir).
 const IconCollapse = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 17-5-5 5-5" /><path d="m18 17-5-5 5-5" /></svg>
@@ -110,8 +119,35 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
   // MÓDULOS da documentação — mesma barra, mesmos estilos, outro conteúdo.
   // A troca é animada: `naAjuda` é o painel EM CENA (que atrasa o do destino
   // enquanto o atual sai), e `classeTroca` carrega a animação da vez.
-  const { ajuda: naAjuda, classe: classeTroca } = useTrocaPainel(location.pathname === '/ajuda')
+  // Os Chamados ficam sob a Ajuda (é o atalho dela), então a barra segue no
+  // mesmo modo: sair da documentação para pedir ajuda não troca o menu.
+  const naDocumentacao = location.pathname === '/ajuda'
+  // Só o endereço da Ajuda mantém a barra nesse modo. Quem atende os chamados
+  // chega por /chamados, com o menu do sistema em tela.
+  const nosChamadosDaAjuda = location.pathname === ROTA_CHAMADOS
+  const emAjuda = naDocumentacao || nosChamadosDaAjuda
+  const nosChamados = nosChamadosDaAjuda || location.pathname === ROTA_CHAMADOS_ATENDIMENTO
+  // Quem atende (administrador) tem os Chamados como item do menu Sistema. Os
+  // demais papéis abrem chamado só pela Ajuda. Espera o papel resolver, como
+  // `mostrar` faz com as telas: o item não pode piscar no menu de quem não é.
+  const atende = !perfilCarregando && atendeChamados(role)
+  const { ajuda: naAjuda, classe: classeTroca } = useTrocaPainel(emAjuda)
   const ajuda = useAjudaNav()
+  // Resposta nova num chamado: avisa no ícone do rodapé, em qualquer tela. Sem
+  // isso a pessoa só saberia da resposta se voltasse a abrir os Chamados.
+  const chamadosNaoLidos = useChamadosNaoLidos(!perfilCarregando)
+  // O ícone do rodapé mostra para onde o clique leva. Fora da Ajuda é a
+  // interrogação; dentro da documentação vira o balão e abre os Chamados; nos
+  // Chamados volta a ser a interrogação, que devolve à documentação. O painel
+  // de cima lista só capítulos, e chamado não é capítulo.
+  const atalhoChamados = naDocumentacao
+  const rotaAtalho = atalhoChamados ? rotaChamados(role) : '/ajuda'
+  // Nos Chamados a lista já marca o que é novo: o ponto no ícone repetiria. E
+  // para quem atende, com o menu do sistema em tela, o aviso é o contador do
+  // item "Chamados": o ponto só aparece quando a Ajuda esconde esse menu.
+  const avisarChamado = chamadosNaoLidos > 0 && !nosChamados && (!atende || emAjuda)
+  const textoAtalho = (atalhoChamados ? 'Chamados: fale com o suporte' : 'Ajuda: documentação das telas')
+    + (avisarChamado ? '. Há chamado com mensagem nova' : '')
 
   // No boot/login o `role` chega DEPOIS do /me. `podeVer(null, …)` libera tudo,
   // então os itens gated apareceriam e sumiriam ao resolver o papel (flash). Até
@@ -264,6 +300,23 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
               <span className="sb-item-label">Movimentações</span>
             </NavLink>
           )}
+          {/* Chamados: só para quem ATENDE (administrador). Os demais abrem
+              chamado pela Ajuda, e por isso não ganham item no menu. */}
+          {atende && (
+            <NavLink to={ROTA_CHAMADOS_ATENDIMENTO} className={itemClass}
+              {...prefetchProps(ROTA_CHAMADOS_ATENDIMENTO)}>
+              <span className="sb-item-icon"><IconChamados size={16} /></span>
+              <span className="sb-item-label">Chamados</span>
+              {chamadosNaoLidos > 0 && (
+                <span className="sb-item-badge alert"
+                  title={chamadosNaoLidos > 1
+                    ? `${chamadosNaoLidos} chamados com mensagem nova`
+                    : '1 chamado com mensagem nova'}>
+                  {chamadosNaoLidos}
+                </span>
+              )}
+            </NavLink>
+          )}
           {/* Progresso: avanço da CONSTRUÇÃO do produto, não da operação. Fica
               por último na seção, abaixo das telas de trabalho. */}
           {mostrar('progresso') && (
@@ -315,13 +368,18 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
             <span className="sb-logout-label">Sair</span>
           </button>
           <NavLink
-            to="/ajuda"
-            className={({ isActive }) => (isActive ? 'sb-ajuda active' : 'sb-ajuda')}
-            aria-label="Ajuda"
-            title="Ajuda: documentação das telas"
-            {...prefetchProps('/ajuda')}
+            to={rotaAtalho}
+            className={() => (emAjuda ? 'sb-ajuda active' : 'sb-ajuda')}
+            aria-label={textoAtalho}
+            title={textoAtalho}
+            {...prefetchProps(rotaAtalho)}
           >
-            <IconAjuda />
+            {/* `key`: troca o nó em vez de redesenhar o traço, para a entrada
+                do ícone novo ser animada. */}
+            <span className="sb-ajuda-icone" key={atalhoChamados ? 'chamados' : 'ajuda'}>
+              {atalhoChamados ? <IconChamados /> : <IconAjuda />}
+            </span>
+            {avisarChamado && <span className="sb-ajuda-aviso" aria-hidden="true" />}
           </NavLink>
         </div>
       </div>

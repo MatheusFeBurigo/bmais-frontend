@@ -148,8 +148,9 @@ const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
   // constante própria — as duas podem divergir (ex.: liberar o agendamento ao
   // administrativo) sem reabrir quem registra relatório.
   agendarVisita: ['tecnico', 'admin'],
-  // Atribuir o CID do paciente: trabalho do técnico (admin supervisiona). Os
-  // demais papéis VEEM o CID no drawer, só não o alteram.
+  // Adicionar e remover CIDs do paciente, na ficha ("Detalhes"): trabalho do
+  // técnico (admin supervisiona). Os demais papéis VEEM os CIDs na ficha, só não
+  // os alteram. Espelha ROLES_ATRIBUIR_CID no backend, que recusa com 403.
   atribuirCid: ['tecnico', 'admin'],
 }
 
@@ -181,6 +182,30 @@ export function podeGerirOperacoes(role: UserRole | null): boolean {
 export function podeGerirConta(role: UserRole | null, alvo: UserRole | null | undefined): boolean {
   if (!podeGerirOperacoes(role)) return false
   return alvo !== 'admin' || role === 'admin'
+}
+
+// Atendimento dos chamados (dúvidas ao suporte): só o administrador. É ele quem
+// recebe os chamados de todos, responde e encerra. Espelha ROLES_ATENDIMENTO do
+// backend (application/chamados.py), que é quem de fato decide o que cada um
+// enxerga: aqui a lista só define ONDE cada papel abre a tela.
+const ATENDIMENTO_CHAMADOS: ReadonlySet<UserRole> = new Set<UserRole>(['admin'])
+
+/** True se o papel atende os chamados. `role` null/desconhecido NÃO atende: o
+ *  item do menu não pode aparecer antes de o papel resolver. */
+export function atendeChamados(role: UserRole | null): boolean {
+  return !!role && ATENDIMENTO_CHAMADOS.has(role)
+}
+
+// Os Chamados têm duas portas, uma para cada lado da conversa (29/09/2026, a
+// pedido do usuário). Quem atende entra pelo item "Chamados" do menu Sistema,
+// com o menu do sistema em tela. Os demais entram só pela Ajuda, e a barra
+// lateral segue no modo Ajuda. A tela é a mesma; muda o endereço.
+export const ROTA_CHAMADOS_ATENDIMENTO = '/chamados'
+export const ROTA_CHAMADOS_AJUDA = '/ajuda/chamados'
+
+/** Endereço dos Chamados para o papel. */
+export function rotaChamados(role: UserRole | null): string {
+  return atendeChamados(role) ? ROTA_CHAMADOS_ATENDIMENTO : ROTA_CHAMADOS_AJUDA
 }
 
 /** True se o papel abre a ficha completa do paciente ("Detalhes"). O analista

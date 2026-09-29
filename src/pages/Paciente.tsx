@@ -13,18 +13,23 @@ import { LoadingState } from '../components/ui'
 import HospitalDetalhesModal from '../components/HospitalDetalhesModal'
 import { alertaStyles } from '../components/Alerta'
 import { AlertaCamposFaltantes } from '../components/paciente/AlertaCamposFaltantes'
+import { CardCids } from '../components/paciente/CardCids'
 import { CardDadosPaciente } from '../components/paciente/CardDadosPaciente'
 import { CardRelatorios } from '../components/paciente/CardRelatorios'
 import { KpisPaciente } from '../components/paciente/KpisPaciente'
 import { SubtituloPaciente } from '../components/paciente/SubtituloPaciente'
 import { useEdicaoFicha } from '../components/paciente/useEdicaoFicha'
 import { TimelineEventos } from '../components/timeline/TimelineEventos'
-import { useInternacaoDados, useInternacaoRelatorios, useInternacaoTimeline } from '../hooks/useInternacao'
+import { useInternacaoDados, useInternacaoRelatorios, useInternacaoTimelineFicha } from '../hooks/useInternacao'
 import { useEquipe } from '../hooks/useEquipe'
 import { useAuth } from '../auth/AuthContext'
 import { podeExecutar, podeVer } from '../auth/permissions'
 import { identificacaoPaciente } from '../lib/texto'
 import { camposIncompletos, type CampoFicha } from '../lib/fichaIncompleta'
+
+// O último card da coluna esquerda ocupa a altura que sobrar quando a coluna da
+// direita é a mais alta. É o de CIDs, ou o de dados quando o de CIDs não aparece.
+const colunaStyles = `.ficha-col>.card:last-child{flex:1}`
 
 export default function Paciente() {
   const { id } = useParams<{ id: string }>()
@@ -34,7 +39,8 @@ export default function Paciente() {
 
   const idInvalido = !id || Number.isNaN(internacaoId)
   const { data: d, isLoading, isError } = useInternacaoDados(internacaoId)
-  const timeline = useInternacaoTimeline(internacaoId)
+  // A timeline da FICHA: a do drawer mais os eventos de CID.
+  const timeline = useInternacaoTimelineFicha(internacaoId)
   const relatorios = useInternacaoRelatorios(internacaoId)
   const { data: equipe } = useEquipe()
   const medicos = useMemo(
@@ -90,15 +96,23 @@ export default function Paciente() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <style>{alertaStyles}</style>
+      <style>{alertaStyles + colunaStyles}</style>
       <KpisPaciente d={d} />
       {!edicao.editando && <AlertaCamposFaltantes faltantes={faltantes} />}
 
-      {/* Grid: dados à esquerda, relatórios/timeline à direita.
-          alignItems:stretch faz a coluna direita ter a mesma altura do card de
+      {/* Grid: dados e CIDs à esquerda, relatórios/timeline à direita.
+          alignItems:stretch faz a coluna direita ter a mesma altura da coluna de
           dados; a Timeline preenche o espaço restante e rola por dentro. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(280px,1fr)', gap: 16, alignItems: 'stretch' }}>
-        <CardDadosPaciente d={d} edicao={edicao} faltaCampo={faltaCampo} />
+        <div className="ficha-col" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+          <CardDadosPaciente d={d} edicao={edicao} faltaCampo={faltaCampo} />
+          <CardCids
+            internacaoId={internacaoId}
+            sexoPaciente={d.sexo}
+            podeEditar={podeExecutar(role, 'atribuirCid')}
+            onAlterado={setToast}
+          />
+        </div>
 
         {/* min-height:0 permite o card Timeline encolher e rolar por dentro em
             vez de esticar a coluna. */}

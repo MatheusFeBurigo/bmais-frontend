@@ -110,6 +110,9 @@ a{text-decoration:none;color:inherit}
 .sb-item-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sb-item-badge{font-family:var(--font-mono);font-size:10px;padding:1px 6px;border-radius:99px;background:rgba(255,255,255,.09);color:rgba(255,255,255,.68);font-weight:500;flex-shrink:0}
 .sb-item-badge.alert{background:var(--danger);color:#fff}
+/* Barra recolhida: o contador some com os rótulos, e o aviso sumiria junto.
+   O de alerta vira um ponto no canto do ícone (o número fica no title). */
+.app.is-collapsed .sb-item-badge.alert{display:block;position:absolute;top:4px;right:9px;width:9px;height:9px;padding:0;font-size:0;border-radius:50%;border:2px solid #07244D;box-sizing:content-box}
 /* Botão de expandir/recolher a sublista de operadoras na sidebar. */
 .sb-caret{flex-shrink:0;display:grid;place-items:center;width:20px;height:20px;margin:-4px -4px -4px 0;border:none;background:transparent;color:rgba(218,229,235,.5);border-radius:5px;cursor:pointer;transition:color .12s,background .12s}
 .sb-caret:hover{color:#fff;background:rgba(255,255,255,.08)}
@@ -192,6 +195,17 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .sb-ajuda{display:grid;place-items:center;width:34px;flex-shrink:0;padding:0;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:rgba(218,229,235,.55);border-radius:8px;cursor:pointer;transition:color .12s,background .12s,border-color .12s}
 .sb-ajuda:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);color:#fff}
 .sb-ajuda.active{background:rgba(31,111,190,.22);border-color:rgba(127,177,224,.45);color:#fff}
+/* Dentro da Ajuda a interrogação dá lugar ao balão dos Chamados (e volta nos
+   Chamados). A entrada curta avisa que o botão mudou de função: uma troca seca
+   passaria despercebida num ícone de 15px no canto da tela. */
+.sb-ajuda-icone{display:grid;place-items:center;animation:sb-ajuda-troca .22s cubic-bezier(.2,.7,.2,1)}
+@keyframes sb-ajuda-troca{from{opacity:0;transform:scale(.6)}}
+@media (prefers-reduced-motion:reduce){.sb-ajuda-icone{animation:none}}
+/* Chamado com mensagem nova: ponto no canto do ícone. A borda na cor da barra
+   recorta o ponto do traço da interrogação. O aviso também vem escrito, no
+   title e no aria-label do atalho. */
+.sb-ajuda{position:relative}
+.sb-ajuda-aviso{position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;background:var(--danger);border:2px solid #0A2E5F}
 /* Recolhida, a sidebar empilha: os dois botões viram quadrados centrados. */
 .app.is-collapsed .sb-foot-acoes{flex-direction:column;align-items:center;gap:6px}
 .app.is-collapsed .sb-foot-acoes .sb-logout{flex:none;width:34px;justify-content:center;padding:8px 0}
@@ -472,6 +486,8 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .tl-dot.tp-pendente{background:var(--danger)}
 .tl-dot.tp-visita-agendada{background:var(--info)}
 .tl-dot.tp-visita-cancelada{background:var(--muted-2)}
+.tl-dot.tp-cid{background:var(--primary)}
+.tl-dot.tp-cid-removido{background:var(--muted-2)}
 .tl-date{font-family:var(--font-mono);font-size:var(--t-xs);color:var(--muted);letter-spacing:.02em}
 /* Hora da visita (migration 0035), ao lado da data: peso normal para não competir
    com ela, que é o dado principal da linha. */
@@ -511,6 +527,12 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .tl-item.tl-card.tp-visita-agendada{background:var(--info-bg);border-color:rgba(31,93,170,.22);border-left-color:var(--info)}
 .tl-item.tl-card.tp-visita-agendada .tl-label{color:var(--info)}
 .tl-item.tl-card.tp-visita-cancelada{background:var(--surface-3);border-color:var(--border);border-left-color:var(--muted-2)}
+/* CID (só na timeline da ficha): o azul-marinho do código no card "CID", para o
+   evento e o CID a que ele se refere se lerem como a mesma coisa. Removido:
+   neutro, como a visita cancelada. */
+.tl-item.tl-card.tp-cid{background:var(--primary-soft);border-color:rgba(6,46,92,.2);border-left-color:var(--primary)}
+.tl-item.tl-card.tp-cid .tl-label{color:var(--primary)}
+.tl-item.tl-card.tp-cid-removido{background:var(--surface-3);border-color:var(--border);border-left-color:var(--muted-2)}
 /* Marcador em X (substitui o .tl-dot redondo) do card cancelado: um sinal de
    "encerrado", não só uma cor apagada — a mesma ideia de um item riscado numa
    lista. Redondo com fundo neutro e borda, alinhado onde o .tl-dot ficaria. */

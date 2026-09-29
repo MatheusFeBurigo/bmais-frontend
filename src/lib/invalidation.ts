@@ -35,6 +35,9 @@ const EVENTO_INVALIDA: Record<string, QueryRoot[]> = {
   equipeAlterada: ['equipe', 'sidebar'],
   // Gestão de usuários (a trilha de auditoria também muda: criar/suspender/apagar).
   usuariosAlterados: ['usuarios', 'auditoria', 'auditoriaResumo'],
+  // Chamado aberto, respondido, encerrado ou reaberto: muda a lista, a conversa
+  // e a contagem do aviso no menu. Nada da operação depende de chamado.
+  chamadoAlterado: ['chamados'],
 }
 
 export type EventoDominio = keyof typeof EVENTO_INVALIDA

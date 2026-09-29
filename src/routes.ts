@@ -13,6 +13,7 @@ export const importPaciente = () => import('./pages/Paciente')
 export const importUsuarioForm = () => import('./pages/UsuarioForm')
 export const importLogs = () => import('./pages/Logs')
 export const importAjuda = () => import('./pages/Ajuda')
+export const importChamados = () => import('./pages/Chamados')
 export const importProgresso = () => import('./pages/Progresso')
 export const importVolumetria = () => import('./pages/Volumetria')
 export const importRelatorio = () => import('./pages/Relatorio')
@@ -29,6 +30,8 @@ export const prefetchPorRota: Record<string, () => Promise<unknown>> = {
   '/tarefas': importKanban,
   '/logs': importLogs,
   '/ajuda': importAjuda,
+  '/ajuda/chamados': importChamados,
+  '/chamados': importChamados,
   '/progresso': importProgresso,
   '/volumetria': importVolumetria,
   '/progresso/relatorio': importRelatorio,

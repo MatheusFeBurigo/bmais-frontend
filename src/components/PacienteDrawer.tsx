@@ -8,7 +8,6 @@ import { StatusBadge, LeitoTag } from './StatusBadge'
 import { LoadingState } from './ui'
 import HospitalDetalhesModal from './HospitalDetalhesModal'
 import { BlocoAgendarVisita } from './paciente/BlocoAgendarVisita'
-import { BlocoCid } from './paciente/BlocoCid'
 import { BlocoRegistrarRelatorio } from './paciente/BlocoRegistrarRelatorio'
 import { SubtituloPaciente } from './paciente/SubtituloPaciente'
 import { useFormRelatorio } from './paciente/useFormRelatorio'
@@ -63,7 +62,6 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
   // o drawer somente-leitura (KPIs + timeline).
   const podeRegistrar = podeExecutar(role, 'registrarRelatorio')
   const podeAgendar = podeExecutar(role, 'agendarVisita')
-  const podeAtribuirCid = podeExecutar(role, 'atribuirCid')
   const medicos = useMemo(
     () => (equipe?.medicos ?? []).filter((m) => Boolean(m.ativo)).map((m) => m.nome),
     [equipe],
@@ -135,10 +133,6 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
           {d && (
             <>
               <KpisDrawer d={d} />
-
-              {/* CID logo abaixo dos números: é o "do que se trata" o paciente,
-                  e todo papel o vê. Só o técnico (e o admin) atribui. */}
-              <BlocoCid d={d} podeEditar={podeAtribuirCid} />
 
               <div className="section-label" style={{ margin: '0 0 12px' }}>Timeline da internação</div>
               {/* Altura limitada + scroll PRÓPRIO: sem isso a timeline crescia com

@@ -6,8 +6,12 @@
 // menu daria duas barras competindo na mesma tela. Aqui o usuário navega no
 // lugar em que já navega, com as classes `sb-*` do design-system — a Ajuda não
 // inventa um menu próprio, ela ocupa o existente enquanto está aberta.
-import { useNavigate } from 'react-router-dom'
-import { SECOES } from './tipos'
+//
+// Este painel lista SÓ os capítulos. Os Chamados não entram aqui (29/09/2026, a
+// pedido do usuário): não são um capítulo, e o atalho deles é o ícone do rodapé
+// da barra, que vira o de conversa enquanto a Ajuda está aberta (Sidebar.tsx).
+import { useLocation, useNavigate } from 'react-router-dom'
+import { ROTA_CHAMADOS, SECOES } from './tipos'
 import type { AjudaNav } from './useAjudaNav'
 
 // Voltar: seta para a esquerda. O modo Ajuda substitui o menu, então precisa de
@@ -25,7 +29,18 @@ interface Props {
 
 export default function SidebarAjuda({ nav, rotaSaida }: Props) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { modulos, atual } = nav
+  // Nos Chamados a barra segue no modo Ajuda, mas nenhum módulo está aberto: o
+  // `atual` do hook cairia no 1º módulo e o marcaria como ativo.
+  const nosChamados = pathname.startsWith(ROTA_CHAMADOS)
+
+  function abrirModulo(id: string) {
+    // `irPara` troca só o ?modulo= da rota atual. Fora da página da Ajuda isso
+    // poria o parâmetro na tela de Chamados, sem sair dela.
+    if (nosChamados) navigate(`/ajuda?modulo=${encodeURIComponent(id)}`)
+    else nav.irPara(id)
+  }
 
   return (
     <nav className="sb-nav">
@@ -41,7 +56,7 @@ export default function SidebarAjuda({ nav, rotaSaida }: Props) {
           <div className="sb-section" key={secao}>
             <div className="sb-section-label">{secao}</div>
             {daSecao.map((m) => {
-              const ativo = m.id === atual?.id
+              const ativo = !nosChamados && m.id === atual?.id
               const Icone = m.icone
               return (
                 <button
@@ -50,7 +65,7 @@ export default function SidebarAjuda({ nav, rotaSaida }: Props) {
                   className={`sb-item${ativo ? ' active' : ''}`}
                   title={m.titulo}
                   aria-current={ativo ? 'true' : undefined}
-                  onClick={() => nav.irPara(m.id)}
+                  onClick={() => abrirModulo(m.id)}
                 >
                   <span className="sb-item-icon"><Icone /></span>
                   <span className="sb-item-label">{m.titulo}</span>
