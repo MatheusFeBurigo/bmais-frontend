@@ -10,7 +10,6 @@ import {
   listarConvenios,
   fetchInternacaoRelatorios,
   fetchInternacaoTimeline,
-  fetchInternacaoTimelineFicha,
   registrarRelatorioRapido,
   type InternacaoEdicao,
   type RelatorioRapido,
@@ -32,15 +31,6 @@ export function useInternacaoTimeline(id: number) {
   return useQuery({
     queryKey: queryKeys.internacaoTimeline(id),
     queryFn: () => fetchInternacaoTimeline(id),
-    staleTime: DRAWER_STALE,
-  })
-}
-
-/** Timeline da ficha ("Detalhes"): a do drawer mais os eventos de CID. */
-export function useInternacaoTimelineFicha(id: number) {
-  return useQuery({
-    queryKey: queryKeys.internacaoTimelineFicha(id),
-    queryFn: () => fetchInternacaoTimelineFicha(id),
     staleTime: DRAWER_STALE,
   })
 }

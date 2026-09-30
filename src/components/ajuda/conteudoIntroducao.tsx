@@ -1,7 +1,7 @@
 // Conteúdo dos módulos de introdução: o que é a plataforma e quem acessa o quê.
 // Transversais — valem para todos os papéis.
 import { Callout, Key, Metric, Metrics, Nao, Sim, SoGestao, Tabela } from './blocos'
-import { useVeGestao } from './acessoAjuda'
+import { useLeAlemDoMenu, useVeGestao } from './acessoAjuda'
 
 interface Props {
   irPara: (id: string) => void
@@ -195,6 +195,7 @@ function MatrizTelas() {
 }
 
 export function ModuloNavegacao() {
+  const alemDoMenu = useLeAlemDoMenu()
   return (
     <>
       <p>
@@ -202,10 +203,17 @@ export function ModuloNavegacao() {
         o que ela pode fazer em cada uma. Algumas contas têm ainda um segundo recorte, o de
         <strong> hospitais</strong>, que limita quais pacientes aparecem para elas.
       </p>
-      <p>
-        Esta documentação segue a mesma regra: os módulos listados no índice são os das telas que o
-        seu perfil acessa, pelo mesmo motivo que as demais não aparecem no menu.
-      </p>
+      {alemDoMenu ? (
+        <p>
+          Para o seu perfil, esta documentação vai além do menu: o índice traz também módulos de
+          telas que você não abre, para consulta.
+        </p>
+      ) : (
+        <p>
+          Esta documentação segue a mesma regra: os módulos listados no índice são os das telas que o
+          seu perfil acessa, pelo mesmo motivo que as demais não aparecem no menu.
+        </p>
+      )}
 
       <h3>Os perfis de acesso</h3>
       <Tabela cabecalho={['Papel', 'Descrição funcional']} larguras={['220px']}>

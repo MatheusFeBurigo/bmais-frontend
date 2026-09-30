@@ -2,11 +2,11 @@
 // presos a qual tela.
 //
 // O `screen` de cada módulo é o que faz a documentação herdar a hierarquia de
-// acesso da aplicação: `modulosVisiveis` filtra por `podeVer`, a MESMA função
-// que esconde o item no menu e bloqueia a rota. Um papel novo, ou uma mudança de
-// escopo em auth/permissions.ts, reflete aqui sem edição.
+// acesso da aplicação: `modulosVisiveis` filtra por `leSobre`, que para quase
+// todo papel é o `podeVer` que esconde o item no menu e bloqueia a rota. Um
+// papel novo, ou uma mudança de escopo em auth/permissions.ts, reflete aqui sem
+// edição. As exceções (admin e analista interno) vivem em acessoAjuda.ts.
 import { lazy, type ComponentType } from 'react'
-import { podeVer } from '../../auth/permissions'
 import type { UserRole } from '../../types/api'
 import {
   IconAjustes, IconBalanca, IconEnvio, IconEquilibrio, IconFluxo,
@@ -14,7 +14,7 @@ import {
   IconQuadro, IconRede, IconVisao,
 } from './modulos'
 import type { ModuloAjuda } from './tipos'
-import { veTudo } from './acessoAjuda'
+import { leSobre } from './acessoAjuda'
 // Os CORPOS entram por lazy(): a Sidebar consome este catálogo em toda tela (é
 // ela que vira o índice na Ajuda), e importar o texto dos 16 módulos aqui
 // colocaria a documentação inteira no bundle inicial do app. Assim a barra
@@ -195,8 +195,5 @@ export const IDS_ANTIGOS: Readonly<Record<string, string>> = {
 
 /** Módulos que o papel pode ler. Transversais (sem `screen`) entram sempre. */
 export function modulosVisiveis(role: UserRole | null): ModuloAjuda[] {
-  // O admin lê a Ajuda inteira, inclusive Diretoria e Gestor, que ele não abre
-  // como tela (ver acessoAjuda.ts).
-  if (veTudo(role)) return [...MODULOS]
-  return MODULOS.filter((m) => !m.screen || podeVer(role, m.screen))
+  return MODULOS.filter((m) => !m.screen || leSobre(role, m.screen))
 }

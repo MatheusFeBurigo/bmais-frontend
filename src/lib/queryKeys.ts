@@ -37,10 +37,6 @@ export const queryKeys = {
 
   internacaoDados: (id: number) => ['internacao-dados', id] as const,
   internacaoTimeline: (id: number) => ['internacao-timeline', id] as const,
-  /** Timeline da ficha ("Detalhes"), que traz também os eventos de CID. Começa
-   *  pela chave da timeline do drawer DE PROPÓSITO: quem invalida aquela
-   *  (relatório, visita, edição) atualiza esta junto, sem saber que ela existe. */
-  internacaoTimelineFicha: (id: number) => ['internacao-timeline', id, 'ficha'] as const,
   internacaoRelatorios: (id: number) => ['internacao-relatorios', id] as const,
   /** CIDs vinculados ao paciente (card "CID" da ficha). */
   internacaoCids: (id: number) => ['internacao-cids', id] as const,

@@ -6,6 +6,8 @@
 // encontra no índice:
 // números consolidados de desempenho e de rede são informação de gestão, e a
 // documentação respeita a mesma divisão de responsabilidades da aplicação.
+// O analista interno lê a Distribuição de tarefas, mas não os outros dois
+// (acessoAjuda.ts).
 import { lazy, Suspense, type ReactNode } from 'react'
 import { Callout, Chip, Key, Metric, Metrics, Tabela } from './blocos'
 import { ComoFazer, Tela } from './replica'

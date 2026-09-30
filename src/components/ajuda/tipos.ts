@@ -15,7 +15,7 @@ export interface ModuloAjuda {
    *
    *  É por aqui que a Ajuda herda a hierarquia de acesso da aplicação: quem não
    *  enxerga a tela não recebe o módulo que a descreve, sem uma segunda regra
-   *  para manter em dia. */
+   *  para manter em dia. As exceções ficam em acessoAjuda.ts (`leSobre`). */
   screen?: Screen
   icone: ComponentType
   /** Corpo do módulo. `irPara` troca o módulo aberto (referências cruzadas).

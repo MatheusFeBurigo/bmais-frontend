@@ -291,14 +291,14 @@ export function ModuloConfiguracoes() {
       <p>
         Independente do relatório, internações que se estendem demais merecem acompanhamento
         próprio. São dois marcos, definidos em dias, e um botão que liga ou desliga esses alertas na
-        operadora. Eles alimentam os indicadores de permanência do Painel Operacional e da
-        Diretoria.
+        operadora. Eles alimentam os indicadores de permanência do Painel
+        Operacional<SoGestao> e da Diretoria</SoGestao>.
       </p>
 
       <h4>4. Responsáveis e situação da operadora</h4>
       <p>
-        Quem responde pela operadora, nome exibido na Diretoria, e o botão que inclui ou retira a
-        operadora do monitoramento e dos relatórios.
+        Quem responde pela operadora<SoGestao>, nome exibido na Diretoria,</SoGestao> e o botão que
+        inclui ou retira a operadora do monitoramento e dos relatórios.
       </p>
 
       <Callout tipo="caution" titulo="Efeito imediato das alterações">

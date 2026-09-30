@@ -486,8 +486,6 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .tl-dot.tp-pendente{background:var(--danger)}
 .tl-dot.tp-visita-agendada{background:var(--info)}
 .tl-dot.tp-visita-cancelada{background:var(--muted-2)}
-.tl-dot.tp-cid{background:var(--primary)}
-.tl-dot.tp-cid-removido{background:var(--muted-2)}
 .tl-date{font-family:var(--font-mono);font-size:var(--t-xs);color:var(--muted);letter-spacing:.02em}
 /* Hora da visita (migration 0035), ao lado da data: peso normal para não competir
    com ela, que é o dado principal da linha. */
@@ -527,12 +525,6 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .tl-item.tl-card.tp-visita-agendada{background:var(--info-bg);border-color:rgba(31,93,170,.22);border-left-color:var(--info)}
 .tl-item.tl-card.tp-visita-agendada .tl-label{color:var(--info)}
 .tl-item.tl-card.tp-visita-cancelada{background:var(--surface-3);border-color:var(--border);border-left-color:var(--muted-2)}
-/* CID (só na timeline da ficha): o azul-marinho do código no card "CID", para o
-   evento e o CID a que ele se refere se lerem como a mesma coisa. Removido:
-   neutro, como a visita cancelada. */
-.tl-item.tl-card.tp-cid{background:var(--primary-soft);border-color:rgba(6,46,92,.2);border-left-color:var(--primary)}
-.tl-item.tl-card.tp-cid .tl-label{color:var(--primary)}
-.tl-item.tl-card.tp-cid-removido{background:var(--surface-3);border-color:var(--border);border-left-color:var(--muted-2)}
 /* Marcador em X (substitui o .tl-dot redondo) do card cancelado: um sinal de
    "encerrado", não só uma cor apagada — a mesma ideia de um item riscado numa
    lista. Redondo com fundo neutro e borda, alinhado onde o .tl-dot ficaria. */

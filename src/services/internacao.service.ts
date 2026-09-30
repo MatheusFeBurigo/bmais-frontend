@@ -19,12 +19,6 @@ export function fetchInternacaoTimeline(id: number): Promise<InternacaoTimeline>
   return apiFetch<InternacaoTimeline>(`/internacao/${id}/timeline`)
 }
 
-/** Timeline da ficha completa ("Detalhes"): a do drawer mais os eventos de CID,
- *  que o Painel Operacional não mostra. */
-export function fetchInternacaoTimelineFicha(id: number): Promise<InternacaoTimeline> {
-  return apiFetch<InternacaoTimeline>(`/internacao/${id}/timeline-ficha`)
-}
-
 /** Relatórios da internação (com anexo, autoria e data/hora do anexo). */
 export function fetchInternacaoRelatorios(id: number): Promise<InternacaoRelatorios> {
   return apiFetch<InternacaoRelatorios>(`/internacao/${id}/relatorios`)

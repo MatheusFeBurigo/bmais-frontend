@@ -58,8 +58,8 @@ export function useCidBusca(texto: string, ativo: boolean) {
   }
 }
 
-/** Os CIDs do paciente, com adicionar e remover. Ao terminar, relê a lista e a
- *  timeline da ficha, que ganha o evento do que acabou de acontecer. */
+/** Os CIDs do paciente, com adicionar e remover. Ao terminar, a lista é relida.
+ *  Só ela: o vínculo de CID não gera evento na timeline (decisão do usuário). */
 export function useCidsPaciente(internacaoId: number) {
   const qc = useQueryClient()
   const lista = useQuery({
@@ -67,11 +67,7 @@ export function useCidsPaciente(internacaoId: number) {
     queryFn: () => fetchInternacaoCids(internacaoId),
     staleTime: FICHA_STALE,
   })
-  const aoTerminar = () => {
-    // A timeline não segura o fim da gravação: ela se atualiza por conta própria.
-    void qc.invalidateQueries({ queryKey: queryKeys.internacaoTimelineFicha(internacaoId) })
-    return qc.invalidateQueries({ queryKey: queryKeys.internacaoCids(internacaoId) })
-  }
+  const aoTerminar = () => qc.invalidateQueries({ queryKey: queryKeys.internacaoCids(internacaoId) })
   const adicionar = useMutation({
     mutationFn: (codigo: string) => adicionarCid(internacaoId, codigo),
     onSuccess: aoTerminar,

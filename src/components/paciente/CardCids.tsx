@@ -8,7 +8,8 @@
 // pela lixeira. A gravação confere o código de novo no backend.
 //
 // Cada CID é um cartão no formato dos relatórios da ficha (borda fina e faixa
-// lateral). Adicionar e remover geram evento na timeline da ficha.
+// lateral). Adicionar e remover NÃO geram evento na timeline (decisão do
+// usuário, 29/09/2026): quem fez o quê fica na trilha de Movimentações.
 //
 // Vive SÓ na ficha ("Detalhes"). Já esteve no drawer do Painel Operacional e
 // saiu de lá: o painel é a fila de trabalho, e o CID é dado clínico do paciente.
@@ -35,8 +36,7 @@ const estilos = `
 .cid-opt-ja{margin-left:auto;flex-shrink:0;font-size:var(--t-xs);color:var(--muted)}
 .cid-vazio{padding:8px 10px;font-size:var(--t-sm);color:var(--muted)}
 .cid-lista{display:flex;flex-direction:column;gap:12px}
-/* Mesmo cartão dos relatórios da ficha. A faixa é o azul-marinho do código, e
-   do evento de CID na timeline. */
+/* Mesmo cartão dos relatórios da ficha. A faixa é o azul-marinho do código. */
 .cid-item{display:flex;align-items:flex-start;gap:12px;border:1px solid var(--border);border-left:3px solid var(--primary);border-radius:10px;padding:12px 14px;background:var(--surface)}
 .cid-titulo{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .cid-cod{flex-shrink:0;font-family:var(--font-mono);font-size:var(--t-sm);font-weight:700;color:var(--primary);background:var(--primary-soft);border-radius:5px;padding:2px 8px}

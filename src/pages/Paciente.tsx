@@ -20,7 +20,7 @@ import { KpisPaciente } from '../components/paciente/KpisPaciente'
 import { SubtituloPaciente } from '../components/paciente/SubtituloPaciente'
 import { useEdicaoFicha } from '../components/paciente/useEdicaoFicha'
 import { TimelineEventos } from '../components/timeline/TimelineEventos'
-import { useInternacaoDados, useInternacaoRelatorios, useInternacaoTimelineFicha } from '../hooks/useInternacao'
+import { useInternacaoDados, useInternacaoRelatorios, useInternacaoTimeline } from '../hooks/useInternacao'
 import { useEquipe } from '../hooks/useEquipe'
 import { useAuth } from '../auth/AuthContext'
 import { podeExecutar, podeVer } from '../auth/permissions'
@@ -39,8 +39,7 @@ export default function Paciente() {
 
   const idInvalido = !id || Number.isNaN(internacaoId)
   const { data: d, isLoading, isError } = useInternacaoDados(internacaoId)
-  // A timeline da FICHA: a do drawer mais os eventos de CID.
-  const timeline = useInternacaoTimelineFicha(internacaoId)
+  const timeline = useInternacaoTimeline(internacaoId)
   const relatorios = useInternacaoRelatorios(internacaoId)
   const { data: equipe } = useEquipe()
   const medicos = useMemo(
