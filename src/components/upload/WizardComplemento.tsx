@@ -25,6 +25,7 @@ import { useSidebar } from '../../hooks/useDashboard'
 import { useTravarScroll } from '../../lib/travarScroll'
 import { motivoCensoTexto, tipoCensoTexto } from '../../lib/pendenciaLabels'
 import { paraISO } from '../../lib/datas'
+import { atendeOperadora } from '../../lib/hospitais'
 
 const styles = `
 .wz{max-width:760px;width:94%;margin:5vh auto;position:relative;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:90vh;box-shadow:var(--shadow-lg)}
@@ -761,7 +762,7 @@ function PassoHospital({ arquivo, form, estado, resultado, operadoras, hospitais
   const processado = estado === 'processado'
   const daOperadora = useMemo(
     () => hospitais
-      .filter((h) => !form.operadora || h.operadora_key === form.operadora)
+      .filter((h) => !form.operadora || atendeOperadora(h, form.operadora))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     [hospitais, form.operadora],
   )

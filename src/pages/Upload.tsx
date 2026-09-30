@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { invalidarPorEvento } from '../lib/invalidation'
+import { atendeOperadora } from '../lib/hospitais'
 import { lerPasso1, salvarPasso1 } from '../lib/envioPersistido'
 import { type EstadoProgresso, progressoStyles } from '../components/upload/ProgressoEnvio'
 import { ehSomenteLeitura } from '../auth/permissions'
@@ -104,8 +105,11 @@ export default function Upload() {
     // Fallback: deriva do próprio cadastro de hospitais enquanto a sidebar carrega.
     const vistas = new Map<string, string>()
     for (const h of hospitaisQ.data ?? []) {
-      if (h.operadora_key && !vistas.has(h.operadora_key)) {
-        vistas.set(h.operadora_key, h.operadora_nome || h.operadora_key)
+      const ops = h.operadoras_nomes?.length
+        ? h.operadoras_nomes
+        : h.operadora_key ? [{ key: h.operadora_key, nome: h.operadora_nome || h.operadora_key }] : []
+      for (const o of ops) {
+        if (!vistas.has(o.key)) vistas.set(o.key, o.nome || o.key)
       }
     }
     return [...vistas.entries()].map(([key, nome]) => ({ key, nome }))
@@ -114,7 +118,7 @@ export default function Upload() {
   // Hospitais da operadora escolhida, sem nomes repetidos.
   const hospitaisDaOperadora = useMemo(() => {
     if (!operadora) return []
-    return (hospitaisQ.data ?? []).filter((h) => h.operadora_key === operadora)
+    return (hospitaisQ.data ?? []).filter((h) => atendeOperadora(h, operadora))
   }, [hospitaisQ.data, operadora])
 
   const hospitalEscolhido = hospitaisDaOperadora.find((h) => h.key === hospital) ?? null
