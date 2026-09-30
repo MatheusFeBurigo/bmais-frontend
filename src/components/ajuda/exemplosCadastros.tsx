@@ -475,7 +475,7 @@ const MALHA_CAREPLUS: [string, string[]][] = [
 /** A aba Hospitais e operadoras: "Novo +" (aberto, se pedido), um cartão por
  *  operadora e a CarePlus expandida, com os hospitais agrupados por cidade. */
 export function ReplicaMalha({ marcas = {}, novoAberto }: {
-  marcas?: Partial<Record<'novo' | 'novoHospital' | 'maisHospital' | 'engrenagem' | 'hospital' | 'excluir', number>>
+  marcas?: Partial<Record<'novo' | 'novoHospital' | 'cartao' | 'maisHospital' | 'engrenagem' | 'hospital' | 'excluir', number>>
   novoAberto?: boolean
 }) {
   const cartao = (op: { key: string; nome: string }, hospitais: number, cidades: number, aberta: boolean) => (
@@ -483,7 +483,9 @@ export function ReplicaMalha({ marcas = {}, novoAberto }: {
       <div className="malha-op-topo">
         <OpAvatar opKey={op.key} size={38} />
         <div className="malha-op-info">
-          <div className="malha-op-nome">{op.nome}</div>
+          <Marcado n={aberta ? marcas.cartao : undefined}>
+            <div className="malha-op-nome">{op.nome}</div>
+          </Marcado>
           <div className="malha-op-sub">
             <span>{IconPredio()}{hospitais} hospitais</span>
             <span>{IconPino()}{cidades} {cidades === 1 ? 'cidade' : 'cidades'}</span>

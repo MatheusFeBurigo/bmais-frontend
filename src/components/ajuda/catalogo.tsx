@@ -123,7 +123,7 @@ export const MODULOS: readonly ModuloAjuda[] = [
   {
     id: 'operacoes',
     titulo: 'Operações',
-    subtitulo: 'Profissionais, contas de acesso, hospitais e operadoras',
+    subtitulo: 'Auditores, contas de acesso, hospitais e operadoras',
     secao: 'Administração',
     screen: 'equipe',
     icone: IconRede,

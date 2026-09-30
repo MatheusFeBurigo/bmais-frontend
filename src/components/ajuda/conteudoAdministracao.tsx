@@ -13,8 +13,8 @@ import { Callout, Chip, Key, Metric, Metrics, SoGestao, Tabela } from './blocos'
 import { ComoFazer, Tela, type PassoAjuda } from './replica'
 import { PAPEIS_CADASTRO } from './acessoAjuda'
 import {
-  ReplicaAdicionarProfissional, ReplicaCriarAcesso, ReplicaNovoUsuario, ReplicaProfissionais,
-  ReplicaUsuarios,
+  ReplicaAdicionarProfissional, ReplicaConfirmarExclusao, ReplicaCriarAcesso, ReplicaMalha,
+  ReplicaNovoHospital, ReplicaNovoUsuario, ReplicaProfissionais, ReplicaUsuarios,
 } from './exemplosCadastros'
 
 // O que marcar em "Nível de acesso", papel a papel. O rótulo e a descrição do
@@ -36,16 +36,16 @@ function passosDaConta(papel: UserRole): PassoAjuda[] {
   const escopo = temEscopoHospital(papel)
   const passos: PassoAjuda[] = [
     { n: 1, titulo: 'Clique em Novo usuário', corpo: <>Na aba <strong>Usuários de acesso</strong> da tela Operações. Abre a página de cadastro da conta.</> },
-    { n: 2, titulo: 'Informe nome, e-mail e senha', corpo: <>A pessoa entra com esse e-mail e essa senha, de no mínimo 6 caracteres. O e-mail não pode ser trocado depois; a senha, sim, pelo botão <strong>Senha</strong> da lista.</> },
+    { n: 2, titulo: 'Preencha os Dados de acesso', corpo: <>Nome, e-mail e senha, de no mínimo 6 caracteres. A pessoa entra com esse e-mail e essa senha. O e-mail não pode ser trocado depois; a senha, sim, pelo botão <strong>Senha</strong> da lista. <strong>Continuar</strong> (ou Enter) fecha a etapa com um ok e abre a próxima.</> },
     {
       n: 3,
-      titulo: `Marque ${ROLE_LABEL[papel]}`,
+      titulo: `Em Nível de acesso, marque ${ROLE_LABEL[papel]}`,
       corpo: (
         <>
-          {PARA_QUEM[papel]}{' '}
+          {PARA_QUEM[papel]} Marcar já conclui a etapa.{' '}
           {escopo
-            ? <>Este papel <strong>tem escopo por hospital</strong>: o campo de cidades e hospitais aparece logo abaixo.</>
-            : <>Este papel <strong>não tem escopo por hospital</strong>: enxerga a operação inteira, e o campo de hospitais não aparece.</>}
+            ? <>Este papel <strong>tem escopo por hospital</strong>: a etapa de cidades e hospitais abre em seguida.</>
+            : <>Este papel <strong>não tem escopo por hospital</strong>: enxerga a operação inteira, e a etapa de hospitais não aparece.</>}
         </>
       ),
     },
@@ -54,7 +54,7 @@ function passosDaConta(papel: UserRole): PassoAjuda[] {
     passos.push({
       n: 4,
       titulo: 'Escolha as cidades e os hospitais',
-      corpo: <>A pessoa verá só os pacientes, censos e tarefas desses hospitais. Marque a cidade inteira de uma vez ou só alguns hospitais dela. <strong>Sem nenhum marcado, ela vê a operação inteira.</strong></>,
+      corpo: <>A pessoa verá só os pacientes, censos e tarefas desses hospitais. Clicar na linha da cidade marca todos os hospitais dela; a seta à direita abre a lista para marcar só alguns. <strong>Sem nenhum marcado, ela vê a operação inteira.</strong></>,
     })
   }
   passos.push({
@@ -88,15 +88,23 @@ function CadastroDeConta() {
           descricao="Aba Usuários de acesso: as contas da equipe interna e o papel de cada uma.">
           <ReplicaUsuarios marcas={{ novo: 1 }} />
         </Tela>
-        <Tela nome="Novo usuário de acesso" largura={700}
-          descricao={escopo
-            ? `Cadastro de ${ROLE_LABEL[papel]}: com escopo de cidades e hospitais.`
-            : `Cadastro de ${ROLE_LABEL[papel]}: sem escopo, enxerga a operação inteira.`}>
-          <ReplicaNovoUsuario papel={papel}
-            marcas={escopo
-              ? { credenciais: 2, papel: 3, escopo: 4, criar: 5 }
-              : { credenciais: 2, papel: 3, criar: 4 }} />
+        <Tela nome="Novo usuário de acesso" largura={720}
+          descricao="Primeira etapa aberta: os dados com que a pessoa vai entrar.">
+          <ReplicaNovoUsuario papel={papel} aberta="conta" marcas={{ credenciais: 2 }} />
         </Tela>
+        <Tela nome="Novo usuário de acesso" largura={720}
+          descricao={escopo
+            ? `Dados de acesso concluídos. ${ROLE_LABEL[papel]} tem escopo de cidades e hospitais.`
+            : `Dados de acesso concluídos. ${ROLE_LABEL[papel]} não tem escopo: enxerga a operação inteira.`}>
+          <ReplicaNovoUsuario papel={papel} aberta="nivel"
+            marcas={escopo ? { papel: 3 } : { papel: 3, criar: 4 }} />
+        </Tela>
+        {escopo && (
+          <Tela nome="Novo usuário de acesso" largura={720}
+            descricao="Última etapa: as cidades e os hospitais que a pessoa vai enxergar.">
+            <ReplicaNovoUsuario papel={papel} aberta="escopo" marcas={{ escopo: 4, criar: 5 }} />
+          </Tela>
+        )}
       </ComoFazer>
     </>
   )
@@ -112,7 +120,7 @@ export function ModuloOperacoes() {
         funcione.
       </p>
       <Tabela cabecalho={['Aba', 'O que se cadastra']} larguras={['210px']}>
-        <tr><Key>Profissionais</Key>
+        <tr><Key>Auditores</Key>
           <td>Os enfermeiros e médicos auditores, os hospitais que cada um cobre e o acesso deles ao
             portal do profissional. Os médicos ativos são os oferecidos ao registrar um relatório e
             ao agendar uma visita.</td></tr>
@@ -132,7 +140,7 @@ export function ModuloOperacoes() {
       <h3>Passo a passo</h3>
       <p>
         Há dois caminhos para criar o acesso de alguém, conforme quem é a pessoa.{' '}
-        <strong>Médicos e enfermeiros</strong> são cadastrados como profissionais, e a conta nasce
+        <strong>Médicos e enfermeiros</strong> são cadastrados como auditores, e a conta nasce
         junto, levando ao portal do profissional. <strong>A equipe interna</strong> (técnicos,
         administrativos, coordenadores, analistas, gestores e diretores) recebe uma conta de acesso,
         com o papel escolhido no cadastro.
@@ -141,7 +149,7 @@ export function ModuloOperacoes() {
       <ComoFazer
         titulo="Cadastrar um médico auditor ou um enfermeiro"
         passos={[
-          { n: 1, titulo: 'Clique em Adicionar', corpo: <>Na aba <strong>Profissionais</strong> da tela Operações.</> },
+          { n: 1, titulo: 'Clique em Adicionar', corpo: <>Na aba <strong>Auditores</strong> da tela Operações.</> },
           { n: 2, titulo: 'Escolha o tipo e informe o nome', corpo: <><strong>Médico(a) Auditor(a)</strong> ou <strong>Enfermeiro(a)</strong>. O tipo decide o portal que a pessoa vai usar, e só médicos ativos aparecem como auditor ao registrar relatório.</> },
           { n: 3, titulo: 'Informe o e-mail e a senha inicial', corpo: <>São obrigatórios: com eles o profissional entra no portal dele, que não mostra nenhuma informação interna. A senha tem no mínimo 6 caracteres.</> },
           { n: 4, titulo: 'Marque os hospitais que ele cobre', corpo: <>Escolha a cidade e marque os hospitais dela; vários entram de uma vez. Um hospital que atende mais de uma operadora aparece uma vez só e vale para todas; na ficha dele dá para deixar só algumas. A escala também pode ficar para depois.</> },
@@ -150,7 +158,7 @@ export function ModuloOperacoes() {
         ]}
       >
         <Tela nome="Operações" largura={900}
-          descricao="Aba Profissionais: a equipe assistencial, com o e-mail de acesso e o número de hospitais de cada um.">
+          descricao="Aba Auditores: a equipe assistencial, com o e-mail de acesso e o número de hospitais de cada um.">
           <ReplicaProfissionais marcas={{ adicionar: 1 }} />
         </Tela>
         <Tela nome="Operações" largura={600}
@@ -164,7 +172,7 @@ export function ModuloOperacoes() {
         passos={[
           { n: 1, titulo: 'Clique em Editar, na linha dele', corpo: <>Quem ainda não tem acesso aparece com <strong>Sem acesso</strong> na coluna de e-mail.</> },
           { n: 2, titulo: 'Informe o e-mail e a senha inicial', corpo: <>O campo de senha aparece ao digitar o e-mail. A senha tem no mínimo 6 caracteres. O papel (médico ou enfermeiro) sai do tipo do cadastro.</> },
-          { n: 3, titulo: 'Clique em Salvar', corpo: <>O profissional já pode entrar no portal. Desativar o profissional suspende o acesso, e reativar o devolve.</> },
+          { n: 3, titulo: 'Clique em Salvar', corpo: <>O auditor já pode entrar no portal. <strong>Desativar acesso</strong>, no menu ⋮ da linha, suspende o acesso, e reativar o devolve.</> },
         ]}
       >
         <Tela nome="Operações" largura={900}
@@ -172,59 +180,120 @@ export function ModuloOperacoes() {
           descricao="Paulo Mendes ainda não tem acesso à plataforma.">
           <ReplicaProfissionais />
         </Tela>
-        <Tela nome="Operações" largura={560} descricao="Ficha do profissional com o e-mail de acesso preenchido.">
+        <Tela nome="Operações" largura={560} descricao="Ficha do auditor com o e-mail de acesso preenchido.">
           <ReplicaCriarAcesso marcas={{ dados: 2, salvar: 3 }} />
         </Tela>
       </ComoFazer>
 
       <CadastroDeConta />
 
-      <h3>Profissionais</h3>
+      <ComoFazer
+        titulo="Desativar ou excluir um auditor"
+        passos={[
+          { n: 1, titulo: 'Clique no ⋮ da linha', corpo: <>Fica depois de <strong>Senha</strong> e <strong>Editar</strong>. Na aba Usuários de acesso o menu é o mesmo, para as contas da equipe interna.</> },
+          { n: 2, titulo: 'Só quer tirar o acesso? Desativar acesso', corpo: <>A pessoa deixa de entrar e sai das listas de escala, mas o cadastro e o histórico ficam. <strong>Reativar acesso</strong>, no mesmo menu, desfaz.</> },
+          { n: 3, titulo: 'Quer apagar de vez? Excluir auditor', corpo: <>Sai o cadastro, a escala de hospitais e a conta de login. Relatórios e visitas já registrados com o nome dele continuam no histórico.</> },
+          { n: 4, titulo: 'Confirme', corpo: <>As duas ações pedem confirmação numa janela. A exclusão não tem volta.</> },
+        ]}
+      >
+        <Tela nome="Operações" largura={900}
+          destaques={{ 'tbody tr:first-child .menu-acoes-btn': 1 }}
+          descricao="Menu ⋮ aberto na linha de Ana Clara Souza.">
+          <ReplicaProfissionais menuAberto={{ desativar: 2, excluir: 3 }} />
+        </Tela>
+        <Tela nome="Excluir auditor" largura={520} descricao="A confirmação diz o que sai e o que fica.">
+          <ReplicaConfirmarExclusao marcas={{ confirmar: 4 }} />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Cadastrar um hospital"
+        passos={[
+          { n: 1, titulo: 'Clique em Novo e escolha Hospital', corpo: <>Na aba <strong>Hospitais e operadoras</strong>. É o caminho para um hospital que atende mais de uma operadora. Para criar só numa delas, use o <strong>+ Hospital</strong> do cartão da operadora.</> },
+          { n: 2, titulo: 'Informe o nome', corpo: <>Obrigatório.</> },
+          { n: 3, titulo: 'Escolha a cidade', corpo: <>Obrigatória. A lista traz as cidades já cadastradas, e escolher uma preenche a UF. Usar a da lista evita a mesma cidade com duas grafias.</> },
+          { n: 4, titulo: 'Marque as operadoras que ele atende', corpo: <>Ao menos uma. O hospital passa a aparecer dentro de cada uma delas. Pelo <strong>+ Hospital</strong> este bloco não aparece: a operadora do cartão já vem escolhida.</> },
+          { n: 5, titulo: 'Complete contato e endereço, se tiver', corpo: <>CNPJ, telefone, e-mail, CEP, endereço e observações são opcionais e podem ser preenchidos depois.</> },
+          { n: 6, titulo: 'Clique em Adicionar hospital', corpo: <>Se faltar algo obrigatório, o campo fica marcado com o que falta.</> },
+        ]}
+      >
+        <Tela nome="Operações" largura={900}
+          descricao="Aba Hospitais e operadoras, com o menu Novo aberto.">
+          <ReplicaMalha novoAberto marcas={{ novoHospital: 1 }} />
+        </Tela>
+        <Tela nome="Novo hospital" largura={820}
+          descricao="Cadastro de um hospital que atende duas operadoras.">
+          <ReplicaNovoHospital marcas={{ nome: 2, cidade: 3, operadoras: 4, contato: 5, salvar: 6 }} />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Corrigir ou excluir um hospital"
+        passos={[
+          { n: 1, titulo: 'Abra a operadora', corpo: <>Clique no cartão dela. Os hospitais aparecem agrupados por cidade.</> },
+          { n: 2, titulo: 'Clique no nome do hospital para editar', corpo: <>Abre o mesmo cadastro, já preenchido: nome, cidade, operadoras atendidas e contato. Tirar uma operadora desfaz o vínculo com ela.</> },
+          { n: 3, titulo: 'Use a lixeira para excluir', corpo: <>Pede um segundo clique em <strong>Excluir</strong>, na própria linha. É recusada, com o motivo, quando há pacientes ou escala ligados ao hospital.</> },
+          { n: 4, titulo: 'A engrenagem cuida da operadora', corpo: <>Renomeia a operadora ou a exclui. Renomear não mexe nos pacientes, hospitais e histórico dela.</> },
+        ]}
+      >
+        <Tela nome="Operações" largura={900}
+          descricao="CarePlus aberta, com os hospitais de Campinas e de São Paulo.">
+          <ReplicaMalha marcas={{ cartao: 1, hospital: 2, excluir: 3, engrenagem: 4 }} />
+        </Tela>
+      </ComoFazer>
+
+      <h3>Auditores</h3>
       <ul>
         <li>A lista tem busca por nome e filtro por tipo, com a contagem de cada categoria.</li>
         <li>Cada linha mostra o tipo, o e-mail de acesso (ou <strong>Sem acesso</strong>) e quantos
-          hospitais o profissional cobre, com três atalhos: <strong>Senha</strong> (só redefine a senha de quem já tem acesso),{' '}
-          <strong>Editar</strong> e <strong>Desativar</strong>.</li>
-        <li>Clicar na linha abre a ficha do profissional, com a <strong>escala de hospitais</strong>:
+          hospitais o auditor cobre, com os atalhos <strong>Senha</strong> (só redefine a senha de
+          quem já tem acesso) e <strong>Editar</strong>, e o menu <strong>⋮</strong> com{' '}
+          <strong>Desativar acesso</strong> e <strong>Excluir auditor</strong>.</li>
+        <li>Clicar na linha abre a ficha do auditor, com a <strong>escala de hospitais</strong>:
           em quais unidades ele atende e em qual serviço. O que já está na escala aparece marcado,
           para não ser incluído duas vezes.</li>
-        <li>Um hospital pode atender várias operadoras sem que o profissional cubra todas. No
+        <li>Um hospital pode atender várias operadoras sem que o auditor cubra todas. No
           cartão do hospital, o botão <strong>Operadoras</strong> abre a lista das que o hospital
           atende: marque as que ele cobre e clique em <strong>Salvar</strong>.</li>
-        <li>Profissional não é apagado, é desativado, preservando o histórico dele. Desativar
-          também suspende o acesso ao portal.</li>
+        <li>Desativado, o auditor aparece com a etiqueta <strong>Desativado</strong> e some da
+          lista até se marcar <strong>Mostrar desativados</strong>. Excluir é definitivo, mas os
+          relatórios e visitas com o nome dele continuam no histórico.</li>
       </ul>
 
       <h3>Usuários de acesso</h3>
       <ul>
-        <li>A lista tem busca por nome ou e-mail e filtro por papel, com a contagem de cada um.</li>
+        <li>A busca procura por nome, e-mail ou nível, sem ligar para acentos.</li>
+        <li>Os filtros ficam numa linha própria: <strong>Nível</strong>, com a contagem de cada
+          papel; <strong>Situação</strong> (ativas ou desativadas), quando há conta desativada; e{' '}
+          <strong>Hospitais</strong> (com restrição ou veem todos), quando há os dois tipos. Com
+          algum filtro ligado, a lista diz quantos aparecem do total e oferece{' '}
+          <strong>Limpar filtros</strong>.</li>
         <li>A coluna de <strong>hospitais</strong> diz se a conta enxerga toda a operação
           (<strong>Todos</strong>) ou só as unidades vinculadas a ela.</li>
-        <li>Os atalhos da linha são <strong>Senha</strong>, <strong>Editar</strong> (papel,
-          hospitais e nome) e <strong>Apagar</strong>. A exclusão é irreversível, mas o histórico de
-          ações da pessoa na trilha de auditoria é preservado. A própria conta não pode ser
-          apagada.</li>
+        <li>Os atalhos da linha são <strong>Senha</strong> e <strong>Editar</strong> (nome, papel e
+          hospitais, nas mesmas etapas do cadastro), e o menu <strong>⋮</strong> traz{' '}
+          <strong>Desativar acesso</strong> e <strong>Excluir usuário</strong>. Desativar é
+          reversível; a exclusão não, mas o histórico de ações da pessoa na trilha de auditoria é
+          preservado. A própria conta não pode ser desativada nem excluída.</li>
       </ul>
 
       <h3>Hospitais e operadoras</h3>
       <p>Cadastro das unidades e das operadoras que cada uma atende.</p>
       <ul>
-        <li>A lista é organizada por operadora, e cada uma abre mostrando seus hospitais e o total
-          de unidades.</li>
+        <li>Um cartão por operadora, com o total de hospitais e de cidades. Aberto, mostra os
+          hospitais <strong>agrupados por cidade</strong>.</li>
         <li>A <strong>busca localiza tanto operadoras quanto hospitais</strong>: procurar o nome de
           uma unidade também encontra a operadora que a atende.</li>
-        <li>É possível criar operadora e criar hospital dentro de uma operadora, informando apenas o
-          nome.</li>
+        <li><strong>Novo</strong> cria uma operadora (só o nome) ou um hospital. O{' '}
+          <strong>+ Hospital</strong> do cartão cria o hospital já naquela operadora.</li>
+        <li>O cadastro do hospital pede nome, cidade e ao menos uma operadora; contato e endereço
+          são opcionais. Editar abre o mesmo cadastro, pelo nome do hospital na lista.</li>
         <li>Renomear uma operadora altera apenas o nome exibido. Os pacientes, hospitais e o
           histórico dela permanecem vinculados.</li>
         <li>A exclusão de operadora ou hospital exige confirmação e é recusada quando há pacientes
           ou escala vinculados ao registro, com a indicação do motivo.</li>
-        <li>Ao abrir um hospital, é apresentada a ficha cadastral com nome, CNPJ, telefone, e-mail,
-          endereço, cidade, estado, CEP, região e observações.</li>
-        <li>A região é o que define em que <strong>cidade</strong> o hospital aparece nas telas de
-          escolha de escopo e de escala. A <strong>região é escolhida de uma lista fechada</strong>, tanto ao cadastrar o hospital
-          quanto na ficha. É ela que agrupa os hospitais na definição do escopo de dados de um
-          usuário<SoGestao>, e também o recorte geográfico do painel do Gestor</SoGestao>.</li>
+        <li>A <strong>cidade</strong> é o que agrupa os hospitais nas telas de escolha de escopo e
+          de escala<SoGestao>, e também o recorte geográfico do painel do Gestor</SoGestao>.</li>
       </ul>
     </>
   )
@@ -319,6 +388,10 @@ export function ModuloConfiguracoes() {
         <tr><Key>Ficha do hospital</Key>
           <td>Indicadores da unidade, pacientes internados, escala de auditores, operadoras
             atendidas e dados cadastrais.</td></tr>
+        <tr><Key>Adicionar hospital</Key>
+          <td>O botão <strong>Adicionar</strong> da lista de hospitais de uma operadora abre o
+            cadastro completo (nome, cidade, contato e endereço), com o hospital já naquela
+            operadora.</td></tr>
       </Tabela>
     </>
   )

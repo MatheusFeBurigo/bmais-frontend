@@ -506,8 +506,8 @@ export function ModuloVolumetria() {
       <h3>Os blocos da tela</h3>
       <ol>
         <li><strong>Resumo</strong>, com os indicadores acima.</li>
-        <li><strong>Equipe</strong>: um cartão por pessoa, com o nível de carga, as horas estimadas
-          e a quebra das demandas pelos mesmos nomes das colunas de Tarefas. A lista pode ser
+        <li><strong>Equipe</strong>: um cartão por pessoa, com o nível de carga, o número de
+          demandas e a quebra delas pelos mesmos nomes das colunas de Tarefas. A lista pode ser
           ordenada por <strong>Maior carga</strong> ou por <strong>Nome</strong>. O ⋮ de cada cartão
           traz <strong>Dividir a carga</strong>.</li>
         <li><strong>Demandas x distribuição</strong>: a parte das demandas abertas e a parte dos

@@ -105,7 +105,8 @@ export function ModuloVisao({ irPara }: Props) {
       </ul>
       <p>
         Há ainda o cadastro manual, usado quando um hospital envia o censo em formato que a
-        plataforma não consegue ler, e as correções feitas na conferência do envio.
+        plataforma não consegue ler, as correções feitas na conferência do envio e a alta dada à
+        mão, quando o hospital demora a mandar o censo e já se sabe que o paciente saiu.
       </p>
 
       <h3>O que a plataforma entrega</h3>
