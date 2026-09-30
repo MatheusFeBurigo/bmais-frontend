@@ -155,7 +155,9 @@ export default function Volumetria() {
             <p className="card-sub">Parte das demandas abertas e parte dos hospitais de cada pessoa.</p>
           </div>
         </div>
-        <DemandaXDistribuicao grupo={grupo} onAbrir={setSelecionadoId} />
+        <div className="card-body">
+          <DemandaXDistribuicao grupo={grupo} onAbrir={setSelecionadoId} />
+        </div>
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
@@ -167,21 +169,23 @@ export default function Volumetria() {
             </p>
           </div>
         </div>
-        <div className="vol-prod">
-          <div>
-            <div className="vol-sub">Por pessoa</div>
-            <ProdutividadePorPessoa grupo={grupo} onAbrir={setSelecionadoId} />
+        <div className="card-body">
+          <div className="vol-prod">
+            <div>
+              <div className="vol-sub">Por pessoa</div>
+              <ProdutividadePorPessoa grupo={grupo} onAbrir={setSelecionadoId} />
+            </div>
+            <div>
+              <div className="vol-sub">Concluídas por dia</div>
+              <ConcluidasPorDia grupo={grupo} />
+            </div>
           </div>
-          <div>
-            <div className="vol-sub">Concluídas por dia</div>
-            <ConcluidasPorDia grupo={grupo} />
-          </div>
+          {grupo.produtividade.fora_do_grupo > 0 && (
+            <p className="vol-prod-nota">
+              Mais {grupo.produtividade.fora_do_grupo} feitas por quem não é da equipe (administrador ou coordenador).
+            </p>
+          )}
         </div>
-        {grupo.produtividade.fora_do_grupo > 0 && (
-          <p className="vol-prod-nota">
-            Mais {grupo.produtividade.fora_do_grupo} feitas por quem não é da equipe (administrador ou coordenador).
-          </p>
-        )}
       </div>
 
       {grupos.length > 1 && (
@@ -192,7 +196,9 @@ export default function Volumetria() {
               <p className="card-sub">Demandas abertas e concluídas de cada equipe.</p>
             </div>
           </div>
-          <EntreEquipes grupos={grupos} />
+          <div className="card-body">
+            <EntreEquipes grupos={grupos} />
+          </div>
         </div>
       )}
 
@@ -207,7 +213,9 @@ export default function Volumetria() {
             </p>
           </div>
         </div>
-        <TempoPorTarefa role={grupo.role_operacional} minutosCategoria={grupo.minutos_categoria} />
+        <div className="card-body">
+          <TempoPorTarefa role={grupo.role_operacional} minutosCategoria={grupo.minutos_categoria} />
+        </div>
       </div>
 
       {/* Bloco 4: quem responde por cada região */}

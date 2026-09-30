@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { StatusBadge, LeitoTag } from './StatusBadge'
 import { LoadingState } from './ui'
 import HospitalDetalhesModal from './HospitalDetalhesModal'
+import { AcaoAlta } from './paciente/AcaoAlta'
 import { BlocoAgendarVisita } from './paciente/BlocoAgendarVisita'
 import { BlocoRegistrarRelatorio } from './paciente/BlocoRegistrarRelatorio'
 import { SubtituloPaciente } from './paciente/SubtituloPaciente'
@@ -62,6 +63,7 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
   // o drawer somente-leitura (KPIs + timeline).
   const podeRegistrar = podeExecutar(role, 'registrarRelatorio')
   const podeAgendar = podeExecutar(role, 'agendarVisita')
+  const podeDarAlta = podeExecutar(role, 'darAlta')
   const medicos = useMemo(
     () => (equipe?.medicos ?? []).filter((m) => Boolean(m.ativo)).map((m) => m.nome),
     [equipe],
@@ -146,6 +148,7 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
                 style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}
               />
 
+              {(podeRegistrar || podeAgendar) && <div className="section-label" style={{ marginTop: 24 }}>Ações</div>}
               {podeRegistrar && <BlocoRegistrarRelatorio form={formRelatorio} medicos={medicos} />}
 
               {/* Agendar fica DEPOIS de registrar: o caso frequente é lançar a
@@ -158,6 +161,13 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
         </div>
 
         <div className="drawer-footer" style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0 }}>
+          {/* À esquerda do Fechar, longe das ações do corpo: a alta tira o
+              paciente da lista, e não pode ser confundido com salvar um relatório. */}
+          {podeDarAlta && d && (
+            <div style={{ marginRight: 'auto' }}>
+              <AcaoAlta d={d} sobreposta pequeno={false} onFeito={onSaved} />
+            </div>
+          )}
           <button className="btn btn-outline" onClick={onClose}>Fechar</button>
         </div>
       </div>

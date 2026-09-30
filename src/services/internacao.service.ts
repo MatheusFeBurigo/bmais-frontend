@@ -6,6 +6,9 @@ export interface RelatorioRapido {
   data_visita: string
   medico: string
   descricao: string
+  /** Códigos dos CIDs DO PACIENTE que o relatório trata. O backend recusa
+   *  código que o paciente não tem. */
+  cids?: string[]
   autor?: string
 }
 
@@ -141,6 +144,18 @@ export function agendarVisita(id: number, data: string, medico: string, hora: st
 /** Desfaz o agendamento: o card volta para a fila de "Sem relatório". */
 export function desmarcarVisita(id: number): Promise<unknown> {
   return apiFetch(`/internacao/${id}/visita-agendada`, { method: 'DELETE' })
+}
+
+/** Dá alta ao paciente. `data` é ISO, entre a internação e hoje; `hora`
+ *  ("HH:MM") é opcional. Cancela a visita agendada, se houver. */
+export function darAlta(id: number, data: string, hora: string): Promise<unknown> {
+  return apiFetch(`/internacao/${id}/alta`, { method: 'POST', body: { data, hora } })
+}
+
+/** Devolve o paciente ao leito. Só vale para alta manual ou inferida: a que veio
+ *  do censo do hospital o backend recusa (409). */
+export function desfazerAlta(id: number): Promise<unknown> {
+  return apiFetch(`/internacao/${id}/alta`, { method: 'DELETE' })
 }
 
 /** Uma página do catálogo CID-10, em ordem de código. */

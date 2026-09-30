@@ -66,7 +66,8 @@ export default function DemandaXDistribuicao({ grupo, onAbrir }: {
   }
   // A escala vai até a maior parcela (das duas medidas), não até 100%: com
   // 6 pessoas ninguém passa de ~40%, e um eixo até 100 espremeria tudo.
-  const teto = Math.max(1, ...ls.map((l) => Math.max(l.pctDemandas, l.pctHospitais)))
+  // Folga de 8% no fim: o traço da maior parcela não fica colado na borda.
+  const teto = Math.max(1, ...ls.map((l) => Math.max(l.pctDemandas, l.pctHospitais))) * 1.08
   const unidade = grupo.role_operacional === 'administrativo' ? 'hospitais sem censo' : 'casos'
   const singular = rotuloGrupo(grupo.papel).singular
 
@@ -99,7 +100,9 @@ export default function DemandaXDistribuicao({ grupo, onAbrir }: {
                 )}
               </span>
               <b role="cell">{inteiro(l.pctDemandas)}</b>
-              <b role="cell">{l.semResponsavel ? 'Nenhum' : inteiro(l.pctHospitais)}</b>
+              <b role="cell" className={l.semResponsavel ? 'vazio' : undefined}>
+                {l.semResponsavel ? 'Nenhum' : inteiro(l.pctHospitais)}
+              </b>
             </>
           )
           return l.semResponsavel ? (

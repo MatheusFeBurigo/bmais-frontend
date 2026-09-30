@@ -1,17 +1,19 @@
 // Vista 2 — configuração de regras + hospitais de uma operadora.
 // Extraída de pages/Configuracoes.tsx.
 import { useEffect, useState } from 'react'
-import type { OperadoraSelected, OperadoraRegras } from '../../types/api'
+import type { OperadoraCard, OperadoraSelected, OperadoraRegras } from '../../types/api'
 import { usePageHeader } from '../PageHeader'
 import { OpAvatar } from '../ui'
 import Toast from '../Toast'
 import { salvarRegrasOperadora } from '../../services/configuracoes.service'
 import { localStyles } from './configuracoes.styles'
 import { StatMini, NumField } from './shared'
-import { AddHospitalForm } from './forms'
+import HospitalFormModal from '../HospitalFormModal'
 
-export default function OperadoraView({ opSel, onNav, onToast, onChanged, toast }: {
+export default function OperadoraView({ opSel, operadoras, onNav, onToast, onChanged, toast }: {
   opSel: OperadoraSelected
+  /** Todas as operadoras: o hospital novo pode atender mais de uma. */
+  operadoras: OperadoraCard[]
   onNav: (n: Record<string, string>) => void
   onToast: (m: string) => void
   onChanged: () => void
@@ -160,10 +162,9 @@ export default function OperadoraView({ opSel, onNav, onToast, onChanged, toast 
         <div className="card">
           <div className="card-header">
             <div className="card-title">Hospitais de {opSel.nome}</div>
-            <button className="btn btn-outline btn-sm" onClick={() => setAddHosp((val) => !val)}>Adicionar</button>
+            <button className="btn btn-outline btn-sm" onClick={() => setAddHosp(true)}>Adicionar</button>
           </div>
           <div className="card-body">
-            {addHosp && <AddHospitalForm opKey={opSel.key} onClose={() => setAddHosp(false)} onToast={onToast} onChanged={onChanged} />}
 
             {opSel.hospitais.length > 0 ? (
               <div style={{ display: 'grid', gap: 8 }}>
@@ -193,6 +194,15 @@ export default function OperadoraView({ opSel, onNav, onToast, onChanged, toast 
         </div>
       </div>
 
+      {addHosp && (
+        <HospitalFormModal
+          operadoras={operadoras}
+          opInicial={opSel.key}
+          onClose={() => setAddHosp(false)}
+          onToast={onToast}
+          onDone={() => { setAddHosp(false); onChanged() }}
+        />
+      )}
       {toast && <Toast message={toast} onDone={() => onToast('')} />}
     </>
   )

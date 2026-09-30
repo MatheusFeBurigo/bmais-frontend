@@ -8,16 +8,17 @@
 // A leitura vem de /api/configuracoes (o mesmo payload da tela Configurações);
 // a escrita usa os services já existentes. Ambos liberados ao analista por
 // ROLES_LEITURA_CADASTRO / ROLES_ESCRITA_CADASTRO no backend.
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useConfiguracoes } from '../../hooks/useConfiguracoes'
 import { useTodosHospitais } from '../../hooks/useEquipe'
 import {
-  criarOperadora, criarHospital, renomearOperadora, excluirOperadora, excluirHospital,
+  criarOperadora, renomearOperadora, excluirOperadora, excluirHospital,
 } from '../../services/configuracoes.service'
-import HospitalFichaModal from './HospitalFichaModal'
+import HospitalFormModal, { paraKey } from '../HospitalFormModal'
 import { invalidarPorEvento } from '../../lib/invalidation'
-import { LoadingState, Modal, Spinner } from '../ui'
+import { LoadingState, Modal, OpAvatar, Spinner } from '../ui'
+import { cidadeDaRegiao, ordenarCidades } from '../../lib/cidades'
 
 const IconSearch = (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
@@ -39,11 +40,25 @@ const IconPlus = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
 )
 
-// Nome → key: mesma regra do AddHospitalForm de Configurações (minúsculas, só
-// [a-z0-9_], truncado). Mantida idêntica para os dois caminhos gerarem a mesma
-// key para o mesmo nome, em vez de criar duplicata por divergência de slug.
-function paraKey(nome: string): string {
-  return nome.trim().toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 30)
+const IconPredio = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /><path d="M16 9h2a2 2 0 0 1 2 2v10" /><path d="M3 21h18" /><path d="M9 7h2M9 11h2M9 15h2" /></svg>
+)
+const IconPino = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+)
+
+const IconEscudo = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.6 3.4 8.3 8 9 4.6-.7 8-4.4 8-9V6l-8-3z" /></svg>
+)
+
+interface HospitalDaLista { key: string; nome: string; cidade: string }
+
+/** Hospitais da operadora em grupos por cidade, cidades em ordem alfabética
+ *  com as pendências ("Sem cidade"/"A definir") no fim. */
+function agruparPorCidade(lista: HospitalDaLista[]): [string, HospitalDaLista[]][] {
+  const grupos = new Map<string, HospitalDaLista[]>()
+  for (const h of lista) grupos.set(h.cidade, [...(grupos.get(h.cidade) ?? []), h])
+  return [...grupos.entries()].sort(([a], [b]) => ordenarCidades(a, b))
 }
 
 interface Props {
@@ -57,9 +72,11 @@ export default function CadastroMalha({ onToast }: Props) {
   const { data: hospitais } = useTodosHospitais()
   const [busca, setBusca] = useState('')
   const [addOp, setAddOp] = useState(false)
+  // Operadora de onde o hospital novo foi pedido. '' = pelo botão "Novo", sem
+  // operadora de origem (nenhuma vem marcada); null = modal fechada.
   const [addHospEm, setAddHospEm] = useState<string | null>(null)
   // Hospital aberto na ficha (editar/excluir), junto da operadora de contexto.
-  const [fichaHosp, setFichaHosp] = useState<{ hosp: { key: string; nome: string }; opNome: string } | null>(null)
+  const [fichaHosp, setFichaHosp] = useState<{ hosp: { key: string; nome: string } } | null>(null)
   // Operadora em edicao (renomear/excluir).
   const [opEdit, setOpEdit] = useState<{ key: string; nome: string } | null>(null)
   // Exclusao direta na lista: key do hospital aguardando confirmacao inline.
@@ -87,13 +104,16 @@ export default function CadastroMalha({ onToast }: Props) {
   const [aberta, setAberta] = useState<string | null>(null)
 
   // hospitais por operadora, a partir do vínculo N-N já resolvido pela API.
+  // Cada item leva a cidade (gravada ou derivada da região) para a lista
+  // agrupar por ela, o mesmo recorte que o cadastro do hospital pede.
   const porOperadora = useMemo(() => {
-    const mapa = new Map<string, { key: string; nome: string }[]>()
+    const mapa = new Map<string, HospitalDaLista[]>()
     for (const h of hospitais ?? []) {
       const ops = h.operadoras?.length ? h.operadoras : [h.operadora_key || '—']
+      const cidade = h.cidade?.trim() || cidadeDaRegiao(h.regiao)
       for (const k of ops) {
         const lista = mapa.get(k) ?? []
-        lista.push({ key: h.key, nome: h.nome })
+        lista.push({ key: h.key, nome: h.nome, cidade })
         mapa.set(k, lista)
       }
     }
@@ -141,49 +161,72 @@ export default function CadastroMalha({ onToast }: Props) {
             onChange={(e) => setBusca(e.target.value)}
           />
         </div>
-        <button className="btn btn-primary btn-sm" onClick={() => setAddOp(true)} style={{ flexShrink: 0 }}>
-          {IconPlus}
-          Nova operadora
-        </button>
+        <MenuNovo onOperadora={() => setAddOp(true)} onHospital={() => setAddHospEm('')} />
       </div>
 
-      <div className="card" style={{ padding: 0 }}>
-        {operadoras.length === 0 && (
-          <div className="empty-state" style={{ padding: '32px 16px' }}>
-            {q ? (
-              <>
-                <div className="fw-6">Nenhum resultado</div>
-                <div style={{ fontSize: 'var(--t-sm)', marginTop: 4 }}>
-                  Nenhuma operadora ou hospital corresponde a “{busca.trim()}”.
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="fw-6">Nenhuma operadora cadastrada</div>
-                <div style={{ fontSize: 'var(--t-sm)', marginTop: 4 }}>Comece criando uma operadora.</div>
-              </>
-            )}
-          </div>
-        )}
+      {(data?.operadoras?.length ?? 0) > 0 && (
+        <div className="malha-resumo">
+          <b>{data?.operadoras.length}</b> {data?.operadoras.length === 1 ? 'operadora' : 'operadoras'}
+          <span aria-hidden="true">·</span>
+          <b>{hospitais?.length ?? 0}</b> {hospitais?.length === 1 ? 'hospital' : 'hospitais'}
+        </div>
+      )}
+
+      {operadoras.length === 0 && (
+        <div className="card empty-state" style={{ padding: '32px 16px' }}>
+          {q ? (
+            <>
+              <div className="fw-6">Nenhum resultado</div>
+              <div style={{ fontSize: 'var(--t-sm)', marginTop: 4 }}>
+                Nenhuma operadora ou hospital corresponde a “{busca.trim()}”.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="fw-6">Nenhuma operadora cadastrada</div>
+              <div style={{ fontSize: 'var(--t-sm)', marginTop: 4 }}>Comece criando uma operadora.</div>
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="malha-lista">
         {operadoras.map((op) => {
           const hosp = hospitaisDe(op.key)
-          const totalHosp = (porOperadora.get(op.key) ?? []).length
+          const todos = porOperadora.get(op.key) ?? []
+          const totalHosp = todos.length
+          const totalCidades = new Set(todos.map((h) => h.cidade)).size
           // Busca ativa abre os grupos: o resultado esta la dentro.
           const expandida = aberta === op.key || (!!q && hosp.length > 0)
+          const alternar = () => setAberta(expandida ? null : op.key)
           return (
-            <div key={op.key} style={{ borderBottom: '1px solid var(--border)' }}>
+            <section key={op.key} className={`malha-op${expandida ? ' aberta' : ''}`}>
               <div
-                onClick={() => setAberta(expandida ? null : op.key)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', cursor: 'pointer', background: expandida ? 'var(--surface-2)' : 'transparent' }}
+                className="malha-op-topo"
+                role="button"
+                tabIndex={0}
+                aria-expanded={expandida}
+                onClick={alternar}
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget) return
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar() }
+                }}
               >
-                <span style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 'var(--t-md)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {op.nome}
-                </span>
-                <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
-                  {q && hosp.length !== totalHosp
-                    ? `${hosp.length} de ${totalHosp}`
-                    : `${totalHosp} ${totalHosp === 1 ? 'hospital' : 'hospitais'}`}
-                </span>
+                <OpAvatar opKey={op.key} size={38} />
+                <div className="malha-op-info">
+                  <div className="malha-op-nome">{op.nome}</div>
+                  <div className="malha-op-sub">
+                    <span>
+                      {IconPredio}
+                      {q && hosp.length !== totalHosp
+                        ? `${hosp.length} de ${totalHosp}`
+                        : `${totalHosp} ${totalHosp === 1 ? 'hospital' : 'hospitais'}`}
+                    </span>
+                    {totalCidades > 0 && (
+                      <span>{IconPino}{totalCidades} {totalCidades === 1 ? 'cidade' : 'cidades'}</span>
+                    )}
+                  </div>
+                </div>
                 <button
                   className="btn btn-outline btn-sm"
                   onClick={(e) => { e.stopPropagation(); setAddHospEm(op.key) }}
@@ -193,47 +236,54 @@ export default function CadastroMalha({ onToast }: Props) {
                   Hospital
                 </button>
                 <button
-                  className="btn btn-outline btn-sm"
+                  type="button"
+                  className="malha-op-icone"
                   onClick={(e) => { e.stopPropagation(); setOpEdit({ key: op.key, nome: op.nome }) }}
                   title="Renomear ou excluir a operadora"
-                  style={{ flexShrink: 0, padding: '5px 8px' }}
+                  aria-label={`Configurar ${op.nome}`}
                 >
                   {IconCog}
                 </button>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                  style={{ color: 'var(--muted)', flexShrink: 0, transform: expandida ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
+                <span className="malha-op-seta" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </span>
               </div>
               {expandida && (
-                // Lista densa em colunas: uma operadora tem ~100 hospitais, e uma
-                // linha por item viraria uma rolagem interminável.
-                <div style={{
-                  padding: '4px 14px 12px', display: 'grid', gap: '2px 18px',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                  maxHeight: 300, overflowY: 'auto',
-                }}>
+                // Agrupado por cidade, em colunas: uma operadora tem ~100
+                // hospitais, e uma linha por item viraria rolagem interminável.
+                <div className="malha-op-corpo">
                   {hosp.length === 0 && (
-                    <div style={{ color: 'var(--muted-2)', fontSize: 'var(--t-sm)', padding: '6px 0' }}>
-                      Nenhum hospital nesta operadora ainda.
-                    </div>
+                    <div className="malha-vazio">Nenhum hospital nesta operadora ainda.</div>
                   )}
-                  {hosp.map((h) => (
-                    <HospitalItem
-                      key={h.key}
-                      hosp={h}
-                      confirmando={excluindo === h.key}
-                      ocupado={apagando}
-                      onEditar={() => setFichaHosp({ hosp: h, opNome: op.nome })}
-                      onPedirExcluir={() => { setExcluindo(h.key); setErroExcluir(null) }}
-                      onCancelar={() => { setExcluindo(null); setErroExcluir(null) }}
-                      onConfirmar={() => removerHospital(h)}
-                      erro={excluindo === h.key ? erroExcluir : null}
-                    />
+                  {agruparPorCidade(hosp).map(([cidade, lista]) => (
+                    <div key={cidade} className="malha-cidade">
+                      <div className="malha-cidade-topo">
+                        {IconPino}
+                        <span>{cidade}</span>
+                        <em>{lista.length}</em>
+                      </div>
+                      <div className="malha-cidade-grade">
+                        {lista.map((h) => (
+                          <HospitalItem
+                            key={h.key}
+                            hosp={h}
+                            confirmando={excluindo === h.key}
+                            ocupado={apagando}
+                            onEditar={() => setFichaHosp({ hosp: h })}
+                            onPedirExcluir={() => { setExcluindo(h.key); setErroExcluir(null) }}
+                            onCancelar={() => { setExcluindo(null); setErroExcluir(null) }}
+                            onConfirmar={() => removerHospital(h)}
+                            erro={excluindo === h.key ? erroExcluir : null}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
-            </div>
+            </section>
           )
         })}
       </div>
@@ -245,21 +295,19 @@ export default function CadastroMalha({ onToast }: Props) {
           onDone={() => { setAddOp(false); invalidar() }}
         />
       )}
-      {addHospEm && (
-        <NovoHospitalModal
-          opKey={addHospEm}
-          // Lista COMPLETA (nao a filtrada pela busca): a operadora aberta pode
-          // ter saido do filtro enquanto a modal esta no ar.
-          opNome={(data?.operadoras ?? []).find((o) => o.key === addHospEm)?.nome ?? addHospEm}
+      {addHospEm !== null && (
+        <HospitalFormModal
+          operadoras={data?.operadoras ?? []}
+          opInicial={addHospEm || undefined}
           onClose={() => setAddHospEm(null)}
           onToast={onToast}
           onDone={() => { setAddHospEm(null); invalidar() }}
         />
       )}
       {fichaHosp && (
-        <HospitalFichaModal
-          hospital={fichaHosp.hosp}
-          opNome={fichaHosp.opNome}
+        <HospitalFormModal
+          operadoras={data?.operadoras ?? []}
+          hospitalKey={fichaHosp.hosp.key}
           onClose={() => setFichaHosp(null)}
           onToast={onToast}
           onDone={() => { setFichaHosp(null); invalidar() }}
@@ -272,6 +320,47 @@ export default function CadastroMalha({ onToast }: Props) {
           onToast={onToast}
           onDone={() => { setOpEdit(null); setAberta(null); invalidar() }}
         />
+      )}
+    </div>
+  )
+}
+
+// "Novo +": um botão só para criar operadora ou hospital. O hospital criado por
+// aqui não herda operadora nenhuma, a pessoa marca na modal todas as que ele
+// atende, e ele passa a aparecer dentro de cada uma delas na lista.
+function MenuNovo({ onOperadora, onHospital }: { onOperadora: () => void; onHospital: () => void }) {
+  const [aberto, setAberto] = useState(false)
+  const raiz = useRef<HTMLDivElement>(null)
+
+  // Fecha no clique fora e no Esc, como qualquer menu suspenso.
+  useEffect(() => {
+    if (!aberto) return
+    function fora(e: MouseEvent) {
+      if (raiz.current && !raiz.current.contains(e.target as Node)) setAberto(false)
+    }
+    function esc(e: KeyboardEvent) { if (e.key === 'Escape') setAberto(false) }
+    document.addEventListener('mousedown', fora)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('mousedown', fora)
+      document.removeEventListener('keydown', esc)
+    }
+  }, [aberto])
+
+  const escolher = (acao: () => void) => () => { setAberto(false); acao() }
+
+  return (
+    <div className="malha-novo" ref={raiz}>
+      <button type="button" className="btn btn-primary btn-sm" aria-haspopup="menu"
+        aria-expanded={aberto} onClick={() => setAberto((v) => !v)}>
+        Novo
+        {IconPlus}
+      </button>
+      {aberto && (
+        <div className="malha-novo-lista" role="menu">
+          <button type="button" role="menuitem" onClick={escolher(onOperadora)}>Operadora</button>
+          <button type="button" role="menuitem" onClick={escolher(onHospital)}>Hospital</button>
+        </div>
       )}
     </div>
   )
@@ -332,6 +421,7 @@ function HospitalItem({ hosp, confirmando, ocupado, onEditar, onPedirExcluir, on
   }
   return (
     <div className="malha-hosp-row">
+      <span className="malha-hosp-icone">{IconPredio}</span>
       <button type="button" className="malha-hosp-nome botao" onClick={onEditar}
         title={`${hosp.nome}. Clique para editar`}>
         {hosp.nome}
@@ -392,15 +482,16 @@ function OperadoraEditModal({ operadora, onClose, onToast, onDone }: {
   return (
     <Modal title={`Operadora · ${operadora.nome}`} onClose={onClose}>
       <div style={{ display: 'grid', gap: 12 }}>
-        <div>
-          <label style={{
-            display: 'block', marginBottom: 4, fontSize: 10, textTransform: 'uppercase',
-            letterSpacing: '.1em', fontWeight: 600, color: 'var(--muted)',
-          }}>
-            Nome *
-          </label>
-          <input type="text" className="bm-input" value={nome}
-            onChange={(e) => setNome(e.target.value)} autoFocus />
+        <div className="nh-campo nh-op-cabeca">
+          <OpAvatar opKey={operadora.key} size={38} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <label htmlFor="op-edit-nome">Nome da operadora</label>
+            <div className="nh-input">
+              {IconEscudo}
+              <input id="op-edit-nome" type="text" className="bm-input" value={nome}
+                onChange={(e) => setNome(e.target.value)} autoFocus />
+            </div>
+          </div>
         </div>
 
         {erroExcluir && (
@@ -471,49 +562,18 @@ function NovaOperadoraModal({ onClose, onToast, onDone }: {
   return (
     <Modal title="Nova operadora" onClose={onClose}>
       <div style={{ display: 'grid', gap: 10 }}>
-        <input type="text" className="bm-input" placeholder="Nome da operadora"
-          value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
+        <div className="nh-campo">
+          <label htmlFor="op-nova-nome">Nome da operadora</label>
+          <div className="nh-input">
+            {IconEscudo}
+            <input id="op-nova-nome" type="text" className="bm-input" placeholder="Ex.: Amil Saúde"
+              value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
+          </div>
+        </div>
         <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
           <button className="btn btn-outline btn-sm" onClick={onClose}>Cancelar</button>
           <button className="btn btn-primary btn-sm" onClick={criar} disabled={saving || !nome.trim()}>
             {saving ? 'Criando…' : 'Criar'}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
-
-function NovoHospitalModal({ opKey, opNome, onClose, onToast, onDone }: {
-  opKey: string; opNome: string; onClose: () => void; onToast: (m: string) => void; onDone: () => void
-}) {
-  const [nome, setNome] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  async function criar() {
-    const n = nome.trim()
-    if (!n) { onToast('Informe o nome do hospital'); return }
-    setSaving(true)
-    try {
-      const d = await criarHospital(n, opKey, paraKey(n))
-      if (d.ok || (d as { criado?: boolean }).criado) { onToast('✓ Hospital adicionado'); onDone() }
-      else onToast('Erro ao adicionar hospital')
-    } catch (e) {
-      onToast(`Erro: ${(e as Error).message}`)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <Modal title={`Novo hospital · ${opNome}`} onClose={onClose}>
-      <div style={{ display: 'grid', gap: 10 }}>
-        <input type="text" className="bm-input" placeholder="Nome do hospital"
-          value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
-        <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn btn-outline btn-sm" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary btn-sm" onClick={criar} disabled={saving || !nome.trim()}>
-            {saving ? 'Adicionando…' : 'Adicionar'}
           </button>
         </div>
       </div>

@@ -181,11 +181,14 @@ function ProtectedRoutes() {
           path="/progresso/relatorio"
           element={<GatedRoute screen="progresso"><Relatorio /></GatedRoute>}
         />
-        {/* Volumetria (carga de trabalho por hospital): coordenadores + admin. */}
+        {/* Distribuição de tarefas (carga por pessoa): coordenadores + admin.
+            O id técnico continua "volumetria" (screen, API, arquivos). */}
         <Route
-          path="/volumetria"
+          path="/distribuicao"
           element={<GatedRoute screen="volumetria"><Volumetria /></GatedRoute>}
         />
+        {/* Endereço antigo da tela (era "Volumetria"): mantém favoritos funcionando. */}
+        <Route path="/volumetria" element={<Navigate to="/distribuicao" replace />} />
         <Route path="/paciente/:id" element={<RequireFichaPaciente><Paciente /></RequireFichaPaciente>} />
         {/* Ajuda (documentação das telas): sem GatedRoute — todo papel acessa.
             O recorte é POR MÓDULO dentro da tela, pela mesma hierarquia das

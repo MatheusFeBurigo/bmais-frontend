@@ -30,6 +30,19 @@ function RelatorioCard({ r }: { r: RelatorioItem }) {
           Visita: {dataBR(r.data_visita)}{r.medico ? ` · ${r.medico}` : ''}
         </div>
       )}
+      {r.cids && r.cids.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+          {r.cids.map((c) => (
+            <span
+              key={c.codigo} className="badge muted"
+              style={{ textTransform: 'none', letterSpacing: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              title={c.descricao ? `${c.codigo} ${c.descricao}` : c.codigo}
+            >
+              <b className="mono">{c.codigo}</b>{c.descricao ? ` ${c.descricao}` : ''}
+            </span>
+          ))}
+        </div>
+      )}
       {r.descricao && (
         <div className="tl-desc" style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>
           {r.descricao}
@@ -60,7 +73,8 @@ export function CardRelatorios({ internacaoId, relatorios, carregando, erro, pod
   }
 
   return (
-    <div className="card" style={{ flexShrink: 0 }}>
+    // `overflow: visible`: a lista do campo CID passa da borda do card.
+    <div className="card" style={{ flexShrink: 0, overflow: 'visible' }}>
       <div className="card-header">
         <div className="card-title">Relatórios</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

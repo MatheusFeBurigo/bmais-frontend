@@ -38,7 +38,19 @@ export interface InternadosTableProps {
    *  e acrescenta a coluna "Alta" — sem ela, a data que define a linha não
    *  apareceria em lugar nenhum da tabela. */
   vendoAltas?: boolean
+  /** Recorte por situação do relatório ('' = todos). Mesmo `filtro` da URL que
+   *  os cards do topo usam; ausente = seletor não aparece. */
+  filtroRelatorio?: string
+  onFiltroRelatorio?: (f: string) => void
 }
+
+const FILTROS_RELATORIO: Array<[string, string]> = [
+  ['', 'Todos os relatórios'],
+  ['em_dia', 'Em dia'],
+  ['proximo', 'Próximo de vencer'],
+  ['vencido', 'Atrasado'],
+  ['sem_relatorio', 'Sem relatório'],
+]
 
 export default function InternadosTable({
   paginados,
@@ -57,6 +69,8 @@ export default function InternadosTable({
   onNext,
   mostrarOperadora = false,
   vendoAltas = false,
+  filtroRelatorio = '',
+  onFiltroRelatorio,
 }: InternadosTableProps) {
   const colunas = 11 + (mostrarOperadora ? 1 : 0) + (vendoAltas ? 1 : 0)
   return (
@@ -72,6 +86,17 @@ export default function InternadosTable({
           </div>
         </div>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          {onFiltroRelatorio && !vendoAltas && (
+            <select
+              className="bm-input bm-select"
+              style={{ width: 'auto', minWidth: 170, height: 30, fontSize: 'var(--t-sm)' }}
+              value={filtroRelatorio}
+              onChange={(e) => onFiltroRelatorio(e.target.value)}
+              title="Filtrar pela situação do relatório"
+            >
+              {FILTROS_RELATORIO.map(([v, rot]) => <option key={v} value={v}>{rot}</option>)}
+            </select>
+          )}
           <button className="btn btn-outline btn-sm" onClick={onExportar}>Exportar</button>
           {onAdicionarPaciente && (
             <button className="btn btn-primary btn-sm" onClick={onAdicionarPaciente}

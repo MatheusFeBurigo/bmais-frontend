@@ -60,6 +60,9 @@ function consolidarOverview(overview: DashboardOverview | undefined): DashboardO
 const SEM_HOSPITAIS: Hospital[] = []
 const SEM_INTERNACOES: Internacao[] = []
 
+// Valores de `filtro` que recortam pela situação do relatório (seletor da tabela).
+const FILTROS_STATUS = new Set(['sem_relatorio', 'vencido', 'proximo', 'em_dia'])
+
 // Ícone do avatar no modo consolidado (mesma grade da "Visão Geral" na sidebar).
 const IconTodas = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
@@ -304,11 +307,6 @@ export default function Dashboard() {
 
   usePageHeader({
     title: 'Painel Operacional',
-    subtitle: (ovAtual || data)
-      ? `${opNome} · ${vendoAltas
-          ? `${stats.altas_recentes || 0} com alta`
-          : `${stats.total_internados || 0} internados`} · Ref: ${stats.hoje_efetivo || overview?.hoje_efetivo || '—'}`
-      : undefined,
     actions,
   })
 
@@ -511,6 +509,8 @@ export default function Dashboard() {
                     porPagina={POR_PAGINA}
                     mostrarOperadora={todas}
                     vendoAltas={vendoAltas}
+                    filtroRelatorio={FILTROS_STATUS.has(filtro) ? filtro : ''}
+                    onFiltroRelatorio={(f) => setParam('filtro', f || null)}
                     onExportar={() => setExportOpen(true)}
                     onAdicionarPaciente={somenteLeitura ? undefined : () => setAddOpen(true)}
                     onSelecionar={setDrawerId}

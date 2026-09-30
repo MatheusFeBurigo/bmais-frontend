@@ -12,6 +12,19 @@ export function ehHoje(isoDate: string | null | undefined): boolean {
   return !!isoDate && isoDate.slice(0, 10) === hojeISO()
 }
 
+/** "Hoje", "Ontem" ou `dd/mm`: como se fala do dia no quadro. Vazio se inválido. */
+export function diaRelativo(isoDate: string | null | undefined): string {
+  if (!isoDate) return ''
+  const hoje = hojeISO()
+  const d = isoDate.slice(0, 10)
+  if (d === hoje) return 'Hoje'
+  const [a, m, dia] = hoje.split('-').map(Number)
+  const ontem = new Date(a, m - 1, dia - 1)
+  const ontemISO = `${ontem.getFullYear()}-${String(ontem.getMonth() + 1).padStart(2, '0')}-${String(ontem.getDate()).padStart(2, '0')}`
+  if (d === ontemISO) return 'Ontem'
+  return labelCurto(d)
+}
+
 /** ISO `YYYY-MM-DD` → `dd/mm` (curto, para rótulos). Vazio se inválido. */
 export function labelCurto(isoDate: string | null | undefined): string {
   if (!isoDate) return ''

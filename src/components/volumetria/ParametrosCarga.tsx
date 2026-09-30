@@ -133,7 +133,7 @@ export default function ParametrosCarga({ grupo, onErro, onAviso }: {
       </div>
 
       {aberto && (
-        <div>
+        <div className="card-body">
           {tecnico ? (
             <>
               <div className="vol-param-sec primeira">Minutos por caso, pelo tipo de leito</div>

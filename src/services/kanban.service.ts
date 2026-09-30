@@ -10,9 +10,21 @@ export function fetchKanban(): Promise<KanbanPayload> {
   return apiFetch<KanbanPayload>('/kanban')
 }
 
-/** Marca uma cobrança de censo (coluna "Cobrar censo") como cobrada. */
-export function marcarCobrado(cobrancaId: number): Promise<{ ok: boolean }> {
-  return apiFetch(`/kanban/cobranca/${cobrancaId}/cobrado`, { method: 'POST' })
+/** O censo de UMA operadora num hospital: é a unidade do fluxo de censos. */
+export interface CensoAlvo { hospitalKey: string; operadoraKey: string }
+
+const urlCenso = (a: CensoAlvo) => encodeURIComponent(a.hospitalKey)
+const qsOperadora = (a: CensoAlvo) => new URLSearchParams({ operadora: a.operadoraKey }).toString()
+
+/** "Marcar como cobrado": o censo sai de "Censos atrasados" e vai para
+ *  "Aguardando retorno". Cobra todos os dias em aberto de uma vez. */
+export function marcarCobrado(alvo: CensoAlvo): Promise<{ ok: boolean }> {
+  return apiFetch(`/kanban/censo/${urlCenso(alvo)}/cobrado?${qsOperadora(alvo)}`, { method: 'POST' })
+}
+
+/** Desfaz "Marcar como cobrado": o hospital volta para "Censos atrasados". */
+export function desfazerCobranca(alvo: CensoAlvo): Promise<{ ok: boolean }> {
+  return apiFetch(`/kanban/censo/${urlCenso(alvo)}/desfazer-cobranca?${qsOperadora(alvo)}`, { method: 'POST' })
 }
 
 /** Conclui uma análise técnica: grava o parecer interno (2º relatório) e fecha a tarefa. */

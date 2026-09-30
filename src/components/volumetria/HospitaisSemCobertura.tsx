@@ -38,7 +38,7 @@ export default function HospitaisSemCobertura({ grupo, onErro }: {
           </p>
         </div>
       </div>
-      <div>
+      <div className="card-body">
         {lista.map((h) => (
           <div className="vol-sc" key={h.hospital_key}>
             {h.operadora_key ? <OpAvatar opKey={h.operadora_key} size={28} /> : <span />}

@@ -214,3 +214,8 @@ a.aj-link{text-decoration:none;font-weight:500}
 .aj-tipo:hover{border-color:var(--accent)}
 .aj-tipo.ativo{background:var(--accent-soft);border-color:var(--accent);color:var(--primary);font-weight:600}
 .aj-tipo:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.aj-drawer-foot{padding:12px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end;gap:10px}
+/* Etiqueta de CID escolhido no relatório (réplica do campo CID). */
+.aj-cid-tag{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 8px;border:1px solid var(--border-strong);border-radius:7px;background:var(--surface);font-size:var(--t-sm);color:var(--ink-2)}
+.aj-cid-tag b{font-family:var(--font-mono);color:var(--primary)}
+.aj-cid-tag em{font-style:normal;font-size:var(--t-xs);font-weight:600;color:var(--info);background:var(--info-bg);border-radius:4px;padding:1px 5px}

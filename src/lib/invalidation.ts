@@ -31,6 +31,9 @@ const EVENTO_INVALIDA: Record<string, QueryRoot[]> = {
   // domain/avaliacao.py), então invalidar dashboard/diretoria aqui seria refetch
   // inútil em cinco telas.
   visitaAgendada: ['kanban'],
+  // Alta dada ou desfeita à mão: o paciente entra ou sai da contagem de
+  // internados, das filas do quadro e da permanência do hospital.
+  altaAlterada: ['dashboard', 'dashboardOverview', 'gestor', 'diretoria', 'sidebar', 'kanban', 'hospital', 'volumetria'],
   // Mudança na equipe (profissionais/escala) afeta a contagem do sidebar.
   equipeAlterada: ['equipe', 'sidebar'],
   // Gestão de usuários (a trilha de auditoria também muda: criar/suspender/apagar).

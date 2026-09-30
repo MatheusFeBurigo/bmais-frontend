@@ -157,6 +157,8 @@ export interface Recorte {
   chips: ChipKey[]
   hospital: string
   ordem: OrdemKey
+  /** Só no quadro de censos: o mesmo hospital tem um card por operadora. */
+  operadora?: string
 }
 
 /**
@@ -165,7 +167,7 @@ export interface Recorte {
  * Os chips combinam em E (um card precisa satisfazer todos os ativos): quem marca
  * "UTI" e "Urgentes" está procurando a interseção, os casos que não podem esperar.
  *
- * Cards que não são de paciente (cobrança de censo) não têm os sinais clínicos,
+ * Cards que não são de paciente (fluxo de censos) não têm os sinais clínicos,
  * então ficam de fora quando há chip ativo: mostrá-los num recorte de "UTI" seria
  * ruído. Sem chip, aparecem normalmente.
  */
@@ -175,6 +177,7 @@ export function recortarColuna(itens: KanbanTarefa[], r: Recorte): KanbanTarefa[
 
   const filtrado = itens.filter((t) => {
     if (r.hospital && t.hospital_key !== r.hospital) return false
+    if (r.operadora && t.operadora_key !== r.operadora) return false
     if (q) {
       // A busca alcança o que o card agora mostra (leito, médico, convênio) e a
       // identificação alternativa (senha/carteirinha) dos censos sem nome.

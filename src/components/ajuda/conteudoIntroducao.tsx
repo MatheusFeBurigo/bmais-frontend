@@ -159,10 +159,10 @@ const PAPEIS_MATRIZ = [
 
 // Uma letra por papel, na ordem de PAPEIS_MATRIZ: S = tem acesso, N = não tem.
 const TELAS_MATRIZ: { tela: string; acesso: string; gestao?: boolean }[] = [
-  { tela: 'Painel Operacional', acesso: 'SSNSSS' },
-  { tela: 'Ficha do Paciente', acesso: 'SSSSSS' },
-  { tela: 'Tarefas', acesso: 'SSNNSN' },
-  { tela: 'Envio de Censos', acesso: 'SSSSNN' },
+  { tela: 'Painel Operacional', acesso: 'SSSSSS' },
+  { tela: 'Ficha do Paciente', acesso: 'SSSSNS' },
+  { tela: 'Tarefas', acesso: 'SSSNSN' },
+  { tela: 'Envio de Censos', acesso: 'SSNSNN' },
   { tela: 'Dashboard da Diretoria', acesso: 'NNNSNN', gestao: true },
   { tela: 'Painel do Gestor', acesso: 'NNSSNN', gestao: true },
   { tela: 'Distribuição de tarefas', acesso: 'NNNNNS' },
@@ -219,30 +219,33 @@ export function ModuloNavegacao() {
       <Tabela cabecalho={['Papel', 'Descrição funcional']} larguras={['220px']}>
         <tr>
           <Key>Técnico</Key>
-          <td>Análise técnica dos relatórios do auditor externo. É o papel que emite o parecer
-            interno e registra relatórios.</td>
+          <td>Faz as visitas de auditoria: registra os relatórios, agenda as visitas, informa os
+            CIDs do paciente e dá alta a quem já saiu. Trabalha no Painel Operacional, nas Tarefas
+            e no Envio de Censos.</td>
         </tr>
         <tr>
           <Key>Administrativo</Key>
-          <td>Operação do dia a dia: Painel Operacional, Envio de Censos e Tarefas.</td>
+          <td>Operação do dia a dia: envia os censos, cobra os hospitais que atrasam e dá alta a
+            quem já saiu. Trabalha no Painel Operacional, no Envio de Censos e nas Tarefas.</td>
         </tr>
         <SoGestao>
           <tr>
             <Key>Gestor</Key>
-            <td>Painel do Gestor, Envio de Censos e Configurações. Não acessa a Diretoria nem o
-              Painel Operacional.</td>
+            <td>Painel do Gestor e Configurações, além do Painel Operacional e das Tarefas, para
+              acompanhar quem ele gerencia. Não acessa a Diretoria nem o Envio de Censos.</td>
           </tr>
           <tr>
             <Key>Diretor</Key>
-            <td>Diretoria, Gestor, Painel Operacional e Configurações. Não acessa os cadastros de
-              manutenção do sistema.</td>
+            <td>Diretoria, Gestor, Painel Operacional, Envio de Censos, Configurações e Progresso.
+              Não acessa os cadastros de manutenção do sistema.</td>
           </tr>
         </SoGestao>
         <tr>
           <Key>Analista</Key>
           <td>Acompanha o Painel Operacional, as Tarefas e as Movimentações sem alterar nada
-            nelas, e mantém os cadastros da tela Operações: profissionais, contas de acesso,
-            hospitais e operadoras. Não registra relatório nem envia censo.</td>
+            nelas, e mantém os cadastros da tela Operações: auditores, contas de acesso,
+            hospitais e operadoras. Não registra relatório, não envia censo e não abre a ficha
+            completa do paciente.</td>
         </tr>
         <tr>
           <Key>Coordenador técnico</Key>

@@ -93,7 +93,7 @@ export default function MultiSelectHospitais({ hospitais, selecionados, onChange
   const cidades = useMemo(() => {
     const porCidade = new Map<string, Map<string, HospitalAgrupado>>()
     for (const h of hospitais) {
-      const cidade = cidadeDaRegiao(h.regiao)
+      const cidade = h.cidade?.trim() || cidadeDaRegiao(h.regiao)
       const id = normalizar(h.nome)
       if (!porCidade.has(cidade)) porCidade.set(cidade, new Map())
       const mapa = porCidade.get(cidade)!
@@ -252,9 +252,12 @@ export default function MultiSelectHospitais({ hospitais, selecionados, onChange
           // não disputarem atenção com as cidades de verdade.
           const pendencia = c.nome === SEM_CIDADE || c.nome === CIDADE_A_DEFINIR
           return (
+            // Clicar na linha MARCA a cidade (como um rótulo de checkbox); só a
+            // seta da direita abre os hospitais dela. Antes a linha inteira
+            // abria a cidade, e quem só queria marcá-la caía na lista interna.
             <div
               key={c.nome}
-              onClick={() => abrirCidade(c.nome)}
+              onClick={() => toggleVarios(c.hosp, todos)}
               style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
             >
               <TriCheck checked={todos} indeterminate={alguns} onChange={() => toggleVarios(c.hosp, todos)} />
@@ -272,9 +275,17 @@ export default function MultiSelectHospitais({ hospitais, selecionados, onChange
               <span style={{ fontSize: 'var(--t-sm)', color: marcados ? 'var(--primary-3)' : 'var(--muted)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                 {marcados}/{c.hosp.length}
               </span>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--muted)' }}>
-                <path d="m9 18 6-6-6-6" />
-              </svg>
+              <button
+                type="button"
+                className="msh-abrir"
+                onClick={(e) => { e.stopPropagation(); abrirCidade(c.nome) }}
+                title={`Ver os hospitais de ${c.nome}`}
+                aria-label={`Ver os hospitais de ${c.nome}`}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
             </div>
           )
         })}

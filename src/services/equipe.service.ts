@@ -59,6 +59,12 @@ export function atualizarProfissional(id: number, nome: string, tipo: ProfTipo):
 }
 
 /** Ativa/desativa um profissional. */
+/** Exclui o auditor: conta de login (se houver), escala e cadastro. O backend
+ *  recusa (e mantém o cadastro) se a conta não puder ser apagada. */
+export function excluirProfissional(id: number): Promise<unknown> {
+  return apiFetch(`/profissionais/${id}`, { method: 'DELETE' })
+}
+
 export function definirAtivoProfissional(id: number, ativo: boolean): Promise<unknown> {
   return apiFetch(`/profissionais/${id}`, { method: 'PATCH', body: { ativo: ativo ? 1 : 0 } })
 }

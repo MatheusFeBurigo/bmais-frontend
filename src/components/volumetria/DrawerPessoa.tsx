@@ -216,7 +216,7 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
                     <QuebraDemandas linhas={linhasQuebra(grupo.role_operacional, h.quebra)} compacto />
                   </span>
                   {/* O maior da lista em destaque: é onde a carga desta pessoa se concentra. */}
-                  <span className="vol-hosp-n" style={{ color: h.horas > 0 && h.horas === maxHorasHosp ? 'var(--danger)' : undefined }}>
+                  <span className={`vol-hosp-n${h.horas > 0 ? '' : ' zero'}`} style={{ color: h.horas > 0 && h.horas === maxHorasHosp ? 'var(--danger)' : undefined }}>
                     {fmtHoras(h.horas)}
                   </span>
                   {/* Recebido por divisão temporária: sai sozinho ao fim do período

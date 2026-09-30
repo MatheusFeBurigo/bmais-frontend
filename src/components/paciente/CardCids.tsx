@@ -20,7 +20,7 @@ import { normalizarCid, sexoConflita } from '../../lib/cid'
 import { useCidBusca, useCidsPaciente } from '../../hooks/useCid'
 import type { Cid, CidPaciente } from '../../types/api'
 
-const estilos = `
+export const estilosCids = `
 .cid-rotulo{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.08em;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
 .cid-wrap{position:relative}
 /* A seta é a do select (bm-select); o cursor segue de texto, porque se digita. */
@@ -220,7 +220,7 @@ export function CardCids({ internacaoId, sexoPaciente, podeEditar, onAlterado }:
     // `overflow: visible` porque a lista do campo passa da borda do card, e o
     // `.card` a cortaria.
     <div className="card" style={{ overflow: 'visible' }}>
-      <style>{estilos}</style>
+      <style>{estilosCids}</style>
       <div className="card-header">
         <div className="card-title">CID</div>
         <span className="badge muted">{cids?.length ?? 0}</span>

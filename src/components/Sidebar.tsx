@@ -255,7 +255,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
             </NavLink>
           )}
           {mostrar('volumetria') && (
-            <NavLink to="/volumetria" className={itemClass} {...prefetchProps('/volumetria')}>
+            <NavLink to="/distribuicao" className={itemClass} {...prefetchProps('/distribuicao')}>
               <span className="sb-item-icon"><IconVolumetria /></span>
               <span className="sb-item-label">Distribuição de tarefas</span>
             </NavLink>

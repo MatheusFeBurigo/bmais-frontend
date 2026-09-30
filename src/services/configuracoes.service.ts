@@ -39,12 +39,17 @@ export function criarOperadora(nome: string, key: string): Promise<OkResult> {
   })
 }
 
-/** Cria um novo hospital vinculado a uma operadora. */
-export function criarHospital(nome: string, operadoraKey: string, key: string): Promise<OkResult> {
-  return apiFetch<OkResult>('/configuracoes/hospital', {
-    method: 'POST',
-    body: { nome, operadora_key: operadoraKey, key },
-  })
+export interface NovoHospital extends HospitalFicha {
+  key: string
+  nome: string
+  /** Todas as operadoras atendidas; a primeira vira a principal. */
+  operadoras: string[]
+  regiao: string
+}
+
+/** Cria o hospital já com a ficha e o vínculo com cada operadora (um pedido só). */
+export function criarHospital(dados: NovoHospital): Promise<OkResult> {
+  return apiFetch<OkResult>('/configuracoes/hospital', { method: 'POST', body: dados })
 }
 
 /** Ficha cadastral de um hospital, com as operadoras vinculadas. */

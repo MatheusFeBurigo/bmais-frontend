@@ -1,7 +1,8 @@
-// Campos do formulário de relatório (data realizada, médico, observação).
+// Campos do formulário de relatório (data realizada, médico, CID, observação).
 // Só apresentação: o estado vem de `useFormRelatorio`.
 import MedicoCombobox from '../MedicoCombobox'
 import { CalendarioVisita } from '../kanban/CalendarioVisita'
+import { CampoCidRelatorio } from './CampoCidRelatorio'
 import type { FormRelatorio } from './useFormRelatorio'
 
 export function CamposRelatorio({ form, medicos, ladoALado = false }: {
@@ -17,16 +18,17 @@ export function CamposRelatorio({ form, medicos, ladoALado = false }: {
           {/* "realizada" e o limite no passado: relatório é sempre de visita que
               já aconteceu. A data PREVISTA tem campo próprio (Agendar visita), e
               confundir as duas quebraria o cálculo de dias sem relatório. */}
-          <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Data da visita realizada *</div>
+          <span className="form-lbl">Data da visita realizada<span className="req">*</span></span>
           <CalendarioVisita valor={form.dataVisita} onEscolher={form.setDataVisita} limite="passado" placeholder="Escolher data" />
         </div>
         <div>
-          <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Médico auditor</div>
+          <span className="form-lbl">Médico auditor</span>
           <MedicoCombobox value={form.medico} onChange={form.setMedico} nomes={medicos} />
         </div>
       </div>
+      <CampoCidRelatorio form={form} />
       <div>
-        <div className="uppercase t-muted" style={{ marginBottom: 5 }}>Observação</div>
+        <span className="form-lbl">Observação</span>
         <textarea
           className="bm-input" rows={3} placeholder="Observações técnicas do auditor…"
           style={{ resize: 'vertical', fontFamily: 'inherit' }}

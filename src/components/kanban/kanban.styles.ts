@@ -6,28 +6,59 @@
 export const localStyles = `
 /* grid-template-columns vem inline (nº de colunas depende do papel/board). */
 /* ── Barra de priorização (busca + chips + hospital + ordem) ── */
-.kb-filtros{display:flex;flex-direction:column;gap:9px;margin-bottom:14px}
-.kb-filtros-linha{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.kb-filtros{display:flex;flex-direction:column;margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 1px 2px rgba(6,46,92,.04)}
+.kb-filtros-linha{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px}
 .kb-filtros-conta{font-size:var(--t-sm);color:var(--muted);font-family:var(--font-mono)}
-.kb-filtro-select{padding:6px 9px;max-width:230px}
-.kb-ordem{display:inline-flex;align-items:center;gap:7px}
-.kb-ordem-lbl{font-size:var(--t-sm);color:var(--muted-2);white-space:nowrap}
-/* Chip de recorte: apagado quando inativo, pintado na cor do sinal quando ligado.
-   O contador ao lado diz o tamanho do recorte ANTES do clique. */
-.kb-chips{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-.kb-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:var(--t-sm);font-weight:600;padding:4px 10px;border-radius:99px;cursor:pointer;transition:border-color .12s,background .12s,color .12s}
-.kb-chip:hover{border-color:var(--kb-chip-cor);color:var(--ink-2)}
-.kb-chip .kb-chip-dot{width:7px;height:7px;border-radius:50%;background:var(--kb-chip-cor);flex-shrink:0;opacity:.5;transition:opacity .12s}
-.kb-chip.ativo{background:var(--kb-chip-bg);border-color:var(--kb-chip-cor);color:var(--kb-chip-cor)}
-.kb-chip.ativo .kb-chip-dot{opacity:1}
-.kb-chip-n{font-family:var(--font-mono);font-size:var(--t-xs);opacity:.8}
-/* Chip sem nenhum caso: some da disputa visual, mas continua clicável/legível. */
-.kb-chip.vazio:not(.ativo){opacity:.45}
-.kb-busca-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
-.kb-busca-wrap{position:relative;display:inline-flex;align-items:center}
-.kb-busca-icon{position:absolute;left:10px;color:var(--muted-2);pointer-events:none}
-.kb-busca-clear{position:absolute;right:8px;border:none;background:transparent;color:var(--muted);font-size:13px;line-height:1;padding:4px;border-radius:5px;cursor:pointer}
+/* Busca: ocupa o espaço livre da linha. */
+.kb-busca-wrap{position:relative;display:flex;align-items:center;flex:1 1 280px;min-width:0}
+.kb-busca{appearance:none;width:100%;height:34px;padding:0 30px 0 34px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);font-size:var(--t-base);font-family:inherit;color:var(--ink);outline:none;transition:border-color .12s,box-shadow .12s,background .12s}
+.kb-busca::placeholder{color:var(--muted-2)}
+.kb-busca:hover{border-color:var(--border-strong)}
+.kb-busca:focus{background:var(--surface);border-color:var(--primary-3);box-shadow:0 0 0 3px rgba(21,92,168,.1)}
+.kb-busca-icon{position:absolute;left:11px;color:var(--muted-2);pointer-events:none}
+.kb-busca-clear{position:absolute;right:6px;border:none;background:transparent;color:var(--muted);font-size:12px;line-height:1;padding:5px;border-radius:5px;cursor:pointer}
 .kb-busca-clear:hover{background:var(--surface-3);color:var(--ink)}
+/* Botão Filtros: vira azul com o número quando há filtro ligado. */
+.kb-fbtn-wrap{position:relative}
+.kb-fbtn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--ink-2);font-size:var(--t-base);font-weight:600;font-family:inherit;cursor:pointer;transition:border-color .12s,background .12s,color .12s}
+.kb-fbtn:hover{background:var(--surface-2)}
+.kb-fbtn.aberto{border-color:var(--primary-3);box-shadow:0 0 0 3px rgba(21,92,168,.1)}
+.kb-fbtn.ligado{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-2)}
+.kb-fbtn-n{min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--accent);color:#fff;font-size:var(--t-xs);font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+/* Painel dos filtros. */
+.kb-painel{position:absolute;z-index:40;top:calc(100% + 6px);left:0;width:290px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 12px 32px rgba(6,46,92,.16);padding:14px;display:flex;flex-direction:column;gap:14px}
+.kb-painel-grupo{display:flex;flex-direction:column}
+.kb-painel-grupo .kb-sel{max-width:none;width:100%}
+.kb-painel-grupo .kb-sel select{flex:1;padding-left:11px}
+.kb-painel-rodape{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border-soft);padding-top:12px}
+.kb-opcoes{display:flex;flex-direction:column;gap:2px}
+.kb-opcao{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:7px;font-size:var(--t-base);color:var(--ink-2);cursor:pointer}
+.kb-opcao:hover{background:var(--surface-2)}
+.kb-opcao.ativo{background:var(--accent-soft);font-weight:600;color:var(--ink)}
+.kb-opcao.vazio:not(.ativo){opacity:.5}
+.kb-opcao input{margin:0;width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
+.kb-opcao-dot{width:8px;height:8px;border-radius:50%;background:var(--kb-chip-cor);flex-shrink:0}
+.kb-opcao-n{font-family:var(--font-mono);font-size:var(--t-xs);font-weight:700;color:var(--muted)}
+/* Ordem: à direita, separada dos filtros (não esconde nada, só reordena). */
+.kb-ordem{margin-left:auto}
+.kb-sel{position:relative;display:inline-flex;align-items:center;height:34px;border:1px solid var(--border);border-radius:8px;background:var(--surface);transition:border-color .12s,box-shadow .12s;max-width:260px;cursor:pointer}
+.kb-sel:hover{border-color:var(--border-strong)}
+.kb-sel:focus-within{border-color:var(--primary-3);box-shadow:0 0 0 3px rgba(21,92,168,.1)}
+.kb-sel-ico{display:inline-flex;padding-left:10px;color:var(--muted-2);pointer-events:none}
+.kb-sel-pre{padding-left:6px;font-size:var(--t-sm);color:var(--muted);white-space:nowrap;pointer-events:none}
+.kb-sel select{appearance:none;border:none;background:transparent;height:100%;padding:0 28px 0 6px;font-size:var(--t-base);font-weight:600;font-family:inherit;color:var(--ink-2);outline:none;cursor:pointer;min-width:0;text-overflow:ellipsis}
+.kb-sel-seta{position:absolute;right:10px;color:var(--muted-2);pointer-events:none}
+/* Filtros ligados, como etiquetas removíveis. */
+.kb-ativos{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 12px;border-top:1px solid var(--border-soft);background:var(--surface-2);border-radius:0 0 var(--r-md) var(--r-md)}
+.kb-ativos-lbl{font-size:var(--t-sm);color:var(--muted);margin-right:2px}
+.kb-ativos-fim{margin-left:auto;display:inline-flex;align-items:center;gap:10px}
+.kb-tag{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 4px 0 10px;border:1px solid var(--border-strong);border-radius:99px;background:var(--surface);font-size:var(--t-sm);font-weight:600;color:var(--ink-2)}
+.kb-tag-x{all:unset;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:10px;color:var(--muted);cursor:pointer}
+.kb-tag-x:hover{background:var(--surface-3);color:var(--ink)}
+.kb-tag-x:focus-visible{outline:2px solid var(--accent)}
+.kb-link{all:unset;font-size:var(--t-sm);font-weight:600;color:var(--accent);cursor:pointer}
+.kb-link:hover{text-decoration:underline}
+@media (max-width:760px){.kb-ordem{margin-left:0}.kb-painel{width:min(290px,calc(100vw - 48px))}}
 /* As colunas ficam SEMPRE na mesma linha. O quadro é lido lado a lado (o que
    está pendente, o que já tem data marcada), e empurrar uma coluna para baixo
    esconde metade da comparação atrás de um scroll vertical.
@@ -50,6 +81,13 @@ export const localStyles = `
 .kb-col-title{font-size:var(--t-md);font-weight:600;color:var(--ink)}
 .kb-col-count{margin-left:auto;font-family:var(--font-mono);font-size:var(--t-sm);font-weight:700;color:#fff;background:var(--kb-cor);border-radius:99px;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;padding:0 7px}
 .kb-col-desc{font-size:var(--t-sm);color:var(--muted-2);margin-top:3px;line-height:1.4}
+/* "i" ao lado do título: a descrição da coluna abre num balão, sem ocupar o cabeçalho. */
+.kb-info{position:relative;display:inline-flex}
+.kb-info-btn{all:unset;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;color:var(--muted-2);cursor:help}
+.kb-info-btn:hover,.kb-info-btn[aria-expanded="true"]{color:var(--kb-cor)}
+.kb-info-btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.kb-info-pop{position:absolute;z-index:20;top:calc(100% + 6px);left:50%;transform:translateX(-50%);width:220px;padding:8px 10px;border-radius:8px;background:var(--ink);color:#fff;font-size:var(--t-sm);font-weight:400;line-height:1.4;box-shadow:0 8px 24px rgba(6,46,92,.2);pointer-events:none}
+.kb-info-pop::before{content:"";position:absolute;top:-4px;left:50%;width:8px;height:8px;background:var(--ink);transform:translateX(-50%) rotate(45deg)}
 .kb-col-body{padding:9px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;max-height:calc(100vh - 240px)}
 .kb-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 11px;transition:border-color .14s,box-shadow .14s,transform .14s;position:relative}
 .kb-card.clicavel{cursor:pointer}

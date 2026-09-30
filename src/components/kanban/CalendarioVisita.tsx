@@ -14,7 +14,8 @@
 //   * "já aconteceu" (registrar relatório): só hoje ou passado, `limite="passado"`.
 // O texto dos atalhos e o desabilitar do dia mudam de sentido conforme o limite,
 // mas o desenho do calendário é o mesmo — daí um componente só para os dois.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { hojeISO } from '../../lib/datas'
 
 const DIAS_SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
@@ -109,10 +110,9 @@ const calendarioStyles = `
 .cal-campo.aberto .cal-campo-seta{transform:rotate(180deg)}
 @media (prefers-reduced-motion:reduce){.cal-campo-seta{transition:none}}
 /* ── Calendário (popover) ── */
-.cal-pop{position:absolute;z-index:30;left:0;top:calc(100% + 6px);width:268px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 12px 32px rgba(6,46,92,.16);padding:10px;animation:calAbrir .14s ease}
-/* Sem espaço embaixo (campo perto do fim do drawer/tela): o popover nasce ACIMA
-   do campo em vez de ser cortado pela borda do scroll. */
-.cal-pop.para-cima{top:auto;bottom:calc(100% + 6px);animation:calAbrirCima .14s ease}
+.cal-pop{position:fixed;z-index:1000;width:268px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 12px 32px rgba(6,46,92,.16);padding:10px;animation:calAbrir .14s ease}
+/* Sem espaço embaixo (campo perto do fim da tela): o popover nasce ACIMA do campo. */
+.cal-pop.para-cima{animation:calAbrirCima .14s ease}
 @keyframes calAbrir{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 @keyframes calAbrirCima{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.cal-pop,.cal-pop.para-cima{animation:none}}
@@ -153,6 +153,10 @@ export function CalendarioVisita({ valor, onEscolher, placeholder = 'Escolher da
   // true = não cabe embaixo do campo (perto do fim da tela/do scroll do
   // drawer): o popover abre para CIMA em vez de nascer cortado.
   const [paraCima, setParaCima] = useState(false)
+  // Posição do popover na TELA (position:fixed, via portal no <body>). Dentro do
+  // campo ele era cortado por qualquer ancestral com overflow (a área rolável do
+  // drawer, a seção recolhível) e a seta de "próximo mês" sumia atrás.
+  const [pos, setPos] = useState<CSSProperties>({ visibility: 'hidden' })
   const wrapRef = useRef<HTMLDivElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
 
@@ -182,26 +186,45 @@ export function CalendarioVisita({ valor, onEscolher, placeholder = 'Escolher da
     // e a medição pegaria o campo a meio caminho — lado errado escolhido.
     campo.scrollIntoView({ block: 'nearest', behavior: 'auto' })
 
-    // Mede DEPOIS que o popover renderizou (senão a altura ainda é 0) e depois
-    // do scroll acima, que já terminou por ser instantâneo. Um
-    // requestAnimationFrame basta: o DOM já foi commitado neste ponto.
-    const id = requestAnimationFrame(() => {
-      const rectCampo = campo.getBoundingClientRect()
+  }, [aberto])
+
+  // Posiciona o popover junto do campo e acompanha rolagem/redimensionamento
+  // (o drawer rola por dentro; `capture` pega o scroll de qualquer ancestral).
+  useLayoutEffect(() => {
+    if (!aberto) return
+    function posicionar() {
+      const campo = wrapRef.current
+      if (!campo) return
+      const r = campo.getBoundingClientRect()
       const alturaPop = popRef.current?.offsetHeight ?? 360
-      const espacoAbaixo = window.innerHeight - rectCampo.bottom
-      const espacoAcima = rectCampo.top
+      const larguraPop = popRef.current?.offsetWidth ?? 268
+      const espacoAbaixo = window.innerHeight - r.bottom
+      const espacoAcima = r.top
       // Só inverte quando embaixo não cabe E em cima cabe melhor — evita trocar
       // de lado à toa quando os dois espaços são apertados.
-      setParaCima(espacoAbaixo < alturaPop + 12 && espacoAcima > espacoAbaixo)
-    })
-    return () => cancelAnimationFrame(id)
+      const cima = espacoAbaixo < alturaPop + 12 && espacoAcima > espacoAbaixo
+      setParaCima(cima)
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - larguraPop - 8))
+      setPos(cima ? { left, top: Math.max(8, r.top - alturaPop - 6) } : { left, top: r.bottom + 6 })
+    }
+    posicionar()
+    window.addEventListener('scroll', posicionar, true)
+    window.addEventListener('resize', posicionar)
+    return () => {
+      window.removeEventListener('scroll', posicionar, true)
+      window.removeEventListener('resize', posicionar)
+      setPos({ visibility: 'hidden' })
+    }
   }, [aberto])
 
   // Fecha ao clicar fora, como os demais dropdowns do sistema.
   useEffect(() => {
     if (!aberto) return
     function onDoc(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setAberto(false)
+      // O popover mora no <body> (portal): clicar nele não é "clicar fora".
+      const alvo = e.target as Node
+      if (wrapRef.current?.contains(alvo) || popRef.current?.contains(alvo)) return
+      setAberto(false)
     }
     function onKey(e: KeyboardEvent) {
       // Escape fecha só o calendário. Sem isto ele atravessaria para o drawer,
@@ -268,8 +291,9 @@ export function CalendarioVisita({ valor, onEscolher, placeholder = 'Escolher da
         <svg className="cal-campo-seta" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
       </button>
 
-      {aberto && (
-        <div ref={popRef} className={`cal-pop${paraCima ? ' para-cima' : ''}`} role="dialog" aria-label="Escolher a data">
+      {aberto && createPortal(
+        <div ref={popRef} className={`cal-pop${paraCima ? ' para-cima' : ''}`} style={pos} role="dialog" aria-label="Escolher a data">
+          <style>{calendarioStyles}</style>
           <div className="cal-atalhos">
             {atalhos.map((a) => (
               <button key={a.rotulo} type="button" className="cal-atalho" onClick={() => escolher(a.dia)}>
@@ -322,7 +346,8 @@ export function CalendarioVisita({ valor, onEscolher, placeholder = 'Escolher da
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

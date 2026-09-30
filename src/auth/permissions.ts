@@ -120,7 +120,7 @@ const ROTA_DA_SCREEN: Record<Screen, string> = {
   kanban: '/tarefas',
   logs: '/logs',
   progresso: '/progresso',
-  volumetria: '/volumetria',
+  volumetria: '/distribuicao',
 }
 
 // Ordem de preferência ao escolher a "tela inicial" de um papel barrado.
@@ -152,9 +152,13 @@ const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
   // técnico (admin supervisiona). Os demais papéis VEEM os CIDs na ficha, só não
   // os alteram. Espelha ROLES_ATRIBUIR_CID no backend, que recusa com 403.
   atribuirCid: ['tecnico', 'admin'],
+  // Dar alta à mão (e desfazer a alta que não veio do hospital): quem acompanha
+  // o paciente no dia a dia. Espelha ROLES_DAR_ALTA no backend.
+  darAlta: ['tecnico', 'administrativo', 'admin'],
 }
 
 export type AcaoProtegida = 'registrarRelatorio' | 'criarConvenio' | 'agendarVisita' | 'atribuirCid'
+  | 'darAlta'
 
 /** True se o papel pode executar a ação. `role` null/desconhecido NÃO libera:
  *  ação sensível exige papel resolvido (diferente de `podeVer`, que é permissivo). */

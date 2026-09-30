@@ -62,6 +62,7 @@ export default function Configuracoes() {
     return (
       <OperadoraView
         opSel={data.op_selected}
+        operadoras={data.operadoras}
         onNav={go}
         onToast={setToast}
         onChanged={invalidar}

@@ -7,7 +7,7 @@
 // as mesmas classes do design-system. Mudou a tela? Confira a réplica.
 //
 // Os nomes são inventados: nenhum dado real de paciente entra na documentação.
-import { useMemo, type ReactNode } from 'react'
+import { Fragment, useMemo, type ReactNode } from 'react'
 import type {
   Hospital, KanbanTarefa, Operadora, PacienteGravado, UploadCensoResult,
 } from '../../types/api'
@@ -17,12 +17,14 @@ import { DiasRatio } from '../internados/cells'
 import { KanbanCard } from '../kanban/KanbanCard'
 import { KanbanFiltros } from '../kanban/KanbanFiltros'
 import { localStyles as kanbanStyles } from '../kanban/kanban.styles'
-import { COLUNAS } from '../kanban/colunas'
+import { COLUNAS_CENSO, COLUNAS_PACIENTE } from '../kanban/colunas'
 import { contarChips } from '../kanban/prioridade'
 import { FormularioEnvio, formularioStyles } from '../upload/FormularioEnvio'
 import { ResultadoEnvio, estilosResultado } from '../upload/ResultadoEnvio'
 import { ListaPacientes } from '../upload/ListaPacientes'
 import { Alerta, alertaStyles } from '../Alerta'
+import { estilosCids } from '../paciente/CardCids'
+import { ColunaInfo } from '../kanban/ColunaInfo'
 import { Alvo, ModalReplica } from './replica'
 
 const nada = () => {}
@@ -131,7 +133,7 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
 
   return (
     <>
-      <Topo titulo="Painel Operacional" sub="Todas as operadoras · 86 internados · Ref: 25/09/2026"
+      <Topo titulo="Painel Operacional"
         acoes={<button className="btn btn-outline btn-sm">Atualizar</button>} />
 
       {marcar(marcas.operadora, (
@@ -240,8 +242,9 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
 // ── Ficha rápida (drawer) ─────────────────────────────────────────────────────
 
 type MarcaFicha = 'cabecalho' | 'hospital' | 'detalhes' | 'indicadores' | 'timeline'
-  | 'dataVisita' | 'medico' | 'obs' | 'registrar'
+  | 'dataVisita' | 'medico' | 'cid' | 'obs' | 'registrar'
   | 'agendaData' | 'agendaHora' | 'agendaMedico' | 'agendar' | 'agendaResumo' | 'cancelar'
+  | 'alta'
 
 /** O painel lateral que abre ao clicar num paciente. `agendada` mostra o estado
  *  depois de marcar a visita (o bloco vira um resumo com "Cancelar"). */
@@ -359,6 +362,19 @@ export function ReplicaFichaRapida({ marcas = {}, agendada, atrasada, preenchido
                 ), true)}
               </div>
               <div style={{ marginTop: 10 }}>
+                {marcar(marcas.cid, (
+                  <div style={{ width: '100%' }}>
+                    <div className="aj-campo-lbl">CID <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional)</span></div>
+                    <input className="bm-input bm-select" readOnly placeholder="Código (ex.: J18.9) ou nome da doença" />
+                    {preenchido && (
+                      <div style={{ marginTop: 8 }}>
+                        <span className="aj-cid-tag"><b>J18.9</b>Pneumonia não especificada<em>Novo no paciente</em></span>
+                      </div>
+                    )}
+                  </div>
+                ), true)}
+              </div>
+              <div style={{ marginTop: 10 }}>
                 {marcar(marcas.obs, (
                   <div style={{ width: '100%' }}>
                     <div className="aj-campo-lbl">Observação</div>
@@ -424,6 +440,133 @@ export function ReplicaFichaRapida({ marcas = {}, agendada, atrasada, preenchido
             </>
           )}
         </div>
+        <div className="aj-drawer-foot">
+          <div style={{ marginRight: 'auto' }}>
+            {marcar(marcas.alta, (
+              <span className="btn btn-outline" style={{ gap: 6, color: 'var(--success)', borderColor: 'color-mix(in srgb,var(--success) 45%,transparent)', fontWeight: 600 }}>
+                {IcoAlta}Alta
+              </span>
+            ))}
+          </div>
+          <span className="btn btn-outline">Fechar</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const IcoAlta = (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></svg>
+)
+
+/** A janela "Alta", aberta pelo botão do rodapé da ficha rápida (ou do topo da
+ *  ficha completa). Redesenhada: a real (AcaoAlta) é um Modal com portal. */
+export function ReplicaModalAlta({ marcas = {} }: {
+  marcas?: Partial<Record<'data' | 'hora' | 'confirmar', number>>
+}) {
+  return (
+    <ModalReplica
+      titulo="Alta"
+      largura={460}
+      rodape={
+        <>
+          <span className="btn btn-outline btn-sm">Cancelar</span>
+          {marcar(marcas.confirmar, <span className="btn btn-success btn-sm">Confirmar alta</span>)}
+        </>
+      }
+    >
+      <div style={{ display: 'grid', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface-2)' }}>
+          <span style={{ width: 34, height: 34, borderRadius: 9, display: 'grid', placeItems: 'center', flexShrink: 0, background: 'var(--success-bg)', color: 'var(--success)' }}>{IcoAlta}</span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 'var(--t-md)', fontWeight: 600, color: 'var(--ink)' }}>Carlos Eduardo Lima</div>
+            <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', marginTop: 2 }}>Internado desde 12/09/2026 · 13d</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            {marcar(marcas.data, (
+              <div style={{ width: '100%' }}>
+                <div className="aj-campo-lbl">Data da alta *</div>
+                <input className="bm-input" readOnly value="24/09/2026" />
+              </div>
+            ), true)}
+          </div>
+          <div style={{ width: 130 }}>
+            {marcar(marcas.hora, (
+              <div style={{ width: '100%' }}>
+                <div className="aj-campo-lbl">Horário (opcional)</div>
+                <input className="bm-input" readOnly value="16:20" />
+              </div>
+            ), true)}
+          </div>
+        </div>
+      </div>
+    </ModalReplica>
+  )
+}
+
+// ── CIDs do paciente (card da ficha completa) ─────────────────────────────────
+
+const CIDS_EXEMPLO: { codigo: string; nome: string; hier: [string, string, string][]; por: string; em: string }[] = [
+  { codigo: 'J18.9', nome: 'Pneumonia não especificada', por: 'Juliana Prado', em: '23/09/2026 10:12',
+    hier: [['Categoria', 'J18', 'Pneumonia por microorganismo não especificada'], ['Capítulo', 'X', 'Doenças do aparelho respiratório']] },
+  { codigo: 'I10', nome: 'Hipertensão essencial (primária)', por: 'Juliana Prado', em: '23/09/2026 10:13',
+    hier: [['Capítulo', 'IX', 'Doenças do aparelho circulatório']] },
+]
+
+/** O card "CID" da ficha completa, como o técnico o vê: campo de adicionar em
+ *  cima (aberto com a lista de sugestões) e os CIDs já vinculados embaixo.
+ *  Redesenhado com as classes da tela: o CardCids real busca o catálogo. */
+export function ReplicaCidsPaciente({ marcas = {} }: {
+  marcas?: Partial<Record<'campo' | 'opcao' | 'lista' | 'remover', number>>
+}) {
+  return (
+    <div className="card" style={{ overflow: 'visible' }}>
+      <style>{estilosCids}</style>
+      <div className="card-header">
+        <div className="card-title">CID</div>
+        <span className="badge muted">{CIDS_EXEMPLO.length}</span>
+      </div>
+      <div className="card-body">
+        <div style={{ marginBottom: 14 }}>
+          <div className="cid-rotulo">Adicionar CID</div>
+          {marcar(marcas.campo, (
+            <input className="bm-input bm-select cid-campo" readOnly value="pneumonia" />
+          ), true)}
+          <div className="cid-menu" style={{ position: 'static', marginTop: 4, boxShadow: 'none' }}>
+            {marcar(marcas.opcao, (
+              <div className="cid-opt active"><span className="cid-opt-cod">J15.9</span><span>Pneumonia bacteriana não especificada</span></div>
+            ), true)}
+            <div className="cid-opt"><span className="cid-opt-cod">J18.0</span><span>Broncopneumonia não especificada</span></div>
+            <div className="cid-opt off"><span className="cid-opt-cod">J18.9</span><span>Pneumonia não especificada</span><span className="cid-opt-ja">Já adicionado</span></div>
+          </div>
+        </div>
+        {marcar(marcas.lista, (
+          <div className="cid-lista">
+            {CIDS_EXEMPLO.map((c, i) => (
+              <div key={c.codigo} className="cid-item">
+                <div className="flex-1" style={{ minWidth: 0 }}>
+                  <div className="cid-titulo">
+                    <span className="cid-cod">{c.codigo}</span>
+                    <span className="cid-nome">{c.nome}</span>
+                  </div>
+                  <div className="cid-hier">
+                    {c.hier.map(([rot, cod, desc]) => (
+                      <Fragment key={rot}><span>{rot}</span><span><b>{cod}</b> {desc}</span></Fragment>
+                    ))}
+                  </div>
+                  <div className="cid-meta">Adicionado por {c.por} em {c.em}</div>
+                </div>
+                {marcar(i === 0 ? marcas.remover : undefined, (
+                  <span className="cid-lixeira" title="Remover">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /></svg>
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        ), true)}
       </div>
     </div>
   )
@@ -516,10 +659,19 @@ const TAREFAS: KanbanTarefa[] = [
     visita_agendada_em: '2026-09-24', visita_agendada_hora: '10:30', visita_agendada_medico: 'Dra. Renata Alves' },
 ]
 
-const TAREFA_COBRANCA: KanbanTarefa = {
-  id: 'c1', coluna: 'cobrancas', titulo: 'HOSPITAL SÃO LUCAS', operadora_key: 'porto', cobranca_id: 1,
-  data_ref: '2026-09-24', ultimo_censo: '2026-09-21', dias_sem_censo: 4,
-}
+// Um hospital por coluna do fluxo de censos, com "hoje" em 25/09.
+const TAREFAS_CENSO: KanbanTarefa[] = [
+  { id: 'c1', coluna: 'censos_atrasados', estado_censo: 'censos_atrasados', titulo: 'HOSPITAL SÃO LUCAS',
+    hospital_key: 'sao_lucas', operadora_key: 'porto', operadora_nome: 'Porto Seguro', data_ref: '2026-09-22', ultimo_censo: '2026-09-21',
+    dias_sem_censo: 4 },
+  { id: 'c2', coluna: 'aguardando_retorno', estado_censo: 'aguardando_retorno', titulo: 'HOSPITAL VILA NOVA',
+    hospital_key: 'vila_nova', operadora_key: 'careplus', operadora_nome: 'CarePlus', data_ref: '2026-09-24', ultimo_censo: '2026-09-23',
+    dias_sem_censo: 2, cobrado_em: '2026-09-25T09:40:00', cobrado_por: 'Marina Souza' },
+  { id: 'c3', coluna: 'aguardando_censo', estado_censo: 'aguardando_censo', titulo: 'HOSPITAL SANTA CLARA',
+    hospital_key: 'santa_clara', operadora_key: 'careplus', operadora_nome: 'CarePlus', ultimo_censo: '2026-09-24', dias_sem_censo: 1 },
+  { id: 'c4', coluna: 'censos_processados', estado_censo: 'censos_processados', titulo: 'HOSPITAL BOA VISTA',
+    hospital_key: 'boa_vista', operadora_key: 'porto', operadora_nome: 'Porto Seguro', ultimo_censo: '2026-09-25', dias_sem_censo: 0 },
+]
 
 const HOSPITAIS_FILTRO = [
   { key: 'santa_clara', nome: 'Hospital Santa Clara' },
@@ -534,7 +686,7 @@ export function ReplicaQuadro({ marcas = {}, chipsAtivos = [] }: {
   marcas?: Partial<Record<'filtros' | 'card' | 'aguardando' | 'atrasada', number>>
   chipsAtivos?: Array<'urgente' | 'uti' | 'longa' | 'nunca_visitado'>
 }) {
-  const colunas = COLUNAS.filter((c) => c.key !== 'cobrancas')
+  const colunas = COLUNAS_PACIENTE
   const contagens = useMemo(() => contarChips(TAREFAS), [])
   return (
     <>
@@ -555,9 +707,9 @@ export function ReplicaQuadro({ marcas = {}, chipsAtivos = [] }: {
               <header className="kb-col-head">
                 <div className="kb-col-title-row">
                   <span className="kb-col-title">{col.titulo}</span>
+                  <ColunaInfo texto={col.descricao} />
                   <span className="kb-col-count">{itens.length}</span>
                 </div>
-                <div className="kb-col-desc">{col.descricao}</div>
               </header>
               <div className="kb-col-body">
                 {itens.map((t, i) => {
@@ -583,28 +735,42 @@ export function ReplicaQuadro({ marcas = {}, chipsAtivos = [] }: {
   )
 }
 
-/** A coluna "Cobrar censo" do perfil administrativo, com um card. */
-export function ReplicaCobranca({ marcas = {} }: { marcas?: Partial<Record<'card', number>> }) {
-  const col = COLUNAS.find((c) => c.key === 'cobrancas')!
+/** O quadro de censos do perfil administrativo, um hospital por coluna.
+ *  `marcas.card` marca o card atrasado (com o botão); `retorno`, a coluna
+ *  para onde ele vai depois de cobrado. */
+export function ReplicaCobranca({ marcas = {} }: { marcas?: Partial<Record<'card' | 'retorno', number>> }) {
   return (
     <>
       <style>{kanbanStyles}</style>
-      <div style={{ maxWidth: 320 }}>
-        <section className="kb-col" style={{ ['--kb-cor' as string]: col.cor }}>
-          <header className="kb-col-head">
-            <div className="kb-col-title-row">
-              <span className="kb-col-title">{col.titulo}</span>
-              <span className="kb-col-count">1</span>
+      <div className="kb-board" style={{ gridTemplateColumns: `repeat(${COLUNAS_CENSO.length}, minmax(220px, 1fr))`, overflow: 'visible' }}>
+        {COLUNAS_CENSO.map((col) => {
+          const itens = TAREFAS_CENSO.filter((t) => t.coluna === col.key)
+          const coluna = (
+            <section className="kb-col" style={{ ['--kb-cor' as string]: col.cor }}>
+              <header className="kb-col-head">
+                <div className="kb-col-title-row">
+                  <span className="kb-col-title">{col.titulo}</span>
+                  <ColunaInfo texto={col.descricao} />
+                  <span className="kb-col-count">{itens.length}</span>
+                </div>
+              </header>
+              <div className="kb-col-body">
+                {itens.map((t) => {
+                  const card = (
+                    <KanbanCard tarefa={t} corBg={col.corBg} onAbrir={nada} onPrefetch={nada}
+                      onCobrar={nada} onDesfazer={nada} cobrando={false} />
+                  )
+                  return <div key={t.id}>{col.key === 'censos_atrasados' ? marcar(marcas.card, card, true) : card}</div>
+                })}
+              </div>
+            </section>
+          )
+          return (
+            <div key={col.key}>
+              {col.key === 'aguardando_retorno' ? marcar(marcas.retorno, coluna, true) : coluna}
             </div>
-            <div className="kb-col-desc">{col.descricao}</div>
-          </header>
-          <div className="kb-col-body">
-            {marcar(marcas.card, (
-              <KanbanCard tarefa={TAREFA_COBRANCA} corBg={col.corBg} onAbrir={nada} onPrefetch={nada}
-                onCobrar={nada} cobrando={false} />
-            ), true)}
-          </div>
-        </section>
+          )
+        })}
       </div>
     </>
   )

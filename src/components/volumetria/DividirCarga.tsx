@@ -1,14 +1,14 @@
 // Modal "Dividir a carga": o coordenador escolhe com quem dividir (a pessoa +
 // N colegas = N+1 partes) e por quanto tempo. Os hospitais da pessoa são
-// repartidos pelo peso em horas e cada um pode ser trocado de mão antes de
-// confirmar. Durante o período, Tarefas de cada um já mostra a divisão; ao fim,
+// repartidos pelo peso em horas. Ao confirmar, o modal fecha na hora e a tela
+// já mostra a carga dividida (atualização otimista em useDividirCarga). Durante o período, Tarefas de cada um já mostra a divisão; ao fim,
 // tudo volta sozinho (nada muda na área definida em Operações).
 import { useMemo, useState } from 'react'
 import type { VolumetriaGrupo, VolumetriaPessoa } from '../../types/api'
 import { useCancelarDivisao, useDividirCarga } from '../../hooks/useVolumetria'
 import { Badge, Modal, Spinner } from '../ui'
 import {
-  NIVEL_LABEL, NIVEL_VAR, colegasParaDividir, divisoesDe, fmtDiaMes, fmtDias, fmtHoras,
+  NIVEL_LABEL, NIVEL_VAR, colegasParaDividir, divisoesDe, fmtDiaMes, fmtDias,
   hojeIso, hospitaisDivisiveis, preverDivisao, repartir, type PlanoDivisao,
 } from './volumetria.model'
 import { dividirStyles } from './volumetria.styles'
@@ -35,20 +35,11 @@ export default function DividirCarga({ pessoa, grupo, onClose, onErro, onAviso }
   const [escolhidos, setEscolhidos] = useState<string[]>([])
   const [inicio, setInicio] = useState(hojeIso())
   const [fim, setFim] = useState(hojeIso(1))
-  // Trocas feitas à mão sobre a sugestão. Guardadas à parte (e não como o plano
-  // inteiro) para um refetch da tela não desfazer o que o coordenador ajustou.
-  const [ajustes, setAjustes] = useState<PlanoDivisao>({})
-  // Datas à mão e troca de hospital são exceção: ficam recolhidas até pedir.
+  // Datas à mão são exceção: ficam recolhidas até pedir.
   const [outroPeriodo, setOutroPeriodo] = useState(false)
-  const [verHospitais, setVerHospitais] = useState(false)
 
   const participantes = colegas.filter((c) => escolhidos.includes(c.user_id))
-  const plano = useMemo<PlanoDivisao>(() => {
-    const validos = new Set([pessoa.user_id, ...escolhidos])
-    const base = repartir(pessoa, escolhidos)
-    for (const [hk, uid] of Object.entries(ajustes)) if (hk in base && validos.has(uid)) base[hk] = uid
-    return base
-  }, [pessoa, escolhidos, ajustes])
+  const plano = useMemo<PlanoDivisao>(() => repartir(pessoa, escolhidos), [pessoa, escolhidos])
   const previsao = preverDivisao(grupo, pessoa, participantes, plano)
   const distribuicao = Object.fromEntries(
     Object.entries(plano).filter(([, uid]) => uid !== pessoa.user_id),
@@ -61,8 +52,6 @@ export default function DividirCarga({ pessoa, grupo, onClose, onErro, onAviso }
 
   function alternar(uid: string) {
     setEscolhidos((atual) => (atual.includes(uid) ? atual.filter((u) => u !== uid) : [...atual, uid]))
-    // Mudou o número de partes: a sugestão é refeita do zero.
-    setAjustes({})
   }
 
   function escolherPeriodo(dias: number) {
@@ -71,14 +60,14 @@ export default function DividirCarga({ pessoa, grupo, onClose, onErro, onAviso }
     setFim(hojeIso(dias - 1))
   }
 
+  // Fecha já no clique: a tela atrás mostra a divisão na hora. Promessa, e não
+  // callbacks do `mutate`, porque estes não disparam com o modal desmontado.
   function confirmar() {
-    dividir.mutate({ de_user_id: pessoa.user_id, distribuicao, inicio, fim }, {
-      onSuccess: () => {
-        onAviso(`Carga de ${pessoa.nome} dividida de ${fmtDiaMes(inicio)} a ${fmtDiaMes(fim)}.`)
-        onClose()
-      },
-      onError: (e) => onErro(e instanceof Error && e.message ? e.message : 'Não foi possível dividir a carga.'),
-    })
+    const nome = pessoa.nome
+    dividir.mutateAsync({ de_user_id: pessoa.user_id, distribuicao, inicio, fim })
+      .then(() => onAviso(`Carga de ${nome} dividida de ${fmtDiaMes(inicio)} a ${fmtDiaMes(fim)}.`))
+      .catch((e) => onErro(e instanceof Error && e.message ? e.message : 'Não foi possível dividir a carga.'))
+    onClose()
   }
 
   function encerrar(lote: string) {
@@ -87,9 +76,6 @@ export default function DividirCarga({ pessoa, grupo, onClose, onErro, onAviso }
       onError: () => onErro('Não foi possível cancelar a divisão. Tente de novo.'),
     })
   }
-
-  const nomeDe = (uid: string) =>
-    uid === pessoa.user_id ? pessoa.nome : colegas.find((c) => c.user_id === uid)?.nome ?? 'Outra pessoa'
 
   return (
     <Modal
@@ -209,30 +195,6 @@ export default function DividirCarga({ pessoa, grupo, onClose, onErro, onAviso }
                   </div>
                 ))}
               </div>
-              <button type="button" className="dv-ajustar" aria-expanded={verHospitais}
-                onClick={() => setVerHospitais((v) => !v)}>
-                {verHospitais ? 'Ocultar hospitais' : `Trocar hospitais de mão (${divisiveis.length})`}
-              </button>
-              {verHospitais && (
-                <div style={{ marginTop: 6 }}>
-                  {divisiveis.map((h) => (
-                    <div className="dv-hosp" key={h.hospital_key}>
-                      <span className="dv-hosp-nome" title={`${h.hospital_nome} · ${fmtHoras(h.horas)}`}>{h.hospital_nome}</span>
-                      <select
-                        className="bm-input bm-select"
-                        value={plano[h.hospital_key] ?? pessoa.user_id}
-                        disabled={ocupado}
-                        aria-label={`Quem fica com ${h.hospital_nome}`}
-                        onChange={(e) => setAjustes((atual) => ({ ...atual, [h.hospital_key]: e.target.value }))}
-                      >
-                        {[pessoa.user_id, ...escolhidos].map((uid) => (
-                          <option key={uid} value={uid}>{nomeDe(uid)}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
-                </div>
-              )}
               {repassados >= divisiveis.length && (
                 <div className="dv-vazio" style={{ color: 'var(--danger)', marginTop: 8 }}>
                   Deixe ao menos um hospital com {pessoa.nome}.

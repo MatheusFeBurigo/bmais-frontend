@@ -58,6 +58,17 @@ export function useCidBusca(texto: string, ativo: boolean) {
   }
 }
 
+/** Só a lista dos CIDs do paciente, sem as ações: é o que o formulário de
+ *  relatório usa para sugerir os CIDs do paciente. Mesma chave de cache da ficha,
+ *  então um CID adicionado no card de CIDs aparece aqui sem nova busca. */
+export function useListaCidsPaciente(internacaoId: number) {
+  return useQuery({
+    queryKey: queryKeys.internacaoCids(internacaoId),
+    queryFn: () => fetchInternacaoCids(internacaoId),
+    staleTime: FICHA_STALE,
+  })
+}
+
 /** Os CIDs do paciente, com adicionar e remover. Ao terminar, a lista é relida.
  *  Só ela: o vínculo de CID não gera evento na timeline (decisão do usuário). */
 export function useCidsPaciente(internacaoId: number) {

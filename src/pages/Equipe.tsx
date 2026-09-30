@@ -18,7 +18,8 @@ import ProfTabela from '../components/equipe/ProfTabela'
 import DetalheProf from '../components/equipe/DetalheProf'
 import AddProfModal from '../components/equipe/AddProfModal'
 import ResetSenhaModal from '../components/equipe/ResetSenhaModal'
-import { definirAtivoProfissional } from '../services/equipe.service'
+import { definirAtivoProfissional, excluirProfissional } from '../services/equipe.service'
+import { ConfirmarModal } from '../components/ConfirmarModal'
 
 // HIERARQUIA VISUAL — o que esta tela deliberadamente NAO faz:
 // antes havia duas fileiras de pilulas identicas empilhadas (as secoes e o
@@ -68,6 +69,11 @@ export default function Equipe() {
   // Atalho "Senha" da linha: a mesma modal de Usuários de acesso. Sem conta
   // não há senha a redefinir: ela explica e leva à ficha (e-mail + senha inicial).
   const [senhaAlvo, setSenhaAlvo] = useState<Profissional | null>(null)
+  // Ações do menu "⋮" da linha, cada uma com a sua confirmação.
+  const [ativoAlvo, setAtivoAlvo] = useState<Profissional | null>(null)
+  const [excluirAlvo, setExcluirAlvo] = useState<Profissional | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const [erroAcao, setErroAcao] = useState<string | null>(null)
 
   const { data, isLoading, isError } = useEquipe()
   const { data: detalhe } = useProfissional(selId)
@@ -95,35 +101,71 @@ export default function Equipe() {
     if (selId != null) qc.invalidateQueries({ queryKey: queryKeys.profissional(selId) })
   }
 
-  // Mesmo confirm da ficha (DetalheProf.toggleAtivo).
-  async function alternarAtivo(p: Profissional) {
-    const novo = !isAtivo(p)
-    const aviso = p.tem_acesso && !novo ? ' O acesso dele à plataforma será suspenso.' : ''
-    if (!confirm(`${novo ? 'Reativar' : 'Desativar'} ${p.nome}?${aviso}`)) return
+  function abrirAcao(abrir: () => void) {
+    setErroAcao(null)
+    abrir()
+  }
+
+  async function confirmarAtivo() {
+    if (!ativoAlvo) return
+    const novo = !isAtivo(ativoAlvo)
+    setOcupado(true)
+    setErroAcao(null)
     try {
-      await definirAtivoProfissional(p.id, novo)
-      setToast(novo ? '✓ Profissional reativado' : 'Profissional desativado')
+      await definirAtivoProfissional(ativoAlvo.id, novo)
+      setToast(novo ? '✓ Acesso reativado' : 'Acesso desativado')
       invalidarPorEvento(qc, 'equipeAlterada')
-      qc.invalidateQueries({ queryKey: queryKeys.profissional(p.id) })
+      qc.invalidateQueries({ queryKey: queryKeys.profissional(ativoAlvo.id) })
+      setAtivoAlvo(null)
     } catch (err) {
-      setToast(`Erro: ${(err as Error).message}`)
+      setErroAcao((err as Error).message)
+    } finally {
+      setOcupado(false)
+    }
+  }
+
+  async function confirmarExcluir() {
+    if (!excluirAlvo) return
+    const alvo = excluirAlvo
+    setOcupado(true)
+    setErroAcao(null)
+    try {
+      await excluirProfissional(alvo.id)
+      // Some da lista na hora; o refetch confirma. A conta de login dele também
+      // saiu, então a lista de usuários de acesso é recarregada junto.
+      qc.setQueryData<typeof data>(queryKeys.equipe(), (atual) => atual && {
+        ...atual,
+        enfermeiros: atual.enfermeiros.filter((p) => p.id !== alvo.id),
+        medicos: atual.medicos.filter((p) => p.id !== alvo.id),
+      })
+      invalidarPorEvento(qc, 'equipeAlterada')
+      invalidarPorEvento(qc, 'usuariosAlterados')
+      if (selId === alvo.id) setSelId(null)
+      setToast(`Auditor ${alvo.nome} excluído`)
+      setExcluirAlvo(null)
+    } catch (err) {
+      // O backend pode ter apagado a conta e recusado o resto: recarrega.
+      invalidarPorEvento(qc, 'equipeAlterada')
+      setErroAcao((err as Error).message)
+    } finally {
+      setOcupado(false)
     }
   }
 
   // Subtitulo por aba: cada secao resume a si mesma, em vez de a tela inteira
   // herdar a contagem de profissionais (que nada diz nas outras abas).
   const subtitle = aba === 'profissionais'
-    ? 'Enfermeiros e medicos auditores da operacao'
+    ? 'Enfermeiros e médicos auditores da operação'
     : aba === 'malha'
       ? 'Operadoras e os hospitais que cada uma atende'
-      : 'Contas de login e nivel de acesso'
+      : 'Contas de login e nível de acesso'
 
   usePageHeader({ title: 'Operações', subtitle })
 
   // Abas visíveis por papel: quem gere Operações vê as três.
   const abas: readonly (readonly [Aba, string, number | null])[] = gestor
     ? [
-      ['profissionais', 'Profissionais', total],
+      ['profissionais', 'Auditores', total],
       ['usuarios', 'Usuários de acesso', null],
       ['malha', 'Hospitais e operadoras', null],
     ]
@@ -166,7 +208,7 @@ export default function Equipe() {
               {IconSearch}
               <input
                 className="bm-input"
-                placeholder="Buscar profissional…"
+                placeholder="Buscar auditor…"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
               />
@@ -243,16 +285,17 @@ export default function Equipe() {
             acoes={gestor ? {
               onEditar: (p) => setSelId(p.id),
               onSenha: setSenhaAlvo,
-              onAtivo: alternarAtivo,
+              onAtivo: (p) => abrirAcao(() => setAtivoAlvo(p)),
+              onExcluir: (p) => abrirAcao(() => setExcluirAlvo(p)),
             } : undefined}
-            vazio={busca.trim() ? `Nenhum profissional corresponde a “${busca.trim()}”.` : 'Nenhum profissional cadastrado.'}
+            vazio={busca.trim() ? `Nenhum auditor corresponde a “${busca.trim()}”.` : 'Nenhum auditor cadastrado.'}
           />
         </>
       )}
 
       {/* Detalhe/edição do profissional numa modal (abre ao clicar no nome). */}
       {selId != null && detalhe && (
-        <Modal title="Detalhes do profissional" onClose={() => setSelId(null)}>
+        <Modal title="Detalhes do auditor" onClose={() => setSelId(null)}>
           <DetalheProf
             key={detalhe.profissional.id}
             detalhe={detalhe}
@@ -281,6 +324,44 @@ export default function Equipe() {
           onDone={(msg) => { setSenhaAlvo(null); setToast(msg) }}
           onError={setToast}
         />
+      )}
+      {ativoAlvo && (
+        <ConfirmarModal
+          titulo={isAtivo(ativoAlvo) ? 'Desativar acesso' : 'Reativar acesso'}
+          confirmar={isAtivo(ativoAlvo) ? 'Desativar acesso' : 'Reativar acesso'}
+          perigo={isAtivo(ativoAlvo)}
+          ocupado={ocupado}
+          onConfirmar={confirmarAtivo}
+          onCancelar={() => setAtivoAlvo(null)}
+        >
+          {isAtivo(ativoAlvo) ? (
+            <>
+              <p style={{ margin: 0 }}><strong>{ativoAlvo.nome}</strong> sai das listas de escala e{ativoAlvo.tem_acesso ? ' deixa de entrar na plataforma a partir de agora' : ' não pode receber novos hospitais'}.</p>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: 'var(--t-sm)' }}>O cadastro e o histórico ficam guardados. Dá para reativar depois pelo mesmo menu.</p>
+            </>
+          ) : (
+            <p style={{ margin: 0 }}><strong>{ativoAlvo.nome}</strong> volta a aparecer na equipe{ativoAlvo.tem_acesso ? ' e a entrar na plataforma com a senha atual' : ''}.</p>
+          )}
+          {erroAcao && <p className="uac-erro" role="alert">{erroAcao}</p>}
+        </ConfirmarModal>
+      )}
+      {excluirAlvo && (
+        <ConfirmarModal
+          titulo="Excluir auditor"
+          confirmar="Excluir definitivamente"
+          perigo
+          ocupado={ocupado}
+          onConfirmar={confirmarExcluir}
+          onCancelar={() => setExcluirAlvo(null)}
+        >
+          <p style={{ margin: 0 }}>Excluir <strong>{excluirAlvo.nome}</strong>? Esta ação é <strong>irreversível</strong>.</p>
+          <p style={{ margin: 0, color: 'var(--muted)', fontSize: 'var(--t-sm)' }}>
+            Sai o cadastro{excluirAlvo.tem_acesso ? ', a escala de hospitais e a conta de login' : ' e a escala de hospitais'}.
+            Relatórios e visitas já registrados com o nome dele continuam no histórico.
+            Para só tirar o acesso, use Desativar acesso.
+          </p>
+          {erroAcao && <p className="uac-erro" role="alert">{erroAcao}</p>}
+        </ConfirmarModal>
       )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </>

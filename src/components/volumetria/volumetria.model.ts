@@ -49,8 +49,9 @@ export function mediaDiasFila(g: VolumetriaGrupo): number {
   return ps.reduce((s, p) => s + (p.dias_fila ?? 0), 0) / ps.length
 }
 
-export function maxHoras(g: VolumetriaGrupo): number {
-  return Math.max(0, ...g.pessoas.map((p) => p.horas ?? 0))
+/** Maior número de demandas do grupo: a régua da barra dos cartões. */
+export function maxDemandas(g: VolumetriaGrupo): number {
+  return Math.max(0, ...g.pessoas.map((p) => p.total_pendencias ?? 0))
 }
 
 const ROTULO_GRUPO: Record<string, { plural: string; singular: string }> = {
@@ -118,10 +119,10 @@ export function linhasQuebra(
 ): LinhaQuebra[] {
   if (!q) return []
   if (role === 'administrativo') {
-    const c = colunaKanban('cobrancas')
+    const c = colunaKanban('censos_atrasados')
     const atraso = q.maior_atraso ?? 0
     return [{
-      key: 'sem_censo', label: c?.titulo ?? 'Cobrar censo', cor: c?.cor ?? 'var(--primary)',
+      key: 'sem_censo', label: c?.titulo ?? 'Censos atrasados', cor: c?.cor ?? 'var(--danger)',
       valor: q.sem_censo ?? 0,
       sub: atraso > 0 ? `maior atraso: ${atraso} ${atraso === 1 ? 'dia' : 'dias'}` : undefined,
     }]
@@ -147,7 +148,7 @@ export function resumoRegiao(
   r: VolumetriaRegiaoDaPessoa, tecnico: boolean,
 ): string {
   const hosp = `${r.hospitais} ${r.hospitais === 1 ? 'hospital' : 'hospitais'}`
-  const carga = `${r.pendencias} ${r.pendencias === 1 ? 'demanda' : 'demandas'} · ${fmtHoras(r.horas)}`
+  const carga = `${r.pendencias} ${r.pendencias === 1 ? 'demanda' : 'demandas'}`
   if (!tecnico) return `${r.regiao}: ${hosp} · ${carga}`
   return `${r.regiao}: ${r.pacientes} ${r.pacientes === 1 ? 'paciente' : 'pacientes'} em ${hosp} · ${carga}`
 }
@@ -256,6 +257,89 @@ export function preverDivisao(
       nivelDepois: nivel(horasDepois / cap),
     }
   })
+}
+
+/** Soma a carga de uma lista de hospitais no formato do cartão da pessoa. É a
+ *  mesma conta de `_grupo`/`_por_regiao` no backend, feita aqui para a tela
+ *  refletir a divisão no clique, sem esperar o recálculo da rede inteira. */
+function recontar(
+  p: VolumetriaPessoa, hospitais: VolumetriaHospitalDaPessoa[], g: VolumetriaGrupo,
+): VolumetriaPessoa {
+  const l = g.parametros.limiares
+  const quebra: Record<string, number> = {}
+  const regioes = new Map<string, VolumetriaRegiaoDaPessoa>()
+  let pendencias = 0
+  let horas = 0
+  for (const h of hospitais) {
+    pendencias += h.pendencias
+    horas += h.horas
+    for (const [k, v] of Object.entries(h.quebra ?? {})) quebra[k] = (quebra[k] ?? 0) + (v ?? 0)
+    const r = regioes.get(h.regiao) ?? { regiao: h.regiao, hospitais: 0, pacientes: 0, pendencias: 0, horas: 0 }
+    r.hospitais += 1
+    r.pacientes += h.internados ?? 0
+    r.pendencias += h.pendencias
+    r.horas = Math.round((r.horas + h.horas) * 10) / 10
+    regioes.set(h.regiao, r)
+  }
+  const cap = p.capacidade_horas_dia > 0 ? p.capacidade_horas_dia : 1
+  const dias = horas / cap
+  // Nível só pela fila: a pressão de prazo o backend refaz no refetch.
+  const nivel: VolumetriaNivel = dias > l.fila_sobrecarga_dias ? 'sobrecarga' : dias > l.fila_atencao_dias ? 'atencao' : 'normal'
+  return {
+    ...p,
+    hospitais: [...hospitais].sort((a, b) => b.horas - a.horas || b.pendencias - a.pendencias),
+    hospitais_n: hospitais.length,
+    total_pendencias: pendencias,
+    horas: Math.round(horas * 10) / 10,
+    dias_fila: dias,
+    nivel,
+    quebra: quebra as VolumetriaQuebra,
+    pacientes: quebra.internados ?? null,
+    regioes: [...regioes.values()].sort((a, b) => b.horas - a.horas || b.pacientes - a.pacientes),
+  }
+}
+
+/** O grupo como fica com a divisão aplicada: os hospitais repassados saem de
+ *  quem cedeu e entram em quem recebe (se ela já os cobre, não soma de novo).
+ *  Divisão que começa depois de hoje só entra na lista de divisões. */
+export function aplicarDivisao(
+  g: VolumetriaGrupo, corpo: { de_user_id: string; distribuicao: Record<string, string>; inicio: string; fim: string },
+): VolumetriaGrupo {
+  const origem = g.pessoas.find((p) => p.user_id === corpo.de_user_id)
+  if (!origem) return g
+  const vigente = corpo.inicio <= hojeIso()
+  const nomeDe = (uid: string) => g.pessoas.find((p) => p.user_id === uid)?.nome ?? 'Outra pessoa'
+  const lote = `otimista-${Date.now()}`
+  const divisao: VolumetriaDivisao = {
+    lote, de_user_id: origem.user_id, de_nome: origem.nome, inicio: corpo.inicio, fim: corpo.fim,
+    vigente, criado_por: null,
+    itens: Object.entries(corpo.distribuicao).map(([hk, para]) => ({
+      hospital_key: hk,
+      hospital_nome: origem.hospitais.find((h) => h.hospital_key === hk)?.hospital_nome ?? hk,
+      para_user_id: para, para_nome: nomeDe(para),
+    })),
+  }
+  const divisoes = [...(g.divisoes ?? []), divisao]
+  if (!vigente) return { ...g, divisoes }
+
+  const saem = new Set(Object.keys(corpo.distribuicao))
+  return {
+    ...g,
+    divisoes,
+    pessoas: g.pessoas.map((p) => {
+      if (p.user_id === origem.user_id) {
+        return recontar(p, p.hospitais.filter((h) => !saem.has(h.hospital_key)), g)
+      }
+      const ja = new Set(p.hospitais.map((h) => h.hospital_key))
+      const recebe = origem.hospitais
+        .filter((h) => corpo.distribuicao[h.hospital_key] === p.user_id && !ja.has(h.hospital_key))
+        .map((h) => ({
+          ...h,
+          temporario: { de_user_id: origem.user_id, de_nome: origem.nome, fim: corpo.fim, lote },
+        }))
+      return recebe.length > 0 ? recontar(p, [...p.hospitais, ...recebe], g) : p
+    }),
+  }
 }
 
 /** "26/09" a partir de "2026-09-26". */

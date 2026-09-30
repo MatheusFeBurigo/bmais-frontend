@@ -4,7 +4,7 @@ import type { OperadoraCard } from '../../types/api'
 import { usePageHeader } from '../PageHeader'
 import { Badge, OpAvatar } from '../ui'
 import Toast from '../Toast'
-import { popularDemo as apiPopularDemo, limparDados as apiLimparDados } from '../../services/admin.service'
+import { limparDados as apiLimparDados } from '../../services/admin.service'
 import { localStyles } from './configuracoes.styles'
 import { ChevronRight } from './shared'
 import { NovaOperadoraModal } from './forms'
@@ -17,7 +17,7 @@ export default function OverviewView({ operadoras, onNav, onToast, onChanged, to
   toast: string | null
 }) {
   const [novaOpen, setNovaOpen] = useState(false)
-  const [busy, setBusy] = useState<'demo' | 'limpar' | null>(null)
+  const [busy, setBusy] = useState<'limpar' | null>(null)
   // Operadoras expandidas no accordion (várias podem ficar abertas ao mesmo tempo).
   const [expandidas, setExpandidas] = useState<Set<string>>(new Set())
 
@@ -28,16 +28,6 @@ export default function OverviewView({ operadoras, onNav, onToast, onChanged, to
       else next.add(key)
       return next
     })
-  }
-
-  async function popularDemo() {
-    if (!confirm('Inserir dados de demonstração (pacientes, relatórios e altas)?')) return
-    setBusy('demo')
-    try {
-      const d = await apiPopularDemo()
-      if (d.ok) { onToast(`✓ Demo: ${d.pacientes_inseridos || 0} pacientes e ${d.altas_inseridas || 0} altas`); onChanged() }
-      else onToast('Erro ao popular demo')
-    } catch (e) { onToast(`Erro: ${(e as Error).message}`) } finally { setBusy(null) }
   }
 
   async function limparDados() {
@@ -54,7 +44,6 @@ export default function OverviewView({ operadoras, onNav, onToast, onChanged, to
 
   const actions = (
     <>
-      <button className="btn btn-outline btn-sm" onClick={popularDemo} disabled={busy != null}>{busy === 'demo' ? 'Inserindo…' : 'Dados demo'}</button>
       <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)', borderColor: 'rgba(200,36,60,.35)' }} onClick={limparDados} disabled={busy != null}>{busy === 'limpar' ? 'Limpando…' : 'Limpar dados'}</button>
       <button className="btn btn-primary btn-sm" onClick={() => setNovaOpen(true)}>Nova Operadora</button>
     </>

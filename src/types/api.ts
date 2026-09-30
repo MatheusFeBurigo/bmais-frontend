@@ -833,7 +833,12 @@ export interface GestorResposta {
 // própria tela de upload, onde o usuário completa ou descarta cada registro.
 
 /** Coluna do kanban = categoria de tarefa. */
-export type KanbanColuna = 'sem_relatorio' | 'aguardando_visita' | 'visitas_atrasadas' | 'cobrancas'
+export type KanbanColuna = 'sem_relatorio' | 'aguardando_visita' | 'visitas_atrasadas' | EstadoCenso
+
+/** Coluna do fluxo de censos: um card por HOSPITAL com internado ativo, na
+ *  coluna que a cobertura do último censo decide (backend: cobrancas_censo.classificar). */
+export type EstadoCenso =
+  | 'censos_atrasados' | 'aguardando_censo' | 'aguardando_retorno' | 'censos_processados'
 
 /** Relatório do auditor externo a analisar (card da coluna analise_tecnica). */
 export interface RelatorioExterno {
@@ -860,10 +865,17 @@ export interface KanbanTarefa {
   internacao_id?: number | null
   /** Dias sem relatório (sem_relatorio/vencidos), para priorização. */
   dias_sem_relatorio?: number | null
-  /** Cobrança de censo (coluna cobrancas) — habilita "marcar cobrado". */
-  cobranca_id?: number | null
-  /** Dia cujo censo faltou (YYYY-MM-DD). */
+  /** Presente = card do fluxo de censos (hospital + operadora, não paciente). */
+  estado_censo?: EstadoCenso | null
+  /** Nome da operadora do card de censo: o mesmo hospital aparece uma vez por
+   *  operadora, e a cor do avatar sozinha não diferencia os dois cards. */
+  operadora_nome?: string | null
+  /** Primeiro dia sem censo (YYYY-MM-DD); só em atrasados e aguardando retorno. */
   data_ref?: string | null
+  /** Última cobrança feita e ainda sem resposta. Em "Censos atrasados" indica
+   *  que o hospital já foi cobrado e continuou sem mandar. */
+  cobrado_em?: string | null
+  cobrado_por?: string | null
   /** Dia (ISO) a que o último censo do hospital SE REFERE, não o dia do upload
    *  (null = nunca enviou). Quem sobe hoje o censo de uma semana atrás não cobriu
    *  o dia de hoje, e é esta data que o card conta. */
@@ -929,7 +941,10 @@ export interface KanbanColunas {
   sem_relatorio?: KanbanTarefa[]
   aguardando_visita?: KanbanTarefa[]
   visitas_atrasadas?: KanbanTarefa[]
-  cobrancas?: KanbanTarefa[]
+  censos_atrasados?: KanbanTarefa[]
+  aguardando_censo?: KanbanTarefa[]
+  aguardando_retorno?: KanbanTarefa[]
+  censos_processados?: KanbanTarefa[]
 }
 
 /** Payload do GET /api/kanban — tarefas + opções de filtro (recortadas ao escopo).
@@ -1334,6 +1349,10 @@ export interface InternacaoDados {
   data_ultima_visita?: string | null
   /** Data da alta, quando houve (censo de altas ou alta por ausência). */
   data_alta?: string | null
+  hora_alta?: string | null
+  /** De onde veio a alta: do censo do hospital, inferida pela ausência no
+   *  censo, ou dada à mão. Só `manual` e `inferida` podem ser desfeitas. */
+  alta_origem?: 'censo' | 'inferida' | 'manual' | null
   status?: string | null
   status_relatorio?: string | null
   longa_10?: boolean
@@ -1397,6 +1416,8 @@ export interface RelatorioItem {
   fonte?: string | null
   /** True quando há documento anexado (baixável via /relatorio/:id/arquivo). */
   tem_anexo?: boolean
+  /** CIDs do paciente que o relatório trata, copiados no registro. */
+  cids?: { codigo: string; descricao?: string | null }[]
 }
 
 export interface InternacaoRelatorios {

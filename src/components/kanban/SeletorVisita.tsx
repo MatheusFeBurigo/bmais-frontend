@@ -19,8 +19,7 @@ import { CalendarioVisita } from './CalendarioVisita'
 // próprio seletor — o layout dos campos e a dica do médico.
 const seletorStyles = `
 .sv{display:flex;flex-direction:column;gap:12px}
-.sv-campo{display:flex;flex-direction:column;gap:5px}
-.sv-lbl{font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--muted)}
+.sv-campo{display:flex;flex-direction:column}
 /* Data + hora lado a lado: são uma decisão só ("quando"), então dividem a
    linha. A hora fica mais estreita — não precisa da largura de um calendário. */
 .sv-data-hora{display:flex;gap:8px;align-items:flex-start}
@@ -51,11 +50,11 @@ export function SeletorVisita({ data, onData, hora, onHora, medico, onMedico }: 
 
       <div className="sv-data-hora">
         <div className="sv-campo">
-          <span className="sv-lbl">Data da visita</span>
+          <span className="form-lbl">Data da visita<span className="req">*</span></span>
           <CalendarioVisita valor={data} onEscolher={onData} limite="futuro" />
         </div>
         <div className="sv-campo sv-hora">
-          <span className="sv-lbl">Horário</span>
+          <span className="form-lbl">Horário<span className="req">*</span></span>
           <input
             type="time"
             className="bm-input"
@@ -66,7 +65,7 @@ export function SeletorVisita({ data, onData, hora, onHora, medico, onMedico }: 
       </div>
 
       <div className="sv-campo">
-        <span className="sv-lbl">Médico responsável</span>
+        <span className="form-lbl">Médico responsável<span className="req">*</span></span>
         <MedicoCombobox value={medico} onChange={onMedico} nomes={nomes} />
       </div>
     </div>

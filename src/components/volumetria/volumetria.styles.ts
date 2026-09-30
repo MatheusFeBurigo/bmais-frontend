@@ -12,7 +12,7 @@ export const localStyles = `
 .vol-seg button.active{background:var(--primary-3);color:#fff}
 
 /* Bloco "Equipe": barra de busca/ordem + grade de cartões */
-.vol-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.vol-toolbar{display:flex;gap:8px;align-items:center;flex-shrink:0}
 .vol-toolbar .bm-select{font-size:var(--t-sm)}
 
 /* Busca colapsada: só a lupa até o clique, e o campo cresce à esquerda dela
@@ -52,12 +52,12 @@ export const localStyles = `
 .vol-card-div{font-size:var(--t-sm);color:var(--primary-3);background:var(--primary-bg);border-radius:var(--r-sm);padding:4px 8px;align-self:flex-start}
 .vol-card-head{display:flex;align-items:flex-start;gap:10px}
 .vol-card-id{flex:1;min-width:0}
-.vol-card-nome{font-weight:600;font-size:var(--t-md);line-height:1.3;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Nome inteiro: quebra em até duas linhas antes de cortar. */
+.vol-card-nome{font-weight:600;font-size:var(--t-md);line-height:1.3;color:var(--ink);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
 .vol-card-sub{font-size:var(--t-sm);color:var(--muted);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.vol-card-carga{display:flex;align-items:baseline;gap:6px;font-size:var(--t-sm);color:var(--muted)}
+.vol-card-carga{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.vol-card-carga>div{display:flex;align-items:baseline;gap:6px;font-size:var(--t-sm);color:var(--muted)}
 .vol-card-carga b{font-family:var(--font-mono);font-size:var(--t-2xl);font-weight:600;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums;color:var(--ink)}
-.vol-card-bar{display:flex;align-items:center;gap:10px;font-size:var(--t-sm);color:var(--muted);white-space:nowrap}
-.vol-card-bar .progress{flex:1}
 .vol-card-vazio{font-size:var(--t-sm);color:var(--muted);line-height:1.45;padding:4px 0}
 .vol-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:10px;border-top:1px solid var(--border-soft);font-size:var(--t-sm);color:var(--muted)}
 .vol-card-cta{color:var(--primary-3);font-weight:600;white-space:nowrap}
@@ -97,7 +97,14 @@ export const localStyles = `
 .vol-hosp:last-child{border-bottom:0}
 .vol-hosp-nome{font-size:var(--t-base);line-height:1.3;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .vol-hosp-sub{font-size:var(--t-sm);line-height:1.3;color:var(--muted)}
-.vol-hosp .vol-q{margin-top:6px}
+/* Quebra do hospital em linha ("● Sem relatório 32"): o número colado ao
+   rótulo. Em coluna, ele ia para a borda do nome e flutuava ao lado das horas,
+   lendo como uma segunda coluna de valores. */
+.vol-hosp .vol-q{margin-top:6px;flex-direction:row;flex-wrap:wrap;gap:4px 14px}
+.vol-hosp .vol-q li{gap:6px}
+.vol-hosp .vol-q-label{flex:none}
+.vol-hosp .vol-q-vazio{margin-top:4px}
+.vol-hosp-n.zero{color:var(--muted);font-weight:500}
 .vol-hosp-n{font-family:var(--font-mono);font-weight:600;font-size:var(--t-md);font-variant-numeric:tabular-nums;color:var(--ink);text-align:right;min-width:48px}
 .vol-x{border:0;background:transparent;cursor:pointer;color:var(--muted);font-size:var(--t-lg);line-height:1;padding:2px 6px;border-radius:6px}
 .vol-x:hover{color:var(--danger);background:var(--danger-bg)}
@@ -114,23 +121,27 @@ export const localStyles = `
 .vol-prod-nota{margin-top:10px;font-size:var(--t-sm);color:var(--muted);line-height:1.45}
 /* Demandas x distribuição: barra = parcela das demandas, traço = dos hospitais */
 .vol-dxd{display:flex;flex-direction:column}
-.vol-dxd-row{display:grid;grid-template-columns:minmax(120px,200px) 1fr 76px 76px;gap:12px;align-items:center;padding:7px 4px;border:0;border-bottom:1px solid var(--border-soft);background:transparent;font:inherit;color:inherit;text-align:left;width:100%}
+.vol-dxd-row{display:grid;grid-template-columns:minmax(140px,220px) minmax(0,1fr) 88px 88px;gap:16px;align-items:center;padding:10px 8px;border:0;border-bottom:1px solid var(--border-soft);background:transparent;font:inherit;color:inherit;text-align:left;width:100%}
 button.vol-dxd-row{cursor:pointer;border-radius:6px}
 button.vol-dxd-row:hover{background:var(--surface-2)}
 button.vol-dxd-row:focus-visible{outline:2px solid var(--primary-3);outline-offset:-2px}
 .vol-dxd-row b{font-family:var(--font-mono);font-weight:600;font-size:var(--t-sm);font-variant-numeric:tabular-nums;color:var(--ink);text-align:right}
-.vol-dxd-cab{padding-top:0;cursor:default}
+.vol-dxd-cab{padding-top:0;padding-bottom:8px;cursor:default}
+.vol-dxd-row:last-child{border-bottom:0}
+.vol-dxd-row b.vazio{font-family:inherit;font-weight:400;color:var(--muted)}
 .vol-dxd-cab span{font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:600;color:var(--muted)}
 .vol-dxd-cab span:nth-child(n+3){text-align:right}
 .vol-dxd-nome{font-size:var(--t-sm);color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vol-dxd-row.sem .vol-dxd-nome{color:var(--danger);font-weight:600}
-.vol-dxd-trilha{position:relative;height:14px;background:var(--surface-3);border-radius:4px}
+.vol-dxd-trilha{position:relative;height:10px;background:var(--surface-3);border-radius:4px}
 .vol-dxd-barra{position:absolute;left:0;top:0;bottom:0;border-radius:4px;min-width:2px}
-.vol-dxd-traco{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--ink);border-radius:1px;box-shadow:0 0 0 1px var(--surface)}
+.vol-dxd-traco{position:absolute;top:-5px;bottom:-5px;width:2px;margin-left:-1px;background:var(--ink);border-radius:1px;box-shadow:0 0 0 1px var(--surface)}
+/* Legenda alinhada com o texto das linhas (que têm 8px de respiro) */
+.vol-dxd+.vol-legenda{padding:0 8px}
 .vol-legenda i.vol-dxd-traco-leg{width:2px;height:12px;border-radius:1px;background:var(--ink)}
 
 /* Legenda textual do semáforo (gráfico): a cor nunca vai sozinha */
-.vol-legenda{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:var(--t-sm);color:var(--muted)}
+.vol-legenda{display:flex;gap:8px 16px;flex-wrap:wrap;margin-top:12px;font-size:var(--t-sm);color:var(--muted)}
 .vol-legenda span{display:inline-flex;align-items:center;gap:6px}
 .vol-legenda i{width:10px;height:10px;border-radius:3px;display:inline-block}
 
@@ -148,7 +159,7 @@ button.vol-dxd-row:focus-visible{outline:2px solid var(--primary-3);outline-offs
 .vol-param-meta{font-size:var(--t-sm);color:var(--muted);margin-left:auto}
 
 /* Regiões no cartão da pessoa: onde a área dela se espalha */
-.vol-card-reg{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.vol-card-reg{display:flex;flex-wrap:wrap;gap:4px}
 .vol-reg-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border-soft);font-size:var(--t-sm);color:var(--muted);line-height:1.4}
 .vol-reg-chip b{color:var(--ink);font-family:var(--font-mono);font-variant-numeric:tabular-nums}
 .vol-reg-chip.mais{color:var(--muted)}
@@ -184,7 +195,10 @@ button.vol-dxd-row:focus-visible{outline:2px solid var(--primary-3);outline-offs
 .vol-tpt-fatia:hover{filter:brightness(1.08)}
 .vol-tpt-fatia b{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:var(--t-sm);font-weight:700;color:#fff;letter-spacing:.01em}
 .vol-tpt.compacto .vol-tpt-fatia b{display:none}
-.vol-tpt-legenda{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 16px}
+/* auto-fit (não auto-fill): com uma ou duas categorias as colunas vazias
+   colapsam e a linha ocupa a largura toda, então o valor encosta na direita,
+   alinhado com o "no total" do cabeçalho e com a quebra de cima. */
+.vol-tpt-legenda{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:4px 16px}
 .vol-tpt.compacto .vol-tpt-legenda{display:flex;flex-wrap:wrap;gap:4px 12px}
 .vol-tpt-legenda li{display:flex;align-items:center;gap:7px;font-size:var(--t-sm);color:var(--muted);min-width:0}
 .vol-tpt-legenda i{width:9px;height:9px;border-radius:3px;flex-shrink:0}
@@ -226,15 +240,7 @@ export const dividirStyles = `
 .dv-prev-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
 .dv-prev-num{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
 .dv-prev-num b{font-weight:600}
-.dv-ajustar{margin-top:8px;padding:0;border:0;background:none;font:inherit;font-size:var(--t-sm);color:var(--primary-3);cursor:pointer}
-.dv-ajustar:hover{text-decoration:underline}
-.dv-hosp{display:grid;grid-template-columns:1fr minmax(140px,180px);gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border-soft);font-size:var(--t-sm)}
-.dv-hosp:last-child{border-bottom:0}
-.dv-hosp-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
 .dv-and{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border-soft);border-radius:var(--r-sm);background:var(--surface-2);font-size:var(--t-sm);margin-bottom:6px}
 .dv-and span{flex:1;min-width:0}
 .dv-vazio{font-size:var(--t-sm);color:var(--muted);line-height:1.5}
-@media (max-width:560px){
-  .dv-hosp{grid-template-columns:1fr}
-}
 `

@@ -85,17 +85,19 @@ export function ReplicaDemandaXDistribuicao() {
             <p className="card-sub">Parte das demandas abertas e parte dos hospitais de cada pessoa.</p>
           </div>
         </div>
-        <DemandaXDistribuicao grupo={GRUPO} onAbrir={nada} />
+        <div className="card-body">
+          <DemandaXDistribuicao grupo={GRUPO} onAbrir={nada} />
+        </div>
       </div>
     </>
   )
 }
 
-/** O modal "Dividir a carga" de Juliana, com Beatriz escolhida, "Hoje e
- *  amanhã" e a troca de hospitais aberta. A prévia repete a conta da tela:
+/** O modal "Dividir a carga" de Juliana, com Beatriz escolhida e "Hoje e
+ *  amanhã". A prévia repete a conta da tela:
  *  Juliana cede 12 h (2 dias de fila) a Beatriz. */
 export function ReplicaDividirCarga({ marcas = {} }: {
-  marcas?: Partial<Record<'colegas' | 'periodo' | 'previa' | 'trocar' | 'dividir', number>>
+  marcas?: Partial<Record<'colegas' | 'periodo' | 'previa' | 'dividir', number>>
 }) {
   const colegas = [
     { p: MARCOS, marcado: false },
@@ -105,9 +107,6 @@ export function ReplicaDividirCarga({ marcas = {} }: {
     { nome: JULIANA.nome, hospitais: 2, antes: 4.6, depois: 2.6 },
     { nome: BEATRIZ.nome, hospitais: 4, antes: 1.0, depois: 3.0 },
   ]
-  const donos: Record<string, string> = {
-    santa_clara: JULIANA.nome, sao_lucas: BEATRIZ.nome, vila_nova: BEATRIZ.nome,
-  }
   return (
     <ModalReplica
       titulo={`Dividir a carga de ${JULIANA.nome}`}
@@ -167,19 +166,6 @@ export function ReplicaDividirCarga({ marcas = {} }: {
             </div>
           </div>
         </Marcado>
-        <Marcado n={marcas.trocar}>
-          <span className="dv-ajustar" style={{ display: 'inline-block' }}>Ocultar hospitais</span>
-        </Marcado>
-        <div style={{ marginTop: 6 }}>
-          {HOSPITAIS_DA_JULIANA.map((h) => (
-            <div className="dv-hosp" key={h.key}>
-              <span className="dv-hosp-nome">{h.nome}</span>
-              <select className="bm-input bm-select" value="v" onChange={nada}>
-                <option value="v">{donos[h.key]}</option>
-              </select>
-            </div>
-          ))}
-        </div>
       </div>
     </ModalReplica>
   )
@@ -321,7 +307,7 @@ export function ReplicaParametros({ marcas = {} }: {
           </div>
           <Marcado n={marcas.ajustar}><span className="vol-toggle">Recolher</span></Marcado>
         </div>
-        <div>
+        <div className="card-body">
           <Marcado n={marcas.minutos} bloco>
             <div className="vol-param-sec primeira">Minutos por caso, pelo tipo de leito</div>
             <div className="vol-param-grid">

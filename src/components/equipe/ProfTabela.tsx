@@ -1,11 +1,10 @@
-// Tabela de profissionais, no mesmo desenho da lista de usuários de acesso
-// (UsuariosAcesso): colunas fixas e atalhos na linha (Senha / Editar / Desativar).
-//
-// Não há "Apagar": profissional só é desativado (tem histórico de escala e a
-// conta acompanha o cadastro), e reativar desfaz.
+// Tabela de auditores, no mesmo desenho da lista de usuários de acesso
+// (UsuariosAcesso): colunas fixas, atalhos na linha (Senha / Editar) e o menu
+// "⋮" com as ações de acesso: desativar (reversível) ou excluir (definitivo).
 import type { MouseEvent, ReactNode } from 'react'
 import type { Profissional } from '../../types/api'
 import { Badge } from '../ui'
+import MenuAcoes, { IconesAcao } from '../MenuAcoes'
 import { TIPO_LABEL, isAtivo } from './equipe.styles'
 
 const IconKey = (
@@ -16,6 +15,7 @@ export interface AcoesProf {
   onEditar: (p: Profissional) => void
   onSenha: (p: Profissional) => void
   onAtivo: (p: Profissional) => void
+  onExcluir: (p: Profissional) => void
 }
 
 export default function ProfTabela({ lista, vazio, onAbrir, acoes }: {
@@ -29,13 +29,13 @@ export default function ProfTabela({ lista, vazio, onAbrir, acoes }: {
 }) {
   // Botões dentro da linha clicável: sem parar o clique, cada atalho abriria
   // a ficha junto.
-  const btn = (fn: () => void, title: string, children: ReactNode, perigo?: boolean) => (
+  const btn = (fn: () => void, title: string, children: ReactNode) => (
     <button
       type="button"
       className="btn btn-outline btn-sm"
       onClick={(e: MouseEvent) => { e.stopPropagation(); fn() }}
       title={title}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', ...(perigo ? { color: 'var(--danger)', borderColor: 'var(--danger)' } : {}) }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
     >
       {children}
     </button>
@@ -59,10 +59,11 @@ export default function ProfTabela({ lista, vazio, onAbrir, acoes }: {
             {lista.map((p) => {
               const ativo = isAtivo(p)
               return (
-                <tr key={p.id} onClick={() => onAbrir(p)} style={{ cursor: 'pointer' }}>
+                <tr key={p.id} onClick={() => onAbrir(p)} style={{ cursor: 'pointer' }}
+                  className={ativo ? undefined : 'uac-linha-suspensa'}>
                   <td style={{ fontWeight: 500, color: ativo ? undefined : 'var(--muted)' }}>
                     {p.nome}
-                    {!ativo && <> <Badge variant="muted">Inativo</Badge></>}
+                    {!ativo && <> <Badge variant="warning" dot>Desativado</Badge></>}
                   </td>
                   <td>{TIPO_LABEL[p.tipo]}</td>
                   {acoes && (
@@ -73,13 +74,19 @@ export default function ProfTabela({ lista, vazio, onAbrir, acoes }: {
                   </td>
                   {acoes && (
                     <td>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                         {/* Senha só redefine a senha (mesma modal de Usuários de acesso). */}
                         {btn(() => acoes.onSenha(p), 'Redefinir senha', <>{IconKey}Senha</>)}
-                        {btn(() => acoes.onEditar(p), 'Editar profissional', 'Editar')}
-                        {ativo
-                          ? btn(() => acoes.onAtivo(p), 'Desativar profissional', 'Desativar', true)
-                          : btn(() => acoes.onAtivo(p), 'Reativar profissional', 'Reativar')}
+                        {btn(() => acoes.onEditar(p), 'Editar auditor', 'Editar')}
+                        <MenuAcoes
+                          rotulo={`Mais ações para ${p.nome}`}
+                          itens={[
+                            ativo
+                              ? { rotulo: 'Desativar acesso', icone: IconesAcao.desativar, onClick: () => acoes.onAtivo(p) }
+                              : { rotulo: 'Reativar acesso', icone: IconesAcao.reativar, onClick: () => acoes.onAtivo(p) },
+                            { rotulo: 'Excluir auditor', icone: IconesAcao.excluir, perigo: true, onClick: () => acoes.onExcluir(p) },
+                          ]}
+                        />
                       </div>
                     </td>
                   )}

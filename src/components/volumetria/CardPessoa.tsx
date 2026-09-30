@@ -8,9 +8,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { VolumetriaGrupo, VolumetriaPessoa } from '../../types/api'
 import { Badge, ProgressBar } from '../ui'
 import QuebraDemandas from './QuebraDemandas'
-import TempoPorTarefa from './TempoPorTarefa'
 import {
-  NIVEL_BADGE, NIVEL_LABEL, NIVEL_VAR, divisoesDe, fmtDiaMes, fmtDias, fmtHoras, iniciais, linhasQuebra,
+  NIVEL_BADGE, NIVEL_LABEL, NIVEL_VAR, divisoesDe, fmtDiaMes, iniciais, linhasQuebra,
   resumoRegiao, rotuloGrupo,
 } from './volumetria.model'
 
@@ -73,10 +72,10 @@ function MenuPessoa({ nome, podeDividir, onDividir }: {
   )
 }
 
-export default function CardPessoa({ pessoa, grupo, maxHoras, onAbrir, onDividir }: {
+export default function CardPessoa({ pessoa, grupo, maxDemandas, onAbrir, onDividir }: {
   pessoa: VolumetriaPessoa
   grupo: VolumetriaGrupo
-  maxHoras: number
+  maxDemandas: number
   onAbrir: (userId: string) => void
   onDividir: (userId: string) => void
 }) {
@@ -113,7 +112,6 @@ export default function CardPessoa({ pessoa, grupo, maxHoras, onAbrir, onDividir
               )}
             </div>
           </div>
-          {!pessoa.sem_vinculo && <Badge variant={NIVEL_BADGE[nivel]} dot>{NIVEL_LABEL[nivel]}</Badge>}
         </header>
 
         {/* Divisão temporária em curso: quem olha o cartão precisa saber que os
@@ -132,22 +130,17 @@ export default function CardPessoa({ pessoa, grupo, maxHoras, onAbrir, onDividir
           </div>
         ) : (
           <>
+            {/* Só CONTAGEM no cartão: horas e dias de fila ficam nos gráficos
+                de baixo e no drawer. O selo sai do cabeçalho para o nome caber. */}
             <div className="vol-card-carga">
-              <b>{demandas}</b>
-              <span>{demandas === 1 ? 'demanda' : 'demandas'} · {fmtHoras(pessoa.horas)}</span>
+              <div>
+                <b>{demandas}</b>
+                <span>{demandas === 1 ? 'demanda' : 'demandas'}</span>
+              </div>
+              <Badge variant={NIVEL_BADGE[nivel]} dot>{NIVEL_LABEL[nivel]}</Badge>
             </div>
-            <div className="vol-card-bar">
-              <ProgressBar pct={maxHoras > 0 ? ((pessoa.horas ?? 0) / maxHoras) * 100 : 0} color={NIVEL_VAR[nivel]} />
-              <span>{fmtDias(pessoa.dias_fila)} de fila</span>
-            </div>
+            <ProgressBar pct={maxDemandas > 0 ? (demandas / maxDemandas) * 100 : 0} color={NIVEL_VAR[nivel]} />
             <QuebraDemandas linhas={linhasQuebra(grupo.role_operacional, pessoa.quebra)} compacto />
-            {/* A mesma fila em TEMPO: dois cartões com a mesma contagem podem
-                ter semanas bem diferentes, e a barra mostra isso de relance. */}
-            <TempoPorTarefa
-              role={grupo.role_operacional}
-              minutosCategoria={pessoa.minutos_categoria}
-              compacto
-            />
             {/* Por onde a área da pessoa se espalha. As duas mais pesadas
                 cabem no cartão; o resto fica no drawer, que tem espaço. */}
             {pessoa.regioes.length > 0 && (

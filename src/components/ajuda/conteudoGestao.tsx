@@ -300,7 +300,7 @@ export function ModuloVolumetria() {
         titulo="Descobrir quem está sobrecarregado"
         passos={[
           { n: 1, titulo: 'Olhe o indicador Equipe', corpo: <>Ele diz quantas pessoas estão em <strong>sobrecarga</strong> e quantas em <strong>atenção</strong>. Fica vermelho quando há alguém em sobrecarga.</> },
-          { n: 2, titulo: 'Leia o cartão de cada pessoa', corpo: <>O selo no canto é o nível. Abaixo vêm as demandas, as horas estimadas e os <strong>dias de fila</strong>: quanto tempo ela levaria para zerar o que tem, no ritmo dela. A quebra usa os mesmos nomes das colunas de Tarefas, e a barra colorida mostra em que tipo de tarefa o tempo está indo.</> },
+          { n: 2, titulo: 'Leia o cartão de cada pessoa', corpo: <>O número grande são as <strong>demandas</strong> abertas, e o selo ao lado é o nível. A barra compara a pessoa com quem tem mais demandas no grupo, e a quebra usa os mesmos nomes das colunas de Tarefas. As horas e os dias de fila ficam nos gráficos mais abaixo e no painel da pessoa.</> },
           { n: 3, titulo: 'Ordene por Maior carga', corpo: <>É a ordem padrão: quem está em sobrecarga vem primeiro. <strong>Nome</strong> serve para achar alguém específico, e a lupa ao lado busca pelo nome.</> },
           { n: 4, titulo: 'Repare em quem está sem área', corpo: <>O cartão esmaecido, no fim, é de quem não tem hospitais: vê a rede inteira e por isso <strong>não entra na conta</strong> de carga. Clique nele para definir a área.</> },
         ]}
@@ -328,7 +328,7 @@ export function ModuloVolumetria() {
       >
         <Tela nome="Distribuição de tarefas" largura={960}
           destaques={{ '.vol-grade > .vol-card-wrap:first-child .vol-card': 1 }}
-          descricao="Juliana Prado está em sobrecarga, com quatro dias e meio de fila.">
+          descricao="Juliana Prado está em sobrecarga.">
           <ReplicaEquipe />
         </Tela>
         <Tela nome="Distribuição de tarefas" largura={640}
@@ -358,9 +358,8 @@ export function ModuloVolumetria() {
           { n: 2, titulo: 'Marque com quem dividir', corpo: <>A lista traz os colegas do grupo com área definida, com os dias de fila de cada um. Marcar um colega divide em duas partes; marcar dois, em três.</> },
           { n: 3, titulo: 'Escolha o período', corpo: <><strong>Só hoje</strong>, <strong>Hoje e amanhã</strong>, <strong>7 dias</strong> ou <strong>Outro</strong>, para escolher as datas. O período não pode começar no passado.</> },
           { n: 4, titulo: 'Confira como fica', corpo: <>Mostra, para cada participante, quantos hospitais terá e a fila antes e depois da divisão. A sugestão manda o hospital mais pesado para quem está recebendo menos.</> },
-          { n: 5, titulo: 'Troque hospitais de mão, se quiser', corpo: <>Abre a lista dos hospitais da pessoa com quem fica cada um. Pelo menos um tem de continuar com ela.</> },
-          { n: 6, titulo: 'Clique em Dividir', corpo: <>O botão diz em quantas partes a carga será dividida. A divisão vale na hora: o quadro de Tarefas de cada um já mostra os hospitais do período.</> },
-          { n: 7, titulo: 'Acompanhe pelos cartões', corpo: <>Quem cedeu mostra <strong>Carga dividida até</strong> a data final; quem recebeu, <strong>Ajudando com</strong> o número de hospitais. No fim do período tudo volta sozinho.</> },
+          { n: 5, titulo: 'Clique em Dividir', corpo: <>O botão diz em quantas partes a carga será dividida. A janela fecha e os cartões já mostram as demandas de cada um com a divisão. O quadro de Tarefas de cada pessoa também passa a mostrar os hospitais do período.</> },
+          { n: 6, titulo: 'Acompanhe pelos cartões', corpo: <>Quem cedeu mostra <strong>Carga dividida até</strong> a data final; quem recebeu, <strong>Ajudando com</strong> o número de hospitais. No fim do período tudo volta sozinho.</> },
         ]}
       >
         <Tela nome="Distribuição de tarefas" largura={960}
@@ -370,12 +369,12 @@ export function ModuloVolumetria() {
         </Tela>
         <Tela nome="Distribuição de tarefas" largura={560}
           descricao="Juliana divide a carga com Beatriz por dois dias. Dois hospitais passam para Beatriz.">
-          <ReplicaDividirCarga marcas={{ colegas: 2, periodo: 3, previa: 4, trocar: 5, dividir: 6 }} />
+          <ReplicaDividirCarga marcas={{ colegas: 2, periodo: 3, previa: 4, dividir: 5 }} />
         </Tela>
         <Tela nome="Distribuição de tarefas" largura={960}
           destaques={{
-            '.vol-grade > .vol-card-wrap:first-child .vol-card-div': 7,
-            '.vol-grade > .vol-card-wrap:nth-child(3) .vol-card-div': 7,
+            '.vol-grade > .vol-card-wrap:first-child .vol-card-div': 6,
+            '.vol-grade > .vol-card-wrap:nth-child(3) .vol-card-div': 6,
           }}
           descricao="A equipe durante a divisão: os dois cartões avisam o que está acontecendo.">
           <ReplicaEquipe dividida />

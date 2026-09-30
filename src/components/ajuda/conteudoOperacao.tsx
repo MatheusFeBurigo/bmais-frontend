@@ -4,8 +4,9 @@
 import { Callout, Chip, Key, Metric, Metrics, Passo, Passos, Tabela } from './blocos'
 import { ComoFazer, Tela } from './replica'
 import {
-  ReplicaAdicionarPaciente, ReplicaCobranca, ReplicaConferencia, ReplicaDadosPaciente, ReplicaFichaRapida,
-  ReplicaFormularioEnvio, ReplicaPainel, ReplicaQuadro, ReplicaResultadoEnvio,
+  ReplicaAdicionarPaciente, ReplicaCidsPaciente, ReplicaCobranca, ReplicaConferencia, ReplicaDadosPaciente,
+  ReplicaFichaRapida, ReplicaFormularioEnvio, ReplicaModalAlta, ReplicaPainel, ReplicaQuadro,
+  ReplicaResultadoEnvio,
 } from './exemplosOperacao'
 
 interface Props {
@@ -123,7 +124,7 @@ export function ModuloOperacional({ irPara }: Props) {
 
       <h3>Ações disponíveis</h3>
       <Tabela cabecalho={['Ação', 'Efeito']} larguras={['185px']}>
-        <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação e, para o perfil técnico, o formulário de registrar relatório.</td></tr>
+        <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação e, para o perfil técnico, o formulário de registrar relatório. Técnico e administrativo têm ainda o botão <strong>Alta</strong>, no rodapé.</td></tr>
         <tr><Key>Clicar no hospital</Key><td>Abre a ficha do hospital, com indicadores, operadoras atendidas, dados cadastrais e histórico de censos sob demanda.</td></tr>
         <tr><Key>Adicionar paciente</Key><td>Cadastro manual: operadora, hospital, nome, atendimento, situação (internado ou alta), data de entrada, data de alta quando for o caso e, opcionalmente, leito, especialidade e médico. Não duplica: se o atendimento já existir no hospital, avisa que o paciente não foi duplicado.</td></tr>
         <tr><Key>Exportar</Key><td>Gera a planilha de controle de auditoria, da operadora aberta ou de todas num único arquivo, com uma aba por hospital.</td></tr>
@@ -138,16 +139,17 @@ export function ModuloPaciente({ irPara }: Props) {
     <>
       <h3>Objetivo</h3>
       <p>
-        Reunir tudo sobre uma internação: situação do relatório, dados cadastrais corrigíveis,
-        relatórios já registrados com seus documentos anexos e o histórico completo da internação.
+        Reunir tudo sobre uma internação: situação do relatório, dados cadastrais corrigíveis, os
+        CIDs do paciente, relatórios já registrados com seus documentos anexos e o histórico
+        completo da internação.
       </p>
 
       <h3>Como se chega</h3>
       <p>
-        Pelo botão de ver completo na ficha rápida do Painel Operacional, ou por link direto. A
-        ficha em si não é restrita por perfil, mas <strong>o registro de relatório é exclusivo do
-        perfil técnico</strong>, e cada pessoa continua vendo apenas os pacientes dos hospitais do
-        seu escopo.
+        Pelo botão <strong>Detalhes</strong> da ficha rápida do Painel Operacional, ou por link
+        direto. O perfil analista vê a ficha rápida, mas não abre a completa.{' '}
+        <strong>Registrar relatório e mexer nos CIDs é exclusivo do perfil técnico</strong>, e cada
+        pessoa continua vendo apenas os pacientes dos hospitais do seu escopo.
       </p>
 
       <h3>Passo a passo</h3>
@@ -156,14 +158,15 @@ export function ModuloPaciente({ irPara }: Props) {
         passos={[
           { n: 1, titulo: "Informe a data em que a visita aconteceu", corpo: <>O calendário só aceita hoje ou datas passadas. Visita futura se marca no bloco{' '} <strong>Agendar visita</strong>, logo abaixo.</> },
           { n: 2, titulo: "Escolha o médico auditor", corpo: <>Comece a digitar o nome. A lista traz os médicos ativos do cadastro, e um nome fora dela também é aceito.</> },
-          { n: 3, titulo: "Escreva a observação, se houver", corpo: <>Texto livre, que aparece no histórico do paciente.</> },
-          { n: 4, titulo: "Clique em Registrar relatório", corpo: <>O status do paciente é recalculado na hora e ele sai das listas de pendência. O relatório aparece na timeline com a cor do seu perfil.</> },
+          { n: 3, titulo: "Informe o CID observado, se houver", corpo: <>Opcional. A lista traz primeiro os CIDs que o paciente já tem e depois o catálogo inteiro. Um CID que o paciente ainda não tem aparece como <strong>Novo no paciente</strong> e passa a constar na ficha dele ao registrar.</> },
+          { n: 4, titulo: "Escreva a observação, se houver", corpo: <>Texto livre, que aparece no histórico do paciente.</> },
+          { n: 5, titulo: "Clique em Registrar relatório", corpo: <>O status do paciente é recalculado na hora e ele sai das listas de pendência. O relatório aparece na timeline com a cor do seu perfil.</> },
         ]}
       >
         <Tela nome="Ficha rápida do paciente" largura={640}
           descricao="A ficha rápida abre ao clicar num paciente do Painel Operacional ou do quadro de Tarefas.">
           <ReplicaFichaRapida preenchido esconderAgenda
-            marcas={{ dataVisita: 1, medico: 2, obs: 3, registrar: 4 }} />
+            marcas={{ dataVisita: 1, medico: 2, cid: 3, obs: 4, registrar: 5 }} />
         </Tela>
       </ComoFazer>
       <Callout tipo="info" titulo="Só o perfil técnico registra">
@@ -190,6 +193,48 @@ export function ModuloPaciente({ irPara }: Props) {
           </Tela>
         </>
       </ComoFazer>
+      <ComoFazer
+        titulo="Dar alta a um paciente que já saiu"
+        passos={[
+          { n: 1, titulo: "Clique em Alta", corpo: <>No rodapé da ficha rápida ou no topo da ficha completa. Serve para quando o hospital demora a mandar o censo e já se sabe que o paciente saiu: sem censo, ninguém sai da lista sozinho.</> },
+          { n: 2, titulo: "Informe a data da alta", corpo: <>Obrigatória. Vai da data de internação até hoje.</> },
+          { n: 3, titulo: "Informe o horário, se souber", corpo: <>Opcional.</> },
+          { n: 4, titulo: "Clique em Confirmar alta", corpo: <>O paciente sai da lista de internados e passa a constar nas altas. Se havia visita agendada, ela é cancelada. A alta fica registrada na timeline, com o seu nome.</> },
+        ]}
+      >
+        <Tela nome="Ficha rápida do paciente" largura={640}
+          descricao="O botão Alta fica no rodapé, longe das ações de relatório.">
+          <ReplicaFichaRapida esconderRelatorio esconderAgenda marcas={{ alta: 1 }} />
+        </Tela>
+        <Tela nome="Alta" largura={520} descricao="A janela de alta, com a data e o horário preenchidos.">
+          <ReplicaModalAlta marcas={{ data: 2, hora: 3, confirmar: 4 }} />
+        </Tela>
+      </ComoFazer>
+      <Callout tipo="info" titulo="Quem dá alta, e como desfazer">
+        Técnico e administrativo. Deu alta por engano? No mesmo lugar aparece{' '}
+        <strong>Desfazer alta</strong>, e o paciente volta para a lista de internados. Vale para a
+        alta dada à mão e para a alta automática; a alta que veio no censo do hospital não se desfaz.
+      </Callout>
+
+      <ComoFazer
+        titulo="Adicionar os CIDs do paciente"
+        passos={[
+          { n: 1, titulo: "Clique no campo Adicionar CID", corpo: <>Fica no card <strong>CID</strong> da ficha completa, abaixo de Dados do Paciente. A lista abre com o catálogo inteiro. Digite o código (J18.9) ou parte do nome da doença para filtrar.</> },
+          { n: 2, titulo: "Clique no CID", corpo: <>Escolher já adiciona: não há botão de confirmar. O campo continua pronto para o próximo. O que o paciente já tem aparece como <strong>Já adicionado</strong>.</> },
+          { n: 3, titulo: "Confira a lista", corpo: <>Cada CID mostra a categoria e o capítulo a que pertence, e quem o adicionou.</> },
+          { n: 4, titulo: "Use a lixeira para tirar um CID", corpo: <>Remove na hora, sem pedir confirmação.</> },
+        ]}
+      >
+        <Tela nome="Ficha do paciente" largura={640}
+          descricao="Card CID com a lista de sugestões aberta e dois CIDs já vinculados.">
+          <ReplicaCidsPaciente marcas={{ campo: 1, opcao: 2, lista: 3, remover: 4 }} />
+        </Tela>
+      </ComoFazer>
+      <Callout tipo="info" titulo="Só o perfil técnico adiciona e remove CID">
+        Os demais perfis veem o card quando o paciente tem algum CID. Ao registrar um relatório, o
+        técnico também pode informar um CID novo, que entra junto na lista do paciente.
+      </Callout>
+
       <p>
         Para marcar uma visita futura, veja o passo a passo em{' '}
         <button type="button" className="aj-link" onClick={() => irPara('tarefas')}>Tarefas</button>.
@@ -230,24 +275,27 @@ export function ModuloPaciente({ irPara }: Props) {
       <h3>Relatórios</h3>
       <p>
         Lista os relatórios de auditoria já registrados, com contador. Para o perfil técnico, o
-        botão de registrar abre o formulário na própria tela, com três campos.
+        botão de registrar abre o formulário na própria tela, com quatro campos.
       </p>
       <ul>
         <li><strong>Data da visita</strong>, obrigatória, já preenchida com a data de hoje.</li>
         <li><strong>Médico auditor</strong>, campo com busca entre os médicos auditores ativos do
           cadastro, aceitando também texto livre.</li>
+        <li><strong>CID</strong>, opcional: os do paciente primeiro, depois o catálogo. O CID que o
+          paciente ainda não tem passa a constar na ficha dele.</li>
         <li><strong>Observação</strong>, em texto livre.</li>
       </ul>
       <p>
         Cada relatório aparece como um cartão com borda colorida pelo papel de quem o registrou, com
-        data e hora, autor, médico responsável e, quando há anexo, o botão de baixar o documento.
+        data e hora, autor, médico responsável, os CIDs informados e, quando há anexo, o botão de
+        baixar o documento.
       </p>
 
       <h3>Timeline</h3>
       <p>
         Histórico completo da internação, do mais recente para o mais antigo, com o marco de hoje no
         topo. Registra admissão, relatórios externos, pareceres internos, mudanças de status, altas
-        automáticas, edições manuais e pendências. Relatórios internos exibem o autor; os externos,
+        automáticas, altas dadas à mão e desfeitas, edições manuais e pendências. Relatórios internos exibem o autor; os externos,
         o médico responsável.
       </p>
     </>
@@ -304,14 +352,15 @@ export function ModuloKanban({ irPara }: Props) {
       </ComoFazer>
 
       <ComoFazer
-        titulo="Registrar a cobrança de um censo que não chegou"
+        titulo="Cobrar um censo atrasado"
         passos={[
-          { n: 1, titulo: "Contate o hospital e clique em Marcar como cobrado", corpo: <>O card mostra de que dia é o censo que falta e até quando os dados do hospital estão atualizados. Marcado como cobrado, ele sai do quadro. Quando o arquivo chegar, ele entra pelo{' '} <button type="button" className="aj-link" onClick={() => irPara('envio-de-censos')}>Envio de Censos</button>.</> },
+          { n: 1, titulo: "Contate o hospital e clique em Marcar como cobrado", corpo: <>O card mostra desde que dia falta o censo e até quando os dados do hospital estão atualizados.</> },
+          { n: 2, titulo: "O card espera em Aguardando retorno", corpo: <>Quando o censo chegar pelo{' '} <button type="button" className="aj-link" onClick={() => irPara('envio-de-censos')}>Envio de Censos</button>, ele sai sozinho. Se o dia virar sem censo, ele volta para Censos atrasados para uma nova cobrança.</> },
         ]}
       >
-        <Tela nome="Tarefas"
-          descricao="Coluna do perfil administrativo. O card é por hospital, não por paciente.">
-          <ReplicaCobranca marcas={{ card: 1 }} />
+        <Tela nome="Tarefas" largura={960}
+          descricao="Quadro de censos do perfil administrativo. O card é por hospital, não por paciente.">
+          <ReplicaCobranca marcas={{ card: 1, retorno: 2 }} />
         </Tela>
       </ComoFazer>
 
@@ -323,7 +372,7 @@ export function ModuloKanban({ irPara }: Props) {
         agendamento, que de fato move o card, conforme descrito adiante.
       </p>
 
-      <h3>As quatro colunas</h3>
+      <h3>As colunas de pacientes</h3>
       <Tabela cabecalho={['Coluna', 'O que reúne', 'Como a tarefa é resolvida']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Sem relatório</Key>
           <td>Internados sem relatório de auditoria e sem visita marcada.</td>
@@ -334,9 +383,29 @@ export function ModuloKanban({ irPara }: Props) {
         <tr><Key>Visitas atrasadas</Key>
           <td>Visitas cujo horário combinado já passou sem que o relatório fosse registrado.</td>
           <td>Cobrando o auditor responsável, e registrando o relatório ou remarcando a visita.</td></tr>
-        <tr><Key>Cobrar censo</Key>
-          <td>Hospitais que não enviaram o censo do dia anterior. Aqui a tarefa é por hospital, e não por paciente.</td>
-          <td>Registrando a cobrança junto ao hospital.</td></tr>
+      </Tabela>
+
+      <h3>As colunas de censos</h3>
+      <p>
+        Cada hospital aparece uma vez por operadora com paciente internado, pela data do último
+        censo daquela operadora. O censo da Porto chegar não conta para a Bradesco do mesmo
+        hospital. O card muda de coluna sozinho quando o censo chega, e o filtro de operadora
+        mostra só os censos de uma delas. Clicar no card abre a
+        ficha do hospital, com telefone, e-mail e o histórico de censos.
+      </p>
+      <Tabela cabecalho={['Coluna', 'Quando o hospital está aqui', 'O que fazer']} larguras={['160px', undefined, '215px']}>
+        <tr><Key>Censos atrasados</Key>
+          <td>Falta o censo de ontem ou de dias anteriores, ou o hospital nunca enviou.</td>
+          <td>Cobrar o hospital e clicar em Marcar como cobrado.</td></tr>
+        <tr><Key>Aguardando retorno</Key>
+          <td>O hospital já foi cobrado e o censo ainda não chegou.</td>
+          <td>Esperar. Se o dia virar sem censo, o card volta para Censos atrasados. Cobrou por engano? Desfazer cobrança.</td></tr>
+        <tr><Key>Aguardando censo</Key>
+          <td>O censo de ontem chegou, o de hoje ainda não.</td>
+          <td>Nada por enquanto.</td></tr>
+        <tr><Key>Censos processados</Key>
+          <td>O censo de hoje já chegou.</td>
+          <td>Nada. O hospital está em dia.</td></tr>
       </Tabela>
 
       <h3>O que cada perfil vê</h3>
@@ -347,8 +416,10 @@ export function ModuloKanban({ irPara }: Props) {
       <ul>
         <li>O perfil <strong>técnico</strong> vê as três colunas de pacientes, que são a agenda de
           visitas dele, sem a cobrança de censo.</li>
-        <li>O perfil <strong>administrativo</strong> vê a coluna de cobrança de censo, que é a
+        <li>O perfil <strong>administrativo</strong> vê as colunas de censos, que são a
           providência dele junto aos hospitais.</li>
+        <li>Quem acompanha as duas equipes alterna entre os quadros pelas abas{' '}
+          <strong>Pacientes</strong> e <strong>Censos</strong>.</li>
         <li>O perfil <strong>analista</strong> acompanha o quadro sem executar as tarefas, por ser
           um perfil de observação.</li>
       </ul>
@@ -385,8 +456,9 @@ export function ModuloKanban({ irPara }: Props) {
             relatório. Quando há visita marcada, traz a data, o horário e o responsável; quando
             atrasada, o card inteiro é destacado, com a indicação de quando era.</td></tr>
         <tr><Key>Cobrança de censo</Key>
-          <td>Hospital, o dia cujo censo não foi recebido e a data do último censo enviado. O
-            indicador fica <Chip tom="critical">Vermelho acima de 3 dias</Chip>.</td></tr>
+          <td>Hospital e operadora, desde quando o censo está pendente, a última atualização
+            recebida e, se já houve cobrança, quando e por quem. O selo de dias sem atualizar fica{' '}
+            <Chip tom="critical">Vermelho acima de 3 dias</Chip>.</td></tr>
       </Tabela>
       <p>
         Os cards de paciente trazem ainda etiquetas que explicam por que aquele caso merece atenção:
@@ -396,28 +468,30 @@ export function ModuloKanban({ irPara }: Props) {
       <h3>Priorizar o quadro</h3>
       <p>
         Uma barra acima das colunas recorta o quadro inteiro. Tudo é aplicado de imediato, sobre o
-        que já está em tela.
+        que já está em tela. O significado de cada coluna aparece ao passar o mouse no{' '}
+        <strong>i</strong> ao lado do título dela.
       </p>
       <Tabela cabecalho={['Controle', 'O que faz']} larguras={['185px']}>
         <tr><Key>Busca</Key>
-          <td>Localiza tarefas em todas as colunas ao mesmo tempo, por paciente, atendimento, leito,
-            médico e convênio. Acentos e maiúsculas são desconsiderados.</td></tr>
-        <tr><Key>Chips de urgência</Key>
-          <td>Quatro recortes combináveis: <strong>Urgentes</strong> (relatório vencido, ou em
-            monitoramento sem nenhuma visita), <strong>UTI</strong>, <strong>Longa
-            permanência</strong> e <strong>Nunca visitados</strong>. Cada chip mostra quantos casos
-            existem antes de ser acionado, e o que levaria a nenhum card aparece visivelmente
-            vazio.</td></tr>
-        <tr><Key>Hospital</Key><td>Restringe o quadro a uma unidade.</td></tr>
-        <tr><Key>Ordenar por</Key>
-          <td>Prioridade, mais dias sem relatório, mais dias internado, nome do paciente ou
-            hospital.</td></tr>
+          <td>Sempre à vista. No quadro de pacientes, localiza tarefas em todas as colunas ao mesmo
+            tempo, por paciente, atendimento, leito, médico e convênio; no de censos, por hospital.
+            Acentos e maiúsculas são desconsiderados.</td></tr>
+        <tr><Key>Filtros</Key>
+          <td>Botão que abre um painel com o <strong>hospital</strong> e, no quadro de pacientes, os
+            recortes de <strong>Mostrar só</strong>: <strong>Urgentes</strong> (relatório vencido, ou
+            em monitoramento sem nenhuma visita), <strong>UTI</strong>, <strong>Longa
+            permanência</strong> e <strong>Nunca visitados</strong>, combináveis. Cada recorte mostra
+            quantos casos alcança antes de ser marcado. No quadro de censos, o painel traz a{' '}
+            <strong>operadora</strong> no lugar dos recortes.</td></tr>
+        <tr><Key>Ordenar</Key>
+          <td>Só no quadro de pacientes: prioridade, mais dias sem relatório, mais dias internado,
+            nome do paciente ou hospital.</td></tr>
       </Tabela>
       <p>
-        Com algum filtro ativo, a barra informa <strong>quantas tarefas estão visíveis e quantas
-        existem no total</strong>, e oferece a opção de limpar os filtros, para o recorte nunca
-        passar despercebido. Não há filtro de operadora nem de período: o quadro já apresenta
-        somente os hospitais que o usuário acompanha.
+        Os filtros ligados ficam à vista abaixo da barra, cada um com um <strong>X</strong> para
+        tirá-lo, junto de <strong>quantas tarefas estão visíveis e quantas existem no
+        total</strong> e da opção de limpar tudo, para o recorte nunca passar despercebido. Não há
+        filtro de período: o quadro já apresenta somente os hospitais que o usuário acompanha.
       </p>
     </>
   )

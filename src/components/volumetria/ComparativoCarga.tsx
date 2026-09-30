@@ -23,12 +23,14 @@ export default function ComparativoCarga({ grupo, onAbrir }: {
         </button>
       </div>
       {aberto && (
-        <CargaPorPessoaChart
-          grupo={grupo}
-          pessoas={comVinculo(grupo)}
-          selecionadoId={null}
-          onSelecionar={onAbrir}
-        />
+        <div className="card-body">
+          <CargaPorPessoaChart
+            grupo={grupo}
+            pessoas={comVinculo(grupo)}
+            selecionadoId={null}
+            onSelecionar={onAbrir}
+          />
+        </div>
       )}
     </div>
   )

@@ -27,6 +27,8 @@ export const TIPO_CLASSE: Record<string, string> = {
   RELATORIO_INTERNO: 'tp-relatorio-interno',
   STATUS: 'tp-status',
   ALTA_AUTO: 'tp-alta-auto',
+  ALTA_MANUAL: 'tp-status',
+  ALTA_DESFEITA: 'tp-edit',
   EDIT: 'tp-edit',
   PENDENTE: 'tp-pendente',
   VISITA_AGENDADA: 'tp-visita-agendada',

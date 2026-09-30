@@ -12,6 +12,7 @@ import Toast from '../components/Toast'
 import { LoadingState } from '../components/ui'
 import HospitalDetalhesModal from '../components/HospitalDetalhesModal'
 import { alertaStyles } from '../components/Alerta'
+import { AcaoAlta } from '../components/paciente/AcaoAlta'
 import { AlertaCamposFaltantes } from '../components/paciente/AlertaCamposFaltantes'
 import { CardCids } from '../components/paciente/CardCids'
 import { CardDadosPaciente } from '../components/paciente/CardDadosPaciente'
@@ -79,13 +80,16 @@ export default function Paciente() {
           </>
         ) : undefined,
         actions: (
-          <button className="btn btn-outline btn-sm" onClick={() => navigate(-1)}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-            Voltar
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {d && podeExecutar(role, 'darAlta') && <AcaoAlta d={d} onFeito={setToast} />}
+            <button className="btn btn-outline btn-sm" onClick={() => navigate(-1)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+              Voltar
+            </button>
+          </div>
         ),
       }),
-      [d, sr, isLoading, navigate],
+      [d, sr, isLoading, navigate, role],
     ),
   )
 

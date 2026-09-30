@@ -304,7 +304,8 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .leito.UCO{color:var(--warning);border-color:var(--warning);background:var(--warning-bg)}
 
 /* ── Op Avatar ── */
-.op-av{display:inline-grid;place-items:center;font-family:var(--font-mono);font-weight:700;letter-spacing:.04em;color:#fff;flex-shrink:0}
+/* Fundo neutro para operadora sem cor própria (uma recém-criada): sem ele a sigla branca sumia no branco. */
+.op-av{background:linear-gradient(135deg,#64748B,#334155);display:inline-grid;place-items:center;font-family:var(--font-mono);font-weight:700;letter-spacing:.04em;color:#fff;flex-shrink:0}
 .op-av.sulamerica,.op-av.SU{background:linear-gradient(135deg,#062E5C,#021A38)}
 .op-av.bradesco,.op-av.BR{background:linear-gradient(135deg,#C8243C,#8B1828)}
 .op-av.careplus,.op-av.CA{background:linear-gradient(135deg,#6B4FB8,#432D87)}
@@ -319,6 +320,10 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 /* ── Section label ── */
 .section-label{font-size:10px;text-transform:uppercase;letter-spacing:.14em;font-weight:700;color:var(--muted);margin:22px 0 10px;display:flex;align-items:center;gap:10px}
 .section-label::after{content:"";flex:1;height:1px;background:var(--border)}
+/* Rótulo de campo de formulário: mais escuro que o texto de apoio para não se
+   confundir com o placeholder do campo logo abaixo. */
+.form-lbl{display:block;font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--ink-3);margin-bottom:5px}
+.form-lbl .req{color:var(--danger);margin-left:2px}
 
 /* ── Progress ── */
 .progress{width:100%;height:5px;background:var(--bg-2);border-radius:99px;overflow:hidden}
@@ -380,7 +385,169 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
    A lista e densa (uma operadora tem ~100 hospitais), entao o item nao ganha
    borda propria — o afford e o hover, e o X so aparece na linha sob o cursor
    para nao poluir a grade com 100 icones de perigo. */
-.malha-hosp-row{position:relative;display:flex;align-items:center;gap:2px;border-radius:6px;min-width:0;transition:background .12s}
+/* Modal "Novo hospital": três seções em cartão (identificação, operadoras,
+   contato), campos com ícone à esquerda e grade de 6 trilhas que cai para uma
+   coluna no celular. */
+.nh{display:grid;gap:14px}
+.nh-op-cabeca{display:flex;align-items:flex-end;gap:12px}
+.nh-op-fixa{flex-shrink:0;display:inline-flex;align-items:center;gap:8px;padding:4px 12px 4px 4px;border-radius:99px;background:var(--primary-soft);color:var(--primary-3);font-size:var(--t-sm);font-weight:600;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msh-abrir{flex-shrink:0;width:32px;height:32px;margin:-6px -6px -6px 0;display:grid;place-items:center;border:1px solid transparent;border-radius:8px;background:none;color:var(--muted);cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+.msh-abrir:hover,.msh-abrir:focus-visible{background:var(--primary-soft);color:var(--primary-3);border-color:var(--primary-soft);outline:none}
+/* Formulário de usuário em etapas expansíveis (mesmo desenho da modal de
+   hospital). A etapa concluída troca o número por um ok e ganha um selo. */
+.uf{max-width:680px;margin:0 auto;display:grid;gap:12px}
+.uf-etapa{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-xs);overflow:visible;transition:border-color .15s,box-shadow .15s}
+.uf-etapa.aberta{border-color:var(--border-strong);box-shadow:var(--shadow-md)}
+.uf-etapa-topo{width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;background:none;border:0;cursor:pointer;text-align:left;font:inherit;color:var(--ink);border-radius:12px}
+.uf-etapa-topo:focus-visible{outline:2px solid var(--primary-3);outline-offset:-2px}
+.uf-etapa-num{flex-shrink:0;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:var(--t-xs);font-weight:700;background:var(--surface-3);color:var(--muted);border:1px solid var(--border-strong);transition:background .15s,color .15s,border-color .15s}
+.uf-etapa.aberta .uf-etapa-num{background:var(--primary-3);border-color:var(--primary-3);color:#fff}
+.uf-etapa.ok .uf-etapa-num{background:var(--success);border-color:var(--success);color:#fff}
+.uf-etapa-icone{flex-shrink:0;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--primary-soft);color:var(--primary-3)}
+.uf-etapa-textos{flex:1;min-width:0;display:grid;gap:2px}
+.uf-etapa-titulo{font-size:var(--t-base);font-weight:700;line-height:1.2}
+.uf-etapa-resumo{font-size:var(--t-xs);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uf-etapa-selo{flex-shrink:0;display:inline-flex;align-items:center;gap:4px;font-size:var(--t-xs);font-weight:600;color:var(--success);background:var(--success-bg);border-radius:99px;padding:3px 9px 3px 7px}
+.uf-etapa-seta{flex-shrink:0;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:var(--surface-3);color:var(--muted);transition:transform .18s,background .15s,color .15s}
+.uf-etapa.aberta .uf-etapa-seta{transform:rotate(180deg);background:var(--primary-soft);color:var(--primary-3)}
+.uf-etapa-corpo{padding:4px 16px 16px;border-top:1px solid var(--border-soft);padding-top:16px}
+.uf-grade{display:grid;gap:14px}
+.uf-com-olho .bm-input{padding-right:72px}
+.uf-olho{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--muted);cursor:pointer;font:inherit;font-size:var(--t-sm);padding:2px 6px;border-radius:5px}
+.uf-olho:hover{color:var(--primary-3);background:var(--primary-soft)}
+.uf-etapa-acoes{display:flex;justify-content:flex-end}
+.uf-niveis{display:grid;gap:8px}
+.uf-nivel{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);transition:border-color .12s,background .12s,box-shadow .12s}
+.uf-nivel:hover{border-color:var(--primary-3)}
+.uf-nivel input{position:absolute;opacity:0;pointer-events:none}
+.uf-nivel:focus-within{outline:2px solid var(--primary-3);outline-offset:1px}
+.uf-nivel.marcado{border-color:var(--primary-3);background:var(--primary-soft);box-shadow:0 0 0 1px var(--primary-3) inset}
+.uf-nivel-textos{flex:1;min-width:0}
+.uf-nivel-nome{display:block;font-weight:600;font-size:var(--t-md)}
+.uf-nivel-desc{display:block;font-size:var(--t-sm);color:var(--muted);line-height:1.4}
+.uf-nivel-marca{flex-shrink:0;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--border-strong);background:var(--surface);color:#fff}
+.uf-nivel.marcado .uf-nivel-marca{background:var(--primary-3);border-color:var(--primary-3)}
+.uf-rodape{display:flex;justify-content:flex-end;gap:10px;padding-top:4px}
+@media (max-width:640px){
+  .uf-etapa-selo{display:none}
+  .uf-etapa-icone{display:none}
+}
+/* Menu "⋮" de ações da linha (MenuAcoes): lista em position:fixed para não
+   ser cortada pela tabela que rola por dentro. */
+.menu-acoes-btn{flex-shrink:0;width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--muted);cursor:pointer;transition:color .12s,border-color .12s,background .12s}
+.menu-acoes-btn:hover,.menu-acoes-btn.aberto{color:var(--primary-3);border-color:var(--primary-3);background:var(--primary-soft)}
+.menu-acoes-btn:focus-visible{outline:2px solid var(--primary-3);outline-offset:1px}
+.menu-acoes-vaga{display:inline-block;width:30px;flex-shrink:0}
+.menu-acoes-lista{position:fixed;z-index:70;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:4px}
+.menu-acoes-lista button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:0;background:transparent;padding:8px 10px;border-radius:7px;font:inherit;font-size:var(--t-sm);color:var(--ink);cursor:pointer}
+.menu-acoes-lista button svg{color:var(--muted)}
+.menu-acoes-lista button:hover:not(:disabled),.menu-acoes-lista button:focus-visible{background:var(--surface-2);outline:none}
+.menu-acoes-lista button.perigo{color:var(--danger)}
+.menu-acoes-lista button.perigo svg{color:var(--danger)}
+.menu-acoes-lista button.perigo:hover:not(:disabled){background:var(--danger-bg)}
+.menu-acoes-lista button:disabled{opacity:.45;cursor:default}
+/* Usuários de acesso: filtros rotulados numa linha própria + resumo. */
+.uac-filtros{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin:-2px 0 10px}
+.uac-filtro{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%}
+.uac-filtro .ops-seg{overflow-x:auto;max-width:100%}
+.uac-filtro-rotulo{font-size:var(--t-xs);font-weight:600;color:var(--muted);flex-shrink:0}
+.uac-resumo{padding:0 2px 10px}
+.uac-limpar{border:0;background:none;padding:0 0 0 6px;font:inherit;font-size:var(--t-sm);color:var(--primary-3);font-weight:600;cursor:pointer}
+.uac-limpar:hover{text-decoration:underline}
+.uac-linha-suspensa td{color:var(--muted)}
+.uac-erro{margin:0;padding:8px 10px;border-radius:var(--r-sm);background:var(--danger-bg);color:var(--danger);font-size:var(--t-sm)}
+.ops-search-limpar{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:22px;height:22px;display:grid;place-items:center;border:0;border-radius:50%;background:var(--surface-3);color:var(--muted);cursor:pointer}
+.ops-search-limpar:hover{background:var(--border);color:var(--ink)}
+.nh-aviso{margin:0;font-size:var(--t-sm);color:var(--muted)}
+.nh-secao{display:grid;gap:16px;padding:16px 18px 18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-xs)}
+.nh-secao.com-erro{border-color:var(--danger)}
+.nh-secao-topo{display:flex;align-items:center;gap:12px}
+.nh-secao-topo > div{flex:1;min-width:0}
+.nh-secao-icone{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;flex-shrink:0;background:var(--primary-soft);color:var(--primary-3)}
+.nh-secao-titulo{font-size:var(--t-base);font-weight:700;color:var(--ink);line-height:1.2}
+.nh-secao-sub{font-size:var(--t-xs);color:var(--muted);margin-top:2px}
+.nh-contador{flex-shrink:0;font-size:var(--t-xs);font-weight:600;padding:4px 10px;border-radius:99px;background:var(--surface-3);color:var(--muted);border:1px solid var(--border)}
+.nh-contador.ativo{background:var(--primary-soft);color:var(--primary-3);border-color:transparent}
+.nh-grade{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px 14px}
+.nh-grade > .c1{grid-column:span 1}
+.nh-grade > .c2{grid-column:span 2}
+.nh-grade > .c3{grid-column:span 3}
+.nh-grade > .c4{grid-column:span 4}
+.nh-grade > .c6{grid-column:span 6}
+.nh-campo{position:relative;min-width:0}
+.nh-campo > label{display:block;margin-bottom:6px;font-size:var(--t-xs);font-weight:600;color:var(--ink-2,var(--muted))}
+.nh-input{position:relative}
+.nh-input > svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted-2);pointer-events:none;transition:color .12s}
+.nh-input .bm-input{padding-left:36px;height:38px}
+.nh-input:focus-within > svg{color:var(--primary-3)}
+.nh-input-sem-icone .bm-input{padding-left:11px;text-align:center;text-transform:uppercase}
+.nh-input-area > svg{top:11px;transform:none}
+.nh-input-area .bm-input{height:auto;min-height:38px;padding-top:8px;resize:vertical;font-family:inherit}
+.nh-campo.com-erro .bm-input{border-color:var(--danger);background:var(--danger-bg)}
+.nh-erro{font-size:var(--t-xs);color:var(--danger);margin-top:5px}
+.nh-sugestoes{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;margin:0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);max-height:260px;overflow-y:auto}
+.nh-sugestoes li{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;font-size:var(--t-sm);color:var(--ink);cursor:pointer}
+.nh-sugestoes li svg{color:var(--muted-2);flex-shrink:0}
+.nh-sugestoes li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nh-sugestoes li em{font-style:normal;font-size:10px;font-weight:700;color:var(--muted);background:var(--surface-3);border-radius:5px;padding:2px 6px}
+.nh-sugestoes li:hover,.nh-sugestoes li[aria-selected="true"]{background:var(--primary-soft)}
+.nh-ops{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.nh-op{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;cursor:pointer;text-align:left;font:inherit;background:var(--surface);border:1px solid var(--border-strong);color:var(--ink);transition:border-color .12s,background .12s,box-shadow .12s}
+.nh-op:hover{border-color:var(--primary-3)}
+.nh-op:focus-visible{outline:2px solid var(--primary-3);outline-offset:1px}
+.nh-op-nome{flex:1;min-width:0;font-size:var(--t-sm);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nh-op-marca{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;border:1px solid var(--border-strong);color:var(--muted-2);background:var(--surface)}
+.nh-op[aria-pressed="true"]{border-color:var(--primary-3);background:var(--primary-soft);box-shadow:0 0 0 1px var(--primary-3) inset}
+.nh-op[aria-pressed="true"] .nh-op-nome{font-weight:600}
+.nh-op[aria-pressed="true"] .nh-op-marca{background:var(--primary-3);border-color:var(--primary-3);color:#fff}
+.nh-secao.com-erro .nh-op[aria-pressed="false"]{border-color:var(--danger)}
+@media (max-width:640px){
+  .nh-secao{padding:14px}
+  .nh-grade{grid-template-columns:1fr}
+  .nh-grade > .c1,.nh-grade > .c2,.nh-grade > .c3,.nh-grade > .c4,.nh-grade > .c6{grid-column:auto}
+  .nh-ops{grid-template-columns:1fr}
+}
+
+/* Botão "Novo" do cadastro da malha: um menu com operadora ou hospital. */
+.malha-novo{position:relative;flex-shrink:0}
+.malha-novo-lista{position:absolute;right:0;top:calc(100% + 4px);z-index:20;min-width:170px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);box-shadow:0 8px 24px rgba(11,26,38,.14);padding:4px}
+.malha-novo-lista button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:transparent;padding:7px 10px;border-radius:6px;font:inherit;font-size:var(--t-sm);color:var(--ink);cursor:pointer}
+.malha-novo-lista button:hover,.malha-novo-lista button:focus-visible{background:var(--surface-2);outline:none}
+/* Lista de operadoras: um cartão por operadora, no mesmo desenho da modal de
+   novo hospital (sigla colorida, título + linha de apoio com ícones). Aberta,
+   mostra os hospitais agrupados por cidade. */
+.malha-resumo{display:flex;align-items:center;gap:6px;font-size:var(--t-sm);color:var(--muted);padding:0 2px 10px}
+.malha-resumo b{color:var(--ink);font-weight:700}
+.malha-lista{display:grid;gap:10px}
+.malha-op{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-xs);overflow:hidden;transition:border-color .15s,box-shadow .15s}
+.malha-op:hover{border-color:var(--border-strong)}
+.malha-op.aberta{border-color:var(--border-strong);box-shadow:var(--shadow-md)}
+.malha-op-topo{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;outline:none}
+.malha-op-topo:focus-visible{box-shadow:inset 0 0 0 2px var(--primary-3)}
+.malha-op-info{flex:1;min-width:0}
+.malha-op-nome{font-size:var(--t-md);font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.25}
+.malha-op-sub{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;font-size:var(--t-xs);color:var(--muted)}
+.malha-op-sub span{display:inline-flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums}
+.malha-op-sub svg{color:var(--muted-2)}
+.malha-op-icone{flex-shrink:0;width:32px;height:30px;display:grid;place-items:center;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--muted);cursor:pointer;transition:color .12s,border-color .12s}
+.malha-op-icone:hover{color:var(--primary-3);border-color:var(--primary-3)}
+.malha-op-seta{flex-shrink:0;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;color:var(--muted);background:var(--surface-3);transition:transform .18s,background .15s,color .15s}
+.malha-op.aberta .malha-op-seta{transform:rotate(180deg);background:var(--primary-soft);color:var(--primary-3)}
+.malha-op-corpo{border-top:1px solid var(--border);background:var(--surface-2);padding:14px;display:grid;gap:14px;max-height:460px;overflow-y:auto;overscroll-behavior:contain}
+.malha-vazio{font-size:var(--t-sm);color:var(--muted-2)}
+.malha-cidade{display:grid;gap:8px}
+.malha-cidade-topo{display:flex;align-items:center;gap:6px;font-size:var(--t-xs);font-weight:700;color:var(--ink-2);letter-spacing:.02em}
+.malha-cidade-topo svg{color:var(--primary-3)}
+.malha-cidade-topo em{font-style:normal;font-weight:600;font-size:10px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:1px 7px}
+.malha-cidade-grade{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.malha-hosp-icone{flex-shrink:0;display:grid;place-items:center;width:26px;height:26px;border-radius:7px;background:var(--surface-3);color:var(--muted-2);transition:background .12s,color .12s}
+.malha-hosp-row:hover .malha-hosp-icone{background:var(--primary-soft);color:var(--primary-3)}
+@media (max-width:640px){
+  .malha-op-topo{flex-wrap:wrap}
+  .malha-op-info{flex:1 1 calc(100% - 60px)}
+}
+.malha-hosp-row{position:relative;display:flex;align-items:center;gap:6px;padding:5px 6px;border:1px solid var(--border);border-radius:9px;background:var(--surface);min-width:0;transition:background .12s,border-color .12s}
+.malha-hosp-row:hover{border-color:var(--primary-3)}
 .malha-hosp-row:hover{background:var(--primary-soft)}
 .malha-hosp-nome{flex:1;min-width:0;text-align:left;font-size:var(--t-sm);padding:4px 6px;color:var(--ink);background:none;border:0;border-radius:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:inherit}
 .malha-hosp-nome.botao{cursor:pointer}

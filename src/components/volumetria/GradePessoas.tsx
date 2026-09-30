@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { VolumetriaGrupo } from '../../types/api'
 import CardPessoa from './CardPessoa'
-import { ORDENS, maxHoras, normalizar, rotuloGrupo, type OrdemPessoas } from './volumetria.model'
+import { ORDENS, maxDemandas, normalizar, rotuloGrupo, type OrdemPessoas } from './volumetria.model'
 
 // Mesmo desenho da lupa das Movimentações: um só símbolo de busca no sistema.
 const IconBusca = (
@@ -39,7 +39,7 @@ export default function GradePessoas({ grupo, onAbrir, onDividir }: {
     setAberta(false)
   }
   const rotulo = rotuloGrupo(grupo.papel)
-  const maximo = useMemo(() => maxHoras(grupo), [grupo])
+  const maximo = useMemo(() => maxDemandas(grupo), [grupo])
 
   const visiveis = useMemo(() => {
     const q = normalizar(busca)
@@ -100,17 +100,19 @@ export default function GradePessoas({ grupo, onAbrir, onDividir }: {
         </div>
       </div>
 
-      {visiveis.length === 0 ? (
-        <div className="vol-vazio">
-          {grupo.pessoas.length === 0 ? `Nenhum ${rotulo.singular} cadastrado.` : 'Ninguém com esse nome.'}
-        </div>
-      ) : (
-        <div className="vol-grade">
-          {visiveis.map((p) => (
-            <CardPessoa key={p.user_id} pessoa={p} grupo={grupo} maxHoras={maximo} onAbrir={onAbrir} onDividir={onDividir} />
-          ))}
-        </div>
-      )}
+      <div className="card-body">
+        {visiveis.length === 0 ? (
+          <div className="vol-vazio">
+            {grupo.pessoas.length === 0 ? `Nenhum ${rotulo.singular} cadastrado.` : 'Ninguém com esse nome.'}
+          </div>
+        ) : (
+          <div className="vol-grade">
+            {visiveis.map((p) => (
+              <CardPessoa key={p.user_id} pessoa={p} grupo={grupo} maxDemandas={maximo} onAbrir={onAbrir} onDividir={onDividir} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
