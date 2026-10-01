@@ -17,6 +17,10 @@ interface AuthState {
   // salvo E logo após o login. Guards/Sidebar aguardam isto para não renderizar
   // itens/telas com role=null (que liberaria tudo) e depois recolher (flash).
   perfilCarregando: boolean
+  // Senha definida pelo admin/analista: o app oferece trocar por uma própria.
+  senhaProvisoria: boolean
+  // Chamado depois que o usuário troca a senha (a marca sai no servidor também).
+  senhaTrocada: () => void
   // remember=true (padrão) mantém a sessão entre reinícios do navegador.
   login: (username: string, password: string, remember?: boolean) => Promise<void>
   // Devolve o resultado do registro: se exigir confirmação de e-mail, a UI mostra
@@ -41,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [username, setUsername] = useState<string | null>(perfilSalvo?.username ?? null)
   const [nome, setNome] = useState<string | null>(null)
   const [role, setRole] = useState<UserRole | null>((perfilSalvo?.role as UserRole | null) ?? null)
+  const [senhaProvisoria, setSenhaProvisoria] = useState(false)
   const [loading, setLoading] = useState(true)
   // Perfil (/me) em resolução. Só BLOQUEIA a UI quando há token MAS ainda não
   // sabemos o papel (sem perfil salvo). Com perfil salvo, o papel já está
@@ -57,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsername(null)
     setNome(null)
     setRole(null)
+    setSenhaProvisoria(false)
     setTokenValido(false)
     // Zera TODO o cache de dados: as respostas são recortadas ao escopo do usuário
     // (overview/sidebar/dashboard). Sem limpar, o próximo login reusaria dados do
@@ -78,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUsername(me.username)
           setNome(me.nome ?? null)
           setRole(me.role ?? null)
+          setSenhaProvisoria(!!me.senha_provisoria)
           // Atualiza o espelho para o próximo boot já hidratar o papel certo
           // (o /me é a fonte de verdade; o papel pode ter mudado no servidor).
           setPerfil({ username: me.username, role: me.role ?? null }, tokenPersistente())
@@ -146,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await apiFetch<MeResponse>('/me', { skipAuthRedirect: true })
       setNome(me.nome ?? null)
       setRole(me.role ?? null)
+      setSenhaProvisoria(!!me.senha_provisoria)
       // Espelha o perfil no MESMO storage do token (remember) para o próximo
       // boot hidratar o papel de forma síncrona — sem flash de menu na Sidebar.
       setPerfil({ username: res.username, role: me.role ?? null }, remember)
@@ -183,9 +191,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // antes do /me resolver). O 401 do /me zera tokenValido e derruba a sessão.
   const authenticated = !!username || tokenValido
 
+  const senhaTrocada = useCallback(() => setSenhaProvisoria(false), [])
+
   const value = useMemo<AuthState>(
-    () => ({ username, nome, role, authenticated, loading, perfilCarregando, login, register, logout }),
-    [username, nome, role, authenticated, loading, perfilCarregando, login, register, logout],
+    () => ({ username, nome, role, authenticated, loading, perfilCarregando, senhaProvisoria,
+      senhaTrocada, login, register, logout }),
+    [username, nome, role, authenticated, loading, perfilCarregando, senhaProvisoria,
+      senhaTrocada, login, register, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

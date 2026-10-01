@@ -489,6 +489,8 @@ export interface MeResponse {
   role: UserRole | null
   /** Nome de exibição: o cadastrado no perfil, senão derivado do e-mail. */
   nome?: string | null
+  /** Senha definida pelo admin/analista (0048): o app oferece trocar. */
+  senha_provisoria?: boolean
 }
 
 // ── Gestão de usuários de acesso (contas de login) ──────────────────────────

@@ -11,6 +11,7 @@ import Login from './pages/Login'
 import { LoadingState } from './components/ui'
 import DashboardSkeleton from './components/internados/DashboardSkeleton'
 import AppLayout from './components/AppLayout'
+import SenhaProvisoriaModal from './components/SenhaProvisoriaModal'
 import {
   importDashboard, importDiretoria, importGestor,
   importEquipe, importConfiguracoes, importUpload,
@@ -110,14 +111,21 @@ function RequireAuth() {
   }
   // Médico/enfermeiro: portal próprio em QUALQUER rota, sem Sidebar nem telas
   // internas. A URL fica como veio; não há rota interna para onde mandá-lo.
+  // O convite para trocar a senha provisória vale para os dois casos.
   if (ehProfissional(role)) {
     return (
       <Suspense fallback={<PageFallback />}>
         <PortalProfissional papel={role} />
+        <SenhaProvisoriaModal />
       </Suspense>
     )
   }
-  return <AppLayout />
+  return (
+    <>
+      <AppLayout />
+      <SenhaProvisoriaModal />
+    </>
+  )
 }
 
 // Rota /login: se já autenticado, sai do login e volta para a origem (ou "/").

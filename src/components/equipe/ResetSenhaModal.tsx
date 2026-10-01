@@ -63,7 +63,7 @@ export default function ResetSenhaModal({ userId, email, nome, onInformarEmail, 
               de acesso. Informe o e-mail e a senha inicial para criar o acesso.</>
           ) : (
             <>Defina uma nova senha para <strong style={{ color: 'var(--text)' }}>{email ?? 'este usuário'}</strong>.
-              Ele passará a entrar com ela.</>
+              No próximo acesso, ele poderá trocar por uma senha própria.</>
           )}
         </p>
         {!semConta && <div>
