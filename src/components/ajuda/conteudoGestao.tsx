@@ -286,13 +286,13 @@ export function ModuloVolumetria() {
 
       <h3>Quem acessa</h3>
       <p>
-        Os perfis de <strong>coordenação</strong>, administrativa e técnica. Cada coordenador
+        Os perfis de <strong>coordenação</strong>, operacional e técnica. Cada coordenador
         enxerga apenas o seu grupo.
       </p>
 
       <h3>Passo a passo</h3>
       <p>
-        Os exemplos mostram o grupo de técnicos. No grupo de administrativos a tela é a mesma, e a
+        Os exemplos mostram o grupo de técnicos. No grupo de operacionais a tela é a mesma, e a
         demanda de cada pessoa são os hospitais sem censo que ela precisa cobrar.
       </p>
 
@@ -460,7 +460,7 @@ export function ModuloVolumetria() {
         <tr><Key>Técnicos</Key>
           <td>Pacientes sem relatório, aguardando visita, com visita atrasada, com relatório vencido
             e próximos de vencer.</td></tr>
-        <tr><Key>Administrativos</Key>
+        <tr><Key>Operacionais</Key>
           <td>Hospitais com paciente internado e sem censo recebido.</td></tr>
       </Tabela>
       <p>
@@ -474,7 +474,7 @@ export function ModuloVolumetria() {
       <p>
         No grupo técnico, a estimativa parte dos minutos do tipo de leito e é ajustada por
         multiplicadores de longa permanência e de reanálise, quando o paciente já tem relatório
-        anterior. No administrativo, cada hospital a cobrar conta como um caso, porque a unidade de
+        anterior. No operacional, cada hospital a cobrar conta como um caso, porque a unidade de
         trabalho é a ligação para o hospital, e não o número de dias devidos.
       </p>
       <Metrics>
@@ -547,7 +547,7 @@ export function ModuloVolumetria() {
       </p>
       <Tabela cabecalho={['Grupo', 'O que conta como concluído']} larguras={['175px']}>
         <tr><Key>Técnicos</Key><td>Relatório registrado.</td></tr>
-        <tr><Key>Administrativos</Key><td>Cobrança de censo marcada como cobrada.</td></tr>
+        <tr><Key>Operacionais</Key><td>Cobrança de censo marcada como cobrada.</td></tr>
       </Tabela>
       <p>
         O envio de censo não entra na conta, porque o sistema não guarda quem enviou cada arquivo.
@@ -671,7 +671,7 @@ export function ModuloVolumetria() {
         aparecem assim, o que é intencional.
       </p>
       <p>
-        No grupo administrativo não há janela de prazo nem limiares de prazo, porque toda cobrança
+        No grupo operacional não há janela de prazo nem limiares de prazo, porque toda cobrança
         de censo já está vencida por definição e o indicador repetiria o de fila. Os dias contados
         são sempre corridos, pois o sistema não trabalha com calendário de dias úteis.
       </p>

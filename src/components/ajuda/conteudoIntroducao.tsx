@@ -151,7 +151,7 @@ export function ModuloVisao({ irPara }: Props) {
 // telas de decisão só aparecem para quem tem essa competência (acessoAjuda.ts).
 const PAPEIS_MATRIZ = [
   { nome: 'Técnico' },
-  { nome: 'Administrativo' },
+  { nome: 'Operacional' },
   { nome: 'Gestor', gestao: true },
   { nome: 'Diretor', gestao: true },
   { nome: 'Analista' },
@@ -225,7 +225,7 @@ export function ModuloNavegacao() {
             e no Envio de Censos.</td>
         </tr>
         <tr>
-          <Key>Administrativo</Key>
+          <Key>Operacional</Key>
           <td>Operação do dia a dia: envia os censos, cobra os hospitais que atrasam e dá alta a
             quem já saiu. Trabalha no Painel Operacional, no Envio de Censos e nas Tarefas.</td>
         </tr>
@@ -254,9 +254,9 @@ export function ModuloNavegacao() {
             cada um cobre. Enxerga o Painel Operacional como contexto, sem alterar nada nele.</td>
         </tr>
         <tr>
-          <Key>Coordenador administrativo</Key>
+          <Key>Coordenador operacional</Key>
           <td>O mesmo papel, do lado administrativo: acompanha a carga de cobrança de censo e
-            distribui os hospitais entre os administrativos.</td>
+            distribui os hospitais entre os operacionais.</td>
         </tr>
       </Tabela>
 
@@ -265,7 +265,7 @@ export function ModuloNavegacao() {
       <p className="aj-legend"><Sim /> tem acesso <Nao /> sem acesso</p>
       <p>
         A coluna <strong>Coordenador</strong> vale para os dois perfis de coordenação, técnico e
-        administrativo, que têm o mesmo recorte de telas e se distinguem pela equipe que acompanham
+        operacional, que têm o mesmo recorte de telas e se distinguem pela equipe que acompanham
         na Distribuição de tarefas.
       </p>
 

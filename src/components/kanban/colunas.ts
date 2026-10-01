@@ -40,7 +40,7 @@ export const COLUNAS: ColunaKanban[] = [
   {
     key: 'aguardando_aprovacao',
     titulo: 'Aguardando aprovação',
-    descricao: 'Relatórios enviados pelo administrativo. O técnico confere e aprova ou devolve',
+    descricao: 'Relatórios enviados pelo operacional. O técnico confere e aprova ou devolve',
     cor: 'var(--info)',
     corBg: 'var(--info-bg)',
   },

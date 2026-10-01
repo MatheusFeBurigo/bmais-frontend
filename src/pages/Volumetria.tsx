@@ -124,7 +124,7 @@ export default function Volumetria() {
           <KpiCard
             label="Hospitais sob responsabilidade"
             value={hospitaisCobertos(grupo)}
-            meta="Com pelo menos um administrativo vinculado"
+            meta="Com pelo menos um operacional vinculado"
           />
         )}
         <KpiCard

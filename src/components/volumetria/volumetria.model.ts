@@ -56,7 +56,7 @@ export function maxDemandas(g: VolumetriaGrupo): number {
 
 const ROTULO_GRUPO: Record<string, { plural: string; singular: string }> = {
   coordenador_tecnico: { plural: 'Técnicos', singular: 'técnico' },
-  coordenador_administrativo: { plural: 'Administrativos', singular: 'administrativo' },
+  coordenador_administrativo: { plural: 'Operacionais', singular: 'operacional' },
 }
 export function rotuloGrupo(papel: UserRole): { plural: string; singular: string } {
   return ROTULO_GRUPO[papel] ?? { plural: 'Pessoas', singular: 'pessoa' }

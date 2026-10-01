@@ -23,7 +23,7 @@ const PARA_QUEM: Partial<Record<UserRole, string>> = {
   tecnico: 'Para quem faz as visitas de auditoria e registra os relatórios.',
   administrativo: 'Para quem envia os censos e cobra os hospitais que atrasam.',
   coordenador_tecnico: 'Para quem distribui os hospitais entre os técnicos, na Distribuição de tarefas.',
-  coordenador_administrativo: 'Para quem distribui os hospitais entre os administrativos, na Distribuição de tarefas.',
+  coordenador_administrativo: 'Para quem distribui os hospitais entre os operacionais, na Distribuição de tarefas.',
   analista: 'Para quem acompanha a operação sem alterar pacientes e mantém os cadastros desta tela.',
   // Gestor e diretor sem descrição de função: o que a gestão vê e faz só é
   // contado a quem tem essa competência (acessoAjuda.ts), e quem lê este
@@ -142,7 +142,7 @@ export function ModuloOperacoes() {
         Há dois caminhos para criar o acesso de alguém, conforme quem é a pessoa.{' '}
         <strong>Médicos e enfermeiros</strong> são cadastrados como auditores, e a conta nasce
         junto, levando ao portal do profissional. <strong>A equipe interna</strong> (técnicos,
-        administrativos, coordenadores, analistas, gestores e diretores) recebe uma conta de acesso,
+        operacionais, coordenadores, analistas, gestores e diretores) recebe uma conta de acesso,
         com o papel escolhido no cadastro.
       </p>
 

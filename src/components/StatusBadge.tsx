@@ -76,11 +76,11 @@ const ROLE_VISUAL: Record<string, RoleVisual> = {
   gestor: { label: 'Gestor', color: 'var(--caution)', bg: 'var(--caution-bg)' },
   // Técnico e administrativo são os papéis que sobem relatório — cores distintas
   // para diferenciá-los na legenda/chip: técnico verde, administrativo âmbar.
-  administrativo: { label: 'Administrativo', color: 'var(--caution)', bg: 'var(--caution-bg)' },
+  administrativo: { label: 'Operacional', color: 'var(--caution)', bg: 'var(--caution-bg)' },
   tecnico: { label: 'Técnico', color: 'var(--success)', bg: 'var(--success-bg)' },
   // Alias defensivo: registros históricos com autor_role='analista' que escapem da
   // migration 0012 ainda coloram corretamente (mesmo visual do administrativo).
-  analista: { label: 'Administrativo', color: 'var(--caution)', bg: 'var(--caution-bg)' },
+  analista: { label: 'Operacional', color: 'var(--caution)', bg: 'var(--caution-bg)' },
 }
 
 const ROLE_DESCONHECIDO: RoleVisual = {

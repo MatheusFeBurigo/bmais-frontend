@@ -124,7 +124,7 @@ export function ModuloOperacional({ irPara }: Props) {
 
       <h3>Ações disponíveis</h3>
       <Tabela cabecalho={['Ação', 'Efeito']} larguras={['185px']}>
-        <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação e, para o perfil técnico, o formulário de registrar relatório. Técnico e administrativo têm ainda o botão <strong>Alta</strong>, no rodapé.</td></tr>
+        <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação e, para o perfil técnico, o formulário de registrar relatório. Técnico e operacional têm ainda o botão <strong>Alta</strong>, no rodapé.</td></tr>
         <tr><Key>Clicar no hospital</Key><td>Abre a ficha do hospital, com indicadores, operadoras atendidas, dados cadastrais e histórico de censos sob demanda.</td></tr>
         <tr><Key>Adicionar paciente</Key><td>Cadastro manual: operadora, hospital, nome, atendimento, situação (internado ou alta), data de entrada, data de alta quando for o caso e, opcionalmente, leito, especialidade e médico. Não duplica: se o atendimento já existir no hospital, avisa que o paciente não foi duplicado.</td></tr>
         <tr><Key>Exportar</Key><td>Gera a planilha de controle de auditoria, da operadora aberta ou de todas num único arquivo, com uma aba por hospital.</td></tr>
@@ -148,7 +148,7 @@ export function ModuloPaciente({ irPara }: Props) {
       <p>
         Pelo botão <strong>Detalhes</strong> da ficha rápida do Painel Operacional, ou por link
         direto. O perfil analista vê a ficha rápida, mas não abre a completa.{' '}
-        <strong>Técnico e administrativo registram relatório</strong>; o do administrativo só vale
+        <strong>Técnico e operacional registram relatório</strong>; o do operacional só vale
         depois que um técnico aprova. <strong>Mexer nos CIDs é exclusivo do perfil técnico</strong>, e
         cada pessoa continua vendo apenas os pacientes dos hospitais do seu escopo.
       </p>
@@ -161,7 +161,7 @@ export function ModuloPaciente({ irPara }: Props) {
           { n: 2, titulo: "Escolha o médico auditor", corpo: <>Comece a digitar o nome. A lista traz os médicos ativos do cadastro, e um nome fora dela também é aceito.</> },
           { n: 3, titulo: "Informe o CID observado, se houver", corpo: <>Opcional. A lista traz primeiro os CIDs que o paciente já tem e depois o catálogo inteiro. Um CID que o paciente ainda não tem aparece como <strong>Novo no paciente</strong> e passa a constar na ficha dele ao registrar.</> },
           { n: 4, titulo: "Escreva a observação, se houver", corpo: <>Texto livre, que aparece no histórico do paciente.</> },
-          { n: 5, titulo: "Clique em Registrar relatório", corpo: <>O status do paciente é recalculado na hora e ele sai das listas de pendência. O relatório aparece na timeline com a cor do seu perfil. No perfil administrativo o botão é <strong>Enviar para aprovação</strong>, sem o campo CID, e o paciente fica como <strong>Aguardando aprovação</strong> até um técnico aprovar.</> },
+          { n: 5, titulo: "Clique em Registrar relatório", corpo: <>O status do paciente é recalculado na hora e ele sai das listas de pendência. O relatório aparece na timeline com a cor do seu perfil. No perfil operacional o botão é <strong>Enviar para aprovação</strong>, sem o campo CID, e o paciente fica como <strong>Aguardando aprovação</strong> até um técnico aprovar.</> },
         ]}
       >
         <Tela nome="Ficha rápida do paciente" largura={640}
@@ -170,8 +170,8 @@ export function ModuloPaciente({ irPara }: Props) {
             marcas={{ dataVisita: 1, medico: 2, cid: 3, obs: 4, registrar: 5 }} />
         </Tela>
       </ComoFazer>
-      <Callout tipo="info" titulo="Técnico aprova o relatório do administrativo">
-        O relatório do administrativo vai para a coluna <strong>Aguardando aprovação</strong> do quadro
+      <Callout tipo="info" titulo="Técnico aprova o relatório do operacional">
+        O relatório do operacional vai para a coluna <strong>Aguardando aprovação</strong> do quadro
         de pacientes, em Tarefas. O do técnico vale na hora. Os demais perfis veem a ficha, mas o bloco de
         registrar não aparece para eles.
       </Callout>
@@ -214,7 +214,7 @@ export function ModuloPaciente({ irPara }: Props) {
         </Tela>
       </ComoFazer>
       <Callout tipo="info" titulo="Quem dá alta, e como desfazer">
-        Técnico e administrativo. Deu alta por engano? No mesmo lugar aparece{' '}
+        Técnico e operacional. Deu alta por engano? No mesmo lugar aparece{' '}
         <strong>Desfazer alta</strong>, e o paciente volta para a lista de internados. Vale para a
         alta dada à mão e para a alta automática; a alta que veio no censo do hospital não se desfaz.
       </Callout>
@@ -362,7 +362,7 @@ export function ModuloKanban({ irPara }: Props) {
         ]}
       >
         <Tela nome="Tarefas" largura={960}
-          descricao="Quadro de censos do perfil administrativo. O card é por hospital, não por paciente.">
+          descricao="Quadro de censos do perfil operacional. O card é por hospital, não por paciente.">
           <ReplicaCobranca marcas={{ card: 1, retorno: 2 }} />
         </Tela>
       </ComoFazer>
@@ -390,7 +390,7 @@ export function ModuloKanban({ irPara }: Props) {
 
       <h3>As colunas de aprovação</h3>
       <p>
-        No mesmo quadro de pacientes, à direita da fila. O relatório que o administrativo registra
+        No mesmo quadro de pacientes, à direita da fila. O relatório que o operacional registra
         chega aqui para o técnico conferir. Enquanto
         espera, o paciente aparece como <strong>Aguardando aprovação</strong> e não conta como
         visitado. Aprovado, o paciente sai do quadro e volta para <strong>Sem relatório</strong>{' '}
@@ -398,7 +398,7 @@ export function ModuloKanban({ irPara }: Props) {
       </p>
       <Tabela cabecalho={['Coluna', 'O que reúne', 'O que fazer']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Aguardando aprovação</Key>
-          <td>Relatórios enviados pelo administrativo, com o texto no próprio card.</td>
+          <td>Relatórios enviados pelo operacional, com o texto no próprio card.</td>
           <td>Técnico: Aprovar, ou Devolver dizendo o que corrigir.</td></tr>
         <tr><Key>Devolvidos</Key>
           <td>Relatórios que o técnico pediu para corrigir, com o motivo.</td>
@@ -412,7 +412,7 @@ export function ModuloKanban({ irPara }: Props) {
         escolha a justificativa. Ela vale quando o relatório é aprovado e não muda o prazo do
         próximo relatório. A coluna, no quadro de pacientes, lista quem está em prorrogação,
         primeiro as que terminam hoje. Passada a data final, o paciente volta para{' '}
-        <strong>Sem relatório</strong>. Admin e administrativo podem{' '}
+        <strong>Sem relatório</strong>. Admin e operacional podem{' '}
         <strong>Pausar</strong> e <strong>Retomar</strong> no próprio card.
       </p>
 
@@ -447,7 +447,7 @@ export function ModuloKanban({ irPara }: Props) {
       <ul>
         <li>O perfil <strong>técnico</strong> vê as três colunas de pacientes, que são a agenda de
           visitas dele, sem a cobrança de censo.</li>
-        <li>O perfil <strong>administrativo</strong> vê as colunas de censos, que são a
+        <li>O perfil <strong>operacional</strong> vê as colunas de censos, que são a
           providência dele junto aos hospitais.</li>
         <li>Quem acompanha as duas equipes alterna entre os quadros pelas abas{' '}
           <strong>Pacientes</strong> e <strong>Censos</strong>.</li>
