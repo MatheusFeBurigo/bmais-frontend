@@ -4,7 +4,7 @@ import { dataBR } from '../../lib/datas'
 import type { InternacaoDados } from '../../types/api'
 
 function LeitoGrande({ tipo }: { tipo?: string | null }) {
-  const sigla = tipo === 'UTI' ? 'UTI' : tipo === 'APARTAMENTO' ? 'APT' : tipo === 'ENFERMARIA' ? 'ENF' : null
+  const sigla = tipo === 'UTI' ? 'UTI' : tipo === 'APARTAMENTO' ? 'APT' : tipo === 'ENFERMARIA' ? 'ENF' : tipo === 'HOMECARE' ? 'HOME' : null
   if (!sigla) return <span style={{ fontSize: 'var(--t-md)', color: 'var(--muted-2)' }}>—</span>
   return <span className={`leito ${tipo}`} style={{ fontSize: 13, padding: '4px 10px' }}>{sigla}</span>
 }

@@ -26,7 +26,7 @@ export function CamposRelatorio({ form, medicos, ladoALado = false }: {
           <MedicoCombobox value={form.medico} onChange={form.setMedico} nomes={medicos} />
         </div>
       </div>
-      <CampoCidRelatorio form={form} />
+      {!form.vaiParaAprovacao && <CampoCidRelatorio form={form} />}
       <div>
         <span className="form-lbl">Observação</span>
         <textarea
@@ -35,6 +35,11 @@ export function CamposRelatorio({ form, medicos, ladoALado = false }: {
           value={form.obs} onChange={(e) => form.setObs(e.target.value)}
         />
       </div>
+      {form.vaiParaAprovacao && (
+        <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>
+          O relatório vai para aprovação do técnico.
+        </div>
+      )}
       {form.erro && (
         <div className="badge danger" style={{ padding: '8px 10px', textTransform: 'none', letterSpacing: 0 }}>{form.erro}</div>
       )}

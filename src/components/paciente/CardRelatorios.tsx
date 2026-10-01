@@ -1,13 +1,22 @@
 // Card "Relatórios" da ficha: lista dos relatórios e o formulário inline de um
-// novo. O formulário só existe para quem pode registrar (perfil técnico; admin
-// supervisiona); os demais veem o card somente-leitura.
+// novo. O formulário só existe para quem pode registrar (técnico, administrativo
+// e admin); o do administrativo vai para aprovação do técnico. Os demais veem o
+// card somente-leitura.
 import { useState } from 'react'
 import { AutorChip, roleVisual } from '../StatusBadge'
 import { LoadingState } from '../ui'
 import { dataBR, dataHora, hojeISO } from '../../lib/datas'
 import type { RelatorioItem } from '../../types/api'
 import { CamposRelatorio } from './CamposRelatorio'
-import { useFormRelatorio } from './useFormRelatorio'
+import { ResumoProrrogacao, SecaoProrrogacao } from './SecaoProrrogacao'
+import { useFormRelatorio, type ContextoProrrogacao } from './useFormRelatorio'
+
+// Situação na aprovação do técnico. Aprovado não leva etiqueta: é o normal.
+function EtiquetaAprovacao({ r }: { r: RelatorioItem }) {
+  if (r.aprovacao === 'pendente') return <span className="badge info">Aguardando aprovação</span>
+  if (r.aprovacao === 'devolvido') return <span className="badge danger">Devolvido</span>
+  return null
+}
 
 // Um relatório: quando/quem registrou + a observação escrita, com a borda na cor
 // do papel de quem registrou.
@@ -24,7 +33,13 @@ function RelatorioCard({ r }: { r: RelatorioItem }) {
           {dataHora(r.criado_em) || dataBR(r.data_visita) || '—'}
         </span>
         {r.autor && <AutorChip role={r.autor_role} autor={r.autor} />}
+        <EtiquetaAprovacao r={r} />
       </div>
+      {r.aprovacao === 'devolvido' && r.devolucao_motivo && (
+        <div style={{ fontSize: 'var(--t-sm)', color: 'var(--danger)', marginTop: 4 }}>
+          Motivo: {r.devolucao_motivo}
+        </div>
+      )}
       {r.data_visita && (
         <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)', marginTop: 2 }}>
           Visita: {dataBR(r.data_visita)}{r.medico ? ` · ${r.medico}` : ''}
@@ -43,6 +58,7 @@ function RelatorioCard({ r }: { r: RelatorioItem }) {
           ))}
         </div>
       )}
+      {r.prorrogacao && <ResumoProrrogacao p={r.prorrogacao} />}
       {r.descricao && (
         <div className="tl-desc" style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>
           {r.descricao}
@@ -52,19 +68,24 @@ function RelatorioCard({ r }: { r: RelatorioItem }) {
   )
 }
 
-export function CardRelatorios({ internacaoId, relatorios, carregando, erro, podeRegistrar, medicos, onRegistrado }: {
+export function CardRelatorios({
+  internacaoId, relatorios, carregando, erro, podeRegistrar, medicos, onRegistrado, prorrogacao,
+}: {
   internacaoId: number
   relatorios: RelatorioItem[] | undefined
   carregando: boolean
   erro: boolean
   podeRegistrar: boolean
   medicos: string[]
-  onRegistrado: () => void
+  onRegistrado: (pendente: boolean) => void
+  /** Prorrogação vigente do paciente: sugere o 1º período do novo pedido. */
+  prorrogacao: ContextoProrrogacao
 }) {
   const [registrando, setRegistrando] = useState(false)
   const form = useFormRelatorio(internacaoId, {
     dataInicial: hojeISO,
-    onRegistrado: () => { setRegistrando(false); onRegistrado() },
+    prorrogacao,
+    onRegistrado: (pendente) => { setRegistrando(false); onRegistrado(pendente) },
   })
 
   function abrir() {
@@ -98,10 +119,11 @@ export function CardRelatorios({ internacaoId, relatorios, carregando, erro, pod
           >
             <div className="section-label" style={{ margin: 0 }}>Novo relatório</div>
             <CamposRelatorio form={form} medicos={medicos} />
+            <SecaoProrrogacao form={form} />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button className="btn btn-outline btn-sm" onClick={() => setRegistrando(false)} disabled={form.salvando}>Cancelar</button>
               <button className="btn btn-primary btn-sm" onClick={form.salvar} disabled={form.salvando}>
-                {form.salvando ? 'Registrando…' : 'Registrar relatório'}
+                {form.salvando ? 'Enviando…' : form.vaiParaAprovacao ? 'Enviar para aprovação' : 'Registrar relatório'}
               </button>
             </div>
           </div>

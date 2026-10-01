@@ -19,8 +19,10 @@ const EVENTO_INVALIDA: Record<string, QueryRoot[]> = {
   relatorioAdicionado: ['kanban', 'dashboard', 'dashboardOverview', 'diretoria', 'gestor', 'sidebar'],
   // Mudança de configuração de operadora/hospital afeta stats e sidebar. Inclui
   // a ficha de cada hospital: sem isso, reabrir a ficha logo após salvar
-  // mostrava o valor velho (a query dela guarda cache por 5 min).
-  configuracaoAlterada: ['configuracoes', 'hospital', 'sidebar', 'dashboard', 'dashboardOverview', 'diretoria'],
+  // mostrava o valor velho (a query dela guarda cache por 5 min). As regras
+  // tambem mudam prazos de relatorio e de censo: quadro e volumetria recontam.
+  configuracaoAlterada: ['configuracoes', 'hospital', 'sidebar', 'dashboard', 'dashboardOverview', 'diretoria',
+    'kanban', 'volumetria'],
   // Paciente adicionado manualmente entra na contagem de internados → recompõe os
   // agregados operacionais (Visão Geral, panorama, gestor/diretoria) e a sidebar.
   // Cadastrado já com alta, conta nas altas e na permanência: a ficha do hospital

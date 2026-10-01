@@ -23,7 +23,7 @@ export function BlocoRegistrarRelatorio({ form, medicos }: { form: FormRelatorio
         onClick={form.salvar}
         disabled={form.salvando || !form.dataVisita}
       >
-        {form.salvando ? 'Registrando…' : 'Registrar relatório'}
+        {form.salvando ? 'Enviando…' : form.vaiParaAprovacao ? 'Enviar para aprovação' : 'Registrar relatório'}
       </button>
     </SecaoRecolhivel>
   )

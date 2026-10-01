@@ -148,8 +148,9 @@ export function ModuloPaciente({ irPara }: Props) {
       <p>
         Pelo botão <strong>Detalhes</strong> da ficha rápida do Painel Operacional, ou por link
         direto. O perfil analista vê a ficha rápida, mas não abre a completa.{' '}
-        <strong>Registrar relatório e mexer nos CIDs é exclusivo do perfil técnico</strong>, e cada
-        pessoa continua vendo apenas os pacientes dos hospitais do seu escopo.
+        <strong>Técnico e administrativo registram relatório</strong>; o do administrativo só vale
+        depois que um técnico aprova. <strong>Mexer nos CIDs é exclusivo do perfil técnico</strong>, e
+        cada pessoa continua vendo apenas os pacientes dos hospitais do seu escopo.
       </p>
 
       <h3>Passo a passo</h3>
@@ -160,7 +161,7 @@ export function ModuloPaciente({ irPara }: Props) {
           { n: 2, titulo: "Escolha o médico auditor", corpo: <>Comece a digitar o nome. A lista traz os médicos ativos do cadastro, e um nome fora dela também é aceito.</> },
           { n: 3, titulo: "Informe o CID observado, se houver", corpo: <>Opcional. A lista traz primeiro os CIDs que o paciente já tem e depois o catálogo inteiro. Um CID que o paciente ainda não tem aparece como <strong>Novo no paciente</strong> e passa a constar na ficha dele ao registrar.</> },
           { n: 4, titulo: "Escreva a observação, se houver", corpo: <>Texto livre, que aparece no histórico do paciente.</> },
-          { n: 5, titulo: "Clique em Registrar relatório", corpo: <>O status do paciente é recalculado na hora e ele sai das listas de pendência. O relatório aparece na timeline com a cor do seu perfil.</> },
+          { n: 5, titulo: "Clique em Registrar relatório", corpo: <>O status do paciente é recalculado na hora e ele sai das listas de pendência. O relatório aparece na timeline com a cor do seu perfil. No perfil administrativo o botão é <strong>Enviar para aprovação</strong>, sem o campo CID, e o paciente fica como <strong>Aguardando aprovação</strong> até um técnico aprovar.</> },
         ]}
       >
         <Tela nome="Ficha rápida do paciente" largura={640}
@@ -169,8 +170,10 @@ export function ModuloPaciente({ irPara }: Props) {
             marcas={{ dataVisita: 1, medico: 2, cid: 3, obs: 4, registrar: 5 }} />
         </Tela>
       </ComoFazer>
-      <Callout tipo="info" titulo="Só o perfil técnico registra">
-        Os demais perfis veem a ficha, mas o bloco de registrar não aparece para eles.
+      <Callout tipo="info" titulo="Técnico aprova o relatório do administrativo">
+        O relatório do administrativo vai para a coluna <strong>Aguardando aprovação</strong> do quadro
+        de pacientes, em Tarefas. O do técnico vale na hora. Os demais perfis veem a ficha, mas o bloco de
+        registrar não aparece para eles.
       </Callout>
 
       <ComoFazer
@@ -375,7 +378,7 @@ export function ModuloKanban({ irPara }: Props) {
       <h3>As colunas de pacientes</h3>
       <Tabela cabecalho={['Coluna', 'O que reúne', 'Como a tarefa é resolvida']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Sem relatório</Key>
-          <td>Internados sem relatório de auditoria e sem visita marcada.</td>
+          <td>Internados sem relatório, ou com o relatório vencido, e sem visita marcada.</td>
           <td>Marcando a visita ou registrando o relatório.</td></tr>
         <tr><Key>Aguardando visita</Key>
           <td>Pacientes com visita marcada, ainda dentro do prazo.</td>
@@ -384,6 +387,34 @@ export function ModuloKanban({ irPara }: Props) {
           <td>Visitas cujo horário combinado já passou sem que o relatório fosse registrado.</td>
           <td>Cobrando o auditor responsável, e registrando o relatório ou remarcando a visita.</td></tr>
       </Tabela>
+
+      <h3>As colunas de aprovação</h3>
+      <p>
+        No mesmo quadro de pacientes, à direita da fila. O relatório que o administrativo registra
+        chega aqui para o técnico conferir. Enquanto
+        espera, o paciente aparece como <strong>Aguardando aprovação</strong> e não conta como
+        visitado. Aprovado, o paciente sai do quadro e volta para <strong>Sem relatório</strong>{' '}
+        quando o relatório vencer.
+      </p>
+      <Tabela cabecalho={['Coluna', 'O que reúne', 'O que fazer']} larguras={['160px', undefined, '215px']}>
+        <tr><Key>Aguardando aprovação</Key>
+          <td>Relatórios enviados pelo administrativo, com o texto no próprio card.</td>
+          <td>Técnico: Aprovar, ou Devolver dizendo o que corrigir.</td></tr>
+        <tr><Key>Devolvidos</Key>
+          <td>Relatórios que o técnico pediu para corrigir, com o motivo.</td>
+          <td>Quem escreveu: Corrigir e reenviar.</td></tr>
+      </Tabela>
+
+      <h3>A coluna Em prorrogação</h3>
+      <p>
+        A prorrogação é pedida ao registrar o relatório na ficha <strong>Detalhes</strong> do
+        paciente: marque <strong>Pedir prorrogação</strong>, informe os períodos por acomodação e
+        escolha a justificativa. Ela vale quando o relatório é aprovado e não muda o prazo do
+        próximo relatório. A coluna, no quadro de pacientes, lista quem está em prorrogação,
+        primeiro as que terminam hoje. Passada a data final, o paciente volta para{' '}
+        <strong>Sem relatório</strong>. Admin e administrativo podem{' '}
+        <strong>Pausar</strong> e <strong>Retomar</strong> no próprio card.
+      </p>
 
       <h3>As colunas de censos</h3>
       <p>
@@ -399,12 +430,12 @@ export function ModuloKanban({ irPara }: Props) {
           <td>Cobrar o hospital e clicar em Marcar como cobrado.</td></tr>
         <tr><Key>Aguardando retorno</Key>
           <td>O hospital já foi cobrado e o censo ainda não chegou.</td>
-          <td>Esperar. Se o dia virar sem censo, o card volta para Censos atrasados. Cobrou por engano? Desfazer cobrança.</td></tr>
+          <td>Esperar. Se o hospital avisar que não há censo novo, clicar em Marcar como atualizado. Se o dia virar sem censo, o card volta para Censos atrasados. Cobrou por engano? Desfazer cobrança.</td></tr>
         <tr><Key>Aguardando censo</Key>
           <td>O censo de ontem chegou, o de hoje ainda não.</td>
           <td>Nada por enquanto.</td></tr>
-        <tr><Key>Censos processados</Key>
-          <td>O censo de hoje já chegou.</td>
+        <tr><Key>Censos atualizados</Key>
+          <td>O censo de hoje já chegou, ou o hospital confirmou que não há censo novo.</td>
           <td>Nada. O hospital está em dia.</td></tr>
       </Tabela>
 

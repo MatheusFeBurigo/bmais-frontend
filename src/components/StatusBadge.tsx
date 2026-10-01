@@ -19,8 +19,19 @@ const ALTA = new Set(['ALTA_SEM_REL', 'ALTA_REL_VENCIDO', 'ALTA_OK', 'ALTA_AUTO'
 
 const BADGE_ALTA = { cls: 'muted', label: 'Alta', dot: false }
 
-export function StatusBadge({ sr, resumido = false }: { sr: string; resumido?: boolean }) {
-  const b = resumido && ALTA.has(sr) ? BADGE_ALTA : BADGE[sr]
+// Relatório esperando o técnico (0046). Não é um status_relatorio: o pendente não
+// conta como visita, e os KPIs seguem o status de verdade. É só o que a tela diz
+// a quem olha o paciente internado.
+const BADGE_APROVACAO = { cls: 'info', label: 'Aguardando aprovação', dot: true }
+
+export function StatusBadge({ sr, resumido = false, emAprovacao = false }: {
+  sr: string
+  resumido?: boolean
+  /** Há relatório do paciente esperando o técnico. */
+  emAprovacao?: boolean | null
+}) {
+  const b = emAprovacao && !ALTA.has(sr) ? BADGE_APROVACAO
+    : resumido && ALTA.has(sr) ? BADGE_ALTA : BADGE[sr]
   if (!b) return <span className="badge muted">{sr}</span>
   return (
     <span className={`badge ${b.cls}`}>
@@ -45,6 +56,7 @@ export function LeitoTag({ tipo }: { tipo?: string | null }) {
   if (tipo === 'UTI') return <span className="leito UTI">UTI</span>
   if (tipo === 'APARTAMENTO') return <span className="leito APARTAMENTO">APT</span>
   if (tipo === 'ENFERMARIA') return <span className="leito ENFERMARIA">ENF</span>
+  if (tipo === 'HOMECARE') return <span className="leito HOMECARE">HOME</span>
   return <span style={{ fontSize: 'var(--t-xs)', color: 'var(--muted-2)' }}>—</span>
 }
 

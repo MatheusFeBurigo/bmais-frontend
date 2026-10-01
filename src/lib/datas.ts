@@ -7,6 +7,20 @@ export function hojeISO(): string {
   return new Date(d.getTime() - off).toISOString().slice(0, 10)
 }
 
+/** Soma `n` dias a uma data ISO `YYYY-MM-DD` (calendário, sem fuso). */
+export function somarDias(iso: string, n: number): string {
+  const [a, m, d] = iso.slice(0, 10).split('-').map(Number)
+  const r = new Date(Date.UTC(a, m - 1, d + n))
+  return r.toISOString().slice(0, 10)
+}
+
+/** Dias de um período, contando os dois extremos (0 se faltar data). */
+export function diasNoPeriodo(de: string, ate: string): number {
+  if (!de || !ate) return 0
+  const n = (Date.parse(`${ate.slice(0, 10)}T00:00:00Z`) - Date.parse(`${de.slice(0, 10)}T00:00:00Z`)) / 864e5
+  return n >= 0 ? n + 1 : 0
+}
+
 /** `true` se a data ISO informada é o dia atual (local). */
 export function ehHoje(isoDate: string | null | undefined): boolean {
   return !!isoDate && isoDate.slice(0, 10) === hojeISO()

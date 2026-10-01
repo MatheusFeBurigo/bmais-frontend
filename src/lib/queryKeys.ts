@@ -32,6 +32,8 @@ export const queryKeys = {
   /** Ficha cadastral de UM hospital (GET /api/hospital/{key}). */
   hospital: (key: string) => ['hospital', key] as const,
   hospitalTimeline: (key: string) => ['hospital', key, 'timeline'] as const,
+  /** Regras de cobranca do hospital por operadora (GET /api/hospital/{key}/regras). */
+  hospitalRegras: (key: string) => ['hospital', key, 'regras'] as const,
 
   usuarios: () => ['usuarios'] as const,
 
@@ -44,6 +46,8 @@ export const queryKeys = {
   cidBusca: (q: string) => ['cid', 'busca', q] as const,
 
   kanban: () => ['kanban'] as const,
+  /** Catálogos da prorrogação (estáticos). */
+  prorrogacaoCatalogos: () => ['prorrogacao', 'catalogos'] as const,
 
   auditoria: (userId: string, entidade: string, acao: string,
               de: string, ate: string, q: string, pagina: number, limite: number) =>

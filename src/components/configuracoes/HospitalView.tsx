@@ -11,6 +11,7 @@ import { localStyles, SERVICO_LABEL } from './configuracoes.styles'
 import { StatMini } from './shared'
 import { AddEscalaHospForm } from './forms'
 import FichaHospital from './FichaHospital'
+import RegrasHospital from './RegrasHospital'
 
 export default function HospitalView({ opSel, hosp, profs, operadoras, onNav, onToast, onChanged, toast }: {
   // Opcional: a ficha do hospital abre sem operadora selecionada (um hospital
@@ -72,6 +73,8 @@ export default function HospitalView({ opSel, hosp, profs, operadoras, onNav, on
       <style>{localStyles}</style>
 
       <FichaHospital hosp={hosp} operadoras={operadoras} onToast={onToast} onChanged={onChanged} />
+
+      <RegrasHospital hospitalKey={hosp.key} opKey={opSel?.key} onToast={onToast} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
         <StatMini label="Internados" value={hosp.internados} />

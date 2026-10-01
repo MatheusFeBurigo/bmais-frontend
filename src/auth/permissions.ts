@@ -136,8 +136,16 @@ const ORDEM_FALLBACK: readonly Screen[] = [
 // uma tela — ex.: um botão/formulário no drawer). Allowlist: só os papéis
 // listados podem executar. Este gating é de UI; a autorização final é do backend.
 const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
-  // Registrar relatório no drawer: exclusivo do perfil técnico (admin supervisiona).
-  registrarRelatorio: ['tecnico', 'admin'],
+  // Registrar relatório (drawer e ficha). O administrativo entrou em 01/10/2026,
+  // mas o relatório dele nasce PENDENTE e só vale depois que o técnico aprova
+  // (`precisaAprovacao`).
+  registrarRelatorio: ['tecnico', 'administrativo', 'admin'],
+  // Aprovar ou devolver o relatório do administrativo, na aba "Aprovação de
+  // paciente" do quadro. Espelha ROLES_APROVAR_RELATORIO no backend.
+  aprovarRelatorio: ['tecnico', 'admin'],
+  // Pausar e retomar a prorrogação na tabela de Prorrogações (Tarefas): quem
+  // administra. Espelha ROLES_CONTROLE_PRORROGACAO no backend.
+  controlarProrrogacao: ['admin', 'administrativo'],
   // Cadastrar convênio na modal de edição do paciente. É cadastro, não operação:
   // o nome passa a existir para TODAS as telas e leva junto a operadora que o
   // cobre. Espelha `requer_diretor` na rota POST /api/convenios — os papéis
@@ -155,10 +163,14 @@ const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
   // Dar alta à mão (e desfazer a alta que não veio do hospital): quem acompanha
   // o paciente no dia a dia. Espelha ROLES_DAR_ALTA no backend.
   darAlta: ['tecnico', 'administrativo', 'admin'],
+  // Pôr ou tirar o paciente do homecare (tipo de leito na ficha). Em homecare o
+  // censo não mexe mais nele e só a alta manual o encerra. Espelha
+  // ROLES_LEITO_HOMECARE no backend.
+  leitoHomecare: ['tecnico', 'admin'],
 }
 
 export type AcaoProtegida = 'registrarRelatorio' | 'criarConvenio' | 'agendarVisita' | 'atribuirCid'
-  | 'darAlta'
+  | 'darAlta' | 'aprovarRelatorio' | 'controlarProrrogacao' | 'leitoHomecare'
 
 /** True se o papel pode executar a ação. `role` null/desconhecido NÃO libera:
  *  ação sensível exige papel resolvido (diferente de `podeVer`, que é permissivo). */
@@ -210,6 +222,12 @@ export const ROTA_CHAMADOS_AJUDA = '/ajuda/chamados'
 /** Endereço dos Chamados para o papel. */
 export function rotaChamados(role: UserRole | null): string {
   return atendeChamados(role) ? ROTA_CHAMADOS_ATENDIMENTO : ROTA_CHAMADOS_AJUDA
+}
+
+/** True se o relatório que o papel registra espera a aprovação do técnico: quem
+ *  aprova escreve direto; os demais mandam para a fila de aprovação. */
+export function precisaAprovacao(role: UserRole | null): boolean {
+  return !podeExecutar(role, 'aprovarRelatorio')
 }
 
 /** True se o papel abre a ficha completa do paciente ("Detalhes"). O analista

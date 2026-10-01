@@ -679,7 +679,7 @@ const HOSPITAIS_FILTRO = [
   { key: 'vila_nova', nome: 'Hospital Vila Nova' },
 ]
 
-/** O quadro do perfil técnico (três colunas de pacientes), com a barra de filtros.
+/** O quadro do perfil técnico (a fila de pacientes e a aprovação), com a barra de filtros.
  *  `marcas.card` marca o 1º card de "Sem relatório"; `aguardando` e `atrasada`,
  *  a coluna ou o card correspondentes. */
 export function ReplicaQuadro({ marcas = {}, chipsAtivos = [] }: {

@@ -13,7 +13,7 @@ import type { KanbanTarefa } from '../../types/api'
 import { Badge, OpAvatar } from '../ui'
 import { LeitoTag } from '../StatusBadge'
 import { nomeProprio } from '../../lib/texto'
-import { dataBR } from '../../lib/datas'
+import { dataBR, hojeISO } from '../../lib/datas'
 import { ehLonga, ehUTI, nuncaVisitado } from './prioridade'
 
 /** Etiqueta curta de prioridade, exibida sob o nome. */
@@ -60,6 +60,9 @@ export const PacienteCard = memo(function PacienteCard({ tarefa: t, onAbrir, onP
   // é a razão de o card estar na coluna "Visitas atrasadas", então precisa ser
   // a primeira coisa lida.
   const atrasada = Boolean(t.visita_agendada && t.visita_agendada_vencida)
+  // A prorrogação acabou e o paciente voltou para a fila: a etiqueta diz por quê.
+  const prorrogacaoTerminou = Boolean(
+    t.prorrogacao_ate && !t.prorrogacao_pausada && t.prorrogacao_ate.slice(0, 10) < hojeISO())
 
   return (
     <article
@@ -92,7 +95,6 @@ export const PacienteCard = memo(function PacienteCard({ tarefa: t, onAbrir, onP
           </span>
         )}
         <span className="kb-card-nome">{nomeProprio(t.titulo) || t.titulo}</span>
-        {/* "53d" sozinho não diz de quê: o rótulo vem junto, no próprio badge. */}
         {t.dias_sem_relatorio != null && (
           <Badge variant={t.dias_sem_relatorio > 7 ? 'danger' : 'warning'}>
             <span title={`${t.dias_sem_relatorio} dias sem relatório de auditoria`}>
@@ -124,8 +126,13 @@ export const PacienteCard = memo(function PacienteCard({ tarefa: t, onAbrir, onP
 
       {/* Etiquetas de prioridade: os mesmos sinais dos chips da barra, para o que
           foi filtrado lá em cima ficar explicado aqui embaixo. */}
-      {(t.visita_agendada || ehUTI(t) || ehLonga(t) || nuncaVisitado(t)) && (
+      {(t.visita_agendada || prorrogacaoTerminou || ehUTI(t) || ehLonga(t) || nuncaVisitado(t)) && (
         <div className="kb-tags">
+          {prorrogacaoTerminou && (
+            <Etiqueta texto={`Prorrogação terminou em ${dataBR(t.prorrogacao_ate)}`}
+                      cor="var(--danger)" bg="var(--danger-bg)"
+                      titulo="A prorrogação acabou: registre um relatório ou peça nova prorrogação" />
+          )}
           {/* Vem primeiro: quando há compromisso marcado, é o que decide o que
               fazer com o card. Atrasada já tem a faixa de alerta no topo (com
               médico e "Atrasada"), então aqui só repete a data/hora — o resto

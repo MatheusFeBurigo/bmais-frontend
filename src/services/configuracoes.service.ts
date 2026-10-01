@@ -1,6 +1,9 @@
 // Serviço de dados do domínio "configuracoes" (operadoras + hospitais + regras).
 import { apiFetch } from '../api/client'
-import type { ConfiguracoesPayload, Hospital, HospitalFicha, OperadoraRegras, TimelineHospital } from '../types/api'
+import type {
+  ConfiguracoesPayload, Hospital, HospitalFicha, OperadoraRegras, RegrasCobranca,
+  RegrasHospitalOperadora, TimelineHospital,
+} from '../types/api'
 
 export interface ConfiguracoesParams {
   op?: string
@@ -99,4 +102,25 @@ export function desvincularOperadora(hospitalKey: string, operadoraKey: string):
   return apiFetch<OkResult>(`/hospital/${hospitalKey}/operadoras/${operadoraKey}`, {
     method: 'DELETE',
   })
+}
+
+/** Regras de cobranca do hospital em cada operadora que ele atende. */
+export function fetchRegrasHospital(key: string): Promise<{ operadoras: RegrasHospitalOperadora[] }> {
+  return apiFetch(`/hospital/${key}/regras`)
+}
+
+/** Grava a excecao do hospital nesta operadora. O backend guarda so o que
+ *  difere da operadora; tudo igual remove a excecao. */
+export function salvarRegrasHospital(
+  hospitalKey: string, operadoraKey: string, regras: RegrasCobranca,
+): Promise<OkResult> {
+  return apiFetch<OkResult>(`/hospital/${hospitalKey}/regras/${operadoraKey}`, {
+    method: 'PUT',
+    body: regras,
+  })
+}
+
+/** O hospital volta a seguir as regras da operadora. */
+export function removerRegrasHospital(hospitalKey: string, operadoraKey: string): Promise<OkResult> {
+  return apiFetch<OkResult>(`/hospital/${hospitalKey}/regras/${operadoraKey}`, { method: 'DELETE' })
 }

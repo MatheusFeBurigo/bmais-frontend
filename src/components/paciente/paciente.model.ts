@@ -7,6 +7,9 @@ import type { InternacaoDados } from '../../types/api'
 // Opções dos campos com domínio fechado no modo edição. "" = manter em branco.
 export const STATUS_OPCOES = ['INTERNADO', 'ALTA', 'OBITO', 'TRANSFERIDO']
 export const LEITO_OPCOES = ['UTI', 'APARTAMENTO', 'ENFERMARIA']
+// Homecare: paciente fora do hospital, que o censo não altera e só a alta
+// manual encerra. Só técnico e admin escolhem ou tiram (`leitoHomecare`).
+export const LEITO_HOMECARE = 'HOMECARE'
 
 /** "RN" (recém-nascido) não vem tipado: deriva da idade. */
 export function rnLabel(d: InternacaoDados): string {

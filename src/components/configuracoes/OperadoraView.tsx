@@ -179,6 +179,7 @@ export default function OperadoraView({ opSel, operadoras, onNav, onToast, onCha
                           {alert && <> · <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{h.urgente} alertas</span></>}
                         </div>
                       </div>
+                      {h.regras_proprias && <span className="badge info" title="Este hospital tem regras de cobrança próprias">Regras próprias</span>}
                       <span style={{ color: 'var(--muted-2)' }}>›</span>
                     </div>
                   )

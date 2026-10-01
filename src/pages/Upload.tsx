@@ -152,7 +152,10 @@ export default function Upload() {
       // O hospital do lote vale para TODOS os arquivos deste envio. O backend usa a
       // key para escolher o leitor e carimbar o resultado.
       const hospitais: Record<string, HospitalManual> = {}
-      for (const f of files) hospitais[f.name] = { key: hospital }
+      // A operadora escolhida vai junto: sem ela o servidor cai na operadora
+      // PRINCIPAL do cadastro, e um hospital que atende várias (AACD: Allianz
+      // principal, censo da Bradesco) carimbaria o envio com a operadora errada.
+      for (const f of files) hospitais[f.name] = { key: hospital, operadora_key: operadora }
       const data = await enviarCensos(files, hospitais, setProgresso)
       const pend = coletarPendentes(data.resultados ?? [])
       const faltaHosp = (data.resultados ?? []).filter((r) => r.precisa_hospital).length

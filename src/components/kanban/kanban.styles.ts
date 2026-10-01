@@ -48,6 +48,12 @@ export const localStyles = `
 .kb-sel-pre{padding-left:6px;font-size:var(--t-sm);color:var(--muted);white-space:nowrap;pointer-events:none}
 .kb-sel select{appearance:none;border:none;background:transparent;height:100%;padding:0 28px 0 6px;font-size:var(--t-base);font-weight:600;font-family:inherit;color:var(--ink-2);outline:none;cursor:pointer;min-width:0;text-overflow:ellipsis}
 .kb-sel-seta{position:absolute;right:10px;color:var(--muted-2);pointer-events:none}
+/* Painel do quadro de censos: hospital em cima, operadora e atraso lado a lado. */
+.kb-painel.largo{width:min(520px,calc(100vw - 32px));left:auto;right:0}
+.kb-painel-colunas{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:560px){.kb-painel-colunas{grid-template-columns:1fr}}
+.kb-opcao-btn{border:0;background:transparent;font-family:inherit;text-align:left;width:100%}
+.kb-opcao-btn.ativo{box-shadow:inset 0 0 0 1px var(--accent)}
 /* Filtros ligados, como etiquetas removíveis. */
 .kb-ativos{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 12px;border-top:1px solid var(--border-soft);background:var(--surface-2);border-radius:0 0 var(--r-md) var(--r-md)}
 .kb-ativos-lbl{font-size:var(--t-sm);color:var(--muted);margin-right:2px}
@@ -115,8 +121,11 @@ export const localStyles = `
    card, já que ela é só um sinal visual. */
 .kb-card-abrir{display:inline-flex;opacity:0;color:var(--primary-3);transition:opacity .14s,transform .14s;transform:translateX(-3px);pointer-events:none}
 .kb-card.clicavel:hover .kb-card-abrir{opacity:1;transform:translateX(0)}
-.kb-card-top{display:flex;align-items:flex-start;gap:7px}
-.kb-card-nome{font-weight:600;font-size:var(--t-base);color:var(--ink-2);line-height:1.3;flex:1;min-width:0}
+/* flex-wrap + base de 120px no nome: em coluna estreita (o quadro de pacientes
+   tem 6) o selo de dias desce para a linha de baixo em vez de espremer o nome
+   letra a letra. */
+.kb-card-top{display:flex;align-items:flex-start;gap:5px 7px;flex-wrap:wrap}
+.kb-card-nome{font-weight:600;font-size:var(--t-base);color:var(--ink-2);line-height:1.3;flex:1 1 120px;min-width:0}
 .kb-card-meta{font-size:var(--t-sm);color:var(--muted);margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .kb-card-atend{font-family:var(--font-mono)}
 /* Rótulo do dado ("Atend.", "Leito"): apagado para o VALOR continuar sendo o que
@@ -145,6 +154,22 @@ export const localStyles = `
 .kb-det-acao{margin-top:5px;font-size:var(--t-xs);color:var(--muted-2);font-style:italic}
 /* Agendar visita direto no card (sem abrir a ficha do paciente). */
 .kb-card-actions{margin-top:8px;display:flex;gap:8px;justify-content:flex-end;align-items:center}
+/* Duas ações no card de censo ("Aguardando retorno"): lado a lado não cabem na
+   largura da coluna. A que anda o card vai em largura cheia; desfazer fica
+   embaixo, discreta. */
+.kb-card-actions.empilhadas{flex-direction:column;align-items:stretch;gap:2px;padding-top:8px;border-top:1px dashed var(--border)}
+.kb-card-actions.empilhadas .btn{justify-content:center}
+/* "Marcar como atualizado" leva o card para "Censos atualizados": a cor é a da coluna. */
+.kb-btn-atualizar:not(:disabled){color:var(--success);border-color:var(--success);background:var(--success-bg)}
+.kb-btn-atualizar:not(:disabled):hover{background:var(--success);color:#fff;border-color:var(--success)}
 .kb-empty{padding:22px 12px;text-align:center;color:var(--muted-2);font-size:var(--t-sm);line-height:1.5}
 .kb-dias{font-family:var(--font-mono);font-weight:600}
+/* ── Colunas de aprovação (quadro de pacientes) ── */
+.ap-rel{margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border-soft);display:grid;gap:4px}
+.ap-rel-linha{font-size:var(--t-xs);color:var(--muted);font-weight:600}
+.ap-rel-texto{font-size:var(--t-sm);color:var(--ink-2);white-space:pre-wrap;line-height:1.45;word-break:break-word}
+.ap-rel-texto.recolhido{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.ap-rel-autor{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--t-xs)}
+.ap-motivo{margin-top:8px;padding:7px 10px;border-radius:8px;background:var(--danger-bg);color:var(--danger);font-size:var(--t-sm);white-space:pre-wrap;word-break:break-word}
+.ap-acoes{display:flex;justify-content:flex-end;gap:6px;margin-top:8px}
 `

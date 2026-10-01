@@ -7,12 +7,20 @@
 //     tudo exposto no mesmo nível, não dava para saber o que era filtro;
 //   * ORDEM, à direita, que não esconde nada, só reordena.
 //
+// No quadro de censos o painel ganha mais dois grupos, operadora e faixa de
+// atraso (dias sem atualizar), lado a lado e com a contagem de cada opção. Uma
+// opção por grupo: marcar outra troca, marcar a mesma de novo desliga.
+//
 // Apresentação pura: recebe o recorte atual e devolve o novo. Quem decide o que
 // cada chip significa é `prioridade.ts`. O painel mostra quantos cards cada
 // recorte alcança, para o usuário saber o tamanho ANTES de marcar.
 import { useEffect, useRef, useState, type ReactNode, type SelectHTMLAttributes } from 'react'
 import type { GestorFiltros } from '../../types/api'
-import { CHIPS, ORDENS, type ChipKey, type OrdemKey, type Recorte } from './prioridade'
+import { OpAvatar } from '../ui'
+import {
+  CHIPS, FAIXAS_ATRASO, ORDENS, ORDENS_CENSO, type ChipKey, type FaixaAtrasoKey, type OrdemCensoKey,
+  type OrdemKey, type Recorte, type contarCensos,
+} from './prioridade'
 
 const ICONE_ORDEM = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h13M3 12h9M3 18h5" /><path d="m17 15 3 3 3-3M20 6v12" /></svg>
 const ICONE_FILTRO = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" /></svg>
@@ -35,7 +43,7 @@ function CampoSelect({ icone, prefixo, children, ...props }: {
 }
 
 export function KanbanFiltros({
-  recorte, onChange, contagens, hospitais, operadoras, totalVisivel, totalGeral, censos,
+  recorte, onChange, contagens, contagensCenso, hospitais, operadoras, totalVisivel, totalGeral, censos,
 }: {
   recorte: Recorte
   /** Quadro de censos: cards de hospital, sem os sinais clínicos. Sobram a
@@ -44,6 +52,8 @@ export function KanbanFiltros({
   onChange: (r: Recorte) => void
   /** Quantos cards do quadro casam cada chip (antes dos demais filtros). */
   contagens: Record<ChipKey, number>
+  /** Quantos cards de censo por operadora e por faixa (quadro inteiro). */
+  contagensCenso?: ReturnType<typeof contarCensos>
   hospitais: GestorFiltros['hospitais']
   /** Operadoras do quadro de censos (só lá o filtro aparece). */
   operadoras?: GestorFiltros['operadoras']
@@ -72,9 +82,12 @@ export function KanbanFiltros({
 
   const chipsAtivos = censos ? [] : recorte.chips
   const nomeHospital = hospitais.find((h) => h.key === recorte.hospital)?.nome ?? recorte.hospital
-  const nomeOperadora = (operadoras ?? []).find((o) => o.key === recorte.operadora)?.nome ?? recorte.operadora
-  const temOperadora = Boolean(censos && recorte.operadora)
-  const nFiltros = (recorte.hospital ? 1 : 0) + (temOperadora ? 1 : 0) + chipsAtivos.length
+  const operadoraAtiva = censos ? (recorte.operadora || '') : ''
+  const atrasoAtivo = censos ? (recorte.atraso || '') : ''
+  const nomeOperadora = (operadoras ?? []).find((o) => o.key === operadoraAtiva)?.nome ?? operadoraAtiva
+  const faixaAtiva = FAIXAS_ATRASO.find((f) => f.key === atrasoAtivo)
+  const nFiltros = (recorte.hospital ? 1 : 0) + chipsAtivos.length
+    + (operadoraAtiva ? 1 : 0) + (atrasoAtivo ? 1 : 0)
   // A busca não vira etiqueta (já está escrita no campo), mas também recorta:
   // entra no "X de Y" para o total nunca parecer errado.
   const recortado = nFiltros > 0 || Boolean(recorte.busca)
@@ -86,7 +99,7 @@ export function KanbanFiltros({
     onChange({ ...recorte, chips })
   }
 
-  const limparFiltros = () => onChange({ ...recorte, chips: [], hospital: '', operadora: '' })
+  const limparFiltros = () => onChange({ ...recorte, chips: [], hospital: '', operadora: '', atraso: '' })
 
   return (
     <div className="kb-filtros">
@@ -119,7 +132,7 @@ export function KanbanFiltros({
           </button>
 
           {aberto && (
-            <div className="kb-painel" role="dialog" aria-label="Filtros">
+            <div className={`kb-painel${censos ? ' largo' : ''}`} role="dialog" aria-label="Filtros">
               <div className="kb-painel-grupo">
                 <span className="form-lbl">Hospital</span>
                 <CampoSelect
@@ -134,17 +147,43 @@ export function KanbanFiltros({
               </div>
 
               {censos && (
-                <div className="kb-painel-grupo">
-                  <span className="form-lbl">Operadora</span>
-                  <CampoSelect
-                    value={recorte.operadora ?? ''}
-                    onChange={(e) => onChange({ ...recorte, operadora: e.target.value })}
-                  >
-                    <option value="">Todas as operadoras</option>
-                    {(operadoras ?? []).map((o) => (
-                      <option key={o.key} value={o.key}>{o.nome}</option>
-                    ))}
-                  </CampoSelect>
+                <div className="kb-painel-colunas">
+                  <div className="kb-painel-grupo">
+                    <span className="form-lbl">Operadora</span>
+                    <div className="kb-opcoes">
+                      {(operadoras ?? []).map((o) => (
+                        <Opcao
+                          key={o.key}
+                          ativo={operadoraAtiva === o.key}
+                          n={contagensCenso?.operadoras[o.key] ?? 0}
+                          onClick={() => onChange({ ...recorte, operadora: operadoraAtiva === o.key ? '' : o.key })}
+                        >
+                          <OpAvatar opKey={o.key} size={16} />
+                          <span className="flex-1">{o.nome}</span>
+                        </Opcao>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="kb-painel-grupo">
+                    <span className="form-lbl">Sem atualizar há</span>
+                    <div className="kb-opcoes">
+                      {FAIXAS_ATRASO.map((f) => (
+                        <Opcao
+                          key={f.key}
+                          ativo={atrasoAtivo === f.key}
+                          n={contagensCenso?.faixas[f.key] ?? 0}
+                          titulo={f.titulo}
+                          cor={f.cor}
+                          onClick={() => onChange({
+                            ...recorte, atraso: atrasoAtivo === f.key ? '' : (f.key as FaixaAtrasoKey),
+                          })}
+                        >
+                          <span className="kb-opcao-dot" aria-hidden />
+                          <span className="flex-1">{f.label}</span>
+                        </Opcao>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -186,6 +225,21 @@ export function KanbanFiltros({
           )}
         </div>
 
+        {censos && (
+          <div className="kb-ordem">
+            <CampoSelect
+              icone={ICONE_ORDEM}
+              prefixo="Ordenar:"
+              value={recorte.ordemCenso ?? 'padrao'}
+              onChange={(e) => onChange({ ...recorte, ordemCenso: e.target.value as OrdemCensoKey })}
+            >
+              {ORDENS_CENSO.map((o) => (
+                <option key={o.key} value={o.key}>{o.label}</option>
+              ))}
+            </CampoSelect>
+          </div>
+        )}
+
         {!censos && (
           <div className="kb-ordem">
             <CampoSelect
@@ -209,8 +263,13 @@ export function KanbanFiltros({
           {recorte.hospital && (
             <Etiqueta onRemover={() => onChange({ ...recorte, hospital: '' })}>Hospital: {nomeHospital}</Etiqueta>
           )}
-          {temOperadora && (
+          {operadoraAtiva && (
             <Etiqueta onRemover={() => onChange({ ...recorte, operadora: '' })}>Operadora: {nomeOperadora}</Etiqueta>
+          )}
+          {faixaAtiva && (
+            <Etiqueta cor={faixaAtiva.cor} onRemover={() => onChange({ ...recorte, atraso: '' })}>
+              Sem atualizar: {faixaAtiva.label}
+            </Etiqueta>
           )}
           {chipsAtivos.map((k) => {
             const c = CHIPS.find((x) => x.key === k)
@@ -237,5 +296,30 @@ function Etiqueta({ children, cor, onRemover }: { children: ReactNode; cor?: str
       {children}
       <button type="button" className="kb-tag-x" onClick={onRemover} aria-label="Remover filtro">✕</button>
     </span>
+  )
+}
+
+/** Opção de escolha única do painel (censos): marcar outra troca, marcar a
+ *  mesma de novo desliga. O número diz quantos cards ela alcança no quadro. */
+function Opcao({ ativo, n, cor, titulo, onClick, children }: {
+  ativo: boolean
+  n: number
+  cor?: string
+  titulo?: string
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      className={`kb-opcao kb-opcao-btn${ativo ? ' ativo' : ''}${n === 0 ? ' vazio' : ''}`}
+      aria-pressed={ativo}
+      title={titulo}
+      onClick={onClick}
+      style={cor ? { ['--kb-chip-cor' as string]: cor } : undefined}
+    >
+      {children}
+      <span className="kb-opcao-n">{n}</span>
+    </button>
   )
 }

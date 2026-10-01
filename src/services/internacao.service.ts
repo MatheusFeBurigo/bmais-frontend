@@ -1,6 +1,9 @@
 // Serviço de dados do domínio "internação" (detalhe do paciente no drawer).
 import { apiDownload, apiFetch } from '../api/client'
-import type { Cid, InternacaoCids, InternacaoDados, InternacaoRelatorios, InternacaoTimeline } from '../types/api'
+import type {
+  CatalogosProrrogacao, Cid, InternacaoCids, InternacaoDados, InternacaoRelatorios, InternacaoTimeline,
+  PedidoProrrogacao,
+} from '../types/api'
 
 export interface RelatorioRapido {
   data_visita: string
@@ -10,6 +13,8 @@ export interface RelatorioRapido {
    *  código que o paciente não tem. */
   cids?: string[]
   autor?: string
+  /** Pedido de prorrogação: só a ficha "Detalhes" envia. */
+  prorrogacao?: PedidoProrrogacao
 }
 
 /** Dados completos de uma internação (histórico, relatórios, eventos). */
@@ -126,6 +131,33 @@ export function registrarRelatorioRapido(id: number, rel: RelatorioRapido): Prom
     method: 'POST',
     body: { autor: 'operador', ...rel },
   })
+}
+
+/** Acomodações e justificativas da prorrogação (catálogos estáticos). */
+export function fetchCatalogosProrrogacao(): Promise<CatalogosProrrogacao> {
+  return apiFetch<CatalogosProrrogacao>('/prorrogacao/catalogos')
+}
+
+/** Pausa ou retoma a prorrogação vigente do paciente (tabela em Tarefas). */
+export function pausarProrrogacao(internacaoId: number, pausada: boolean): Promise<unknown> {
+  return apiFetch(`/internacao/${internacaoId}/prorrogacao/pausa`, { method: 'POST', body: { pausada } })
+}
+
+/** O técnico aprova o relatório pendente: ele passa a valer como visita. */
+export function aprovarRelatorio(relatorioId: number): Promise<unknown> {
+  return apiFetch(`/relatorio/${relatorioId}/aprovar`, { method: 'POST' })
+}
+
+/** O técnico devolve o relatório pendente ao autor, dizendo o que corrigir. */
+export function devolverRelatorio(relatorioId: number, motivo: string): Promise<unknown> {
+  return apiFetch(`/relatorio/${relatorioId}/devolver`, { method: 'POST', body: { motivo } })
+}
+
+/** O autor corrige o relatório devolvido e o manda de novo ao técnico. */
+export function reenviarRelatorio(
+  relatorioId: number, rel: { data_visita: string; medico: string; descricao: string },
+): Promise<unknown> {
+  return apiFetch(`/relatorio/${relatorioId}/reenviar`, { method: 'PUT', body: rel })
 }
 
 /**

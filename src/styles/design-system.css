@@ -301,6 +301,7 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .leito.UTI{color:var(--danger);border-color:var(--danger);background:var(--danger-bg)}
 .leito.APA,.leito.APT,.leito.APARTAMENTO{color:var(--info);border-color:var(--info);background:var(--info-bg)}
 .leito.ENF,.leito.ENFERMARIA{color:var(--success);border-color:var(--success);background:var(--success-bg)}
+.leito.HOMECARE{color:var(--indigo);border-color:var(--indigo);background:var(--indigo-bg)}
 .leito.UCO{color:var(--warning);border-color:var(--warning);background:var(--warning-bg)}
 
 /* ── Op Avatar ── */

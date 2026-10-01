@@ -136,7 +136,7 @@ const calendarioStyles = `
 .cal-dia.escolhido{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:700}
 /* Fora do limite desabilitado: o backend recusa de qualquer forma, e deixar
    clicável só levaria a uma mensagem de erro que dava para evitar. */
-.cal-dia:disabled{color:var(--muted-2);opacity:.3;cursor:default}
+.cal-dia:disabled{background:var(--surface-2);color:var(--muted-2);cursor:default}
 `
 
 export function CalendarioVisita({ valor, onEscolher, placeholder = 'Escolher data', limite = 'futuro' }: {

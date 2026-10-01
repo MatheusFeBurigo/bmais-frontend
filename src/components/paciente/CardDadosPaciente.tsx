@@ -3,17 +3,22 @@ import type { CampoFicha as CampoIncompleto } from '../../lib/fichaIncompleta'
 import { nomeProprio } from '../../lib/texto'
 import type { InternacaoDados } from '../../types/api'
 import { CampoFicha } from './CampoFicha'
-import { LEITO_OPCOES, STATUS_OPCOES, rnLabel, textoDataAlta } from './paciente.model'
+import { LEITO_HOMECARE, LEITO_OPCOES, STATUS_OPCOES, rnLabel, textoDataAlta } from './paciente.model'
 import type { EdicaoFicha } from './useEdicaoFicha'
 
-export function CardDadosPaciente({ d, edicao, faltaCampo }: {
+export function CardDadosPaciente({ d, edicao, faltaCampo, podeHomecare }: {
   d: InternacaoDados
   edicao: EdicaoFicha
   faltaCampo: Set<CampoIncompleto>
+  podeHomecare: boolean
 }) {
   const { editando, rascunho, setCampo, salvando, erro } = edicao
   // Props comuns a todo campo editável.
   const ed = { edit: editando, rascunho, onChange: setCampo }
+  // Quem não decide o homecare não vê a opção, e não mexe no leito de quem já está nele.
+  const emHomecare = d.tipo_leito === LEITO_HOMECARE
+  const leitoEditavel = podeHomecare || !emHomecare
+  const leitoOpcoes = podeHomecare ? [...LEITO_OPCOES, LEITO_HOMECARE] : LEITO_OPCOES
 
   return (
     <div className="card">
@@ -60,7 +65,7 @@ export function CardDadosPaciente({ d, edicao, faltaCampo }: {
               dois lados: o número do paciente no HOSPITAL e o número dele na
               OPERADORA. É a carteirinha que se informa ao ligar para o convênio. */}
           <CampoFicha label="Carteirinha" valor={d.carteirinha} mono campo="carteirinha" {...ed} />
-          <CampoFicha label="Tipo de leito" valor={d.tipo_leito} campo="tipo_leito" opcoes={LEITO_OPCOES} {...ed} />
+          <CampoFicha label="Tipo de leito" valor={d.tipo_leito} campo="tipo_leito" opcoes={leitoOpcoes} {...ed} edit={editando && leitoEditavel} />
           <CampoFicha label="Leito / código" valor={d.leito_codigo} falta={faltaCampo.has('leito_codigo')} campo="leito_codigo" {...ed} />
           <CampoFicha label="Data internação" valor={d.data_entrada} mono falta={faltaCampo.has('data_entrada')} campo="data_entrada" tipo="date" {...ed} />
 

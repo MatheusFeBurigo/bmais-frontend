@@ -93,6 +93,11 @@ export interface Internacao {
   visita_agendada_hora?: string | null
   /** Dias até a visita; negativo = o dia já passou. */
   dias_ate_visita?: number | null
+  /** Há relatório do paciente esperando o técnico (a lista mostra "Aguardando aprovação"). */
+  relatorio_em_aprovacao?: boolean | null
+  /** Prorrogação vigente (0047): a lista mostra "Prorrogado" no lugar dos dias. */
+  prorrogacao_ate?: string | null
+  prorrogacao_pausada?: boolean | null
   /** Passou do dia e a visita não foi registrada. */
   visita_agendada_vencida?: boolean | null
   alerta_relatorio?: boolean
@@ -594,6 +599,35 @@ export interface OperadoraRegras {
   ativo: boolean
 }
 
+/** Regras que um hospital pode ter diferentes da operadora (relatório + censo). */
+export interface RegrasCobranca {
+  dias_uti: number
+  dias_apartamento: number
+  dias_enfermaria: number
+  fallback_sem_leito: string
+  dias_entre_relatorios: number
+  alerta_antecipado_dias: number
+  dias_longa_permanencia: number
+  dias_longa_avancada: number
+  usar_longa_permanencia: boolean
+  /** Hospital não manda censo desta operadora: sai do quadro e não é cobrado. */
+  censo_dispensado: boolean
+  /** Dias de folga antes de o censo contar como atrasado. */
+  censo_tolerancia_dias: number
+  /** Dias em que o censo é exigido, 0 = segunda ... 6 = domingo. */
+  censo_dias_semana: number[]
+}
+
+/** GET /api/hospital/{key}/regras: uma entrada por operadora vinculada. */
+export interface RegrasHospitalOperadora {
+  operadora_key: string
+  operadora_nome: string
+  padrao: RegrasCobranca
+  efetiva: RegrasCobranca
+  /** Campos em que o hospital difere da operadora. */
+  personalizados: Array<keyof RegrasCobranca>
+}
+
 export interface OperadoraCard {
   key: string
   nome: string
@@ -622,6 +656,8 @@ export interface OperadoraHospital {
   internados?: number
   urgente?: number
   operadora_key?: string
+  /** Hospital com regras de cobrança diferentes da operadora. */
+  regras_proprias?: boolean
 }
 
 export interface OperadoraSelected {
@@ -834,6 +870,59 @@ export interface GestorResposta {
 
 /** Coluna do kanban = categoria de tarefa. */
 export type KanbanColuna = 'sem_relatorio' | 'aguardando_visita' | 'visitas_atrasadas' | EstadoCenso
+  | ColunaAprovacao
+
+/** Colunas de aprovação (no quadro de pacientes): o relatório do administrativo espera o técnico. */
+export type ColunaAprovacao = 'aguardando_aprovacao' | 'relatorios_devolvidos'
+  | 'em_prorrogacao'
+
+/** Situação do relatório na aprovação do técnico (backend: aprovacao_relatorio). */
+export type AprovacaoRelatorio = 'aprovado' | 'pendente' | 'devolvido'
+
+// ── Prorrogação (0047) ────────────────────────────────────────────────────
+/** Um período do pedido de prorrogação: acomodação e datas ISO. */
+export interface PeriodoProrrogacao {
+  acomodacao: string
+  data_inicio: string
+  data_fim: string
+}
+
+/** O pedido de prorrogação gravado no relatório. */
+export interface PedidoProrrogacao {
+  periodos: PeriodoProrrogacao[]
+  justificativa: string
+  justificativa_desc?: string | null
+  complemento?: string | null
+  pausada?: boolean
+}
+
+/** Catálogos do Márcia: acomodações e justificativas ativas. */
+export interface CatalogosProrrogacao {
+  acomodacoes: { id: number; nome: string; grupo: string }[]
+  justificativas: { codigo: string; descricao: string }[]
+}
+
+/** Situação da prorrogação vigente do paciente (backend: domain/prorrogacao.situacao). */
+export type SituacaoProrrogacao = 'ativa' | 'termina_hoje' | 'terminou' | 'pausada'
+
+/** O relatório que o card de aprovação mostra: o técnico lê antes de aprovar. */
+export interface RelatorioEmAprovacao {
+  id: number
+  data_visita?: string | null
+  medico?: string | null
+  descricao?: string | null
+  autor?: string | null
+  autor_role?: string | null
+  criado_em?: string | null
+  aprovacao: AprovacaoRelatorio
+  aprovacao_por?: string | null
+  aprovacao_em?: string | null
+  /** Por que o técnico devolveu. */
+  devolucao_motivo?: string | null
+  tem_anexo?: boolean
+  /** Pedido de prorrogação; esses cards vêm primeiro na coluna. */
+  prorrogacao?: PedidoProrrogacao | null
+}
 
 /** Coluna do fluxo de censos: um card por HOSPITAL com internado ativo, na
  *  coluna que a cobertura do último censo decide (backend: cobrancas_censo.classificar). */
@@ -876,6 +965,10 @@ export interface KanbanTarefa {
    *  que o hospital já foi cobrado e continuou sem mandar. */
   cobrado_em?: string | null
   cobrado_por?: string | null
+  /** "Censos atualizados" sem censo novo: o hospital confirmou que não havia
+   *  paciente a gerar e alguém marcou o dia como atualizado. */
+  atualizado_em?: string | null
+  atualizado_por?: string | null
   /** Dia (ISO) a que o último censo do hospital SE REFERE, não o dia do upload
    *  (null = nunca enviou). Quem sobe hoje o censo de uma semana atrás não cobriu
    *  o dia de hoje, e é esta data que o card conta. */
@@ -933,6 +1026,23 @@ export interface KanbanTarefa {
   visita_agendada_vencida?: boolean | null
   /** Relatório do auditor externo que o técnico vai analisar. */
   relatorio_externo?: RelatorioExterno
+  /** Dias até o relatório vencer pela regra do hospital/operadora. */
+  dias_ate_vencer?: number | null
+  /** Há relatório deste paciente esperando o técnico. */
+  relatorio_em_aprovacao?: boolean | null
+  /** Presente = card de aprovação (um card por relatório). */
+  relatorio?: RelatorioEmAprovacao
+  // ── Card da coluna "Em prorrogação" ───────────────────────────────────────
+  prorrogacao_situacao?: SituacaoProrrogacao
+  prorrogacao_inicio?: string | null
+  prorrogacao_ate?: string | null
+  /** Dias até o fim; negativo = já terminou. */
+  prorrogacao_dias_restantes?: number | null
+  prorrogacao_acomodacao?: string | null
+  prorrogacao_justificativa_desc?: string | null
+  prorrogacao_pausada?: boolean
+  prorrogacao_pausada_por?: string | null
+  prorrogacao_pausada_em?: string | null
 }
 
 /** Colunas de tarefas. O board do técnico traz só `analise_tecnica`; o do
@@ -945,6 +1055,10 @@ export interface KanbanColunas {
   aguardando_censo?: KanbanTarefa[]
   aguardando_retorno?: KanbanTarefa[]
   censos_processados?: KanbanTarefa[]
+  aguardando_aprovacao?: KanbanTarefa[]
+  relatorios_devolvidos?: KanbanTarefa[]
+  /** Internados com prorrogação vigente (0047). */
+  em_prorrogacao?: KanbanTarefa[]
 }
 
 /** Payload do GET /api/kanban — tarefas + opções de filtro (recortadas ao escopo).
@@ -1149,6 +1263,9 @@ export interface UploadCensoResult {
    *  a entrada do censo não é posterior à alta registrada, então é a mesma
    *  internação que já terminou. Não é erro — é o censo repetindo quem já saiu. */
   mantidos_com_alta?: MantidoComAlta[]
+  /** Pacientes em homecare que o censo ainda listou. Nada deles muda: o
+   *  homecare só termina na alta manual. */
+  mantidos_homecare?: { atendimento?: string | null; nome?: string | null; internacao_id?: number }[]
   /** Pacientes que este censo tentou mover de uma operadora para OUTRA e que
    *  não foram movidos: a internação ficou na operadora que já tinha.
    *
@@ -1366,6 +1483,15 @@ export interface InternacaoDados {
   visita_agendada_medico?: string | null
   visita_agendada_hora?: string | null
   visita_agendada_vencida?: boolean | null
+  /** Há relatório do paciente esperando o técnico. */
+  relatorio_em_aprovacao?: boolean | null
+  /** Prorrogação vigente (só de relatório aprovado). */
+  prorrogacao_inicio?: string | null
+  prorrogacao_ate?: string | null
+  prorrogacao_acomodacao?: string | null
+  prorrogacao_justificativa_desc?: string | null
+  prorrogacao_pausada?: boolean | null
+  prorrogacao_situacao?: SituacaoProrrogacao | null
 }
 
 export type TimelineVariante =
@@ -1418,6 +1544,13 @@ export interface RelatorioItem {
   tem_anexo?: boolean
   /** CIDs do paciente que o relatório trata, copiados no registro. */
   cids?: { codigo: string; descricao?: string | null }[]
+  /** Aprovação do técnico: só o aprovado conta como visita. */
+  aprovacao?: AprovacaoRelatorio
+  aprovacao_por?: string | null
+  aprovacao_em?: string | null
+  devolucao_motivo?: string | null
+  /** Pedido de prorrogação deste relatório. */
+  prorrogacao?: PedidoProrrogacao | null
 }
 
 export interface InternacaoRelatorios {

@@ -7,6 +7,7 @@ import { StatusBadge, rowFlagClass, LeitoTag } from '../StatusBadge'
 import { OpAvatar } from '../ui'
 import { DiasRatio, Permanencia } from './cells'
 import { identificacaoPaciente } from '../../lib/texto'
+import { dataBR, hojeISO } from '../../lib/datas'
 
 export interface InternadosTableProps {
   /** Linhas da página atual (já filtradas e fatiadas). */
@@ -145,7 +146,7 @@ export default function InternadosTable({
                   onFocus={onPrefetch ? () => onPrefetch(p.id) : undefined}>
                   {/* Na lista de altas o badge diz só "Alta"; a pendência de
                       relatório fica para a ficha do paciente. */}
-                  <td><StatusBadge sr={sr} resumido={vendoAltas} /></td>
+                  <td><StatusBadge sr={sr} resumido={vendoAltas} emAprovacao={p.relatorio_em_aprovacao} /></td>
                   {mostrarOperadora && (
                     <td>
                       <span className="row" style={{ gap: 6, alignItems: 'center' }} title={p.operadora_nome || p.operadora_key || undefined}>
@@ -186,6 +187,14 @@ export default function InternadosTable({
                   )}
                   <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_ultima_visita || '—'}</span></td>
                   <td className="t-right">
+                    {/* Em prorrogação (01/10/2026, pedido do usuário): a tag no
+                        lugar da contagem de dias, que não diz nada enquanto a
+                        prorrogação cobre o paciente. Terminada, a contagem volta. */}
+                    {!vendoAltas && p.prorrogacao_ate && p.prorrogacao_ate.slice(0, 10) >= hojeISO() ? (
+                      <span className="badge info" title={`Prorrogado até ${dataBR(p.prorrogacao_ate)}${p.prorrogacao_pausada ? ' (pausada)' : ''}`}>
+                        {p.prorrogacao_pausada ? 'Prorrogação pausada' : 'Prorrogado'}
+                      </span>
+                    ) : (
                     <DiasRatio
                       value={p.dias_sem_relatorio}
                       limit={p.janela_relatorio}
@@ -199,6 +208,7 @@ export default function InternadosTable({
                               : 'neutral'
                       }
                     />
+                    )}
                   </td>
                   <td className="t-right">
                     <DiasRatio

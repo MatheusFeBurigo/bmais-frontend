@@ -72,7 +72,7 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
   // técnico confirmar a data, em vez de já ativo com hoje pré-preenchido.
   const formRelatorio = useFormRelatorio(internacaoId, {
     dataInicial: () => '',
-    onRegistrado: () => onSaved('✓ Relatório registrado'),
+    onRegistrado: (pendente) => onSaved(pendente ? '✓ Relatório enviado para aprovação' : '✓ Relatório registrado'),
   })
   // Ficha do hospital sobre o drawer: quem lê a timeline muitas vezes precisa do
   // contato da casa (ligar para a enfermagem) sem perder o paciente aberto.
@@ -101,7 +101,7 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
       <div className="drawer-backdrop" onClick={onClose} />
       <div className="drawer" style={{ display: 'flex' }}>
         <div className="drawer-header" style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
-          <div>{sr && <StatusBadge sr={sr} />}</div>
+          <div>{sr && <StatusBadge sr={sr} emAprovacao={d?.relatorio_em_aprovacao} />}</div>
           <div className="flex-1" style={{ minWidth: 0 }}>
             <div style={{ fontSize: 'var(--t-lg)', fontWeight: 600, letterSpacing: '-.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {d ? identificacaoPaciente(d) : isLoading ? '—' : 'Paciente'}

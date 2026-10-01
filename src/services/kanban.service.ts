@@ -27,6 +27,17 @@ export function desfazerCobranca(alvo: CensoAlvo): Promise<{ ok: boolean }> {
   return apiFetch(`/kanban/censo/${urlCenso(alvo)}/desfazer-cobranca?${qsOperadora(alvo)}`, { method: 'POST' })
 }
 
+/** "Marcar como atualizado": o hospital respondeu que não há censo novo a
+ *  gerar. O censo vai de "Aguardando retorno" para "Censos atualizados". */
+export function marcarAtualizado(alvo: CensoAlvo): Promise<{ ok: boolean }> {
+  return apiFetch(`/kanban/censo/${urlCenso(alvo)}/atualizado?${qsOperadora(alvo)}`, { method: 'POST' })
+}
+
+/** Desfaz "Marcar como atualizado" de hoje. */
+export function desfazerAtualizado(alvo: CensoAlvo): Promise<{ ok: boolean }> {
+  return apiFetch(`/kanban/censo/${urlCenso(alvo)}/desfazer-atualizado?${qsOperadora(alvo)}`, { method: 'POST' })
+}
+
 /** Conclui uma análise técnica: grava o parecer interno (2º relatório) e fecha a tarefa. */
 export function concluirAnalise(
   analiseId: number, payload: ConcluirAnalisePayload,

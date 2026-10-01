@@ -5,9 +5,10 @@
 // escolhe o que dizer e qual ação oferecer em cada uma:
 //
 //   Censos atrasados   → "Marcar como cobrado"
-//   Aguardando retorno → "Desfazer" (clique por engano volta para atrasados)
+//   Aguardando retorno → "Marcar como atualizado" (o hospital respondeu que não
+//                        há censo novo a gerar) e "Desfazer cobrança"
 //   Aguardando censo   → nenhuma: o dia ainda não acabou
-//   Censos processados → nenhuma: o hospital está em dia
+//   Censos atualizados → nenhuma, ou "Desfazer" se foi marcado à mão
 //
 // Em qualquer coluna, clicar no card abre a ficha do hospital: é onde estão o
 // telefone e o e-mail de quem cobrar, e o histórico de censos enviados.
@@ -23,10 +24,14 @@ import { nomeProprio } from '../../lib/texto'
 
 const ROTULO = { color: 'var(--muted-2)' }
 
-export function CensoCard({ tarefa, onCobrar, onDesfazer, onAbrir, cobrando, somenteLeitura }: {
+export function CensoCard({
+  tarefa, onCobrar, onDesfazer, onAtualizar, onDesfazerAtualizado, onAbrir, cobrando, somenteLeitura,
+}: {
   tarefa: KanbanTarefa
   onCobrar: () => void
   onDesfazer?: () => void
+  onAtualizar?: () => void
+  onDesfazerAtualizado?: () => void
   /** Abre a ficha do hospital. Ausente = card não clicável (réplica da Ajuda). */
   onAbrir?: () => void
   /** Ação em andamento neste card. */
@@ -39,6 +44,8 @@ export function CensoCard({ tarefa, onCobrar, onDesfazer, onAbrir, cobrando, som
   const atrasado = estado === 'censos_atrasados'
   const retorno = estado === 'aguardando_retorno'
   const pendente = atrasado || retorno
+  // Em "Censos atualizados" sem censo: alguém deu o dia por atualizado à mão.
+  const atualizadoManual = estado === 'censos_processados' && !!tarefa.atualizado_em
 
   // O botão fica dentro do card clicável: sem parar a propagação, cobrar
   // também abriria a ficha do hospital.
@@ -103,6 +110,13 @@ export function CensoCard({ tarefa, onCobrar, onDesfazer, onAbrir, cobrando, som
             {tarefa.cobrado_por ? ` por ${tarefa.cobrado_por}` : ''}
           </span>
         )}
+        {atualizadoManual && (
+          <span>
+            <span style={ROTULO}>Sem censo novo, marcado em </span>
+            {dataHora(tarefa.atualizado_em)}
+            {tarefa.atualizado_por ? ` por ${tarefa.atualizado_por}` : ''}
+          </span>
+        )}
       </div>
 
       {!somenteLeitura && atrasado && (
@@ -117,16 +131,42 @@ export function CensoCard({ tarefa, onCobrar, onDesfazer, onAbrir, cobrando, som
           </button>
         </div>
       )}
-      {!somenteLeitura && retorno && onDesfazer && (
+      {!somenteLeitura && retorno && (onAtualizar || onDesfazer) && (
+        <div className="kb-card-actions empilhadas">
+          {onAtualizar && (
+            <button
+              type="button"
+              className="btn btn-outline btn-sm kb-btn-atualizar"
+              disabled={cobrando}
+              onClick={acao(onAtualizar)}
+              title="O hospital respondeu que não há censo novo a gerar"
+            >
+              {cobrando ? 'Registrando…' : 'Marcar como atualizado'}
+            </button>
+          )}
+          {onDesfazer && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              disabled={cobrando}
+              onClick={acao(onDesfazer)}
+              title="Volta o hospital para Censos atrasados"
+            >
+              Desfazer cobrança
+            </button>
+          )}
+        </div>
+      )}
+      {!somenteLeitura && atualizadoManual && onDesfazerAtualizado && (
         <div className="kb-card-actions">
           <button
             type="button"
             className="btn btn-ghost btn-sm"
             disabled={cobrando}
-            onClick={acao(onDesfazer)}
-            title="Volta o hospital para Censos atrasados"
+            onClick={acao(onDesfazerAtualizado)}
+            title="Volta o hospital para Aguardando retorno"
           >
-            {cobrando ? 'Desfazendo…' : 'Desfazer cobrança'}
+            {cobrando ? 'Desfazendo…' : 'Desfazer'}
           </button>
         </div>
       )}

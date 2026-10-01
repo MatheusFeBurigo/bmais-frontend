@@ -432,6 +432,7 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   const comAlta = gravados.filter((p) => p.situacao === 'ALTA')
   const pendentes = res.pendentes || 0
   const mantidos = res.mantidos_com_alta ?? []
+  const homecare = res.mantidos_homecare ?? []
   // Pacientes que o censo tentou mover de seguradora e que NÃO foram movidos.
   const conflitos = res.conflitos_operadora ?? []
   // Os avisos do leitor entram classificados: o que significa "faltou paciente"
@@ -1065,6 +1066,15 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               {plural(mantidos.length, 'estava', 'estavam')}:{' '}
               {mantidos.slice(0, 4).map((m) => nomeProprio(m.nome) || m.atendimento).join(', ')}
               {mantidos.length > 4 && ` e mais ${mantidos.length - 4}`}.
+            </Alerta>
+          )}
+          {homecare.length > 0 && aberto('homecare') && (
+            <Alerta nivel="nota" onFechar={() => fechar('homecare')}>
+              {homecare.length} {plural(homecare.length, 'paciente')} em homecare{' '}
+              {plural(homecare.length, 'continua', 'continuam')} como{' '}
+              {plural(homecare.length, 'estava', 'estavam')}:{' '}
+              {homecare.slice(0, 4).map((m) => nomeProprio(m.nome) || m.atendimento).join(', ')}
+              {homecare.length > 4 && ` e mais ${homecare.length - 4}`}.
             </Alerta>
           )}
           {/* Abas por operadora, imediatamente acima da lista que elas recortam.

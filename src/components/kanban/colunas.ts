@@ -18,7 +18,7 @@ export const COLUNAS: ColunaKanban[] = [
   {
     key: 'sem_relatorio',
     titulo: 'Sem relatório',
-    descricao: 'Internados sem relatório de auditoria e sem visita marcada',
+    descricao: 'Internados sem relatório, com o relatório vencido ou com a prorrogação terminada, e sem visita marcada',
     cor: 'var(--warning)',
     corBg: 'var(--warning-bg)',
   },
@@ -36,9 +36,32 @@ export const COLUNAS: ColunaKanban[] = [
     cor: 'var(--danger)',
     corBg: 'var(--danger-bg)',
   },
+  // ── Aprovação de paciente: o relatório do administrativo espera o técnico ─
+  {
+    key: 'aguardando_aprovacao',
+    titulo: 'Aguardando aprovação',
+    descricao: 'Relatórios enviados pelo administrativo. O técnico confere e aprova ou devolve',
+    cor: 'var(--info)',
+    corBg: 'var(--info-bg)',
+  },
+  {
+    key: 'relatorios_devolvidos',
+    titulo: 'Devolvidos',
+    descricao: 'O técnico pediu correção. Quem escreveu corrige e reenvia',
+    cor: 'var(--danger)',
+    corBg: 'var(--danger-bg)',
+  },
+  {
+    key: 'em_prorrogacao',
+    titulo: 'Em prorrogação',
+    descricao: 'Prorrogação aprovada e em curso. Quando termina, o paciente volta para Sem relatório',
+    cor: 'var(--caution)',
+    corBg: 'var(--caution-bg)',
+  },
   // ── Fluxo de censos: um card por hospital, e o card anda sozinho ──────────
-  // A coluna vem da data do último censo recebido; só "Marcar como cobrado"
-  // é manual (atrasados → aguardando retorno).
+  // A coluna vem da data do último censo recebido. Manuais: "Marcar como
+  // cobrado" (atrasados → aguardando retorno) e "Marcar como atualizado"
+  // (aguardando retorno → atualizados, quando não há censo novo a gerar).
   {
     key: 'censos_atrasados',
     titulo: 'Censos atrasados',
@@ -49,7 +72,7 @@ export const COLUNAS: ColunaKanban[] = [
   {
     key: 'aguardando_retorno',
     titulo: 'Aguardando retorno',
-    descricao: 'Já cobrados. Saem daqui quando o censo chegar',
+    descricao: 'Cobrados hoje. Se o dia virar sem censo, voltam para atrasados',
     cor: 'var(--warning)',
     corBg: 'var(--warning-bg)',
   },
@@ -62,8 +85,8 @@ export const COLUNAS: ColunaKanban[] = [
   },
   {
     key: 'censos_processados',
-    titulo: 'Censos processados',
-    descricao: 'Censo de hoje já recebido',
+    titulo: 'Censos atualizados',
+    descricao: 'Censo de hoje recebido, ou hospital sem censo novo',
     cor: 'var(--success)',
     corBg: 'var(--success-bg)',
   },
@@ -73,7 +96,8 @@ const CHAVES_CENSO: KanbanColuna[] = [
   'censos_atrasados', 'aguardando_retorno', 'aguardando_censo', 'censos_processados',
 ]
 
-/** As colunas de paciente (trabalho do técnico) e as de censo (do administrativo). */
+/** As colunas de paciente (a fila do técnico e a aprovação de relatório, no
+ *  mesmo quadro) e as de censo (do administrativo). */
 export const COLUNAS_PACIENTE = COLUNAS.filter((c) => !CHAVES_CENSO.includes(c.key))
 export const COLUNAS_CENSO = COLUNAS.filter((c) => CHAVES_CENSO.includes(c.key))
 

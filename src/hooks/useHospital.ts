@@ -3,7 +3,7 @@
 // a listagem traz só key/nome, a ficha (contatos, endereço, operadoras) vem daqui.
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '../lib/queryKeys'
-import { fetchHospital, fetchTimelineHospital } from '../services/configuracoes.service'
+import { fetchHospital, fetchRegrasHospital, fetchTimelineHospital } from '../services/configuracoes.service'
 
 /** Ficha do hospital. `key` nulo mantém a query parada (modal fechado). */
 export function useHospital(key: string | null) {
@@ -29,5 +29,13 @@ export function useTimelineHospital(key: string | null, ativo: boolean) {
     queryFn: () => fetchTimelineHospital(key as string),
     enabled: Boolean(key) && ativo,
     staleTime: 60 * 1000,
+  })
+}
+
+/** Regras de cobranca do hospital em cada operadora vinculada. */
+export function useRegrasHospital(key: string) {
+  return useQuery({
+    queryKey: queryKeys.hospitalRegras(key),
+    queryFn: () => fetchRegrasHospital(key),
   })
 }

@@ -242,7 +242,13 @@ function hospFormInicial(a: UploadCensoResult): HospForm {
  *  aceitássemos qualquer string, o hospital nasceria vinculado a uma operadora
  *  inexistente — sem regras de avaliação e invisível nas telas. */
 function hospManualDe(f: HospForm, operadorasValidas?: Set<string>): HospitalManual | null {
-  if (f.modo === 'existente') return f.hospitalKey ? { key: f.hospitalKey } : null
+  if (f.modo === 'existente') {
+    if (!f.hospitalKey) return null
+    // Sem a operadora o servidor usa a principal do cadastro (ver Upload.tsx).
+    const op = f.operadora && (!operadorasValidas || operadorasValidas.has(f.operadora))
+      ? f.operadora : undefined
+    return op ? { key: f.hospitalKey, operadora_key: op } : { key: f.hospitalKey }
+  }
   const nome = f.nome.trim()
   if (!nome || !f.operadora) return null
   if (operadorasValidas && !operadorasValidas.has(f.operadora)) return null

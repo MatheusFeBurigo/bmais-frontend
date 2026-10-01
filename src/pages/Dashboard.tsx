@@ -19,6 +19,7 @@ import { useIsFetching } from '@tanstack/react-query'
 import { queryRoots } from '../lib/queryKeys'
 import { AUTO_REFRESH_MS } from '../lib/autoRefresh'
 import { NOME_TODAS } from '../services/dashboard.service'
+import { hojeISO, paraISO } from '../lib/datas'
 import type {
   DashboardOverview, DashboardOverviewOperadora, DashboardStats, Hospital, Internacao,
 } from '../types/api'
@@ -82,6 +83,11 @@ export default function Dashboard() {
   // lista que o backend mandou, e no modo padrao ela so tem internados.
   const vendoAltas = filtro === 'altas'
   const hospital = params.get('hospital') || ''
+  // Período (AAAA-MM-DD, vazio = sem limite). Recorta a lista pela data de
+  // internação, ou pela data de alta no modo "Altas". Fica na URL para sobreviver
+  // ao F5 e poder ser compartilhado, como operadora/hospital.
+  const dataDe = params.get('de') || ''
+  const dataAte = params.get('ate') || ''
 
   // Filtros client-side
   const [busca, setBusca] = useState('')
@@ -246,7 +252,14 @@ export default function Dashboard() {
       const okPerm =
         permanencia === '' ||
         (permanencia === '30' ? Boolean(p.longa_30) : Boolean(p.longa_10))
-      return okBusca && okUti && ok30 && okPerm
+      // Censo traz datas em dd/mm/aaaa ou ISO: normaliza antes de comparar. Sem
+      // data reconhecível, a linha não cabe em nenhum período e sai do recorte.
+      let okData = true
+      if (dataDe || dataAte) {
+        const d = paraISO(vendoAltas ? p.data_alta : p.data_entrada)
+        okData = Boolean(d) && (!dataDe || d >= dataDe) && (!dataAte || d <= dataAte)
+      }
+      return okBusca && okUti && ok30 && okPerm && okData
     })
     if (ordenar === 'sem_rel') {
       // Mais dias sem relatório primeiro; sem relatório (null) vai ao topo.
@@ -258,7 +271,7 @@ export default function Dashboard() {
       return [...filtrados].sort((a, b) => (b.dias ?? 0) - (a.dias ?? 0))
     }
     return filtrados
-  }, [internacoes, busca, utiOn, d30On, permanencia, ordenar])
+  }, [internacoes, busca, utiOn, d30On, permanencia, ordenar, dataDe, dataAte, vendoAltas])
 
   // Paginação client-side: renderizar todas as internações de uma vez trava a
   // tabela em operadoras grandes (cada linha tem vários componentes). Fatiamos
@@ -274,7 +287,7 @@ export default function Dashboard() {
   // Qualquer mudança de filtro reinicia a paginação na primeira página.
   useEffect(() => {
     setPagina(1)
-  }, [busca, utiOn, d30On, permanencia, ordenar, operadora, filtro, hospital])
+  }, [busca, utiOn, d30On, permanencia, ordenar, operadora, filtro, hospital, dataDe, dataAte])
 
   // Entrar em "Altas" com um recorte de permanência ativo deixaria a lista vazia
   // (longa_10/30 não valem para quem já saiu). Os chips somem nesse modo, então
@@ -412,6 +425,46 @@ export default function Dashboard() {
                 Limpar filtro
               </button>
             )}
+            {/* Período: De / Até sobre a data de internação (ou de alta no modo
+                "Altas"). Cada ponta limita a outra para o intervalo nunca inverter. */}
+            <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
+                {vendoAltas ? 'Alta de' : 'Internação de'}
+              </span>
+              <input
+                type="date"
+                className="bm-input"
+                style={{ width: 'auto' }}
+                value={dataDe}
+                max={dataAte || hojeISO()}
+                onChange={(e) => setParam('de', e.target.value || null)}
+                aria-label={vendoAltas ? 'Alta a partir de' : 'Internação a partir de'}
+              />
+              <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>até</span>
+              <input
+                type="date"
+                className="bm-input"
+                style={{ width: 'auto' }}
+                value={dataAte}
+                min={dataDe || undefined}
+                max={hojeISO()}
+                onChange={(e) => setParam('ate', e.target.value || null)}
+                aria-label={vendoAltas ? 'Alta até' : 'Internação até'}
+              />
+              {(dataDe || dataAte) && (
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ color: 'var(--muted)' }}
+                  onClick={() => {
+                    const next = new URLSearchParams(params)
+                    next.delete('de'); next.delete('ate')
+                    setParams(next)
+                  }}
+                >
+                  Limpar datas
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Quick filters — os status (Sem relatório/Vencidos) saíram daqui: os

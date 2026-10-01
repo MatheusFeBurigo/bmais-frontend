@@ -26,6 +26,7 @@ import { useEquipe } from '../hooks/useEquipe'
 import { useAuth } from '../auth/AuthContext'
 import { podeExecutar, podeVer } from '../auth/permissions'
 import { identificacaoPaciente } from '../lib/texto'
+import { dataBR } from '../lib/datas'
 import { camposIncompletos, type CampoFicha } from '../lib/fichaIncompleta'
 
 // O último card da coluna esquerda ocupa a altura que sobrar quando a coluna da
@@ -69,7 +70,7 @@ export default function Paciente() {
         title: (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
             {d ? identificacaoPaciente(d) : isLoading ? '—' : 'Paciente'}
-            {sr && <StatusBadge sr={sr} />}
+            {sr && <StatusBadge sr={sr} emAprovacao={d?.relatorio_em_aprovacao} />}
           </span>
         ),
         subtitle: d ? (
@@ -77,6 +78,12 @@ export default function Paciente() {
             <SubtituloPaciente d={d} onAbrirHospital={() => setHospitalAberto(true)} />
             {d.dias != null && <> · {d.dias}d internado</>}
             {d.gatilho != null && <> (gatilho: {d.gatilho}d)</>}
+            {d.prorrogacao_ate && (
+              <> · <span style={{ color: d.prorrogacao_situacao === 'terminou' ? 'var(--danger)' : 'var(--info)', fontWeight: 600 }}>
+                {d.prorrogacao_situacao === 'terminou' ? 'Prorrogação terminou em' : 'Prorrogado até'} {dataBR(d.prorrogacao_ate)}
+                {d.prorrogacao_situacao === 'pausada' ? ' (pausada)' : ''}
+              </span></>
+            )}
           </>
         ) : undefined,
         actions: (
@@ -108,7 +115,7 @@ export default function Paciente() {
           dados; a Timeline preenche o espaço restante e rola por dentro. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(280px,1fr)', gap: 16, alignItems: 'stretch' }}>
         <div className="ficha-col" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
-          <CardDadosPaciente d={d} edicao={edicao} faltaCampo={faltaCampo} />
+          <CardDadosPaciente d={d} edicao={edicao} faltaCampo={faltaCampo} podeHomecare={podeExecutar(role, 'leitoHomecare')} />
           <CardCids
             internacaoId={internacaoId}
             sexoPaciente={d.sexo}
@@ -127,7 +134,8 @@ export default function Paciente() {
             erro={relatorios.isError}
             podeRegistrar={podeExecutar(role, 'registrarRelatorio')}
             medicos={medicos}
-            onRegistrado={() => setToast('✓ Relatório registrado')}
+            prorrogacao={{ ate: d?.prorrogacao_ate, acomodacao: d?.prorrogacao_acomodacao }}
+            onRegistrado={(pendente) => setToast(pendente ? '✓ Relatório enviado para aprovação' : '✓ Relatório registrado')}
           />
 
           <div className="card" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>

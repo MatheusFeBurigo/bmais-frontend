@@ -152,6 +152,74 @@ export function normalizarBusca(s: string): string {
   return s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim()
 }
 
+// ── Quadro de censos: atraso e ordem ─────────────────────────────────────────
+// O número é o mesmo do badge do card ("Nd s/ atualizar"): dias desde o dia a
+// que o último censo se refere. Faixas fechadas e sem sobreposição, para que a
+// soma das contagens bata com o total do quadro.
+export type FaixaAtrasoKey = 'em_dia' | 'd2_3' | 'd4_7' | 'd8_30' | 'd30' | 'nunca'
+
+export const FAIXAS_ATRASO: Array<{
+  key: FaixaAtrasoKey
+  label: string
+  titulo: string
+  cor: string
+  aplica: (t: KanbanTarefa) => boolean
+}> = [
+  { key: 'em_dia', label: 'Em dia', titulo: 'Censo de hoje ou de ontem', cor: 'var(--success)',
+    aplica: (t) => t.dias_sem_censo != null && t.dias_sem_censo <= 1 },
+  { key: 'd2_3', label: '2 a 3 dias', titulo: 'Última atualização há 2 ou 3 dias', cor: 'var(--caution)',
+    aplica: (t) => t.dias_sem_censo != null && t.dias_sem_censo >= 2 && t.dias_sem_censo <= 3 },
+  { key: 'd4_7', label: '4 a 7 dias', titulo: 'Última atualização há 4 a 7 dias', cor: 'var(--warning)',
+    aplica: (t) => t.dias_sem_censo != null && t.dias_sem_censo >= 4 && t.dias_sem_censo <= 7 },
+  { key: 'd8_30', label: '8 a 30 dias', titulo: 'Última atualização há 8 a 30 dias', cor: 'var(--danger)',
+    aplica: (t) => t.dias_sem_censo != null && t.dias_sem_censo >= 8 && t.dias_sem_censo <= 30 },
+  { key: 'd30', label: 'Mais de 30 dias', titulo: 'Última atualização há mais de 30 dias', cor: 'var(--danger)',
+    aplica: (t) => t.dias_sem_censo != null && t.dias_sem_censo > 30 },
+  { key: 'nunca', label: 'Nunca enviou', titulo: 'Nenhum censo recebido deste hospital', cor: 'var(--muted)',
+    aplica: (t) => t.dias_sem_censo == null },
+]
+
+export type OrdemCensoKey = 'padrao' | 'recente' | 'antiga' | 'hospital'
+
+export const ORDENS_CENSO: Array<{ key: OrdemCensoKey; label: string }> = [
+  { key: 'padrao', label: 'Mais urgentes' },
+  { key: 'recente', label: 'Atualização mais recente' },
+  { key: 'antiga', label: 'Atualização mais antiga' },
+  { key: 'hospital', label: 'Hospital' },
+]
+
+function compararCenso(a: KanbanTarefa, b: KanbanTarefa, ordem: OrdemCensoKey): number {
+  // "Nunca enviou" vai sempre para o fim das ordens por data: não tem data.
+  const da = a.ultimo_censo ?? ''
+  const db = b.ultimo_censo ?? ''
+  switch (ordem) {
+    case 'recente':
+      return (db || '0').localeCompare(da || '0')
+    case 'antiga':
+      return (da || '9').localeCompare(db || '9')
+    case 'hospital':
+      return (a.hospital_nome || '').localeCompare(b.hospital_nome || '', 'pt-BR')
+        || (a.operadora_nome || '').localeCompare(b.operadora_nome || '', 'pt-BR')
+    default:
+      return 0 // a ordem do backend já é a de urgência de cada coluna
+  }
+}
+
+/** Contagens do quadro de censos inteiro, por operadora e por faixa de atraso. */
+export function contarCensos(itens: KanbanTarefa[]): {
+  operadoras: Record<string, number>
+  faixas: Record<FaixaAtrasoKey, number>
+} {
+  const operadoras: Record<string, number> = {}
+  const faixas = { em_dia: 0, d2_3: 0, d4_7: 0, d8_30: 0, d30: 0, nunca: 0 }
+  for (const t of itens) {
+    if (t.operadora_key) operadoras[t.operadora_key] = (operadoras[t.operadora_key] ?? 0) + 1
+    const f = FAIXAS_ATRASO.find((x) => x.aplica(t))
+    if (f) faixas[f.key] += 1
+  }
+  return { operadoras, faixas }
+}
+
 export interface Recorte {
   busca: string
   chips: ChipKey[]
@@ -159,6 +227,10 @@ export interface Recorte {
   ordem: OrdemKey
   /** Só no quadro de censos: o mesmo hospital tem um card por operadora. */
   operadora?: string
+  /** Só no quadro de censos: faixa de dias sem atualizar ('' = todas). */
+  atraso?: FaixaAtrasoKey | ''
+  /** Só no quadro de censos. */
+  ordemCenso?: OrdemCensoKey
 }
 
 /**
@@ -178,6 +250,10 @@ export function recortarColuna(itens: KanbanTarefa[], r: Recorte): KanbanTarefa[
   const filtrado = itens.filter((t) => {
     if (r.hospital && t.hospital_key !== r.hospital) return false
     if (r.operadora && t.operadora_key !== r.operadora) return false
+    if (r.atraso) {
+      const faixa = FAIXAS_ATRASO.find((f) => f.key === r.atraso)
+      if (faixa && !faixa.aplica(t)) return false
+    }
     if (q) {
       // A busca alcança o que o card agora mostra (leito, médico, convênio) e a
       // identificação alternativa (senha/carteirinha) dos censos sem nome.
@@ -198,7 +274,9 @@ export function recortarColuna(itens: KanbanTarefa[], r: Recorte): KanbanTarefa[
 
   // Cópia antes de ordenar: a lista vem do cache do React Query e não pode ser
   // mutada no lugar (o `sort` nativo é in place).
-  return [...filtrado].sort((a, b) => comparar(a, b, r.ordem))
+  return [...filtrado].sort((a, b) => (a.estado_censo
+    ? compararCenso(a, b, r.ordemCenso ?? 'padrao')
+    : comparar(a, b, r.ordem)))
 }
 
 /** Quantos cards de uma lista casam cada chip: alimenta o contador do botão. */

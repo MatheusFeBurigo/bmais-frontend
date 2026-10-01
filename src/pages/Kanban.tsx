@@ -3,22 +3,27 @@ import { useNavigate } from 'react-router-dom'
 import type { KanbanTarefa } from '../types/api'
 import { usePageHeader } from '../components/PageHeader'
 import { useAuth } from '../auth/AuthContext'
-import { ehSomenteLeitura, podeVer } from '../auth/permissions'
+import { ehSomenteLeitura, podeExecutar, podeVer } from '../auth/permissions'
 import { LoadingState } from '../components/ui'
 import PacienteDrawer from '../components/PacienteDrawer'
 import HospitalDetalhesModal from '../components/HospitalDetalhesModal'
 import Toast from '../components/Toast'
 import Tabs from '../components/Tabs'
-import { useDesfazerCobranca, useKanban, useMarcarCobrado } from '../hooks/useKanban'
+import {
+  useDesfazerAtualizado, useDesfazerCobranca, useKanban, useMarcarAtualizado, useMarcarCobrado,
+} from '../hooks/useKanban'
 import { usePrefetchInternacao } from '../hooks/useInternacao'
+import { useEquipe } from '../hooks/useEquipe'
 import { localStyles } from '../components/kanban/kanban.styles'
 import { KanbanCard } from '../components/kanban/KanbanCard'
 import { KanbanFiltros } from '../components/kanban/KanbanFiltros'
 import { ColunaInfo } from '../components/kanban/ColunaInfo'
-import { contarChips, recortarColuna, type Recorte } from '../components/kanban/prioridade'
+import { contarCensos, contarChips, recortarColuna, type Recorte } from '../components/kanban/prioridade'
 // Definição de cada coluna (rótulo, cor, descrição) vive em components/kanban/
 // colunas.ts: a Volumetria reusa os mesmos textos para a quebra de demandas.
-import { COLUNAS_CENSO, COLUNAS_PACIENTE, type ColunaKanban } from '../components/kanban/colunas'
+import {
+  COLUNAS_CENSO, COLUNAS_PACIENTE, type ColunaKanban,
+} from '../components/kanban/colunas'
 
 // Colunas por PAPEL, seguindo quem faz o trabalho: o administrativo persegue o
 // censo que não chegou; o técnico cuida dos pacientes (a fila, o que agendou e a
@@ -26,11 +31,22 @@ import { COLUNAS_CENSO, COLUNAS_PACIENTE, type ColunaKanban } from '../component
 // dois quadros por abas: lado a lado seriam 7 colunas, e nenhuma teria largura
 // para ser lida. O backend monta o payload com as mesmas regras; aqui é só a
 // ordem de exibição.
+//
+// A aprovação de relatório (01/10/2026) mora no MESMO quadro de pacientes, em
+// colunas à direita da fila: o técnico aprova o que o administrativo enviou, e o
+// administrativo (que só recebe essas colunas de paciente) acompanha o que mandou
+// e corrige o que voltou. O quadro mostra só as colunas que o payload trouxe.
+//
+// A prorrogação (01/10/2026) também: coluna "Em prorrogação" no quadro de
+// pacientes, e não aba à parte (pedido do usuário). Quem administra pausa e
+// retoma no próprio card.
 type Quadro = 'pacientes' | 'censos'
 
 // Colunas de censo que não são tarefa: o hospital está em dia. Ficam no quadro
 // (é o retrato de quem mandou), mas não entram no "N tarefas pendentes".
-const SEM_ACAO = new Set(['aguardando_censo', 'censos_processados'])
+// "Em prorrogação" também: é acompanhamento, e o card que pede ação (terminou)
+// já vem no topo da coluna e em vermelho.
+const SEM_ACAO = new Set(['aguardando_censo', 'censos_processados', 'em_prorrogacao'])
 
 // Um card de censo = hospital + operadora: é a chave da trava de clique.
 const chaveCenso = (t: KanbanTarefa) => `${t.hospital_key}|${t.operadora_key ?? ''}`
@@ -41,9 +57,17 @@ const VAZIO: Record<string, string> = {
   censos_atrasados: 'Nenhum hospital atrasado.',
   aguardando_retorno: 'Nenhuma cobrança esperando resposta.',
   aguardando_censo: 'Nenhum hospital aguardando o censo de hoje.',
-  censos_processados: 'Nenhum censo de hoje recebido ainda.',
+  censos_processados: 'Nenhum censo atualizado hoje ainda.',
+  aguardando_aprovacao: 'Nenhum relatório aguardando aprovação.',
+  relatorios_devolvidos: 'Nenhum relatório devolvido.',
+  em_prorrogacao: 'Nenhum paciente em prorrogação.',
 }
 
+
+// A aba escolhida, se o papel a tem; senão a primeira do papel.
+function quadro_(escolhido: Quadro | null, quadros: Quadro[]): Quadro {
+  return escolhido && quadros.includes(escolhido) ? escolhido : quadros[0]
+}
 
 export default function Kanban() {
   // O quadro já vem recortado ao escopo de hospitais/operadoras do analista pelo
@@ -54,6 +78,8 @@ export default function Kanban() {
   const atualizando = isFetching && !isLoading
   const cobrar = useMarcarCobrado()
   const desfazer = useDesfazerCobranca()
+  const atualizar = useMarcarAtualizado()
+  const desfazerAtualizado = useDesfazerAtualizado()
   const navigate = useNavigate()
   // Hospitais com ação em andamento. Por CARD, não `isPending` da mutação: um
   // estado só para o quadro trocava o botão de todos os atrasados para
@@ -64,8 +90,15 @@ export default function Kanban() {
   const ocupadosRef = useRef(new Set<string>())
   const [hospitalFicha, setHospitalFicha] = useState<{ key: string; nome: string } | null>(null)
   // Perfil de observação (analista interno): vê o quadro, mas não age nele.
-  const { role } = useAuth()
+  const { role, username } = useAuth()
   const somenteLeitura = ehSomenteLeitura(role)
+  const podeAprovar = podeExecutar(role, 'aprovarRelatorio')
+  const podeControlarProrrogacao = podeExecutar(role, 'controlarProrrogacao')
+  const { data: equipe } = useEquipe()
+  const medicos = useMemo(
+    () => (equipe?.medicos ?? []).filter((m) => Boolean(m.ativo)).map((m) => m.nome),
+    [equipe],
+  )
   const prefetch = usePrefetchInternacao()
   const [drawerId, setDrawerId] = useState<number | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -73,20 +106,24 @@ export default function Kanban() {
   // aplicado no cliente sobre o payload que já veio (o quadro inteiro está em
   // memória), então trocar de filtro não custa uma ida ao servidor.
   const [recorte, setRecorte] = useState<Recorte>({
-    busca: '', chips: [], hospital: '', ordem: 'prioridade', operadora: '',
+    busca: '', chips: [], hospital: '', ordem: 'prioridade', operadora: '', atraso: '', ordemCenso: 'padrao',
   })
-  const [quadroEscolhido, setQuadro] = useState<Quadro>('pacientes')
+  const [quadroEscolhido, setQuadro] = useState<Quadro | null>(null)
 
   const ehTecnico = data?.papel === 'tecnico'
   const ehAdmin = data?.papel === 'admin'
-  // Técnico só tem pacientes; administrativo só censos; os demais escolhem.
-  const quadro: Quadro = ehTecnico ? 'pacientes' : ehAdmin ? quadroEscolhido : 'censos'
-  const colunas: ColunaKanban[] = quadro === 'censos' ? COLUNAS_CENSO : COLUNAS_PACIENTE
+  // As abas de cada papel: técnico só pacientes; administrativo, censos e os
+  // pacientes da aprovação; os demais, os dois.
+  const quadros: Quadro[] = ehTecnico ? ['pacientes']
+    : ehAdmin ? ['pacientes', 'censos'] : ['censos', 'pacientes']
+  const quadro: Quadro = quadro_(quadroEscolhido, quadros)
+  const colunas: ColunaKanban[] = (quadro === 'censos' ? COLUNAS_CENSO : COLUNAS_PACIENTE)
+    .filter((c) => !data?.tarefas || c.key in data.tarefas)
   // Os chips clínicos não se aplicam a card de hospital: um chip ligado no
   // quadro de pacientes esvaziaria o de censos ao trocar de aba.
-  // A operadora é o inverso: só existe no de censos.
+  // Operadora e atraso são o inverso: só existem no de censos.
   const recorteEfetivo = useMemo(
-    () => (quadro === 'censos' ? { ...recorte, chips: [] } : { ...recorte, operadora: '' }),
+    () => (quadro === 'censos' ? { ...recorte, chips: [] } : { ...recorte, operadora: '', atraso: '' as const }),
     [quadro, recorte])
 
   const tarefasRaw = data?.tarefas
@@ -121,6 +158,10 @@ export default function Kanban() {
       : []
     return contarChips(todos)
   }, [tarefasRaw])
+  // Mesma ideia para o quadro de censos: por operadora e por faixa de atraso.
+  const contagensCenso = useMemo(
+    () => contarCensos(COLUNAS_CENSO.flatMap((c) => tarefasRaw?.[c.key] ?? [])),
+    [tarefasRaw])
   const total = tarefas
     ? colunas.reduce((s, c) => s + (tarefas[c.key]?.length ?? 0), 0)
     : 0
@@ -186,6 +227,15 @@ export default function Kanban() {
     t, desfazer.mutate, `Cobrança de ${t.hospital_nome || 'hospital'} desfeita`,
   ), [acaoCenso, desfazer.mutate])
 
+  const onAtualizar = useCallback((t: KanbanTarefa) => acaoCenso(
+    t, atualizar.mutate,
+    `${t.hospital_nome || 'Hospital'}${t.operadora_nome ? ` (${t.operadora_nome})` : ''} marcado como atualizado`,
+  ), [acaoCenso, atualizar.mutate])
+
+  const onDesfazerAtualizado = useCallback((t: KanbanTarefa) => acaoCenso(
+    t, desfazerAtualizado.mutate, `Atualização de ${t.hospital_nome || 'hospital'} desfeita`,
+  ), [acaoCenso, desfazerAtualizado.mutate])
+
   const abrirHospital = useCallback((t: KanbanTarefa) => {
     if (t.hospital_key) setHospitalFicha({ key: t.hospital_key, nome: t.hospital_nome || t.titulo })
   }, [])
@@ -207,13 +257,12 @@ export default function Kanban() {
         </div>
       )}
 
-      {tarefasRaw && ehAdmin && (
+      {tarefasRaw && quadros.length > 1 && (
         <div style={{ marginBottom: 12 }}>
           <Tabs
-            tabs={[
-              { key: 'pacientes', label: 'Pacientes', count: contarQuadro(COLUNAS_PACIENTE) },
-              { key: 'censos', label: 'Censos', count: contarQuadro(COLUNAS_CENSO) },
-            ]}
+            tabs={quadros.map((q) => (q === 'pacientes'
+              ? { key: q, label: 'Pacientes', count: contarQuadro(COLUNAS_PACIENTE) }
+              : { key: q, label: 'Censos', count: contarQuadro(COLUNAS_CENSO) }))}
             active={quadro}
             onChange={(k) => setQuadro(k as Quadro)}
           />
@@ -228,6 +277,7 @@ export default function Kanban() {
           recorte={recorte}
           onChange={setRecorte}
           contagens={contagens}
+          contagensCenso={contagensCenso}
           hospitais={data?.filtros?.hospitais ?? []}
           totalVisivel={total}
           totalGeral={totalGeral}
@@ -240,7 +290,7 @@ export default function Kanban() {
           <button
             type="button"
             className="link-cell"
-            onClick={() => setRecorte({ ...recorte, busca: '', chips: [], hospital: '', operadora: '' })}
+            onClick={() => setRecorte({ ...recorte, busca: '', chips: [], hospital: '', operadora: '', atraso: '' })}
           >
             Limpar filtros
           </button>
@@ -250,10 +300,13 @@ export default function Kanban() {
       {tarefas && (
         <div
           className={`kb-board${atualizando ? ' atualizando' : ''}`}
-          // minmax(260px, 1fr): as colunas dividem a largura por igual e param
-          // de encolher em 260px. Sem o mínimo elas ficariam ilegíveis; sem o
-          // 1fr, sobraria espaço vazio à direita em telas largas.
-          style={{ gridTemplateColumns: `repeat(${colunas.length}, minmax(260px, 1fr))` }}
+          // minmax(N, 1fr): as colunas dividem a largura por igual e param de
+          // encolher no mínimo. Sem o mínimo ficariam ilegíveis; sem o 1fr,
+          // sobraria espaço vazio à direita em telas largas. O quadro de
+          // pacientes tem 7 colunas (a fila, a aprovação e a prorrogação): com
+          // o mínimo de 260px as últimas saíam da tela num monitor comum, então
+          // ali ele é menor.
+          style={{ gridTemplateColumns: `repeat(${colunas.length}, minmax(${colunas.length > 6 ? 170 : colunas.length > 4 ? 200 : 260}px, 1fr))` }}
         >
           {colunas.map((col) => {
             const itens = tarefas[col.key] ?? []
@@ -276,9 +329,16 @@ export default function Kanban() {
                       onPrefetch={prefetch}
                       onCobrar={onCobrar}
                       onDesfazer={onDesfazer}
+                      onAtualizar={onAtualizar}
+                      onDesfazerAtualizado={onDesfazerAtualizado}
                       onAbrirHospital={abrirHospital}
                       cobrando={ocupados.has(chaveCenso(t))}
                       somenteLeitura={somenteLeitura}
+                      podeAprovar={podeAprovar}
+                      podeControlarProrrogacao={podeControlarProrrogacao}
+                      usuario={username}
+                      medicos={medicos}
+                      onAviso={setToast}
                     />
                   ))}
                   {itens.length === 0 && (

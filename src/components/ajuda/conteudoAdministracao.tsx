@@ -388,6 +388,11 @@ export function ModuloConfiguracoes() {
         <tr><Key>Ficha do hospital</Key>
           <td>Indicadores da unidade, pacientes internados, escala de auditores, operadoras
             atendidas e dados cadastrais.</td></tr>
+        <tr><Key>Regras de cobrança</Key>
+          <td>Na ficha do hospital, aberta a partir de uma operadora. Permite que aquele hospital
+            tenha prazos de relatório e cobrança de censo diferentes da operadora: tolerância em
+            dias, dias da semana com censo ou nenhuma cobrança. O que não for alterado segue a
+            operadora. Na lista de hospitais, quem tem regra própria aparece marcado.</td></tr>
         <tr><Key>Adicionar hospital</Key>
           <td>O botão <strong>Adicionar</strong> da lista de hospitais de uma operadora abre o
             cadastro completo (nome, cidade, contato e endereço), com o hospital já naquela
