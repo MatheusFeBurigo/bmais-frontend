@@ -32,12 +32,12 @@ export const ROLE_VARIANT: Record<UserRole, 'danger' | 'info' | 'success' | 'cau
 export const ROLE_DESC: Record<UserRole, string> = {
   admin: 'Acesso total: Operações (equipe, contas e cadastro), Movimentações e ações destrutivas.',
   diretor: 'Diretoria, Gestor e Configurações. Não vê Operações.',
-  gestor: 'Gestor/Fluxo, Painel Operacional, Tarefas e Configurações. Não vê Diretoria, Envio de censos nem Operações.',
+  gestor: 'Gestor/Fluxo, Painel Operacional, Tarefas, Envio de censos e Configurações. Não vê Diretoria nem Operações.',
   administrativo: 'Painel Operacional, Upload e Kanban. Não vê Diretoria, Gestor nem Operações.',
   tecnico: 'Análise técnica dos relatórios do auditor externo. Emite o parecer interno.',
   analista: 'Consulta o Painel Operacional, o Kanban e as Movimentações (trilha de auditoria) e mantém hospitais e operadoras em Operações. Não registra relatórios nem altera dados de paciente. Não vê Diretoria nem Gestor.',
-  coordenador_administrativo: 'Distribuição de tarefas: vê a carga de cobranças de censo de cada operacional em horas (rede inteira), define quais hospitais cada um cobre e calibra capacidade e parâmetros de carga. Não altera pacientes, censos nem cadastros.',
-  coordenador_tecnico: 'Distribuição de tarefas: vê a carga de pacientes de cada técnico em horas de análise (rede inteira), define quais hospitais cada um cobre e calibra capacidade e parâmetros de carga. Não altera pacientes, censos nem cadastros.',
+  coordenador_administrativo: 'Distribuição de tarefas: vê a carga de cobranças de censo de cada operacional em horas (rede inteira), define quais hospitais cada um cobre e calibra capacidade e parâmetros de carga. Envia censos. Não altera pacientes nem cadastros.',
+  coordenador_tecnico: 'Distribuição de tarefas: vê a carga de pacientes de cada técnico em horas de análise (rede inteira), define quais hospitais cada um cobre e calibra capacidade e parâmetros de carga. Envia censos. Não altera pacientes nem cadastros.',
   // Não aparecem na escolha de papel (ROLES_ORDEM): a conta nasce na ficha do
   // profissional e o papel sai do tipo dele.
   medico: 'Médico da equipe assistencial. Entra no portal do profissional; não vê dados internos.',

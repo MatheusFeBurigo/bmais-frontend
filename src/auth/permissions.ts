@@ -27,9 +27,9 @@ const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
   diretor: ['equipe'],
   // Gestor: Gestor/Fluxo + Configurações, MAIS as visões do técnico e do
   // administrativo (Visão Geral e Tarefas), para acompanhar quem ele gerencia.
-  // Fora Equipe e o envio de censos (espelha ROLES_ENVIO_CENSO no backend);
-  // Diretoria sai pela allowlist EXCLUSIVAS, não daqui.
-  gestor: ['equipe', 'upload'],
+  // Fora Equipe; Diretoria sai pela allowlist EXCLUSIVAS, não daqui. Envia
+  // censo desde 02/10/2026 (espelha ROLES_ENVIO_CENSO no backend).
+  gestor: ['equipe'],
   // Administrativo: Operacional + Upload + Kanban (suas tarefas). Sem Diretoria, Gestor, Equipe, Configurações.
   administrativo: ['diretoria', 'gestor', 'equipe', 'configuracoes'],
   // Técnico: mesmo recorte do administrativo (segundo papel operacional básico).
@@ -40,11 +40,12 @@ const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
   // Diretoria e Gestor (decisão do produto), Upload e Configurações — telas cujo
   // conteúdo É a escrita que ele não pode executar (subir censo, regras da operadora).
   analista: ['diretoria', 'gestor', 'upload', 'configuracoes'],
-  // Coordenadores: só a Operacional (contexto) + Volumetria (allowlist abaixo).
+  // Coordenadores: a Operacional (contexto), o Envio de censos e a Volumetria (allowlist abaixo).
   // Fora tudo que é operação/gestão. A única escrita deles (vincular pessoa a
   // hospital) vive dentro da Volumetria — ver ROLES_ATRIBUIR_VOLUMETRIA no backend.
-  coordenador_administrativo: ['diretoria', 'gestor', 'equipe', 'configuracoes', 'upload', 'kanban', 'logs'],
-  coordenador_tecnico: ['diretoria', 'gestor', 'equipe', 'configuracoes', 'upload', 'kanban', 'logs'],
+  // Envio de censos liberado em 02/10/2026 (ROLES_ENVIO_CENSO no backend).
+  coordenador_administrativo: ['diretoria', 'gestor', 'equipe', 'configuracoes', 'kanban', 'logs'],
+  coordenador_tecnico: ['diretoria', 'gestor', 'equipe', 'configuracoes', 'kanban', 'logs'],
 }
 
 // Telas EXCLUSIVAS de papéis específicos (allowlist). Mais forte que a lista de

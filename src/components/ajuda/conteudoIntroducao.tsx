@@ -163,7 +163,7 @@ const TELAS_MATRIZ: { tela: string; acesso: string; gestao?: boolean }[] = [
   { tela: 'Painel Operacional', acesso: 'SSSSSS' },
   { tela: 'Ficha do Paciente', acesso: 'SSSSNS' },
   { tela: 'Tarefas', acesso: 'SSSNSN' },
-  { tela: 'Envio de Censos', acesso: 'SSNSNN' },
+  { tela: 'Envio de Censos', acesso: 'SSSSNS' },
   { tela: 'Dashboard da Diretoria', acesso: 'NNNSNN', gestao: true },
   { tela: 'Painel do Gestor', acesso: 'NNSSNN', gestao: true },
   { tela: 'Distribuição de tarefas', acesso: 'NNNNNS' },
@@ -232,8 +232,8 @@ export function ModuloNavegacao() {
         <SoGestao>
           <tr>
             <Key>Gestor</Key>
-            <td>Painel do Gestor e Configurações, além do Painel Operacional e das Tarefas, para
-              acompanhar quem ele gerencia. Não acessa a Diretoria nem o Envio de Censos.</td>
+            <td>Painel do Gestor e Configurações, além do Painel Operacional, das Tarefas e do
+              Envio de Censos, para acompanhar quem ele gerencia. Não acessa a Diretoria.</td>
           </tr>
           <tr>
             <Key>Diretor</Key>
@@ -251,11 +251,11 @@ export function ModuloNavegacao() {
         <tr>
           <Key>Coordenador técnico</Key>
           <td>Acompanha a carga de trabalho dos técnicos na Distribuição de tarefas e define quais hospitais
-            cada um cobre. Enxerga o Painel Operacional como contexto, sem alterar nada nele.</td>
+            cada um cobre. Enxerga o Painel Operacional como contexto, sem alterar nada nele, e envia censos.</td>
         </tr>
         <tr>
           <Key>Coordenador operacional</Key>
-          <td>O mesmo papel, do lado administrativo: acompanha a carga de cobrança de censo e
+          <td>O mesmo papel, do lado operacional: acompanha a carga de cobrança de censo e
             distribui os hospitais entre os operacionais.</td>
         </tr>
       </Tabela>
@@ -280,8 +280,9 @@ export function ModuloNavegacao() {
 
       <h3>Perfis de observação</h3>
       <ul>
-        <li>Analista e coordenadores <strong>não alteram pacientes, censos nem relatórios</strong>.
+        <li>Analista e coordenadores <strong>não alteram pacientes nem relatórios</strong>.
           Veem essas telas, mas sem os botões de edição.</li>
+        <li>Os coordenadores enviam censos; o analista, não.</li>
         <li>O analista mantém os cadastros da tela Operações.</li>
         <li>Os coordenadores definem os hospitais de cada pessoa na Distribuição de tarefas.</li>
       </ul>
