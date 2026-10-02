@@ -23,6 +23,7 @@ import { hojeISO, paraISO } from '../lib/datas'
 import type {
   DashboardOverview, DashboardOverviewOperadora, DashboardStats, Hospital, Internacao,
 } from '../types/api'
+import AvisoNovaVersao from '../components/AvisoNovaVersao'
 
 // Campos do stats que fazem sentido SOMADOS entre operadoras (os KPIs do topo).
 // Limites de permanência etc. dependem das regras de cada operadora e ficam de fora.
@@ -334,6 +335,7 @@ export default function Dashboard() {
 
   return (
     <>
+      <AvisoNovaVersao />
       {/* Seletor de operadora — 1ª opção é o consolidado (todas as operadoras). */}
       <div className="row" style={{ gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
         <span className={`op-av ${todas ? 'todas' : operadora}`} style={{ width: 26, height: 26, borderRadius: 7, fontSize: 10 }}>
