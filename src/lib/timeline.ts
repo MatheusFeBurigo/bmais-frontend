@@ -32,6 +32,9 @@ export const TIPO_CLASSE: Record<string, string> = {
   EDIT: 'tp-edit',
   PENDENTE: 'tp-pendente',
   VISITA_AGENDADA: 'tp-visita-agendada',
+  // Ficha do paciente (0049): marcos derivados das internações juntas.
+  TROCA_HOSPITAL: 'tp-troca-hospital',
+  INTERNACAO_SIMULTANEA: 'tp-pendente',
   // Mantido só para o passivo: eventos gravados ANTES da migration 0034,
   // quando cancelar criava um SEGUNDO evento em vez de atualizar o de
   // agendamento. Nada volta a criar este tipo — ver `classeDoEvento` abaixo,

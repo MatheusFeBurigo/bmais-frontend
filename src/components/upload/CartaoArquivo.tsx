@@ -181,6 +181,9 @@ export function urgenciaDe(res: UploadCensoResult): Urgencia {
   // o que ele não faz é comandar a ordem e a expansão do lote.
   const avisos = classificarAvisos(res.avisos ?? [])
   if (avisos.some((a) => a.nivel === 'critico')) return 'revisar'
+  // Paciente que já existia em outro hospital: o arquivo pode ter ido para o
+  // hospital errado e o paciente ficado em dobro.
+  if ((res.em_outro_hospital ?? []).length) return 'revisar'
   // Censo misto ou enviado no lugar errado: parte dos pacientes entrou sob outra
   // operadora. É exatamente o que a dupla checagem existe para mostrar, então o
   // cartão não pode nascer recolhido escondendo-a. O mesmo vale para o convênio
@@ -435,6 +438,10 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   const homecare = res.mantidos_homecare ?? []
   // Pacientes que o censo tentou mover de seguradora e que NÃO foram movidos.
   const conflitos = res.conflitos_operadora ?? []
+  // Pacientes criados agora que já existiam em outro hospital: o arquivo pode
+  // ter ido para o hospital errado (caso real de 02/10/2026).
+  const emOutroHospital = res.em_outro_hospital ?? []
+  const hospitaisDeOrigem = [...new Set(emOutroHospital.map((e) => e.hospital_nome))]
   // Os avisos do leitor entram classificados: o que significa "faltou paciente"
   // deixa de ter a mesma cara de "dia sem internados".
   const avisos = classificarAvisos(res.avisos ?? [])
@@ -753,7 +760,10 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   const mostrarSemConvenio = semConvenioAbertos.length > 0 && aberto('sem-convenio')
   const mostrarPendentes = pendentes > 0 && aberto('pendentes')
   const mostrarConflitos = conflitos.length > 0 && aberto('conflitos')
+  const mostrarOutroHospital = emOutroHospital.length > 0 && aberto('outro-hospital')
+  // Crítico: o paciente pode ter ficado duplicado em dois hospitais.
   const nCriticos = acionaveis.filter((a) => a.nivel === 'critico').length
+    + (mostrarOutroHospital ? 1 : 0)
   // As divergências só contam quando o painel de fato as EXIBE como alerta. Com
   // as abas por operadora no lugar delas, contá-las faria a linha fechada
   // prometer "3 avisos" e o usuário abrir para encontrar nenhum.
@@ -896,6 +906,26 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               rolável — quem abria o cartão para entender o problema tinha de passar
               por todos os nomes até achá-lo. Ficam visíveis com o cartão aberto ou
               fechado: são a razão de ele não estar limpo. */}
+          {mostrarOutroHospital && (
+            <Alerta nivel="critico" onFechar={() => fechar('outro-hospital')}>
+              {emOutroHospital.length} {plural(emOutroHospital.length, 'paciente')} deste
+              arquivo já {plural(emOutroHospital.length, 'existia', 'existiam')} em{' '}
+              <b>{hospitaisDeOrigem.join(', ')}</b>:{' '}
+              {emOutroHospital.slice(0, 4).map((e) => nomeProprio(e.nome) || e.atendimento).join(', ')}
+              {emOutroHospital.length > 4 && ` e mais ${emOutroHospital.length - 4}`}.
+              {' '}Se o arquivo não é de <b>{res.hospital_nome || res.hospital}</b>, desfaça
+              e envie de novo no hospital certo.
+              {onDesfazer && (res.criados ?? 0) > 0 && (
+                <div style={{ marginTop: 6 }}>
+                  <button type="button" className="up-desfazer-arq"
+                          disabled={desfazendo}
+                          onClick={() => onDesfazer(res.arquivo)}>
+                    {desfazendo ? 'Desfazendo…' : 'Desfazer este arquivo'}
+                  </button>
+                </div>
+              )}
+            </Alerta>
+          )}
           {acionaveis.map((a, j) => (
             <Alerta key={`av-${j}`} nivel={a.nivel} onFechar={() => fechar(`av:${a.texto}`)}>{a.texto}</Alerta>
           ))}

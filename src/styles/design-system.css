@@ -654,6 +654,7 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .tl-dot.tp-pendente{background:var(--danger)}
 .tl-dot.tp-visita-agendada{background:var(--info)}
 .tl-dot.tp-visita-cancelada{background:var(--muted-2)}
+.tl-dot.tp-troca-hospital{background:var(--primary)}
 .tl-date{font-family:var(--font-mono);font-size:var(--t-xs);color:var(--muted);letter-spacing:.02em}
 /* Hora da visita (migration 0035), ao lado da data: peso normal para não competir
    com ela, que é o dado principal da linha. */
@@ -693,6 +694,17 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .tl-item.tl-card.tp-visita-agendada{background:var(--info-bg);border-color:rgba(31,93,170,.22);border-left-color:var(--info)}
 .tl-item.tl-card.tp-visita-agendada .tl-label{color:var(--info)}
 .tl-item.tl-card.tp-visita-cancelada{background:var(--surface-3);border-color:var(--border);border-left-color:var(--muted-2)}
+/* Troca de hospital (ficha do paciente, 0049): o azul-marinho da marca, que
+   nenhum outro marco usa (índigo já é o parecer interno). Divide a história em
+   "antes" e "depois". */
+.tl-item.tl-card.tp-troca-hospital{background:var(--primary-soft);border-color:rgba(6,46,92,.2);border-left-color:var(--primary)}
+.tl-item.tl-card.tp-troca-hospital .tl-label{color:var(--primary)}
+/* Evento de OUTRA internação da mesma pessoa: um pouco apagado, para a
+   internação aberta seguir sendo a leitura principal. O hospital vai escrito
+   (.tl-hosp), então a diferença nunca depende só do tom. */
+.tl-item.tl-outra{opacity:.82}
+.tl-hosp{font-size:var(--t-xs);color:var(--muted);margin-top:3px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tl-hosp a,.tl-hosp button{font-size:var(--t-xs);background:none;border:0;padding:0;color:var(--info);cursor:pointer;text-decoration:underline}
 /* Marcador em X (substitui o .tl-dot redondo) do card cancelado: um sinal de
    "encerrado", não só uma cor apagada — a mesma ideia de um item riscado numa
    lista. Redondo com fundo neutro e borda, alinhado onde o .tl-dot ficaria. */

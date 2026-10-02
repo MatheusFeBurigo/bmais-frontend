@@ -1220,6 +1220,17 @@ export interface ConflitoOperadora {
   convenio_do_censo?: string | null
 }
 
+/** Paciente criado por este envio que JÁ existia em outro hospital. */
+export interface EmOutroHospital {
+  atendimento?: string | null
+  nome?: string | null
+  internacao_id: number
+  hospital_key: string
+  hospital_nome: string
+  operadora_key?: string | null
+  status?: string | null
+}
+
 export interface UploadCensoResult {
   arquivo: string
   /** O censo que este arquivo gerou (`censos.id`). É por ele que a lista remove
@@ -1276,6 +1287,10 @@ export interface UploadCensoResult {
    *  sozinho seria mudar a seguradora de alguém em silêncio, e é da operadora
    *  que saem as regras de avaliação e a apuração da cobrança. */
   conflitos_operadora?: ConflitoOperadora[]
+  /** Pacientes que este envio criou e que já existiam em OUTRO hospital (mesmo
+   *  atendimento ou carteirinha, mesma pessoa). Sinal de arquivo enviado no
+   *  hospital errado: a tela alerta e oferece desfazer. */
+  em_outro_hospital?: EmOutroHospital[]
   /** Operadora escolhida por quem enviou (passo 1 da tela). É o padrão para quem
    *  não tem convênio reconhecido — não é a operadora de todo mundo do arquivo. */
   operadora_escolhida?: string | null
@@ -1520,12 +1535,42 @@ export interface TimelineEvento {
   status_visita?: string | null
   /** Horário da visita ("HH:MM"), migration 0035. Só em VISITA_AGENDADA. */
   hora?: string | null
+  /** Ficha do paciente (0049): o evento é de OUTRA internação da mesma pessoa
+   *  (outro hospital, reinternação). Ausente nos eventos da internação aberta. */
+  outra_internacao?: boolean
+  /** Internação de onde o evento vem. Também nos marcos de troca de hospital. */
+  internacao_id?: number
+  hospital_nome?: string | null
+  /** False: hospital fora do escopo do usuário; a passagem vem só resumida e
+   *  a ficha de lá não abre. */
+  acessivel?: boolean
 }
 
 export interface InternacaoTimeline {
   internacao_id: number
   status_relatorio?: string | null
   eventos: TimelineEvento[]
+  /** Quantas internações a pessoa tem no sistema (ela inclusive). */
+  internacoes?: number
+  /** Internação que começou DEPOIS desta, se houver. */
+  internacao_mais_recente?: {
+    id: number
+    hospital_nome?: string | null
+    data_entrada?: string | null
+    status?: string | null
+    acessivel: boolean
+  } | null
+}
+
+/** Internação que pode ser do mesmo paciente: só o nome bate (0049). */
+export interface SugestaoPessoa {
+  id: number
+  internacao_id: number
+  nome?: string | null
+  hospital_nome?: string | null
+  data_entrada?: string | null
+  data_alta?: string | null
+  status?: string | null
 }
 
 /** Um relatório registrado na internação — alimenta o card "Relatórios" da ficha. */

@@ -124,7 +124,7 @@ export function ModuloOperacional({ irPara }: Props) {
 
       <h3>Ações disponíveis</h3>
       <Tabela cabecalho={['Ação', 'Efeito']} larguras={['185px']}>
-        <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação e, para o perfil técnico, o formulário de registrar relatório. Técnico e operacional têm ainda o botão <strong>Alta</strong>, no rodapé.</td></tr>
+        <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação e, para técnico, gestor e operacional, o formulário de registrar relatório. Técnico, gestor e operacional têm ainda o botão <strong>Alta</strong>, no rodapé.</td></tr>
         <tr><Key>Clicar no hospital</Key><td>Abre a ficha do hospital, com indicadores, operadoras atendidas, dados cadastrais e histórico de censos sob demanda.</td></tr>
         <tr><Key>Adicionar paciente</Key><td>Cadastro manual: operadora, hospital, nome, atendimento, situação (internado ou alta), data de entrada, data de alta quando for o caso e, opcionalmente, leito, especialidade e médico. Não duplica: se o atendimento já existir no hospital, avisa que o paciente não foi duplicado.</td></tr>
         <tr><Key>Exportar</Key><td>Gera a planilha de controle de auditoria, da operadora aberta ou de todas num único arquivo, com uma aba por hospital.</td></tr>
@@ -148,8 +148,8 @@ export function ModuloPaciente({ irPara }: Props) {
       <p>
         Pelo botão <strong>Detalhes</strong> da ficha rápida do Painel Operacional, ou por link
         direto. O perfil analista vê a ficha rápida, mas não abre a completa.{' '}
-        <strong>Técnico e operacional registram relatório</strong>; o do operacional só vale
-        depois que um técnico aprova. <strong>Mexer nos CIDs é exclusivo do perfil técnico</strong>, e
+        <strong>Técnico, gestor e operacional registram relatório</strong>; o do operacional só vale
+        depois que um técnico ou gestor aprova. <strong>Mexer nos CIDs é do técnico e do gestor</strong>, e
         cada pessoa continua vendo apenas os pacientes dos hospitais do seu escopo.
       </p>
 
@@ -170,9 +170,9 @@ export function ModuloPaciente({ irPara }: Props) {
             marcas={{ dataVisita: 1, medico: 2, cid: 3, obs: 4, registrar: 5 }} />
         </Tela>
       </ComoFazer>
-      <Callout tipo="info" titulo="Técnico aprova o relatório do operacional">
+      <Callout tipo="info" titulo="Técnico ou gestor aprova o relatório do operacional">
         O relatório do operacional vai para a coluna <strong>Aguardando aprovação</strong> do quadro
-        de pacientes, em Tarefas. O do técnico vale na hora. Os demais perfis veem a ficha, mas o bloco de
+        de pacientes, em Tarefas. O do técnico e o do gestor valem na hora. Os demais perfis veem a ficha, mas o bloco de
         registrar não aparece para eles.
       </Callout>
 
@@ -399,7 +399,7 @@ export function ModuloKanban({ irPara }: Props) {
       <Tabela cabecalho={['Coluna', 'O que reúne', 'O que fazer']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Aguardando aprovação</Key>
           <td>Relatórios enviados pelo operacional, com o texto no próprio card.</td>
-          <td>Técnico: Aprovar, ou Devolver dizendo o que corrigir.</td></tr>
+          <td>Técnico ou gestor: Aprovar, ou Devolver dizendo o que corrigir.</td></tr>
         <tr><Key>Devolvidos</Key>
           <td>Relatórios que o técnico pediu para corrigir, com o motivo.</td>
           <td>Quem escreveu: Corrigir e reenviar.</td></tr>

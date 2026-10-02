@@ -9,11 +9,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { usePageHeader } from '../components/PageHeader'
 import { StatusBadge } from '../components/StatusBadge'
 import Toast from '../components/Toast'
+import { ConfirmarModal } from '../components/ConfirmarModal'
 import { LoadingState } from '../components/ui'
 import HospitalDetalhesModal from '../components/HospitalDetalhesModal'
 import { alertaStyles } from '../components/Alerta'
 import { AcaoAlta } from '../components/paciente/AcaoAlta'
 import { AlertaCamposFaltantes } from '../components/paciente/AlertaCamposFaltantes'
+import { AlertaInternacaoMaisRecente, AlertaSugestoesPessoa } from '../components/paciente/AlertasPessoa'
 import { CardCids } from '../components/paciente/CardCids'
 import { CardDadosPaciente } from '../components/paciente/CardDadosPaciente'
 import { CardRelatorios } from '../components/paciente/CardRelatorios'
@@ -21,10 +23,10 @@ import { KpisPaciente } from '../components/paciente/KpisPaciente'
 import { SubtituloPaciente } from '../components/paciente/SubtituloPaciente'
 import { useEdicaoFicha } from '../components/paciente/useEdicaoFicha'
 import { TimelineEventos } from '../components/timeline/TimelineEventos'
-import { useInternacaoDados, useInternacaoRelatorios, useInternacaoTimeline } from '../hooks/useInternacao'
+import { useDesvincularPessoa, useInternacaoDados, useInternacaoRelatorios, useInternacaoTimeline } from '../hooks/useInternacao'
 import { useEquipe } from '../hooks/useEquipe'
 import { useAuth } from '../auth/AuthContext'
-import { podeExecutar, podeVer } from '../auth/permissions'
+import { podeExecutar, podeVer, podeVerFichaPaciente } from '../auth/permissions'
 import { identificacaoPaciente } from '../lib/texto'
 import { dataBR } from '../lib/datas'
 import { camposIncompletos, type CampoFicha } from '../lib/fichaIncompleta'
@@ -53,6 +55,13 @@ export default function Paciente() {
   // Ficha do hospital, aberta pelo nome no subtítulo da página.
   const [hospitalAberto, setHospitalAberto] = useState(false)
   const edicao = useEdicaoFicha(internacaoId, d, { onSalvo: setToast })
+  // Outra internação ligada a esta pessoa que alguém marcou "Não é este
+  // paciente": a confirmação abre antes de desligar.
+  const [desligar, setDesligar] = useState<number | null>(null)
+  const desvincular = useDesvincularPessoa(internacaoId)
+  const podeVincular = podeExecutar(role, 'vincularPessoa')
+  const hospitalDesligar = timeline.data?.eventos.find(
+    (e) => e.internacao_id === desligar && e.outra_internacao)?.hospital_nome
 
   // Campos importantes que o censo não trouxe. O aviso é do DADO GRAVADO: enquanto
   // edita, cada campo some do destaque sozinho (ver `aindaFalta` em CampoFicha),
@@ -109,6 +118,13 @@ export default function Paciente() {
       <style>{alertaStyles + colunaStyles}</style>
       <KpisPaciente d={d} />
       {!edicao.editando && <AlertaCamposFaltantes faltantes={faltantes} />}
+      <AlertaInternacaoMaisRecente recente={timeline.data?.internacao_mais_recente} />
+      <AlertaSugestoesPessoa
+        internacaoId={internacaoId}
+        habilitado={podeVerFichaPaciente(role)}
+        podeResponder={podeVincular}
+        onFeito={setToast}
+      />
 
       {/* Grid: dados e CIDs à esquerda, relatórios/timeline à direita.
           alignItems:stretch faz a coluna direita ter a mesma altura da coluna de
@@ -141,7 +157,12 @@ export default function Paciente() {
           <div className="card" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <div className="card-header" style={{ flexShrink: 0 }}>
               <div className="card-title">Timeline</div>
-              <span className="badge muted">{timeline.data?.eventos.length ?? 0}</span>
+              <span style={{ display: 'inline-flex', gap: 6 }}>
+                {(timeline.data?.internacoes ?? 1) > 1 && (
+                  <span className="badge info">{timeline.data?.internacoes} internações</span>
+                )}
+                <span className="badge muted">{timeline.data?.eventos.length ?? 0}</span>
+              </span>
             </div>
             <div className="card-body" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <TimelineEventos
@@ -149,6 +170,7 @@ export default function Paciente() {
                 carregando={timeline.isLoading}
                 erro={timeline.isError}
                 className="tl tl-scroll"
+                onDesvincular={podeVincular ? setDesligar : undefined}
               />
             </div>
           </div>
@@ -167,6 +189,23 @@ export default function Paciente() {
               : undefined
           }
         />
+      )}
+
+      {desligar != null && (
+        <ConfirmarModal
+          titulo="Não é este paciente"
+          confirmar="Tirar da ficha"
+          perigo
+          ocupado={desvincular.isPending}
+          onCancelar={() => setDesligar(null)}
+          onConfirmar={() => desvincular.mutate(desligar, {
+            onSuccess: () => { setDesligar(null); setToast('✓ Internação tirada da ficha') },
+            onError: (e) => { setDesligar(null); setToast(e instanceof Error ? e.message : 'Não foi possível tirar da ficha') },
+          })}
+        >
+          A internação no <strong>{hospitalDesligar || 'outro hospital'}</strong> sai da timeline
+          deste paciente e não volta a ser ligada a ele. Nada é apagado.
+        </ConfirmarModal>
       )}
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}

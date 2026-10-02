@@ -39,6 +39,7 @@ export const queryKeys = {
 
   internacaoDados: (id: number) => ['internacao-dados', id] as const,
   internacaoTimeline: (id: number) => ['internacao-timeline', id] as const,
+  sugestoesPessoa: (id: number) => ['sugestoes-pessoa', id] as const,
   internacaoRelatorios: (id: number) => ['internacao-relatorios', id] as const,
   /** CIDs vinculados ao paciente (card "CID" da ficha). */
   internacaoCids: (id: number) => ['internacao-cids', id] as const,

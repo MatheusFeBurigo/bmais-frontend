@@ -71,7 +71,8 @@ const EXCLUSIVAS: Partial<Record<Screen, readonly UserRole[]>> = {
   progresso: ['admin', 'diretor'],
   // Volumetria: carga de trabalho por hospital, para os coordenadores decidirem
   // como dividir hospitais entre administrativos/técnicos. Admin vê para supervisão.
-  volumetria: ['coordenador_administrativo', 'coordenador_tecnico', 'admin'],
+  // O gestor entrou em 02/10/2026: vê e divide a carga dos dois grupos.
+  volumetria: ['coordenador_administrativo', 'coordenador_tecnico', 'gestor', 'admin'],
 }
 
 // Papéis SOMENTE LEITURA: veem as telas, mas nenhuma ação que altera dados.
@@ -140,10 +141,12 @@ const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
   // Registrar relatório (drawer e ficha). O administrativo entrou em 01/10/2026,
   // mas o relatório dele nasce PENDENTE e só vale depois que o técnico aprova
   // (`precisaAprovacao`).
-  registrarRelatorio: ['tecnico', 'administrativo', 'admin'],
+  // O gestor entrou em 02/10/2026 com as MESMAS ações do técnico (relatório que
+  // vale na hora, aprovar, CID, agendar, alta, vincular pessoa, homecare).
+  registrarRelatorio: ['tecnico', 'administrativo', 'gestor', 'admin'],
   // Aprovar ou devolver o relatório do administrativo, na aba "Aprovação de
   // paciente" do quadro. Espelha ROLES_APROVAR_RELATORIO no backend.
-  aprovarRelatorio: ['tecnico', 'admin'],
+  aprovarRelatorio: ['tecnico', 'gestor', 'admin'],
   // Pausar e retomar a prorrogação na tabela de Prorrogações (Tarefas): quem
   // administra. Espelha ROLES_CONTROLE_PRORROGACAO no backend.
   controlarProrrogacao: ['admin', 'administrativo'],
@@ -156,22 +159,25 @@ const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
   // pertence a quem vai fazer a visita. Mesmo par de `registrarRelatorio`, mas em
   // constante própria — as duas podem divergir (ex.: liberar o agendamento ao
   // administrativo) sem reabrir quem registra relatório.
-  agendarVisita: ['tecnico', 'admin'],
+  agendarVisita: ['tecnico', 'gestor', 'admin'],
   // Adicionar e remover CIDs do paciente, na ficha ("Detalhes"): trabalho do
   // técnico (admin supervisiona). Os demais papéis VEEM os CIDs na ficha, só não
   // os alteram. Espelha ROLES_ATRIBUIR_CID no backend, que recusa com 403.
-  atribuirCid: ['tecnico', 'admin'],
+  atribuirCid: ['tecnico', 'gestor', 'admin'],
   // Dar alta à mão (e desfazer a alta que não veio do hospital): quem acompanha
   // o paciente no dia a dia. Espelha ROLES_DAR_ALTA no backend.
-  darAlta: ['tecnico', 'administrativo', 'admin'],
+  darAlta: ['tecnico', 'administrativo', 'gestor', 'admin'],
+  // Ligar e desligar internações da mesma pessoa na ficha do paciente: os
+  // mesmos papéis da alta. Espelha ROLES_VINCULAR_PESSOA no backend.
+  vincularPessoa: ['tecnico', 'administrativo', 'gestor', 'admin'],
   // Pôr ou tirar o paciente do homecare (tipo de leito na ficha). Em homecare o
   // censo não mexe mais nele e só a alta manual o encerra. Espelha
   // ROLES_LEITO_HOMECARE no backend.
-  leitoHomecare: ['tecnico', 'admin'],
+  leitoHomecare: ['tecnico', 'gestor', 'admin'],
 }
 
 export type AcaoProtegida = 'registrarRelatorio' | 'criarConvenio' | 'agendarVisita' | 'atribuirCid'
-  | 'darAlta' | 'aprovarRelatorio' | 'controlarProrrogacao' | 'leitoHomecare'
+  | 'darAlta' | 'aprovarRelatorio' | 'controlarProrrogacao' | 'leitoHomecare' | 'vincularPessoa'
 
 /** True se o papel pode executar a ação. `role` null/desconhecido NÃO libera:
  *  ação sensível exige papel resolvido (diferente de `podeVer`, que é permissivo). */

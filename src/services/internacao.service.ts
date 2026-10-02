@@ -2,7 +2,7 @@
 import { apiDownload, apiFetch } from '../api/client'
 import type {
   CatalogosProrrogacao, Cid, InternacaoCids, InternacaoDados, InternacaoRelatorios, InternacaoTimeline,
-  PedidoProrrogacao,
+  PedidoProrrogacao, SugestaoPessoa,
 } from '../types/api'
 
 export interface RelatorioRapido {
@@ -25,6 +25,25 @@ export function fetchInternacaoDados(id: number): Promise<InternacaoDados> {
 /** Timeline cronológica da internação (admissão, relatórios, alta, pendências). */
 export function fetchInternacaoTimeline(id: number): Promise<InternacaoTimeline> {
   return apiFetch<InternacaoTimeline>(`/internacao/${id}/timeline`)
+}
+
+/** Internações que podem ser do mesmo paciente (só o nome bate). */
+export function fetchSugestoesPessoa(id: number): Promise<{ sugestoes: SugestaoPessoa[] }> {
+  return apiFetch(`/internacao/${id}/pessoa/sugestoes`)
+}
+
+/** "É o mesmo paciente" junta as internações na ficha; "Não é" só encerra. */
+export function responderSugestaoPessoa(id: number, sugestaoId: number, confirmar: boolean) {
+  return apiFetch(`/internacao/${id}/pessoa/sugestoes/${sugestaoId}`, {
+    method: 'POST', body: { confirmar },
+  })
+}
+
+/** Tira outra internação da ficha deste paciente (o vínculo juntou gente diferente). */
+export function desvincularPessoa(id: number, outraId: number) {
+  return apiFetch(`/internacao/${id}/pessoa/desvincular`, {
+    method: 'POST', body: { internacao_id: outraId },
+  })
 }
 
 /** Relatórios da internação (com anexo, autoria e data/hora do anexo). */

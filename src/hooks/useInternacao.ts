@@ -5,12 +5,15 @@ import { queryKeys } from '../lib/queryKeys'
 import { invalidarPorEvento } from '../lib/invalidation'
 import {
   criarConvenio,
+  desvincularPessoa,
   editarInternacao,
   fetchInternacaoDados,
   listarConvenios,
   fetchInternacaoRelatorios,
   fetchInternacaoTimeline,
+  fetchSugestoesPessoa,
   registrarRelatorioRapido,
+  responderSugestaoPessoa,
   type InternacaoEdicao,
   type RelatorioRapido,
 } from '../services/internacao.service'
@@ -40,6 +43,45 @@ export function useInternacaoRelatorios(id: number) {
     queryKey: queryKeys.internacaoRelatorios(id),
     queryFn: () => fetchInternacaoRelatorios(id),
     staleTime: DRAWER_STALE,
+  })
+}
+
+// ── Ficha do paciente: a mesma pessoa em várias internações (0049) ──────────
+
+export function useSugestoesPessoa(id: number, habilitado = true) {
+  return useQuery({
+    queryKey: queryKeys.sugestoesPessoa(id),
+    queryFn: () => fetchSugestoesPessoa(id),
+    staleTime: DRAWER_STALE,
+    enabled: habilitado,
+  })
+}
+
+// Confirmar, recusar ou desligar muda a história contada na timeline: as duas
+// leituras são refeitas. A timeline da OUTRA internação também muda, mas ela só
+// é lida quando alguém a abre, e o staleTime curto cobre esse caso.
+function useInvalidarFicha(id: number) {
+  const qc = useQueryClient()
+  return useCallback(() => {
+    qc.invalidateQueries({ queryKey: queryKeys.internacaoTimeline(id) })
+    qc.invalidateQueries({ queryKey: queryKeys.sugestoesPessoa(id) })
+  }, [qc, id])
+}
+
+export function useResponderSugestaoPessoa(id: number) {
+  const invalidar = useInvalidarFicha(id)
+  return useMutation({
+    mutationFn: ({ sugestaoId, confirmar }: { sugestaoId: number; confirmar: boolean }) =>
+      responderSugestaoPessoa(id, sugestaoId, confirmar),
+    onSuccess: invalidar,
+  })
+}
+
+export function useDesvincularPessoa(id: number) {
+  const invalidar = useInvalidarFicha(id)
+  return useMutation({
+    mutationFn: (outraId: number) => desvincularPessoa(id, outraId),
+    onSuccess: invalidar,
   })
 }
 
