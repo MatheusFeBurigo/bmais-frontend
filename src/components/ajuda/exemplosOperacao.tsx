@@ -830,16 +830,19 @@ const pac = (p: Partial<PacienteGravado> & Pick<PacienteGravado, 'situacao'>): P
 
 const EM_LEITO: PacienteGravado[] = [
   pac({ situacao: 'INTERNADO', nome: 'ANA BEATRIZ MOURA', atendimento: '771204', carteirinha: '0042881203007',
-    leito_codigo: 'UTI-04', convenio: 'CAREPLUS EXECUTIVO', data_entrada: '09/09/2026' }),
+    senha: 'K5T2W81', leito_codigo: 'UTI-04', tipo_leito: 'UTI', convenio: 'CAREPLUS EXECUTIVO',
+    data_nascimento: '14/03/1958', data_entrada: '09/09/2026', hora_entrada: '22:40',
+    medico: 'Rafael Antunes Prado', diagnostico: 'J18.9 PNEUMONIA NÃO ESPECIFICADA' }),
   pac({ situacao: 'INTERNADO', nome: 'MARCOS VINICIUS TEIXEIRA', atendimento: '771422', carteirinha: '0042119054001',
-    leito_codigo: '405', convenio: 'SAUDE VIDA PLUS', data_entrada: '23/09/2026',
+    leito_codigo: '405', convenio: 'SAUDE VIDA PLUS', data_entrada: '23/09/2026', hora_entrada: '08:15',
     problema: { tipo: 'convenio_nao_reconhecido', texto: 'O convênio "SAUDE VIDA PLUS" não está no cadastro. O paciente entrou como CarePlus.' } }),
   pac({ situacao: 'INTERNADO', nome: 'LÚCIA FERRAZ', atendimento: '771430', carteirinha: '0042733981002',
-    leito_codigo: '312', convenio: 'CAREPLUS', data_entrada: '24/09/2026' }),
+    senha: 'K5T3A07', leito_codigo: '312', tipo_leito: 'APARTAMENTO', convenio: 'CAREPLUS',
+    data_entrada: '24/09/2026', hora_entrada: '14:02', medico: 'Helena Prates Vidal' }),
 ]
 const COM_ALTA: PacienteGravado[] = [
   pac({ situacao: 'ALTA', nome: 'PEDRO HENRIQUE SALES', atendimento: '770988', leito_codigo: '208',
-    convenio: 'CAREPLUS', data_entrada: '15/09/2026', data_alta: '24/09/2026' }),
+    convenio: 'CAREPLUS', data_entrada: '15/09/2026', data_alta: '24/09/2026', hora_alta: '11:30' }),
 ]
 
 const RESULTADOS: UploadCensoResult[] = [

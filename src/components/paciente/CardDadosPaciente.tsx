@@ -59,15 +59,22 @@ export function CardDadosPaciente({ d, edicao, faltaCampo, podeHomecare }: {
           <CampoFicha label="Senha de autorização" valor={d.senha} mono campo="senha" {...ed} />
           <CampoFicha label="Status" valor={d.status || 'INTERNADO'} campo="status" opcoes={STATUS_OPCOES} {...ed} />
           <CampoFicha label="RN" valor={rnLabel(d)} />
+          <CampoFicha label="Data de nascimento" valor={d.data_nascimento} mono />
 
           <CampoFicha label="Atendimento" valor={d.atendimento} mono falta={faltaCampo.has('atendimento')} campo="atendimento" {...ed} />
           {/* Ao lado do atendimento porque são o mesmo tipo de dado visto de
               dois lados: o número do paciente no HOSPITAL e o número dele na
               OPERADORA. É a carteirinha que se informa ao ligar para o convênio. */}
           <CampoFicha label="Carteirinha" valor={d.carteirinha} mono campo="carteirinha" {...ed} />
+          {/* O convênio como o censo trouxe: é ele que diz a modalidade
+              ("Bradesco Operadora de Planos"), que a operadora sozinha não diz.
+              Só leitura aqui; a correção é na conferência do envio, onde o
+              convênio é escolhido junto da operadora. */}
+          <CampoFicha label="Operadora / convênio" valor={d.convenio} span={2} />
           <CampoFicha label="Tipo de leito" valor={d.tipo_leito} campo="tipo_leito" opcoes={leitoOpcoes} {...ed} edit={editando && leitoEditavel} />
           <CampoFicha label="Leito / código" valor={d.leito_codigo} falta={faltaCampo.has('leito_codigo')} campo="leito_codigo" {...ed} />
           <CampoFicha label="Data internação" valor={d.data_entrada} mono falta={faltaCampo.has('data_entrada')} campo="data_entrada" tipo="date" {...ed} />
+          <CampoFicha label="Hora internação" valor={d.hora_entrada ? d.hora_entrada.slice(0, 5) : null} mono />
 
           <CampoFicha label="Data alta" valor={textoDataAlta(d)} />
           <CampoFicha label="Médico" valor={d.medico} campo="medico" {...ed} />

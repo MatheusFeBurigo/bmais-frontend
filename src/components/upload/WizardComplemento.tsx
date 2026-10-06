@@ -174,10 +174,15 @@ const CAMPO_TIPO: Record<CampoCenso, 'text' | 'date'> = {
 }
 
 // Contexto capturado do PDF, só leitura — ajuda o usuário a reconhecer o paciente.
+// Só aparece o que veio preenchido (ver `contexto`), então incluir um campo aqui
+// não acrescenta linha vazia para quem não o tem.
 const CONTEXTO: Array<[keyof PendenteCenso, string]> = [
-  ['situacao', 'Situação'], ['data_nascimento', 'Nascimento'], ['setor', 'Setor'],
+  ['situacao', 'Situação'], ['senha', 'Senha'], ['carteirinha', 'Carteirinha'],
+  ['data_nascimento', 'Nascimento'], ['hora_entrada', 'Hora da internação'],
+  ['hora_alta', 'Hora da alta'], ['setor', 'Setor'],
   ['leito_codigo', 'Leito'], ['tipo_leito', 'Tipo de leito'], ['convenio', 'Convênio'],
   ['categoria', 'Categoria'], ['especialidade', 'Especialidade'], ['medico', 'Médico'],
+  ['diagnostico', 'Diagnóstico'],
 ]
 
 function chavePaciente(p: PendenteCenso): string {

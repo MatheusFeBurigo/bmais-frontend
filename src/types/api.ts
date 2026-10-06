@@ -1164,6 +1164,12 @@ export interface PendenteCenso {
   medico?: string | null
   convenio?: string | null
   categoria?: string | null
+  /** Demais campos da lista do negócio (05/10/2026), só como contexto. */
+  senha?: string | null
+  carteirinha?: string | null
+  hora_entrada?: string | null
+  hora_alta?: string | null
+  diagnostico?: string | null
 }
 
 /** Um paciente gravado por um arquivo do censo (conferência na tela de upload). */
@@ -1206,6 +1212,16 @@ export interface PacienteGravado {
   operadora_key?: string | null
   data_entrada?: string | null
   data_alta?: string | null
+  /** Os demais campos que o negócio pediu para conferir no envio (05/10/2026).
+   *  Vazio = o censo daquele hospital não informou. Ausentes em resultados de
+   *  envios processados antes de o backend devolvê-los. */
+  hora_entrada?: string | null
+  hora_alta?: string | null
+  data_nascimento?: string | null
+  /** Acomodação: UTI, APARTAMENTO, ENFERMARIA (o que as regras de prazo usam). */
+  tipo_leito?: string | null
+  diagnostico?: string | null
+  medico?: string | null
 }
 
 /** Um paciente que o censo tentou mover de seguradora. */
@@ -1481,6 +1497,13 @@ export interface InternacaoDados {
   gatilho?: number | null
   data_entrada?: string | null
   data_ultima_visita?: string | null
+  /** Hora da internação, quando o censo trouxe. */
+  hora_entrada?: string | null
+  /** Convênio como o censo trouxe, já padronizado: diz a modalidade
+   *  ("Bradesco Operadora de Planos"), que a `operadora_key` sozinha não diz. */
+  convenio?: string | null
+  /** Data de nascimento (só chega com a migration 0049 aplicada). */
+  data_nascimento?: string | null
   /** Data da alta, quando houve (censo de altas ou alta por ausência). */
   data_alta?: string | null
   hora_alta?: string | null

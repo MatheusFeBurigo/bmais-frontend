@@ -20,8 +20,16 @@ export function rnLabel(d: InternacaoDados): string {
  *  Antes o campo decidia pela data da última visita e ignorava `data_alta`,
  *  então a data real da alta nunca aparecia. */
 export function textoDataAlta(d: InternacaoDados): string {
-  if (d.data_alta) return dataBR(d.data_alta) || d.data_alta
+  if (d.data_alta) return comHora(dataBR(d.data_alta) || d.data_alta, d.hora_alta)
   return d.status === 'INTERNADO' || !d.status ? 'PERMANECE' : '—'
+}
+
+/** "24/09/2026" + "11:30" → "24/09/2026 11:30". A hora vem do censo quando ele
+ *  a imprime; sem ela fica só a data. Segundos ("11:30:00") não acrescentam nada
+ *  na leitura e caem. */
+export function comHora(data: string, hora?: string | null): string {
+  const h = (hora ?? '').trim().slice(0, 5)
+  return h ? `${data} ${h}` : data
 }
 
 /** Rascunho da edição, semeado com os valores atuais. */

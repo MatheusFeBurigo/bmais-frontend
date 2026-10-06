@@ -15,7 +15,7 @@
 // alinhadas, todos os atendimentos alinhados) em vez de reencontrar cada campo
 // numa posição diferente a cada linha.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { nomeProprio } from '../../lib/texto'
 import type { PacienteGravado } from '../../types/api'
 
@@ -32,12 +32,16 @@ export const listaPacientesStyles = `
    declarado aqui. É o que sustenta a conferência contra o PDF, que se faz
    descendo a vista por uma coluna só. O nome fica com a sobra ("auto"). */
 .up-pac-tabela{font-size:var(--t-sm);width:100%;table-layout:fixed}
-.up-pac-tabela th:nth-child(2),.up-pac-tabela td:nth-child(2){width:110px}
-.up-pac-tabela th:nth-child(3),.up-pac-tabela td:nth-child(3){width:110px}
-.up-pac-tabela th:nth-child(4),.up-pac-tabela td:nth-child(4){width:74px}
-.up-pac-tabela th:nth-child(5),.up-pac-tabela td:nth-child(5){width:150px}
-.up-pac-tabela th:nth-child(6),.up-pac-tabela td:nth-child(6){width:92px}
-.up-pac-tabela th:nth-child(7),.up-pac-tabela td:nth-child(7){width:58px}
+/* Larguras por COLUNA do cabeçalho (o <th>), não por posição de célula: a
+   linha da ficha aberta tem uma célula só (colSpan) e um seletor por
+   nth-child(td) a encolheria até a largura da 2ª coluna. Com layout fixed, a
+   largura sai da 1ª linha, que é o cabeçalho. */
+.up-pac-tabela th:nth-child(2){width:96px}
+.up-pac-tabela th:nth-child(3){width:122px}
+.up-pac-tabela th:nth-child(4){width:86px}
+.up-pac-tabela th:nth-child(5){width:70px}
+.up-pac-tabela th:nth-child(6){width:132px}
+.up-pac-tabela th:nth-child(7){width:110px}
 .up-pac-tabela thead th{padding:6px 8px;background:var(--surface-3)}
 .up-pac-tabela tbody td{padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .up-pac-tabela th:first-child,.up-pac-tabela td:first-child{padding-left:10px}
@@ -61,6 +65,32 @@ export const listaPacientesStyles = `
    a dígito), com teto de largura — algumas operadoras emitem 16 dígitos e sem
    limite a coluna comeria o espaço do nome. */
 .up-pac-cart{font-family:var(--font-mono);font-size:var(--t-xs);color:var(--muted);font-variant-numeric:tabular-nums;max-width:130px}
+/* Senha: mesma família dos outros números, um tom mais escuro — é o dado que a
+   operadora pede primeiro e o que se procura na lista. */
+.up-pac-senha{font-family:var(--font-mono);font-size:var(--t-xs);color:var(--ink-2);font-variant-numeric:tabular-nums}
+/* A linha abre a ficha do censo daquele paciente: o cursor diz que é clicável,
+   e a linha aberta fica marcada para a ficha não parecer de outro paciente. */
+.up-pac-tabela tbody tr.up-pac-linha{cursor:pointer}
+.up-pac-tabela tbody tr.up-pac-aberta td{background:var(--surface-3)}
+.up-pac-tabela tbody tr.up-pac-ficha-linha:hover td{background:var(--surface)}
+.up-pac-tabela tbody tr.up-pac-ficha-linha td{white-space:normal;overflow:visible;padding:10px 12px 12px 12px;background:var(--surface);border-bottom:1px solid var(--border)}
+/* Ficha: os 11 campos pedidos, na ordem da lista do negócio. Grade que se
+   reacomoda à largura do cartão, rótulo pequeno em cima e valor embaixo, como
+   a ficha do paciente no resto do sistema. */
+.up-pac-ficha{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:9px 18px}
+.up-pac-ficha-campo{min-width:0}
+.up-pac-ficha-campo.largo{grid-column:span 2}
+.up-pac-ficha-rot{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin-bottom:2px}
+.up-pac-ficha-val{font-size:var(--t-sm);color:var(--ink);overflow-wrap:anywhere}
+.up-pac-ficha-val.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.up-pac-ficha-val.vazio{color:var(--muted-2);font-style:italic}
+/* Seta de abrir/fechar a ficha: mesma caixa do lápis, gira ao abrir. */
+.up-pac-abrir{display:inline-grid;place-items:center;width:24px;height:28px;border:1px solid transparent;background:none;border-radius:7px;color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
+.up-pac-abrir svg{transition:transform .15s}
+.up-pac-abrir[aria-expanded="true"] svg{transform:rotate(180deg)}
+.up-pac-abrir:hover{background:var(--surface-3);color:var(--ink-2)}
+.up-pac-abrir:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(21,92,168,.18)}
+@media (prefers-reduced-motion:reduce){.up-pac-abrir svg{transition:none}}
 .up-pac-leito{font-size:var(--t-xs);color:var(--muted-2)}
 .up-pac-conv{font-size:var(--t-xs);color:var(--muted-2);max-width:180px}
 /* Data colorida pela situação — a mesma dupla do resto da tela. */
@@ -146,7 +176,7 @@ export const listaPacientesStyles = `
    que nao cabe some da esquerda, sem erro nenhum na tela.
    Flex em vez de inline-block: a caixa passa a ser medida, e nao estimada a
    partir do espaco em branco do JSX entre as tags. */
-.up-pac-acao{width:82px;white-space:nowrap;padding-left:0!important;padding-right:6px!important}
+.up-pac-acao{width:100px;white-space:nowrap;padding-left:0!important;padding-right:6px!important}
 /* O flex fica num wrapper DENTRO da celula, nao na celula: display:flex num
    <td>/<th> tira a coluna do algoritmo de largura da tabela e o cabecalho
    desalinha do corpo. O gap explicito tambem tira a medida do espaco em branco
@@ -267,6 +297,65 @@ const IcoX = (
     <path d="M18 6 6 18M6 6l12 12" />
   </svg>
 )
+
+const IcoSeta = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="m6 9 6 6 6-6" />
+  </svg>
+)
+
+/** Data seguida da hora, quando o censo trouxe as duas. */
+function dataHora(data?: string | null, hora?: string | null): string {
+  return [data, hora].filter(Boolean).join(' ')
+}
+
+/** "APARTAMENTO" → "Apartamento"; siglas (UTI) ficam como estão. */
+function acomodacao(v?: string | null): string {
+  const t = (v ?? '').trim()
+  if (!t || t.length <= 3) return t
+  return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()
+}
+
+/** Ficha do censo de um paciente: os 11 campos que o negócio pediu para
+ *  conferir no envio (05/10/2026), na ordem da lista dele.
+ *
+ *  Abre ao clicar na linha. A tabela continua com as colunas de conferência
+ *  rápida (as que se comparam descendo a vista pelo PDF); aqui está o paciente
+ *  inteiro, inclusive o que o censo NÃO trouxe: campo vazio aparece escrito, em
+ *  vez de sumir, porque saber que o hospital não informou é parte da conferência. */
+function FichaCenso({ p }: { p: PacienteGravado }) {
+  const internado = p.situacao !== 'ALTA'
+  const campos: { rot: string; val: string; mono?: boolean; largo?: boolean;
+                  semValor?: string }[] = [
+    { rot: 'Nome', val: nomeProprio(p.nome) },
+    { rot: 'Operadora', val: p.convenio ?? '' },
+    { rot: 'Senha', val: p.senha ?? '', mono: true },
+    { rot: 'Carteirinha', val: p.carteirinha ?? '', mono: true },
+    { rot: 'Data de nascimento', val: p.data_nascimento ?? '', mono: true },
+    { rot: 'Internação', val: dataHora(p.data_entrada, p.hora_entrada), mono: true },
+    // Internado não tem alta: dizer "não veio no censo" ali seria apontar uma
+    // falta onde não há nenhuma.
+    { rot: 'Alta', val: dataHora(p.data_alta, p.hora_alta), mono: true,
+      semValor: internado ? 'Internado' : undefined },
+    { rot: 'Acomodação', val: acomodacao(p.tipo_leito) },
+    { rot: 'Leito', val: p.leito_codigo ?? '' },
+    { rot: 'Médico assistente', val: p.medico ?? '' },
+    { rot: 'Diagnóstico', val: p.diagnostico ?? '', largo: true },
+  ]
+  return (
+    <div className="up-pac-ficha">
+      {campos.map((c) => (
+        <div key={c.rot} className={`up-pac-ficha-campo${c.largo ? ' largo' : ''}`}>
+          <div className="up-pac-ficha-rot">{c.rot}</div>
+          {c.val
+            ? <div className={`up-pac-ficha-val${c.mono ? ' mono' : ''}`}>{c.val}</div>
+            : <div className="up-pac-ficha-val vazio">{c.semValor ?? 'Não veio no censo'}</div>}
+        </div>
+      ))}
+    </div>
+  )
+}
 
 /** Sem acento e em minúsculas: quem procura "jose" tem de achar "JOSÉ". */
 function normalizar(v: string): string {
@@ -415,10 +504,22 @@ function Linhas({ pacientes, termo, onEditar, onRemover }: {
   /** Apaga o paciente do sistema. Aparece em TODA linha que tenha id. */
   onRemover?: (p: PacienteGravado) => void
 }) {
+  // Fichas abertas, por chave da linha. Várias ao mesmo tempo: comparar dois
+  // pacientes (mãe e recém-nascido, a mesma pessoa em duas linhas) é um uso real.
+  const [abertas, setAbertas] = useState<Set<string>>(() => new Set())
+  const alternar = (chave: string) => setAbertas((atual) => {
+    const nova = new Set(atual)
+    if (nova.has(chave)) nova.delete(chave)
+    else nova.add(chave)
+    return nova
+  })
   return (
     <>
       {pacientes.map((p, i) => {
         const id = identificacao(p)
+        const chave = `${p.atendimento ?? ''}-${p.id ?? ''}-${i}`
+        const aberta = abertas.has(chave)
+        const idFicha = `up-pac-ficha-${chave}`
         // `temProblema`, não `p.problema`: quem foi corrigido na modal volta com
         // `resolvido: true` e o `problema` do processamento INTACTO (ele é o
         // retrato de como o arquivo chegou, não some por edição). Testando só o
@@ -428,9 +529,17 @@ function Linhas({ pacientes, termo, onEditar, onRemover }: {
         // fizesse ir embora. Esta é a regra única de "tem alerta"; a linha tem
         // de obedecer à mesma que o resto da tela.
         const marcado = temProblema(p)
+        const classes = ['up-pac-linha', aberta && 'up-pac-aberta',
+          marcado && `up-pac-com-problema ${p.problema?.tipo}`].filter(Boolean).join(' ')
         return (
-          <tr key={`${p.atendimento ?? ''}-${i}`}
-              className={marcado ? `up-pac-com-problema ${p.problema?.tipo}` : undefined}>
+          <Fragment key={chave}>
+          {/* A linha inteira abre a ficha. Clique em botão (alerta, lixeira,
+              lápis, seta) faz só o que o botão faz; o teclado chega pela seta. */}
+          <tr className={classes}
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest('button, a, input, .up-pac-pop')) return
+                alternar(chave)
+              }}>
             {/* Nome sempre pelo `nomeProprio`: a gravação já normaliza (o backend
                 aplica a mesma regra), mas os censos chegam em CAIXA ALTA e um
                 resultado antigo — de cache ou de servidor ainda não atualizado —
@@ -468,15 +577,24 @@ function Linhas({ pacientes, termo, onEditar, onRemover }: {
             <td className="up-pac-cart" title={p.carteirinha ?? undefined}>
               {p.carteirinha ? <Realce texto={p.carteirinha} termo={termo} /> : null}
             </td>
+            {/* Senha em coluna própria: é a informação que a operadora pede
+                primeiro (a Bradesco, sobretudo). Na linha sem nome ela já
+                aparece como identificação, então não se repete aqui. */}
+            <td className="up-pac-senha" title={p.senha ?? undefined}>
+              {p.senha && p.nome ? <Realce texto={p.senha} termo={termo} /> : null}
+            </td>
             <td className="up-pac-leito">{p.leito_codigo || null}</td>
             <td className="up-pac-conv" title={p.convenio ?? undefined}>
               {p.convenio || null}
             </td>
             {/* A data e a cor saem da situação DA LINHA, não do grupo: lendo de
                 `p.situacao`, uma linha fora do grupo mostraria a data certa em
-                vez de ler `data_alta` de quem não tem alta. */}
+                vez de ler `data_alta` de quem não tem alta. A hora vem junto
+                quando o censo a trouxe. */}
             <td className={`up-pac-data ${p.situacao === 'ALTA' ? 'alta' : 'internado'}`}>
-              {(p.situacao === 'ALTA' ? p.data_alta : p.data_entrada) || null}
+              {(p.situacao === 'ALTA'
+                ? dataHora(p.data_alta, p.hora_alta)
+                : dataHora(p.data_entrada, p.hora_entrada)) || null}
             </td>
             {/* Lápis por linha.
                 Sem `id` o botão aparece DESABILITADO, não ausente: o id vem do
@@ -521,9 +639,26 @@ function Linhas({ pacientes, termo, onEditar, onRemover }: {
                     {IcoLapis}
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="up-pac-abrir"
+                  aria-expanded={aberta}
+                  aria-controls={idFicha}
+                  onClick={() => alternar(chave)}
+                  title={aberta ? 'Fechar a ficha' : 'Ver todos os campos do censo'}
+                  aria-label={`${aberta ? 'Fechar a ficha de' : 'Ver a ficha de'} ${nomeProprio(p.nome) || p.atendimento || 'paciente'}`}
+                >
+                  {IcoSeta}
+                </button>
               </div>
             </td>
           </tr>
+          {aberta && (
+            <tr className="up-pac-ficha-linha" id={idFicha}>
+              <td colSpan={8}><FichaCenso p={p} /></td>
+            </tr>
+          )}
+          </Fragment>
         )
       })}
     </>
@@ -584,6 +719,7 @@ function Secao({ deAlta, pacientes, total, termo, onEditar, onRemover, titulo }:
                 Juntos, a vista desce por uma faixa só ao conferir contra o
                 PDF, que também os imprime lado a lado. */}
             <th>Carteirinha</th>
+            <th>Senha</th>
             <th>Leito</th>
             <th>Convênio</th>
             {/* Cabeçalho neutro: a coluna traz entrada de quem está em leito
@@ -698,9 +834,11 @@ export function filtrarPacientes(lista: PacienteGravado[], termo: string): Pacie
   // A carteirinha entra na busca pelo mesmo motivo do atendimento: quem chega
   // com uma pendência da operadora na mão tem o número da carteirinha, não o
   // nome — e era justamente o caminho que a lista não atendia.
+  // A senha também: é o número que a operadora cita ao cobrar uma pendência.
   return lista.filter((p) => normalizar(identificacao(p)).includes(alvo)
     || normalizar(p.atendimento ?? '').includes(alvo)
-    || normalizar(p.carteirinha ?? '').includes(alvo))
+    || normalizar(p.carteirinha ?? '').includes(alvo)
+    || normalizar(p.senha ?? '').includes(alvo))
 }
 
 /** Tem alerta na linha? `resolvido` sai da conta: quem foi corrigido na modal
