@@ -1489,6 +1489,9 @@ export interface InternacaoDados {
   diagnostico?: string | null
   medico?: string | null
   idade?: string | null
+  /** Recém-nascido: 1 ou 0, calculado no servidor pelo nome ("RN de ..."), pela
+   *  idade ou pela data de nascimento (domain/recem_nascido.py). */
+  rn?: number | null
   sexo?: string | null
   dias?: number | null
   dias_sem_relatorio?: number | null

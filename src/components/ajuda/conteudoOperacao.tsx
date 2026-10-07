@@ -265,7 +265,7 @@ export function ModuloPaciente({ irPara }: Props) {
         <tr><Key>Senha de autorização</Key><td><Chip tom="positive" plain>Sim</Chip></td><td>É como o paciente é identificado quando o censo do hospital não traz o nome dele.</td></tr>
         <tr><Key>Carteirinha</Key><td><Chip tom="positive" plain>Sim</Chip></td><td>Número do beneficiário na operadora, quando o censo o informa.</td></tr>
         <tr><Key>Status</Key><td><Chip tom="positive" plain>Sim</Chip></td><td>Internado, alta, óbito ou transferido.</td></tr>
-        <tr><Key>Recém-nascido</Key><td><Chip tom="neutral" plain>Não</Chip></td><td>O sistema preenche a partir da idade.</td></tr>
+        <tr><Key>Recém-nascido</Key><td><Chip tom="neutral" plain>Não</Chip></td><td>O sistema marca quando o nome traz RN (como "RN de Maria"), quando a idade é de até 28 dias ou quando a data de nascimento é de até 28 dias antes da internação.</td></tr>
         <tr><Key>Atendimento</Key><td><Chip tom="positive" plain>Sim</Chip></td><td>Número do atendimento no hospital.</td></tr>
         <tr><Key>Tipo de leito</Key><td><Chip tom="positive" plain>Sim</Chip></td><td>Define o gatilho aplicado ao paciente.</td></tr>
         <tr><Key>Leito e código</Key><td><Chip tom="positive" plain>Sim</Chip></td><td></td></tr>

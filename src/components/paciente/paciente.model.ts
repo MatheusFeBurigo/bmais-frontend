@@ -11,9 +11,10 @@ export const LEITO_OPCOES = ['UTI', 'APARTAMENTO', 'ENFERMARIA']
 // manual encerra. Só técnico e admin escolhem ou tiram (`leitoHomecare`).
 export const LEITO_HOMECARE = 'HOMECARE'
 
-/** "RN" (recém-nascido) não vem tipado: deriva da idade. */
+/** Recém-nascido. A regra mora no servidor (nome "RN de ...", idade ou
+ *  nascimento) e chega pronta em `rn`; aqui só se escreve. */
 export function rnLabel(d: InternacaoDados): string {
-  return d.idade === '0' || d.idade === 'RN' ? 'SIM' : 'NÃO'
+  return d.rn ? 'SIM' : 'NÃO'
 }
 
 /** Data da alta, ou "PERMANECE" enquanto o paciente está internado.
