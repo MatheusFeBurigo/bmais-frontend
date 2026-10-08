@@ -284,7 +284,9 @@ export function ModuloPaciente({ irPara }: Props) {
         Lista os relatórios de auditoria já registrados, com contador. O botão{' '}
         <strong>Registrar</strong> abre o relatório completo numa janela. No alto ficam os dados do
         paciente; os relatórios anteriores continuam na timeline da ficha. A ordem é a do pedido:
-        primeiro a prorrogação, depois o que a sustenta.
+        primeiro a prorrogação, depois o que a sustenta. Cada seção reduz e expande pela seta ao
+        lado do título: a janela abre simples (prorrogação, visita e quadro clínico abertos) e as
+        seções fechadas mostram o resumo do que já está preenchido.
       </p>
       <ul>
         <li><strong>Prorrogação</strong>: marque <strong>Pedir prorrogação</strong>, adicione os
@@ -294,8 +296,9 @@ export function ModuloPaciente({ irPara }: Props) {
         <li><strong>Visita</strong>: a data, obrigatória e já com a data de hoje, o médico auditor
           e o enfermeiro auditor.</li>
         <li><strong>Internação</strong>: caráter (urgência ou eletivo), tipo de internação e as
-          acomodações utilizadas, com entrada e saída. Vem preenchida como no último relatório:
-          para registrar uma mudança, edite a acomodação atual, informe a saída e adicione a nova.</li>
+          acomodações utilizadas, com entrada e saída. Vem como no último relatório, com a
+          acomodação em que a ficha diz que o paciente está: para registrar uma mudança, edite a
+          acomodação atual, informe a saída e adicione a nova.</li>
         <li><strong>Quadro clínico</strong>: diagnóstico principal e secundário, opcionais, e o
           texto do relatório, obrigatório. O CID que o paciente ainda não tem passa a constar na
           ficha dele.</li>
@@ -321,7 +324,8 @@ export function ModuloPaciente({ irPara }: Props) {
         Cada relatório aparece como um cartão com borda colorida pelo papel de quem o registrou, com
         data e hora, autor, médico responsável, os CIDs informados e um resumo do que foi marcado
         e, quando há anexo, o botão de baixar o documento. Prorrogação e folha rosa valem quando o
-        relatório é aprovado.
+        relatório é aprovado. Clicar num relatório abre a ficha dele, só para leitura, com o que
+        foi preenchido em cada seção.
       </p>
 
       <h3>Timeline</h3>
@@ -329,7 +333,8 @@ export function ModuloPaciente({ irPara }: Props) {
         Histórico completo da internação, do mais recente para o mais antigo, com o marco de hoje no
         topo. Registra admissão, relatórios externos, pareceres internos, mudanças de status, altas
         automáticas, altas dadas à mão e desfeitas, edições manuais e pendências. Relatórios internos exibem o autor; os externos,
-        o médico responsável.
+        o médico responsável. Clicar num relatório (ou numa troca de acomodação) abre a ficha do
+        relatório.
       </p>
     </>
   )

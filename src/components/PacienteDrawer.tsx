@@ -15,6 +15,7 @@ import { BlocoAgendarVisita } from './paciente/BlocoAgendarVisita'
 import { BlocoRegistrarRelatorio } from './paciente/BlocoRegistrarRelatorio'
 import { SubtituloPaciente } from './paciente/SubtituloPaciente'
 import { useFormRelatorio } from './paciente/useFormRelatorio'
+import { FichaRelatorio, type AlvoRelatorio } from './paciente/relatorio/FichaRelatorio'
 import { TimelineEventos } from './timeline/TimelineEventos'
 import { useInternacaoDados, useInternacaoTimeline } from '../hooks/useInternacao'
 import { useEquipe } from '../hooks/useEquipe'
@@ -81,6 +82,9 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
   // Ficha do hospital sobre o drawer: quem lê a timeline muitas vezes precisa do
   // contato da casa (ligar para a enfermagem) sem perder o paciente aberto.
   const [hospitalAberto, setHospitalAberto] = useState(false)
+  // Ficha do relatório pelo clique na timeline. O analista não lê relatórios
+  // (mesma regra da ficha completa), então para ele o clique não abre nada.
+  const [relatorioAberto, setRelatorioAberto] = useState<AlvoRelatorio | null>(null)
 
   // O drawer cobre a tela com backdrop: a lista de trás fica congelada no ponto
   // em que estava, para o paciente aberto continuar sendo o mesmo ao fechar.
@@ -150,6 +154,9 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
                 carregando={timeline.isLoading}
                 erro={timeline.isError}
                 style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}
+                onAbrirRelatorio={podeVerFichaPaciente(role)
+                  ? (ev) => setRelatorioAberto({ relatorio_id: ev.relatorio_id, data: ev.data, autor: ev.autor })
+                  : undefined}
               />
 
               {(podeRegistrar || podeAgendar) && <div className="section-label" style={{ marginTop: 24 }}>Ações</div>}
@@ -176,6 +183,10 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
         </div>
       </div>
 
+      {relatorioAberto && (
+        <FichaRelatorio internacaoId={internacaoId} alvo={relatorioAberto} sobreposta
+                        onFechar={() => setRelatorioAberto(null)} />
+      )}
       {hospitalAberto && d?.hospital_key && (
         <HospitalDetalhesModal
           hospital={{ key: d.hospital_key, nome: d.hospital_nome || d.hospital_key }}

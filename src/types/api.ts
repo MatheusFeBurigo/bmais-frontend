@@ -1721,6 +1721,9 @@ export interface TimelineEvento {
   /** False: hospital fora do escopo do usuário; a passagem vem só resumida e
    *  a ficha de lá não abre. */
   acessivel?: boolean
+  /** O relatório que o evento mostra (RELATORIO e TROCA_ACOMODACAO, 08/10/2026):
+   *  o clique abre a ficha dele. Ausente nos eventos antigos. */
+  relatorio_id?: number | null
 }
 
 export interface InternacaoTimeline {

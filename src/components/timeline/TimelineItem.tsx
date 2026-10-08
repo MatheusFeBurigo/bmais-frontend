@@ -7,11 +7,17 @@ import { dataBR } from '../../lib/datas'
 import { apresentacaoDoEvento } from '../../lib/timeline'
 import type { TimelineEvento } from '../../types/api'
 
-export function TimelineItem({ ev, onDesvincular }: {
+/** Eventos que abrem a ficha do relatório ao clicar (08/10/2026). */
+const ABREM_RELATORIO = new Set(['RELATORIO', 'TROCA_ACOMODACAO'])
+
+export function TimelineItem({ ev, onDesvincular, onAbrirRelatorio }: {
   ev: TimelineEvento
   /** Presente só na ficha, para quem pode: o "Não é este paciente" na admissão
    *  de outra internação ligada a esta pessoa. */
   onDesvincular?: (internacaoId: number) => void
+  /** Abre a ficha do relatório do evento. O relatório de OUTRA internação da
+   *  pessoa não abre aqui (a lista é da internação aberta). */
+  onAbrirRelatorio?: (ev: TimelineEvento) => void
 }) {
   const { relatorio, cancelada, cardClass, dotClass, hora, chip } = apresentacaoDoEvento(ev)
   // Relatório: marcador na cor do papel de quem registrou, a mesma do chip.
@@ -22,9 +28,21 @@ export function TimelineItem({ ev, onDesvincular }: {
   // Só a admissão carrega as ações da outra internação: repeti-las em cada
   // relatório de lá encheria a timeline de links iguais.
   const acoesDaOutra = ev.outra_internacao && ev.tipo === 'ADMISSAO' && ev.internacao_id != null
+  const abre = Boolean(onAbrirRelatorio) && ABREM_RELATORIO.has(ev.tipo) && !ev.outra_internacao
 
   return (
-    <div className={classes}>
+    <div
+      className={abre ? `${classes} tl-clicavel` : classes}
+      {...(abre ? {
+        role: 'button',
+        tabIndex: 0,
+        title: 'Abrir o relatório',
+        onClick: () => onAbrirRelatorio!(ev),
+        onKeyDown: (e: React.KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrirRelatorio!(ev) }
+        },
+      } : {})}
+    >
       {/* Cancelada troca o marcador redondo por um X: o card já muda de cor
           (cinza), mas o X deixa o estado "não vai mais acontecer" legível sem
           depender só da cor. */}

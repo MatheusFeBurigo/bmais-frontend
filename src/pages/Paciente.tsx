@@ -19,6 +19,7 @@ import { AlertaInternacaoMaisRecente, AlertaSugestoesPessoa } from '../component
 import { CardCids } from '../components/paciente/CardCids'
 import { CardDadosPaciente } from '../components/paciente/CardDadosPaciente'
 import { CardRelatorios } from '../components/paciente/CardRelatorios'
+import { FichaRelatorio, type AlvoRelatorio } from '../components/paciente/relatorio/FichaRelatorio'
 import { KpisPaciente } from '../components/paciente/KpisPaciente'
 import { SubtituloPaciente } from '../components/paciente/SubtituloPaciente'
 import { useEdicaoFicha } from '../components/paciente/useEdicaoFicha'
@@ -56,6 +57,8 @@ export default function Paciente() {
   )
 
   const [toast, setToast] = useState<string | null>(null)
+  // Ficha do relatório aberta pelo clique na timeline ou no card Relatórios.
+  const [relatorioAberto, setRelatorioAberto] = useState<AlvoRelatorio | null>(null)
   // Ficha do hospital, aberta pelo nome no subtítulo da página.
   const [hospitalAberto, setHospitalAberto] = useState(false)
   const edicao = useEdicaoFicha(internacaoId, d, { onSalvo: setToast })
@@ -163,6 +166,7 @@ export default function Paciente() {
             folhaRosa={{ acomodacao: d?.prorrogacao_acomodacao || d?.tipo_leito }}
             onRegistrado={(pendente) => setToast(pendente ? '✓ Relatório enviado para aprovação' : '✓ Relatório registrado')}
             onAviso={setToast}
+            onAbrirRelatorio={(id) => setRelatorioAberto({ relatorio_id: id })}
           />
 
           <div className="card" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -182,6 +186,7 @@ export default function Paciente() {
                 erro={timeline.isError}
                 className="tl tl-scroll"
                 onDesvincular={podeVincular ? setDesligar : undefined}
+                onAbrirRelatorio={(ev) => setRelatorioAberto({ relatorio_id: ev.relatorio_id, data: ev.data, autor: ev.autor })}
               />
             </div>
           </div>
@@ -219,6 +224,10 @@ export default function Paciente() {
         </ConfirmarModal>
       )}
 
+      {relatorioAberto && (
+        <FichaRelatorio internacaoId={internacaoId} alvo={relatorioAberto}
+                        onFechar={() => setRelatorioAberto(null)} />
+      )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </div>
   )

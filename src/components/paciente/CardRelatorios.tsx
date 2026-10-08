@@ -24,10 +24,16 @@ function EtiquetaAprovacao({ r }: { r: RelatorioItem }) {
 
 // Um relatório: quando/quem registrou + a observação escrita, com a borda na cor
 // do papel de quem registrou.
-function RelatorioCard({ r }: { r: RelatorioItem }) {
+function RelatorioCard({ r, onAbrir }: { r: RelatorioItem; onAbrir?: () => void }) {
   return (
     <div
+      role={onAbrir ? 'button' : undefined}
+      tabIndex={onAbrir ? 0 : undefined}
+      title={onAbrir ? 'Abrir o relatório' : undefined}
+      onClick={onAbrir}
+      onKeyDown={onAbrir ? (e) => { if (e.key === 'Enter') onAbrir() } : undefined}
       style={{
+        cursor: onAbrir ? 'pointer' : undefined,
         border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px',
         borderLeft: `3px solid ${roleVisual(r.autor_role).color}`, background: 'var(--surface)',
       }}
@@ -77,7 +83,7 @@ function RelatorioCard({ r }: { r: RelatorioItem }) {
 
 export function CardRelatorios({
   internacaoId, paciente, relatorios, carregando, erro, podeRegistrar, medicos, enfermeiros,
-  onRegistrado, onAviso, prorrogacao, folhaRosa,
+  onRegistrado, onAviso, onAbrirRelatorio, prorrogacao, folhaRosa,
 }: {
   internacaoId: number
   /** Cabeçalho da modal, botão de alta e acomodação sugerida. */
@@ -91,6 +97,8 @@ export function CardRelatorios({
   onRegistrado: (pendente: boolean) => void
   /** Mensagem da ficha (toast): a alta dada pelo botão da modal. */
   onAviso: (msg: string) => void
+  /** Clique num relatório da lista: abre a ficha dele. */
+  onAbrirRelatorio?: (relatorioId: number) => void
   /** Prorrogação vigente do paciente: sugere o 1º período do novo pedido. */
   prorrogacao: ContextoProrrogacao
   /** Onde o paciente está: sugere a acomodação "de" da folha rosa. */
@@ -152,7 +160,10 @@ export function CardRelatorios({
         )}
         {relatorios && relatorios.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {relatorios.map((r) => <RelatorioCard key={r.id} r={r} />)}
+            {relatorios.map((r) => (
+              <RelatorioCard key={r.id} r={r}
+                             onAbrir={onAbrirRelatorio ? () => onAbrirRelatorio(r.id) : undefined} />
+            ))}
           </div>
         )}
       </div>
