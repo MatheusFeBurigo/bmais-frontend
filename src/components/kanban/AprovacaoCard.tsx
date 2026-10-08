@@ -14,9 +14,12 @@ import { Modal, OpAvatar, Spinner } from '../ui'
 import { AutorChip } from '../StatusBadge'
 import MedicoCombobox from '../MedicoCombobox'
 import { CalendarioVisita } from './CalendarioVisita'
+import { ResumoFolhaRosa } from '../paciente/SecaoFolhaRosa'
 import { ResumoProrrogacao } from '../paciente/SecaoProrrogacao'
+import { ResumoDetalhes } from '../paciente/relatorio/ResumoDetalhes'
 import { nomeProprio } from '../../lib/texto'
 import { dataBR, dataHora } from '../../lib/datas'
+import { etiquetaProrrogacao } from '../../lib/prorrogacao'
 import { useAprovarRelatorio, useDevolverRelatorio, useReenviarRelatorio } from '../../hooks/useKanban'
 
 const pararClique = (e: React.MouseEvent) => e.stopPropagation()
@@ -140,6 +143,8 @@ export const AprovacaoCard = memo(function AprovacaoCard({
   const [erroDevolver, setErroDevolver] = useState<string | null>(null)
   const nome = nomeProprio(t.titulo) || t.titulo
   const ocupado = aprovar.isPending || devolver.isPending
+  // O paciente já está prorrogado (pedido aprovado antes deste relatório).
+  const prorrogado = etiquetaProrrogacao(t.prorrogacao_ate, t.prorrogacao_pausada)
 
   function onAprovar(e: React.MouseEvent) {
     e.stopPropagation()
@@ -170,12 +175,23 @@ export const AprovacaoCard = memo(function AprovacaoCard({
         <span className="kb-card-nome">{nome}</span>
       </div>
       {t.hospital_nome && <div className="kb-card-meta"><span>{t.hospital_nome}</span></div>}
+      {prorrogado && (
+        <div className="kb-tags">
+          <span className="kb-tag" title={prorrogado.titulo} style={prorrogado.pausada
+            ? { color: 'var(--muted)', background: 'var(--surface-3)' }
+            : { color: 'var(--caution)', background: 'var(--caution-bg)' }}>
+            {prorrogado.texto}
+          </span>
+        </div>
+      )}
 
       <div className="ap-rel">
         <div className="ap-rel-linha">
           Visita {dataBR(rel.data_visita) || '—'}{rel.medico ? ` · ${rel.medico}` : ''}
         </div>
         {rel.prorrogacao && <ResumoProrrogacao p={rel.prorrogacao} />}
+        {rel.folha_rosa && <ResumoFolhaRosa f={rel.folha_rosa} />}
+        {rel.detalhes && <ResumoDetalhes d={rel.detalhes} />}
         {rel.descricao
           ? <div className={`ap-rel-texto${lendo || !longo ? '' : ' recolhido'}`}>{rel.descricao}</div>
           : <div className="ap-rel-texto t-muted">Sem observação.</div>}

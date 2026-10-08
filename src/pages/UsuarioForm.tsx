@@ -7,6 +7,9 @@
 // ok ao lado do título e a próxima abre sozinha; qualquer etapa pode ser
 // reaberta clicando no título. Na edição tudo já vem preenchido, então as
 // etapas começam concluídas e só a primeira aberta.
+//
+// A etapa de escopo depende do papel: o técnico escolhe cidades e hospitais; o
+// operacional escolhe OPERADORAS e atende todos os hospitais delas (0053).
 import { useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams, Navigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -16,11 +19,13 @@ import { usePageHeader } from '../components/PageHeader'
 import { LoadingState } from '../components/ui'
 import Toast from '../components/Toast'
 import MultiSelectHospitais from '../components/MultiSelectHospitais'
+import SeletorOperadoras from '../components/SeletorOperadoras'
+import { operadorasDosHospitais } from '../lib/operadorasDosHospitais'
 import { useUsuarios } from '../hooks/useUsuarios'
 import { useTodosHospitais } from '../hooks/useEquipe'
 import { criarUsuario, atualizarUsuario, redefinirSenhaUsuario } from '../services/usuarios.service'
 import { invalidarPorEvento } from '../lib/invalidation'
-import { ROLE_LABEL, ROLE_DESC, ROLES_ORDEM, temEscopoHospital } from '../lib/usuarioRoles'
+import { ROLE_LABEL, ROLE_DESC, ROLES_ORDEM, temEscopoHospital, temEscopoOperadora } from '../lib/usuarioRoles'
 import type { UserRole } from '../types/api'
 
 type Passo = 'conta' | 'nivel' | 'escopo'
@@ -33,6 +38,7 @@ const svg = (d: React.ReactNode, size = 18) => (
 const IconConta = svg(<><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></>)
 const IconNivel = svg(<><path d="M12 3 4 6v6c0 4.6 3.4 8.3 8 9 4.6-.7 8-4.4 8-9V6l-8-3z" /><path d="m9 12 2 2 4-4" /></>)
 const IconEscopo = svg(<><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></>)
+const IconOperadoras = svg(<><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M3 13h18" /></>)
 const IconOk = svg(<path d="m5 12 5 5 9-10" />, 14)
 const IconSeta = svg(<path d="m6 9 6 6 6-6" />, 16)
 const IconEmail = svg(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></>, 16)
@@ -40,6 +46,8 @@ const IconChave = svg(<><rect x="4" y="11" width="16" height="10" rx="2" /><path
 const IconPessoa = svg(<><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></>, 16)
 
 const emailValido = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())
+/** O papel tem etapa de escopo (hospitais do técnico ou operadoras do operacional). */
+const temArea = (r: UserRole) => temEscopoHospital(r) || temEscopoOperadora(r)
 
 export default function UsuarioForm() {
   const { id } = useParams<{ id: string }>()
@@ -58,6 +66,10 @@ export default function UsuarioForm() {
 
   const { data: usuariosData, isLoading: carregandoUsuarios } = useUsuarios(gestor && editando)
   const { data: hospitais } = useTodosHospitais(gestor)
+  const nomeOperadora = useMemo(
+    () => new Map(operadorasDosHospitais(hospitais ?? []).map((o) => [o.key, o.nome])),
+    [hospitais],
+  )
   const usuario = editando ? usuariosData?.usuarios.find((u) => u.user_id === id) : undefined
 
   const [nome, setNome] = useState('')
@@ -71,6 +83,7 @@ export default function UsuarioForm() {
   // padrão pré-marcado, a etapa nasceria "ok" sem ninguém ter decidido nada.
   const [role, setRole] = useState<UserRole | null>(null)
   const [hospitaisSel, setHospitaisSel] = useState<string[]>([])
+  const [operadorasSel, setOperadorasSel] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [aberto, setAberto] = useState<Passo | null>('conta')
@@ -84,6 +97,7 @@ export default function UsuarioForm() {
     setNome(usuario.nome ?? '')
     setRole(usuario.role)
     setHospitaisSel(usuario.hospitais ?? [])
+    setOperadorasSel(usuario.operadoras ?? [])
     setVisitados(new Set<Passo>(['conta', 'nivel', 'escopo']))
     setAplicado(usuario.user_id)
   }
@@ -109,7 +123,8 @@ export default function UsuarioForm() {
     return <div className="empty-state">Somente um administrador pode alterar esta conta.</div>
   }
 
-  const temEscopo = role !== null && temEscopoHospital(role)
+  const temEscopo = role !== null && temArea(role)
+  const porOperadora = role !== null && temEscopoOperadora(role)
   const passos: Passo[] = temEscopo ? ['conta', 'nivel', 'escopo'] : ['conta', 'nivel']
 
   // O que conclui cada etapa (o obrigatório dela).
@@ -142,7 +157,7 @@ export default function UsuarioForm() {
     // Um clique já é a decisão inteira da etapa: avança sozinho. A lista de
     // passos ainda é a do papel anterior, então decide pelo papel escolhido.
     setVisitados((v) => new Set(v).add('nivel'))
-    setAberto(temEscopoHospital(r) ? 'escopo' : null)
+    setAberto(temArea(r) ? 'escopo' : null)
   }
 
   // Etapa da conta: avança quando o obrigatório está completo E o foco sai
@@ -166,15 +181,17 @@ export default function UsuarioForm() {
     if (!role) { setToast('Escolha o nível de acesso'); setAberto('nivel'); return }
     setSaving(true)
     try {
-      // Só os papéis operacionais (administrativo/técnico) têm escopo por hospital;
-      // os demais veem tudo (envia vazio para não deixar uma restrição "invisível" gravada).
-      const escopo = temEscopoHospital(role) ? hospitaisSel : []
+      // Técnico grava hospitais; operacional, operadoras; os demais veem tudo.
+      // O que não é do papel vai vazio, para não deixar uma restrição
+      // "invisível" gravada (trocar de técnico para operacional e voltar, p. ex.).
+      const hospitaisArea = temEscopoHospital(role) ? hospitaisSel : []
+      const operadorasArea = temEscopoOperadora(role) ? operadorasSel : []
       if (editando) {
-        await atualizarUsuario(id!, { role, hospitais: escopo, nome: nome.trim() })
+        await atualizarUsuario(id!, { role, hospitais: hospitaisArea, operadoras: operadorasArea, nome: nome.trim() })
         // Só redefine a senha se o admin preencheu o campo (vazio = mantém a atual).
         if (novaSenha) await redefinirSenhaUsuario(id!, novaSenha)
       } else {
-        await criarUsuario(email, password, role, escopo, nome)
+        await criarUsuario(email, password, role, hospitaisArea, nome, operadorasArea)
       }
       // Evento de domínio (não a key crua): criar/editar usuário também muda a
       // trilha de auditoria, e o evento já invalida `auditoria`+`auditoriaResumo`.
@@ -186,16 +203,26 @@ export default function UsuarioForm() {
     }
   }
 
+  // Até 3 operadoras cabem pelo nome no resumo; daí em diante, a contagem.
+  const resumoOperadoras = operadorasSel.length === 0
+    ? 'Todas as operadoras'
+    : operadorasSel.length <= 3
+      ? operadorasSel.map((k) => nomeOperadora.get(k) ?? k).join(', ')
+      : `${operadorasSel.length} operadoras`
   // Resumo que aparece no título da etapa fechada.
   const resumo: Record<Passo, string> = {
     conta: editando ? (nome.trim() || usuario?.email || '') : (email.trim() || 'E-mail e senha'),
     nivel: role ? ROLE_LABEL[role] : 'Escolha um nível',
-    escopo: hospitaisSel.length ? `${new Set(hospitaisSel).size} vínculo(s) de hospital` : 'Todos os hospitais',
+    escopo: porOperadora
+      ? resumoOperadoras
+      : hospitaisSel.length ? `${new Set(hospitaisSel).size} vínculo(s) de hospital` : 'Todos os hospitais',
   }
   const cabecalho: Record<Passo, { titulo: string; icone: React.ReactNode }> = {
     conta: { titulo: editando ? 'Dados da conta' : 'Dados de acesso', icone: IconConta },
     nivel: { titulo: 'Nível de acesso', icone: IconNivel },
-    escopo: { titulo: 'Cidades e hospitais', icone: IconEscopo },
+    escopo: porOperadora
+      ? { titulo: 'Operadoras', icone: IconOperadoras }
+      : { titulo: 'Cidades e hospitais', icone: IconEscopo },
   }
 
   function Etapa({ p, children }: { p: Passo; children: React.ReactNode }) {
@@ -308,12 +335,14 @@ export default function UsuarioForm() {
           ),
         })}
 
-        {/* Escopo de dados — só para papéis operacionais (gestor/diretor/admin veem tudo). */}
+        {/* Escopo de dados: operadoras para o operacional, cidades e hospitais
+            para o técnico (gestor/diretor/admin veem tudo). */}
         {temEscopo && Etapa({
           p: 'escopo',
-          children: (
-            <MultiSelectHospitais hospitais={hospitais ?? []} selecionados={hospitaisSel} onChange={setHospitaisSel} />
-          ),
+          children: porOperadora
+            ? <SeletorOperadoras hospitais={hospitais ?? []} selecionados={operadorasSel}
+                onChange={setOperadorasSel} loading={!hospitais} />
+            : <MultiSelectHospitais hospitais={hospitais ?? []} selecionados={hospitaisSel} onChange={setHospitaisSel} />,
         })}
 
         <div className="uf-rodape">

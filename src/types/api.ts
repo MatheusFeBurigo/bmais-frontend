@@ -68,6 +68,8 @@ export interface Internacao {
   data_entrada?: string | null
   /** Preenchida quando o paciente ja recebeu alta (lista do filtro "Altas"). */
   data_alta?: string | null
+  /** Chave do motivo da alta (`lib/motivoAlta`); só a alta manual tem, por enquanto. */
+  motivo_alta?: string | null
   data_ultima_visita?: string | null
   status?: string
   status_relatorio?: string
@@ -506,6 +508,9 @@ export interface Usuario {
   ativo?: boolean
   /** Keys dos hospitais associados. Vazio = sem restrição (vê todos). */
   hospitais?: string[]
+  /** Só o operacional: keys das operadoras que ele atende, em todos os
+   *  hospitais delas (0053). Vazio = vê todas. */
+  operadoras?: string[]
 }
 
 export interface UsuariosPayload {
@@ -597,6 +602,8 @@ export interface OperadoraRegras {
   dias_longa_avancada: number
   usar_longa_permanencia?: boolean
   fallback_sem_leito: string
+  /** Censo a cada N dias = N - 1. 0 = todo dia. */
+  censo_tolerancia_dias: number
   responsaveis?: string
   ativo: boolean
 }
@@ -614,7 +621,7 @@ export interface RegrasCobranca {
   usar_longa_permanencia: boolean
   /** Hospital não manda censo desta operadora: sai do quadro e não é cobrado. */
   censo_dispensado: boolean
-  /** Dias de folga antes de o censo contar como atrasado. */
+  /** Censo a cada N dias = N - 1. 0 = todo dia (atrasa no dia seguinte). */
   censo_tolerancia_dias: number
   /** Dias em que o censo é exigido, 0 = segunda ... 6 = domingo. */
   censo_dias_semana: number[]
@@ -826,6 +833,9 @@ export interface PacienteDia {
   faixa: '0_9' | '10_29' | '30p'
   situacao: 'ALTA' | 'INTERNADO'
   data_entrada?: string
+  /** Só nas altas: "dd/mm/aaaa" e a chave do motivo (None = sem motivo). */
+  data_alta?: string | null
+  motivo_alta?: string | null
 }
 
 export interface GestorMetrics {
@@ -849,6 +859,8 @@ export interface GestorMetrics {
   por_hospital: GestorGrupo[]
   por_regiao: GestorGrupo[]
   pacientes_dia: PacienteDia[]
+  /** Altas da lista por motivo, maior primeiro. `motivo` "" = alta sem motivo. */
+  altas_por_motivo?: { motivo: string; total: number }[]
 }
 
 export interface GestorFiltros {
@@ -902,6 +914,110 @@ export interface PedidoProrrogacao {
 export interface CatalogosProrrogacao {
   acomodacoes: { id: number; nome: string; grupo: string }[]
   justificativas: { codigo: string; descricao: string }[]
+  /** A 0052 está no banco: sem ela a ficha esconde a seção da folha rosa. */
+  folha_rosa?: boolean
+  /** A 0054 está no banco: sem ela a modal esconde os blocos do relatório completo. */
+  detalhes?: boolean
+}
+
+// ── Relatório completo da visita (0054) ───────────────────────────────────
+// Chaves dos catálogos em lib/relatorioDetalhes.ts (espelho de
+// domain/relatorio_detalhes.py).
+
+/** Procedimento realizado ou negado: código e nome do catálogo TUSS. */
+export interface ProcedimentoRelatorio {
+  codigo: string
+  nome: string
+  qtde: number
+  data?: string | null
+}
+
+export interface AltoCustoRelatorio {
+  tipo: string
+  medicacao?: string | null
+  dose?: string | null
+  data_inicio?: string | null
+  data_fim?: string | null
+}
+
+export interface EventoAdversoRelatorio {
+  data: string
+  descricao: string
+}
+
+/** Acomodação utilizada: entrada e, quando saiu, a saída (vazia = ainda nela). */
+export interface AcomodacaoUtilizada {
+  acomodacao: string
+  data_entrada: string
+  data_saida?: string | null
+}
+
+export interface MedicacaoNegadaRelatorio {
+  nome: string
+  qtde?: number | null
+  unidade?: string | null
+  data_inicio?: string | null
+  data_fim?: string | null
+}
+
+/** Troca de procedimento negociada com o hospital (códigos e nomes TUSS). */
+export interface TrocaProcedimentoRelatorio {
+  codigo_de: string
+  nome_de: string
+  codigo_para: string
+  nome_para: string
+  data?: string | null
+}
+
+export interface GlosaRelatorio {
+  acomodacao: string
+  diarias: number
+  data_inicio?: string | null
+  data_fim?: string | null
+}
+
+/** O relatório completo gravado: classificação da internação e os blocos
+ *  marcados (só os preenchidos vêm). */
+export interface DetalhesRelatorio {
+  carater?: 'U' | 'E' | null
+  tipo_internacao?: string | null
+  /** A acomodação atual (tirada de `acomodacoes`) e a entrada nela. */
+  acomodacao?: string | null
+  acomodacao_desde?: string | null
+  acomodacoes?: AcomodacaoUtilizada[]
+  enfermeiro?: string | null
+  /** Código do diagnóstico principal (um dos `cids` do relatório). */
+  cid_principal?: string | null
+  procedimentos?: ProcedimentoRelatorio[]
+  alto_custo?: AltoCustoRelatorio[]
+  evento_adverso?: EventoAdversoRelatorio
+  glosas?: GlosaRelatorio[]
+  medicacoes_negadas?: MedicacaoNegadaRelatorio[]
+  procedimentos_negados?: ProcedimentoRelatorio[]
+  trocas_procedimento?: TrocaProcedimentoRelatorio[]
+}
+
+/** Uma linha do catálogo TUSS (GET /api/tuss). */
+export interface ProcedimentoTuss {
+  codigo: string
+  nome: string
+}
+
+// ── Folha rosa (0052) ─────────────────────────────────────────────────────
+/** Aceite do hospital na folha rosa (backend: domain/folha_rosa.ACEITES). */
+export type AceiteFolhaRosa = 'sim' | 'nao' | 'aguardando'
+
+/** O acordo de custo evitado com o hospital, gravado no relatório: a internação
+ *  segue em `de` e o hospital cobra `para` por `diarias` negociadas. */
+export interface FolhaRosa {
+  de: string
+  para: string
+  diarias: number
+  /** Período (ISO), opcional. */
+  data_inicio?: string | null
+  data_fim?: string | null
+  aceite: AceiteFolhaRosa
+  obs?: string | null
 }
 
 /** Situação da prorrogação vigente do paciente (backend: domain/prorrogacao.situacao). */
@@ -924,12 +1040,42 @@ export interface RelatorioEmAprovacao {
   tem_anexo?: boolean
   /** Pedido de prorrogação; esses cards vêm primeiro na coluna. */
   prorrogacao?: PedidoProrrogacao | null
+  /** Folha rosa negociada neste relatório. */
+  folha_rosa?: FolhaRosa | null
+  /** Relatório completo (0054): classificação e blocos marcados. */
+  detalhes?: DetalhesRelatorio | null
 }
 
 /** Coluna do fluxo de censos: um card por HOSPITAL com internado ativo, na
  *  coluna que a cobertura do último censo decide (backend: cobrancas_censo.classificar). */
 export type EstadoCenso =
   | 'censos_atrasados' | 'aguardando_censo' | 'aguardando_retorno' | 'censos_processados'
+
+/** Um evento da timeline do card de censo (GET /kanban/censo/{key}/timeline):
+ *  uma anotação (o que aconteceu num movimento, ou avulsa) ou um censo recebido. */
+export interface CensoEvento {
+  tipo: 'COBRADO' | 'ATUALIZADO' | 'COBRANCA_DESFEITA' | 'ATUALIZADO_DESFEITO' | 'NOTA'
+    | 'CENSO_RECEBIDO' | string
+  titulo: string
+  /** Texto da anotação. Ausente em CENSO_RECEBIDO. */
+  texto?: string | null
+  /** CENSO_RECEBIDO: dia a que o censo se refere. */
+  data_censo?: string | null
+  /** Instante (ISO com fuso). A tela mostra no fuso de quem lê. */
+  em: string
+  autor?: string | null
+  autor_role?: string | null
+}
+
+export interface CensoTimeline {
+  hospital_key: string
+  operadora_key?: string | null
+  /** Janela da timeline, contando hoje (15 por enquanto). */
+  dias: number
+  desde: string
+  /** Do mais antigo ao mais novo, como a timeline do paciente. */
+  eventos: CensoEvento[]
+}
 
 /** Relatório do auditor externo a analisar (card da coluna analise_tecnica). */
 export interface RelatorioExterno {
@@ -1513,6 +1659,9 @@ export interface InternacaoDados {
   /** De onde veio a alta: do censo do hospital, inferida pela ausência no
    *  censo, ou dada à mão. Só `manual` e `inferida` podem ser desfeitas. */
   alta_origem?: 'censo' | 'inferida' | 'manual' | null
+  /** Chave do motivo da alta (`lib/motivoAlta`). Só a alta manual tem, por
+   *  enquanto; a do censo e a inferida chegam sem. */
+  motivo_alta?: string | null
   status?: string | null
   status_relatorio?: string | null
   longa_10?: boolean
@@ -1561,6 +1710,8 @@ export interface TimelineEvento {
   status_visita?: string | null
   /** Horário da visita ("HH:MM"), migration 0035. Só em VISITA_AGENDADA. */
   hora?: string | null
+  /** Relatório com folha rosa (0052): o card vai rosa. Só em RELATORIO. */
+  folha_rosa?: boolean
   /** Ficha do paciente (0049): o evento é de OUTRA internação da mesma pessoa
    *  (outro hospital, reinternação). Ausente nos eventos da internação aberta. */
   outra_internacao?: boolean
@@ -1624,6 +1775,10 @@ export interface RelatorioItem {
   devolucao_motivo?: string | null
   /** Pedido de prorrogação deste relatório. */
   prorrogacao?: PedidoProrrogacao | null
+  /** Folha rosa negociada neste relatório. */
+  folha_rosa?: FolhaRosa | null
+  /** Relatório completo (0054): classificação e blocos marcados. */
+  detalhes?: DetalhesRelatorio | null
 }
 
 export interface InternacaoRelatorios {

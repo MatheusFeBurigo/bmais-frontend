@@ -91,10 +91,12 @@ export function useGestorView() {
 
   const visiveis = useMemo(() => {
     const lista = m?.pacientes_dia ?? []
-    if (!faixa) return lista
     if (faixa === 'altas') return lista.filter((p) => p.situacao === 'ALTA')
+    // Sem dia escolhido a lista traz também as altas de hoje (para o "Altas do
+    // Dia"), mas "Todos" segue sendo "Pacientes internados", como diz o título.
+    if (!faixa) return periodoAtivo ? lista : lista.filter((p) => p.situacao === 'INTERNADO')
     return lista.filter((p) => p.faixa === faixa && p.situacao === 'INTERNADO')
-  }, [m, faixa])
+  }, [m, faixa, periodoAtivo])
 
   // Todos os recortes ativos como chips removíveis — incluindo o dia. Cada clique
   // num gráfico (operadora/hospital/região/faixa) ou num dia gera o chip aqui.

@@ -8,7 +8,7 @@
 // porque a pastilha que ele explica aparece em praticamente toda tela.
 import { useState } from 'react'
 import type { UserRole } from '../../types/api'
-import { ROLE_LABEL, temEscopoHospital } from '../../lib/usuarioRoles'
+import { ROLE_LABEL, temEscopoHospital, temEscopoOperadora } from '../../lib/usuarioRoles'
 import { Callout, Chip, Key, Metric, Metrics, SoGestao, Tabela } from './blocos'
 import { ComoFazer, Tela, type PassoAjuda } from './replica'
 import { PAPEIS_CADASTRO } from './acessoAjuda'
@@ -33,7 +33,8 @@ const PARA_QUEM: Partial<Record<UserRole, string>> = {
 }
 
 function passosDaConta(papel: UserRole): PassoAjuda[] {
-  const escopo = temEscopoHospital(papel)
+  const porOperadora = temEscopoOperadora(papel)
+  const escopo = temEscopoHospital(papel) || porOperadora
   const passos: PassoAjuda[] = [
     { n: 1, titulo: 'Clique em Novo usuário', corpo: <>Na aba <strong>Usuários de acesso</strong> da tela Operações. Abre a página de cadastro da conta.</> },
     { n: 2, titulo: 'Preencha os Dados de acesso', corpo: <>Nome, e-mail e senha, de no mínimo 6 caracteres. A pessoa entra com esse e-mail e essa senha. O e-mail não pode ser trocado depois; a senha, sim, pelo botão <strong>Senha</strong> da lista. <strong>Continuar</strong> (ou Enter) fecha a etapa com um ok e abre a próxima.</> },
@@ -43,14 +44,22 @@ function passosDaConta(papel: UserRole): PassoAjuda[] {
       corpo: (
         <>
           {PARA_QUEM[papel]} Marcar já conclui a etapa.{' '}
-          {escopo
-            ? <>Este papel <strong>tem escopo por hospital</strong>: a etapa de cidades e hospitais abre em seguida.</>
-            : <>Este papel <strong>não tem escopo por hospital</strong>: enxerga a operação inteira, e a etapa de hospitais não aparece.</>}
+          {porOperadora
+            ? <>Este papel <strong>tem escopo por operadora</strong>: a etapa de operadoras abre em seguida.</>
+            : escopo
+              ? <>Este papel <strong>tem escopo por hospital</strong>: a etapa de cidades e hospitais abre em seguida.</>
+              : <>Este papel <strong>não tem escopo</strong>: enxerga a operação inteira, e a etapa de hospitais ou operadoras não aparece.</>}
         </>
       ),
     },
   ]
-  if (escopo) {
+  if (porOperadora) {
+    passos.push({
+      n: 4,
+      titulo: 'Escolha as operadoras',
+      corpo: <>A pessoa atende todos os hospitais das operadoras marcadas e verá só os pacientes, censos e tarefas delas. Num hospital que atende várias operadoras, ela vê só os pacientes das que foram marcadas. <strong>Sem nenhuma marcada, ela vê a operação inteira.</strong></>,
+    })
+  } else if (escopo) {
     passos.push({
       n: 4,
       titulo: 'Escolha as cidades e os hospitais',
@@ -60,18 +69,19 @@ function passosDaConta(papel: UserRole): PassoAjuda[] {
   passos.push({
     n: passos.length + 1,
     titulo: 'Clique em Criar usuário',
-    corpo: <>A conta já pode entrar. O papel e os hospitais podem ser mudados depois pelo botão <strong>Editar</strong> da lista.</>,
+    corpo: <>A conta já pode entrar. {porOperadora ? 'O papel e as operadoras' : escopo ? 'O papel e os hospitais' : 'O papel'} podem ser mudados depois pelo botão <strong>Editar</strong> da lista.</>,
   })
   return passos
 }
 
 /** "Criar conta para a equipe interna", com a escolha do tipo de usuário: a
  *  réplica e os passos mudam conforme o papel, porque o formulário real muda
- *  (o escopo por hospital só existe para técnico e administrativo). */
+ *  (o técnico escolhe hospitais e o operacional, operadoras). */
 function CadastroDeConta() {
   const [papel, setPapel] = useState<UserRole>('tecnico')
   const passos = passosDaConta(papel)
-  const escopo = temEscopoHospital(papel)
+  const porOperadora = temEscopoOperadora(papel)
+  const escopo = temEscopoHospital(papel) || porOperadora
   return (
     <>
       <ComoFazer titulo={`Criar uma conta de ${ROLE_LABEL[papel]}`} passos={passos}>
@@ -94,14 +104,16 @@ function CadastroDeConta() {
         </Tela>
         <Tela nome="Novo usuário de acesso" largura={720}
           descricao={escopo
-            ? `Dados de acesso concluídos. ${ROLE_LABEL[papel]} tem escopo de cidades e hospitais.`
+            ? `Dados de acesso concluídos. ${ROLE_LABEL[papel]} tem escopo de ${porOperadora ? 'operadoras' : 'cidades e hospitais'}.`
             : `Dados de acesso concluídos. ${ROLE_LABEL[papel]} não tem escopo: enxerga a operação inteira.`}>
           <ReplicaNovoUsuario papel={papel} aberta="nivel"
             marcas={escopo ? { papel: 3 } : { papel: 3, criar: 4 }} />
         </Tela>
         {escopo && (
           <Tela nome="Novo usuário de acesso" largura={720}
-            descricao="Última etapa: as cidades e os hospitais que a pessoa vai enxergar.">
+            descricao={porOperadora
+              ? 'Última etapa: as operadoras que a pessoa vai atender.'
+              : 'Última etapa: as cidades e os hospitais que a pessoa vai enxergar.'}>
             <ReplicaNovoUsuario papel={papel} aberta="escopo" marcas={{ escopo: 4, criar: 5 }} />
           </Tela>
         )}
@@ -264,14 +276,14 @@ export function ModuloOperacoes() {
       <ul>
         <li>A busca procura por nome, e-mail ou nível, sem ligar para acentos.</li>
         <li>Os filtros ficam numa linha própria: <strong>Nível</strong>, com a contagem de cada
-          papel; <strong>Situação</strong> (ativas ou desativadas), quando há conta desativada; e{' '}
-          <strong>Hospitais</strong> (com restrição ou veem todos), quando há os dois tipos. Com
+          papel; e <strong>Situação</strong> (ativas ou desativadas), quando há conta desativada. Com
           algum filtro ligado, a lista diz quantos aparecem do total e oferece{' '}
           <strong>Limpar filtros</strong>.</li>
-        <li>A coluna de <strong>hospitais</strong> diz se a conta enxerga toda a operação
-          (<strong>Todos</strong>) ou só as unidades vinculadas a ela.</li>
+        <li>A coluna <strong>Área</strong> diz se a conta enxerga toda a operação
+          (<strong>Todos</strong>) ou só o que foi vinculado a ela: operadoras, no operacional, e
+          hospitais, no técnico.</li>
         <li>Os atalhos da linha são <strong>Senha</strong> e <strong>Editar</strong> (nome, papel e
-          hospitais, nas mesmas etapas do cadastro), e o menu <strong>⋮</strong> traz{' '}
+          área, nas mesmas etapas do cadastro), e o menu <strong>⋮</strong> traz{' '}
           <strong>Desativar acesso</strong> e <strong>Excluir usuário</strong>. Desativar é
           reversível; a exclusão não, mas o histórico de ações da pessoa na trilha de auditoria é
           preservado. A própria conta não pode ser desativada nem excluída.</li>
@@ -364,7 +376,15 @@ export function ModuloConfiguracoes() {
         Operacional<SoGestao> e da Diretoria</SoGestao>.
       </p>
 
-      <h4>4. Responsáveis e situação da operadora</h4>
+      <h4>4. Cobrança de censo</h4>
+      <p>
+        De quantos em quantos dias os hospitais da operadora mandam censo. O padrão é 1, todo dia.
+        Com 5, depois do censo do dia 1º o próximo é o do dia 6; se ele não chegar, o hospital vai
+        para os censos atrasados no dia 7. Um hospital com ritmo próprio tem a regra dele na ficha
+        do hospital.
+      </p>
+
+      <h4>5. Responsáveis e situação da operadora</h4>
       <p>
         Quem responde pela operadora<SoGestao>, nome exibido na Diretoria,</SoGestao> e o botão que
         inclui ou retira a operadora do monitoramento e dos relatórios.
@@ -382,7 +402,7 @@ export function ModuloConfiguracoes() {
         <tr><Key>Lista de operadoras</Key>
           <td>Todas as operadoras e a indicação de quais estão ativas. Permite criar uma nova.</td></tr>
         <tr><Key>Regras da operadora</Key>
-          <td>Os quatro grupos descritos acima, além dos indicadores da operadora (internados,
+          <td>Os cinco grupos descritos acima, além dos indicadores da operadora (internados,
             alertas, em dia e nível de serviço) e da lista de hospitais dela. O botão de salvar só é
             habilitado quando há alteração pendente.</td></tr>
         <tr><Key>Ficha do hospital</Key>
@@ -390,8 +410,8 @@ export function ModuloConfiguracoes() {
             atendidas e dados cadastrais.</td></tr>
         <tr><Key>Regras de cobrança</Key>
           <td>Na ficha do hospital, aberta a partir de uma operadora. Permite que aquele hospital
-            tenha prazos de relatório e cobrança de censo diferentes da operadora: tolerância em
-            dias, dias da semana com censo ou nenhuma cobrança. O que não for alterado segue a
+            tenha prazos de relatório e cobrança de censo diferentes da operadora: censo a cada
+            quantos dias, dias da semana com censo ou nenhuma cobrança. O que não for alterado segue a
             operadora. Na lista de hospitais, quem tem regra própria aparece marcado.</td></tr>
         <tr><Key>Adicionar hospital</Key>
           <td>O botão <strong>Adicionar</strong> da lista de hospitais de uma operadora abre o

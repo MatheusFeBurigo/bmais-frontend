@@ -7,7 +7,7 @@ import type { RegrasCobranca, RegrasHospitalOperadora } from '../../types/api'
 import { useRegrasHospital } from '../../hooks/useHospital'
 import { removerRegrasHospital, salvarRegrasHospital } from '../../services/configuracoes.service'
 import { invalidarPorEvento } from '../../lib/invalidation'
-import { NumField } from './shared'
+import { NumField, CensoIntervaloField, censoIntervaloTexto, censoIntervaloValido } from './shared'
 
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 const LEITOS = [['ENFERMARIA', 'Enfermaria'], ['APARTAMENTO', 'Apartamento'], ['UTI', 'UTI']]
@@ -22,9 +22,9 @@ function diasTexto(dias: number[]): string {
 function resumo(r: RegrasCobranca): string {
   const rel = `Relatório a cada ${r.dias_entre_relatorios} dias`
   if (r.censo_dispensado) return `${rel} · Sem cobrança de censo`
-  const tol = r.censo_tolerancia_dias
-    ? `, tolerância de ${r.censo_tolerancia_dias} dia${r.censo_tolerancia_dias > 1 ? 's' : ''}` : ''
-  return `${rel} · Censo ${diasTexto(r.censo_dias_semana)}${tol}`
+  if (!r.censo_tolerancia_dias) return `${rel} · Censo ${diasTexto(r.censo_dias_semana)}`
+  const dias = r.censo_dias_semana.length < 7 ? `, ${diasTexto(r.censo_dias_semana)}` : ''
+  return `${rel} · Censo ${censoIntervaloTexto(r.censo_tolerancia_dias)}${dias}`
 }
 
 export default function RegrasHospital({ hospitalKey, opKey, onToast }: {
@@ -85,6 +85,7 @@ export default function RegrasHospital({ hospitalKey, opKey, onToast }: {
   }
 
   const semDia = !form.censo_dispensado && form.censo_dias_semana.length === 0
+  const intervaloInvalido = !form.censo_dispensado && !censoIntervaloValido(form.censo_tolerancia_dias)
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
@@ -160,7 +161,8 @@ export default function RegrasHospital({ hospitalKey, opKey, onToast }: {
               </div>
               {!form.censo_dispensado && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 16, alignItems: 'start' }}>
-                  <NumField label="Tolerância" value={form.censo_tolerancia_dias} onChange={(v) => upd('censo_tolerancia_dias', v)} hint={daOperadora('censo_tolerancia_dias')} />
+                  <CensoIntervaloField tolerancia={form.censo_tolerancia_dias} onChange={(v) => upd('censo_tolerancia_dias', v)}
+                    hint={daOperadora('censo_tolerancia_dias', censoIntervaloTexto(padrao.censo_tolerancia_dias))} />
                   <div className="config-field">
                     <label>Dias com censo</label>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -192,7 +194,7 @@ export default function RegrasHospital({ hospitalKey, opKey, onToast }: {
                   Usar regras da operadora
                 </button>
               )}
-              <button className="btn btn-primary btn-sm" disabled={!dirty || salvando || semDia}
+              <button className="btn btn-primary btn-sm" disabled={!dirty || salvando || semDia || intervaloInvalido}
                 onClick={() => concluir(() => salvarRegrasHospital(hospitalKey, entrada.operadora_key, form), '✓ Regras salvas')}>
                 {salvando ? 'Salvando…' : 'Salvar'}
               </button>

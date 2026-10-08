@@ -2,7 +2,9 @@
 //
 // Usado no rodapé do drawer e no topo da ficha. Quem decide se aparece é quem
 // renderiza (`podeExecutar(role, 'darAlta')`); aqui se decide QUAL dos dois:
-//   * internado → "Alta" (data obrigatória, hora opcional);
+//   * internado → "Alta" (motivo e data obrigatórios, hora opcional). Com o
+//     motivo Homecare, as perguntas de home care do portal antigo, todas
+//     obrigatórias (08/10/2026); elas vão no evento da alta na timeline;
 //   * alta manual ou inferida → "Desfazer alta";
 //   * alta que veio do censo → nada: o documento do hospital não se desfaz por
 //     clique (o backend recusa com 409 de qualquer forma).
@@ -13,6 +15,11 @@ import { invalidarPorEvento } from '../../lib/invalidation'
 import { queryKeys } from '../../lib/queryKeys'
 import { dataBR, hojeISO, paraISO } from '../../lib/datas'
 import { identificacaoPaciente } from '../../lib/texto'
+import { MOTIVOS_ALTA, rotuloMotivoAlta, type MotivoAlta } from '../../lib/motivoAlta'
+import {
+  ALIMENTACAO, CONSCIENCIA, MOBILIZACAO, OXIGENIOTERAPIA, SIM_NAO, homecareCompleto,
+  homecareParaEnvio, homecareVazio, type RascunhoHomecare,
+} from '../../lib/altaHomecare'
 import type { InternacaoDados } from '../../types/api'
 import { ConfirmarModal } from '../ConfirmarModal'
 import { Modal, Spinner } from '../ui'
@@ -27,7 +34,72 @@ const estilos = `
 .alta-pac-nome{font-size:var(--t-md);font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .alta-pac-meta{font-size:var(--t-sm);color:var(--muted);margin-top:2px}
 .alta-aviso{display:flex;gap:8px;align-items:flex-start;padding:9px 12px;border-radius:8px;background:var(--warning-bg);color:var(--warning-2);font-size:var(--t-sm)}
+.alta-hc{display:grid;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)}
+.alta-hc-tit{font-size:var(--t-sm);font-weight:600;color:var(--ink)}
+.alta-hc-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;align-items:end}
+.alta-hc-grade .bm-input{width:100%;min-width:0;height:36px;padding-top:0;padding-bottom:0}
+.alta-chips{display:flex;flex-wrap:wrap;gap:6px}
+.alta-chip{position:relative;display:inline-flex;align-items:center;height:32px;padding:0 12px;border:1px solid var(--border-strong);border-radius:999px;font-size:var(--t-sm);color:var(--ink-2);cursor:pointer;background:var(--surface)}
+.alta-chip input{position:absolute;opacity:0;pointer-events:none}
+.alta-chip.on{background:var(--primary-soft);color:var(--primary);border-color:var(--primary-3);font-weight:600}
+.alta-chip:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+.alta-hc-nota{font-size:var(--t-sm);color:var(--muted)}
+@media (max-width:560px){.alta-hc-grade{grid-template-columns:minmax(0,1fr)}}
 `
+
+/** As perguntas de home care da alta com motivo Homecare. Abrem vazias: sem
+ *  resposta pré-marcada, "não" é uma escolha e não um padrão esquecido. */
+function PerguntasHomecare({ valor, onMudar }: {
+  valor: RascunhoHomecare
+  onMudar: (v: RascunhoHomecare) => void
+}) {
+  const mudar = (campo: keyof RascunhoHomecare, v: string) => onMudar({ ...valor, [campo]: v })
+  const alimentacao = valor.alimentacao
+  const select = (campo: keyof RascunhoHomecare, rotulo: string,
+                  opcoes: readonly { key: string; label: string }[]) => (
+    <div className="nh-campo" key={campo}>
+      <label htmlFor={`alta-hc-${campo}`} className="form-lbl">{rotulo}<span className="req">*</span></label>
+      <select id={`alta-hc-${campo}`} className="bm-input bm-select" value={String(valor[campo])}
+              onChange={(e) => mudar(campo, e.target.value)}>
+        <option value="">Escolher</option>
+        {opcoes.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+      </select>
+    </div>
+  )
+  const simNao = [{ key: 'sim', label: 'Sim' }, { key: 'nao', label: 'Não' }]
+  return (
+    <div className="alta-hc">
+      <span className="alta-hc-tit">Home care</span>
+      <div className="alta-hc-grade">
+        {select('solicitado', 'Home care solicitado', simNao)}
+        {select('oxigenioterapia', 'Oxigenioterapia', OXIGENIOTERAPIA)}
+        {select('mobilizacao', 'Mobilização', MOBILIZACAO)}
+        {select('consciencia', 'Nível de consciência', CONSCIENCIA)}
+        {SIM_NAO.filter((p) => p.key !== 'solicitado').map((p) => select(p.key, p.label, simNao))}
+      </div>
+      <div className="nh-campo">
+        <span className="form-lbl">Alimentação</span>
+        <div className="alta-chips">
+          {ALIMENTACAO.map((a) => (
+            <label key={a.key} className={`alta-chip${alimentacao.includes(a.key) ? ' on' : ''}`}>
+              <input type="checkbox" checked={alimentacao.includes(a.key)}
+                     onChange={() => onMudar({
+                       ...valor,
+                       alimentacao: alimentacao.includes(a.key)
+                         ? alimentacao.filter((x) => x !== a.key)
+                         : [...alimentacao, a.key],
+                     })} />
+              {a.label}
+            </label>
+          ))}
+        </div>
+      </div>
+      {!homecareCompleto(valor) && (
+        <span className="alta-hc-nota">Responda todas as perguntas para confirmar a alta.</span>
+      )}
+    </div>
+  )
+}
 
 const iconeAlta = (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></svg>
@@ -49,6 +121,8 @@ export function AcaoAlta({ d, sobreposta, onFeito, pequeno = true }: {
   const [aberta, setAberta] = useState(false)
   const [data, setData] = useState('')
   const [hora, setHora] = useState('')
+  const [motivo, setMotivo] = useState<MotivoAlta | ''>('')
+  const [homecare, setHomecare] = useState<RascunhoHomecare>(homecareVazio)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -61,6 +135,8 @@ export function AcaoAlta({ d, sobreposta, onFeito, pequeno = true }: {
     setAberta(false)
     setData('')
     setHora('')
+    setMotivo('')
+    setHomecare(homecareVazio())
     setErro(null)
   }
 
@@ -75,6 +151,8 @@ export function AcaoAlta({ d, sobreposta, onFeito, pequeno = true }: {
       setAberta(false)
       setData('')
       setHora('')
+      setMotivo('')
+      setHomecare(homecareVazio())
       onFeito(msg)
     } catch (e) {
       // A mensagem do backend já é de tela ("A alta não pode ser antes da
@@ -117,7 +195,12 @@ export function AcaoAlta({ d, sobreposta, onFeito, pequeno = true }: {
             <p style={{ margin: 0 }}>
               <strong>{identificacaoPaciente(d)}</strong> volta para a lista de internados.
             </p>
-            {d.data_alta && <p style={{ margin: 0 }}>Alta registrada em {dataBR(d.data_alta)}.</p>}
+            {d.data_alta && (
+              <p style={{ margin: 0 }}>
+                Alta registrada em {dataBR(d.data_alta)}
+                {rotuloMotivoAlta(d.motivo_alta) && ` (${rotuloMotivoAlta(d.motivo_alta)})`}.
+              </p>
+            )}
             {erro && <div className="nh-erro">{erro}</div>}
           </ConfirmarModal>
         )}
@@ -126,6 +209,7 @@ export function AcaoAlta({ d, sobreposta, onFeito, pequeno = true }: {
   }
 
   const entrada = paraISO(d.data_entrada)
+  const ehHomecare = motivo === 'homecare'
   return (
     <>
       {botao}
@@ -133,6 +217,7 @@ export function AcaoAlta({ d, sobreposta, onFeito, pequeno = true }: {
         <Modal
           title="Alta"
           sobreposta={sobreposta}
+          largura={ehHomecare ? 640 : undefined}
           onClose={fechar}
           footer={
             <>
@@ -142,8 +227,13 @@ export function AcaoAlta({ d, sobreposta, onFeito, pequeno = true }: {
               <button
                 type="button"
                 className="btn btn-success btn-sm"
-                disabled={salvando || !data}
-                onClick={() => void executar(() => darAlta(d.id, data, hora), '✓ Alta registrada')}
+                disabled={salvando || !data || !motivo || (ehHomecare && !homecareCompleto(homecare))}
+                onClick={() => {
+                  if (motivo) {
+                    void executar(() => darAlta(d.id, data, hora, motivo,
+                      ehHomecare ? homecareParaEnvio(homecare) : undefined), '✓ Alta registrada')
+                  }
+                }}
               >
                 {salvando && <Spinner size={12} style={{ borderTopColor: '#fff', borderColor: 'rgba(255,255,255,.4)' }} />}
                 Confirmar alta
@@ -161,6 +251,19 @@ export function AcaoAlta({ d, sobreposta, onFeito, pequeno = true }: {
                   {d.dias != null && ` · ${d.dias}d`}
                 </div>
               </div>
+            </div>
+            <div className="nh-campo">
+              <label htmlFor="alta-motivo" className="form-lbl">Motivo da alta<span className="req">*</span></label>
+              {/* Homecare é alta hospitalar e entra aqui, não no tipo de leito. */}
+              <select
+                id="alta-motivo"
+                className="bm-input bm-select"
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value as MotivoAlta | '')}
+              >
+                <option value="">Escolha o motivo</option>
+                {MOTIVOS_ALTA.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+              </select>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <div className="nh-campo" style={{ flex: 1 }}>
@@ -188,6 +291,7 @@ export function AcaoAlta({ d, sobreposta, onFeito, pequeno = true }: {
                 />
               </div>
             </div>
+            {ehHomecare && <PerguntasHomecare valor={homecare} onMudar={setHomecare} />}
             {d.visita_agendada && (
               <div className="alta-aviso">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4M12 17h.01" /></svg>

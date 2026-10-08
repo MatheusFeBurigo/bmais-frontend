@@ -7,8 +7,10 @@ import type { InternacaoDados } from '../../types/api'
 // Opções dos campos com domínio fechado no modo edição. "" = manter em branco.
 export const STATUS_OPCOES = ['INTERNADO', 'ALTA', 'OBITO', 'TRANSFERIDO']
 export const LEITO_OPCOES = ['UTI', 'APARTAMENTO', 'ENFERMARIA']
-// Homecare: paciente fora do hospital, que o censo não altera e só a alta
-// manual encerra. Só técnico e admin escolhem ou tiram (`leitoHomecare`).
+// Homecare como leito: paciente fora do hospital, que o censo não altera e só a
+// alta manual encerra. Desde 08/10/2026 ninguém mais entra nele (virou motivo de
+// alta, `lib/motivoAlta`); fica para quem já estava, e só técnico e admin o tiram
+// de lá (`leitoHomecare`).
 export const LEITO_HOMECARE = 'HOMECARE'
 
 /** Recém-nascido. A regra mora no servidor (nome "RN de ...", idade ou

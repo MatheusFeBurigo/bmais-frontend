@@ -2,9 +2,10 @@
 // auditores (médicos e enfermeiros), contas de acesso da equipe interna e a
 // malha de hospitais e operadoras.
 //
-// Reusam o que é puro na tela real: ProfTabela, MenuAcoes, SeletorEscala e
-// MultiSelectHospitais, além dos rótulos e descrições dos papéis
-// (lib/usuarioRoles) e da regra de quem tem escopo por hospital. Assim a réplica
+// Reusam o que é puro na tela real: ProfTabela, MenuAcoes, SeletorEscala,
+// MultiSelectHospitais e SeletorOperadoras, além dos rótulos e descrições dos
+// papéis (lib/usuarioRoles) e da regra de quem tem escopo por hospital ou por
+// operadora. Assim a réplica
 // do formulário muda sozinha quando um papel novo entra ou muda de descrição.
 // A lista de usuários, o formulário em etapas, a lista da malha e o cadastro de
 // hospital são páginas/modais com busca de dados embutida, e por isso
@@ -20,7 +21,8 @@ import SeletorEscala from '../equipe/SeletorEscala'
 import { SERVICOS } from '../equipe/equipe.styles'
 import MenuAcoes, { IconesAcao } from '../MenuAcoes'
 import MultiSelectHospitais from '../MultiSelectHospitais'
-import { ROLE_DESC, ROLE_LABEL, ROLE_VARIANT, temEscopoHospital } from '../../lib/usuarioRoles'
+import SeletorOperadoras from '../SeletorOperadoras'
+import { ROLE_DESC, ROLE_LABEL, ROLE_VARIANT, temEscopoHospital, temEscopoOperadora } from '../../lib/usuarioRoles'
 import { PAPEIS_CADASTRO } from './acessoAjuda'
 import { Marcado, ModalReplica } from './replica'
 import { Topo } from './exemplosOperacao'
@@ -40,6 +42,7 @@ const IconSeta = svg(<path d="m6 9 6 6 6-6" />)
 const IconConta = svg(<><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></>, 18)
 const IconNivel = svg(<><path d="M12 3 4 6v6c0 4.6 3.4 8.3 8 9 4.6-.7 8-4.4 8-9V6l-8-3z" /><path d="m9 12 2 2 4-4" /></>, 18)
 const IconPino = (s = 13) => svg(<><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></>, s)
+const IconMaleta = svg(<><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M3 13h18" /></>, 18)
 const IconPredio = (s = 13) => svg(<><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /><path d="M16 9h2a2 2 0 0 1 2 2v10" /><path d="M3 21h18" /><path d="M9 7h2M9 11h2M9 15h2" /></>, s)
 const IconEscudo = (s = 16) => svg(<><path d="M12 3 4 6v6c0 4.6 3.4 8.3 8 9 4.6-.7 8-4.4 8-9V6l-8-3z" /><path d="m9 12 2 2 4-4" /></>, s)
 const IconContato = svg(<><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2" /><path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2M15 10h3M15 13h3" /></>, 18)
@@ -59,6 +62,12 @@ const OPERADORAS = [
   { key: 'porto', nome: 'Porto Seguro' },
   { key: 'sulamerica', nome: 'SulAmérica' },
 ]
+// Os mesmos hospitais com o nome das operadoras, como a API manda: é dele que
+// o seletor de operadoras tira o nome e a contagem de cada uma.
+const HOSPITAIS_COM_OPS: Hospital[] = HOSPITAIS.map((h) => ({
+  ...h,
+  operadoras_nomes: (h.operadoras ?? []).map((k) => OPERADORAS.find((o) => o.key === k) ?? { key: k, nome: k }),
+}))
 
 type AbaOps = 'profissionais' | 'usuarios' | 'malha'
 
@@ -292,7 +301,7 @@ const USUARIOS: { nome: string; email: string; role: UserRole; hospitais: string
   { nome: 'Camila Freitas', email: 'camila.freitas@exemplo.com', role: 'coordenador_tecnico', hospitais: 'Todos' },
   { nome: 'Eduardo Lins', email: 'eduardo.lins@exemplo.com', role: 'analista', hospitais: 'Todos' },
   { nome: 'Juliana Prado', email: 'juliana.prado@exemplo.com', role: 'tecnico', hospitais: '3 hospitais' },
-  { nome: 'Rafael Nogueira', email: 'rafael.nogueira@exemplo.com', role: 'administrativo', hospitais: 'Hospital Santa Clara' },
+  { nome: 'Rafael Nogueira', email: 'rafael.nogueira@exemplo.com', role: 'administrativo', hospitais: 'CarePlus' },
 ]
 
 /** A aba Usuários de acesso: busca, "Novo usuário", a linha de filtros e a lista. */
@@ -324,14 +333,6 @@ export function ReplicaUsuarios({ marcas = {} }: {
               ))}
             </div>
           </div>
-          <div className="uac-filtro">
-            <span className="uac-filtro-rotulo">Hospitais</span>
-            <div className="ops-seg">
-              <span className="ops-seg-btn active">Todos</span>
-              <span className="ops-seg-btn">Com restrição</span>
-              <span className="ops-seg-btn">Veem todos</span>
-            </div>
-          </div>
         </div>
       </Marcado>
       <div className="ops-resumo uac-resumo"><b>{USUARIOS.length}</b> usuários</div>
@@ -339,7 +340,7 @@ export function ReplicaUsuarios({ marcas = {} }: {
         <div className="card" style={{ padding: 0 }}>
           <table className="bmais-table">
             <thead>
-              <tr><th>Nome</th><th>E-mail</th><th>Nível de acesso</th><th>Hospitais</th><th style={{ width: 1 }} /></tr>
+              <tr><th>Nome</th><th>E-mail</th><th>Nível de acesso</th><th>Área</th><th style={{ width: 1 }} /></tr>
             </thead>
             <tbody>
               {USUARIOS.map((u) => (
@@ -374,19 +375,22 @@ type EtapaUsuario = 'conta' | 'nivel' | 'escopo'
 /** A página "Novo usuário de acesso", em etapas, para o papel escolhido. Só a
  *  etapa `aberta` mostra os campos; as anteriores aparecem fechadas com o ok,
  *  como ficam na tela depois de concluídas. O escopo só existe para os papéis
- *  que o têm. */
+ *  que o têm: cidades e hospitais para o técnico, operadoras para o operacional. */
 export function ReplicaNovoUsuario({ papel, aberta, marcas = {} }: {
   papel: UserRole
   aberta: EtapaUsuario
   marcas?: Partial<Record<'credenciais' | 'papel' | 'escopo' | 'criar', number>>
 }) {
-  const comEscopo = temEscopoHospital(papel)
+  const porOperadora = temEscopoOperadora(papel)
+  const comEscopo = temEscopoHospital(papel) || porOperadora
   const etapas: EtapaUsuario[] = comEscopo ? ['conta', 'nivel', 'escopo'] : ['conta', 'nivel']
   const iAberta = etapas.indexOf(aberta)
   const cab: Record<EtapaUsuario, { titulo: string; icone: ReactNode; resumo: string }> = {
     conta: { titulo: 'Dados de acesso', icone: IconConta, resumo: 'juliana.prado@exemplo.com' },
     nivel: { titulo: 'Nível de acesso', icone: IconNivel, resumo: iAberta > 1 ? ROLE_LABEL[papel] : 'Escolha um nível' },
-    escopo: { titulo: 'Cidades e hospitais', icone: IconPino(18), resumo: '2 vínculo(s) de hospital' },
+    escopo: porOperadora
+      ? { titulo: 'Operadoras', icone: IconMaleta, resumo: 'CarePlus' }
+      : { titulo: 'Cidades e hospitais', icone: IconPino(18), resumo: '2 vínculo(s) de hospital' },
   }
 
   const corpo: Record<EtapaUsuario, ReactNode> = {
@@ -427,7 +431,9 @@ export function ReplicaNovoUsuario({ papel, aberta, marcas = {} }: {
     ),
     escopo: (
       <Marcado n={marcas.escopo} bloco>
-        <MultiSelectHospitais hospitais={HOSPITAIS} selecionados={['santa_clara', 'sao_lucas']} onChange={nada} />
+        {porOperadora
+          ? <SeletorOperadoras hospitais={HOSPITAIS_COM_OPS} selecionados={['careplus']} onChange={nada} />
+          : <MultiSelectHospitais hospitais={HOSPITAIS} selecionados={['santa_clara', 'sao_lucas']} onChange={nada} />}
       </Marcado>
     ),
   }

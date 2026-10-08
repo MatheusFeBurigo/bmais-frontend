@@ -10,8 +10,11 @@
 //   Aguardando censo   → nenhuma: o dia ainda não acabou
 //   Censos atualizados → nenhuma, ou "Desfazer" se foi marcado à mão
 //
-// Em qualquer coluna, clicar no card abre a ficha do hospital: é onde estão o
-// telefone e o e-mail de quem cobrar, e o histórico de censos enviados.
+// Os botões só pedem a ação: quem decide é o quadro, que abre a modal da
+// anotação obrigatória (AnotacaoCensoModal) antes de mover o card.
+//
+// Em qualquer coluna, clicar no card abre o drawer do censo (CensoDrawer): a
+// timeline das anotações, o contato do hospital e, de lá, a ficha dele.
 //
 // "Última atualização" é o dia A QUE O CENSO SE REFERE (lido do cabeçalho do
 // relatório), não o do upload: quem sobe hoje o censo de uma semana atrás não
@@ -32,7 +35,7 @@ export function CensoCard({
   onDesfazer?: () => void
   onAtualizar?: () => void
   onDesfazerAtualizado?: () => void
-  /** Abre a ficha do hospital. Ausente = card não clicável (réplica da Ajuda). */
+  /** Abre o drawer do censo. Ausente = card não clicável (réplica da Ajuda). */
   onAbrir?: () => void
   /** Ação em andamento neste card. */
   cobrando: boolean
@@ -48,7 +51,7 @@ export function CensoCard({
   const atualizadoManual = estado === 'censos_processados' && !!tarefa.atualizado_em
 
   // O botão fica dentro do card clicável: sem parar a propagação, cobrar
-  // também abriria a ficha do hospital.
+  // também abriria o drawer do censo.
   const acao = (fn?: () => void) => (e: MouseEvent) => { e.stopPropagation(); fn?.() }
   const teclado = (e: KeyboardEvent) => {
     if (onAbrir && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onAbrir() }
@@ -61,7 +64,7 @@ export function CensoCard({
       onKeyDown={teclado}
       role={onAbrir ? 'button' : undefined}
       tabIndex={onAbrir ? 0 : undefined}
-      title={onAbrir ? 'Ver contato e histórico de censos' : undefined}
+      title={onAbrir ? 'Ver anotações e contato do hospital' : undefined}
     >
       <div className="kb-card-top">
         {tarefa.operadora_key && (

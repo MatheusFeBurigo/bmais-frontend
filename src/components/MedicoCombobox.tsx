@@ -17,10 +17,11 @@ const comboStyles = `
 // Combobox de médico auditor: input filtrável + dropdown clicável, alimentado
 // pelos nomes cadastrados na tela de Equipe. Aceita valor livre (o que estiver
 // digitado) e também seleção via clique/teclado.
-export default function MedicoCombobox({ value, onChange, nomes }: {
+export default function MedicoCombobox({ value, onChange, nomes, placeholder = 'Digite ou selecione o médico…' }: {
   value: string
   onChange: (v: string) => void
   nomes: string[]
+  placeholder?: string
 }) {
   const [aberto, setAberto] = useState(false)
   const [ativo, setAtivo] = useState(0)
@@ -71,7 +72,7 @@ export default function MedicoCombobox({ value, onChange, nomes }: {
       <input
         type="text"
         className="bm-input"
-        placeholder="Digite ou selecione o médico…"
+        placeholder={placeholder}
         autoComplete="off"
         value={value}
         onChange={(e) => { onChange(e.target.value); setAberto(true); setAtivo(0) }}

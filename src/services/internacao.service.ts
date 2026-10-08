@@ -1,8 +1,10 @@
 // Serviço de dados do domínio "internação" (detalhe do paciente no drawer).
 import { apiDownload, apiFetch } from '../api/client'
+import type { MotivoAlta } from '../lib/motivoAlta'
+import type { HomecareAlta } from '../lib/altaHomecare'
 import type {
-  CatalogosProrrogacao, Cid, InternacaoCids, InternacaoDados, InternacaoRelatorios, InternacaoTimeline,
-  PedidoProrrogacao, SugestaoPessoa,
+  CatalogosProrrogacao, Cid, FolhaRosa, InternacaoCids, InternacaoDados,
+  InternacaoRelatorios, InternacaoTimeline, PedidoProrrogacao, ProcedimentoTuss, SugestaoPessoa,
 } from '../types/api'
 
 export interface RelatorioRapido {
@@ -15,6 +17,27 @@ export interface RelatorioRapido {
   autor?: string
   /** Pedido de prorrogação: só a ficha "Detalhes" envia. */
   prorrogacao?: PedidoProrrogacao
+  /** Folha rosa: só a ficha "Detalhes" envia. */
+  folha_rosa?: FolhaRosa
+  /** Relatório completo (0054): só a modal da ficha "Detalhes" envia. */
+  detalhes?: PedidoDetalhes
+}
+
+/** O que a modal manda do relatório completo. Quantidades em texto, como no
+ *  campo; o nome do procedimento o backend tira do catálogo TUSS. */
+export interface PedidoDetalhes {
+  carater: string
+  tipo_internacao: string
+  acomodacoes: { acomodacao: string; data_entrada: string; data_saida: string }[]
+  enfermeiro: string
+  cid_principal: string
+  procedimentos: { codigo: string; qtde: string; data: string }[]
+  alto_custo: { tipo: string; medicacao: string; dose: string; data_inicio: string; data_fim: string }[]
+  evento_adverso: { data: string; descricao: string } | null
+  glosas: { acomodacao: string; diarias: string; data_inicio: string; data_fim: string }[]
+  medicacoes_negadas: { nome: string; qtde: string; unidade: string; data_inicio: string; data_fim: string }[]
+  procedimentos_negados: { codigo: string; qtde: string; data: string }[]
+  trocas_procedimento: { codigo_de: string; codigo_para: string; data: string }[]
 }
 
 /** Dados completos de uma internação (histórico, relatórios, eventos). */
@@ -157,6 +180,11 @@ export function fetchCatalogosProrrogacao(): Promise<CatalogosProrrogacao> {
   return apiFetch<CatalogosProrrogacao>('/prorrogacao/catalogos')
 }
 
+/** Procedimentos TUSS do relatório completo: por código ou nome, mais usados primeiro. */
+export function buscarTuss(q: string): Promise<{ itens: ProcedimentoTuss[] }> {
+  return apiFetch<{ itens: ProcedimentoTuss[] }>(`/tuss?${new URLSearchParams({ q })}`)
+}
+
 /** Pausa ou retoma a prorrogação vigente do paciente (tabela em Tarefas). */
 export function pausarProrrogacao(internacaoId: number, pausada: boolean): Promise<unknown> {
   return apiFetch(`/internacao/${internacaoId}/prorrogacao/pausa`, { method: 'POST', body: { pausada } })
@@ -199,8 +227,13 @@ export function desmarcarVisita(id: number): Promise<unknown> {
 
 /** Dá alta ao paciente. `data` é ISO, entre a internação e hoje; `hora`
  *  ("HH:MM") é opcional. Cancela a visita agendada, se houver. */
-export function darAlta(id: number, data: string, hora: string): Promise<unknown> {
-  return apiFetch(`/internacao/${id}/alta`, { method: 'POST', body: { data, hora } })
+export function darAlta(id: number, data: string, hora: string, motivo: MotivoAlta,
+                        homecare?: HomecareAlta): Promise<unknown> {
+  return apiFetch(`/internacao/${id}/alta`, {
+    method: 'POST',
+    // As perguntas de home care só vão com o motivo Homecare.
+    body: { data, hora, motivo, ...(homecare ? { homecare } : {}) },
+  })
 }
 
 /** Devolve o paciente ao leito. Só vale para alta manual ou inferida: a que veio

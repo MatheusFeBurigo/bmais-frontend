@@ -7,21 +7,24 @@ export function fetchUsuarios(): Promise<UsuariosPayload> {
   return apiFetch<UsuariosPayload>('/usuarios')
 }
 
-/** Cria um novo usuário de acesso com nome, papel e hospitais associados. */
+/** Cria um novo usuário de acesso com nome, papel e área: hospitais (técnico)
+ *  ou operadoras (operacional). */
 export function criarUsuario(
   email: string, password: string, role: UserRole, hospitais: string[] = [],
-  nome: string = '',
+  nome: string = '', operadoras: string[] = [],
 ): Promise<unknown> {
   return apiFetch('/usuarios', {
     method: 'POST',
-    body: { email: email.trim(), password, role, hospitais, nome: nome.trim() },
+    body: { email: email.trim(), password, role, hospitais, operadoras, nome: nome.trim() },
   })
 }
 
-/** Atualiza nome, papel, hospitais e/ou estado (ativo) de um usuário existente.
- *  `ativo: false` SUSPENDE a conta (403 em toda a API, sem apagar); `true` reativa. */
+/** Atualiza nome, papel, área (hospitais/operadoras) e/ou estado (ativo) de um
+ *  usuário existente. `ativo: false` SUSPENDE a conta (403 em toda a API, sem
+ *  apagar); `true` reativa. */
 export function atualizarUsuario(
-  userId: string, patch: { role?: UserRole; hospitais?: string[]; nome?: string; ativo?: boolean },
+  userId: string,
+  patch: { role?: UserRole; hospitais?: string[]; operadoras?: string[]; nome?: string; ativo?: boolean },
 ): Promise<unknown> {
   return apiFetch(`/usuarios/${userId}`, { method: 'PATCH', body: patch })
 }

@@ -8,6 +8,7 @@ import { OpAvatar } from '../ui'
 import { DiasRatio, Permanencia } from './cells'
 import { identificacaoPaciente } from '../../lib/texto'
 import { dataBR, hojeISO } from '../../lib/datas'
+import { rotuloMotivoAlta } from '../../lib/motivoAlta'
 
 export interface InternadosTableProps {
   /** Linhas da página atual (já filtradas e fatiadas). */
@@ -39,19 +40,12 @@ export interface InternadosTableProps {
    *  e acrescenta a coluna "Alta" — sem ela, a data que define a linha não
    *  apareceria em lugar nenhum da tabela. */
   vendoAltas?: boolean
-  /** Recorte por situação do relatório ('' = todos). Mesmo `filtro` da URL que
-   *  os cards do topo usam; ausente = seletor não aparece. */
-  filtroRelatorio?: string
-  onFiltroRelatorio?: (f: string) => void
+  /** Muda quando um filtro, a ordem ou a página mudam a lista: refaz a entrada
+   *  das linhas e o destaque da contagem, para a troca ficar visível. */
+  chaveLista?: string
+  /** Recortes ligados (ex.: "UTI / CTI"), mostrados ao lado da contagem. */
+  filtrosAtivos?: string[]
 }
-
-const FILTROS_RELATORIO: Array<[string, string]> = [
-  ['', 'Todos os relatórios'],
-  ['em_dia', 'Em dia'],
-  ['proximo', 'Próximo de vencer'],
-  ['vencido', 'Atrasado'],
-  ['sem_relatorio', 'Sem relatório'],
-]
 
 export default function InternadosTable({
   paginados,
@@ -70,8 +64,8 @@ export default function InternadosTable({
   onNext,
   mostrarOperadora = false,
   vendoAltas = false,
-  filtroRelatorio = '',
-  onFiltroRelatorio,
+  chaveLista,
+  filtrosAtivos = [],
 }: InternadosTableProps) {
   const colunas = 11 + (mostrarOperadora ? 1 : 0) + (vendoAltas ? 1 : 0)
   return (
@@ -79,25 +73,22 @@ export default function InternadosTable({
       <div className="card-header" style={{ alignItems: 'center', paddingBottom: 14 }}>
         <div>
           <div className="card-title">{vendoAltas ? 'Pacientes com Alta' : 'Todos os Internados'}</div>
-          <div className="card-sub">
-            <span className="mono fw-6">{totalVisiveis}</span> de{' '}
+          <div className="card-sub row" style={{ gap: 0, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span key={chaveLista} className="mono fw-6 contagem-pulso">{totalVisiveis}</span>&nbsp;de&nbsp;
             <span className="mono fw-6">{totalBackend || totalInternacoes}</span>
             <span className="dot-sep" />
-            Clique na linha para detalhes
+            {filtrosAtivos.length > 0 ? (
+              <span className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
+                {filtrosAtivos.map((f) => <span key={f} className="filtro-tag">{f}</span>)}
+              </span>
+            ) : (
+              'Clique na linha para detalhes'
+            )}
           </div>
         </div>
+        {/* Sem seletor de situação do relatório aqui: repetia os cards do topo
+            (mesmo `filtro` da URL), que já recortam a lista e mostram a contagem. */}
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-          {onFiltroRelatorio && !vendoAltas && (
-            <select
-              className="bm-input bm-select"
-              style={{ width: 'auto', minWidth: 170, height: 30, fontSize: 'var(--t-sm)' }}
-              value={filtroRelatorio}
-              onChange={(e) => onFiltroRelatorio(e.target.value)}
-              title="Filtrar pela situação do relatório"
-            >
-              {FILTROS_RELATORIO.map(([v, rot]) => <option key={v} value={v}>{rot}</option>)}
-            </select>
-          )}
           <button className="btn btn-outline btn-sm" onClick={onExportar}>Exportar</button>
           {onAdicionarPaciente && (
             <button className="btn btn-primary btn-sm" onClick={onAdicionarPaciente}
@@ -109,7 +100,9 @@ export default function InternadosTable({
         </div>
       </div>
 
-      <div style={{ maxHeight: 560, overflowY: 'auto' }}>
+      {/* A chave remonta a área rolável a cada troca de lista: as linhas tocam a
+          entrada de novo e a rolagem volta ao topo, onde o resultado começa. */}
+      <div key={chaveLista} className="lista-entra" style={{ maxHeight: 560, overflowY: 'auto' }}>
         <table className="bmais-table">
           <thead>
             <tr>
@@ -138,10 +131,13 @@ export default function InternadosTable({
             </tr>
           </thead>
           <tbody>
-            {paginados.map((p) => {
+            {paginados.map((p, i) => {
               const sr = p.status_relatorio || 'EM_DIA'
               return (
-                <tr key={p.id} className={rowFlagClass(sr, vendoAltas)} style={{ cursor: 'pointer' }} onClick={() => onSelecionar(p.id)}
+                <tr key={p.id} className={rowFlagClass(sr, vendoAltas)}
+                  // Cascata só nas primeiras linhas: o resto entra junto, sem esperar.
+                  style={{ cursor: 'pointer', animationDelay: `${Math.min(i, 14) * 20}ms` }}
+                  onClick={() => onSelecionar(p.id)}
                   onMouseEnter={onPrefetch ? () => onPrefetch(p.id) : undefined}
                   onFocus={onPrefetch ? () => onPrefetch(p.id) : undefined}>
                   {/* Na lista de altas o badge diz só "Alta"; a pendência de
@@ -183,7 +179,12 @@ export default function InternadosTable({
                   <td><LeitoTag tipo={p.tipo_leito} /></td>
                   <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_entrada || '—'}</span></td>
                   {vendoAltas && (
-                    <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_alta || '—'}</span></td>
+                    <td>
+                      <span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_alta || '—'}</span>
+                      {rotuloMotivoAlta(p.motivo_alta) && (
+                        <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)' }}>{rotuloMotivoAlta(p.motivo_alta)}</div>
+                      )}
+                    </td>
                   )}
                   <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_ultima_visita || '—'}</span></td>
                   <td className="t-right">

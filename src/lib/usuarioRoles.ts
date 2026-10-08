@@ -50,12 +50,17 @@ export const ROLES_ORDEM: readonly UserRole[] = [
   'gestor', 'diretor', 'admin',
 ]
 
-// Papéis operacionais que têm recorte de dados por hospital (escopo). Os demais
-// (gestor/diretor/admin) veem tudo — o UsuarioForm só mostra o multiselect para estes.
+// Papéis operacionais que têm recorte de dados (escopo). O técnico analisa por
+// HOSPITAL (todas as operadoras dele); o operacional atende OPERADORAS inteiras,
+// em todos os hospitais delas (0053). Os demais (gestor/diretor/admin) veem tudo.
 // O analista interno e os dois coordenadores também ficam de fora: são perfis de
-// observação, criados como conta simples (sem lista de hospitais) e enxergando
-// toda a operação — os coordenadores de propósito (supervisionam a rede inteira).
-const COM_ESCOPO_HOSPITAL: ReadonlySet<UserRole> = new Set(['administrativo', 'tecnico'])
+// observação, criados como conta simples (sem área) e enxergando toda a
+// operação — os coordenadores de propósito (supervisionam a rede inteira).
+const COM_ESCOPO_HOSPITAL: ReadonlySet<UserRole> = new Set(['tecnico'])
+const COM_ESCOPO_OPERADORA: ReadonlySet<UserRole> = new Set(['administrativo'])
 export function temEscopoHospital(role: UserRole): boolean {
   return COM_ESCOPO_HOSPITAL.has(role)
+}
+export function temEscopoOperadora(role: UserRole): boolean {
+  return COM_ESCOPO_OPERADORA.has(role)
 }

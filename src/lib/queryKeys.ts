@@ -45,8 +45,13 @@ export const queryKeys = {
   internacaoCids: (id: number) => ['internacao-cids', id] as const,
   /** Busca no catálogo CID-10 (estático: pode ficar em cache à vontade). */
   cidBusca: (q: string) => ['cid', 'busca', q] as const,
+  tussBusca: (q: string) => ['tuss', 'busca', q] as const,
 
   kanban: () => ['kanban'] as const,
+  /** Timeline do card de censo. Debaixo de ['kanban'] de propósito: toda
+   *  invalidação do quadro (cobrar, atualizar, censo novo) a renova junto. */
+  censoTimeline: (hospitalKey: string, operadoraKey: string) =>
+    ['kanban', 'censo', hospitalKey, operadoraKey, 'timeline'] as const,
   /** Catálogos da prorrogação (estáticos). */
   prorrogacaoCatalogos: () => ['prorrogacao', 'catalogos'] as const,
 

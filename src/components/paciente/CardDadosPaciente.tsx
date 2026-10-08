@@ -1,5 +1,6 @@
 // Card "Dados do Paciente": leitura e edição da ficha.
 import type { CampoFicha as CampoIncompleto } from '../../lib/fichaIncompleta'
+import { rotuloMotivoAlta } from '../../lib/motivoAlta'
 import { nomeProprio } from '../../lib/texto'
 import type { InternacaoDados } from '../../types/api'
 import { CampoFicha } from './CampoFicha'
@@ -15,10 +16,11 @@ export function CardDadosPaciente({ d, edicao, faltaCampo, podeHomecare }: {
   const { editando, rascunho, setCampo, salvando, erro } = edicao
   // Props comuns a todo campo editável.
   const ed = { edit: editando, rascunho, onChange: setCampo }
-  // Quem não decide o homecare não vê a opção, e não mexe no leito de quem já está nele.
+  // Desde 08/10/2026 o homecare é motivo de alta, não leito: a opção só aparece
+  // para quem já estava nele, e só quem decide o homecare o tira de lá.
   const emHomecare = d.tipo_leito === LEITO_HOMECARE
   const leitoEditavel = podeHomecare || !emHomecare
-  const leitoOpcoes = podeHomecare ? [...LEITO_OPCOES, LEITO_HOMECARE] : LEITO_OPCOES
+  const leitoOpcoes = emHomecare ? [...LEITO_OPCOES, LEITO_HOMECARE] : LEITO_OPCOES
 
   return (
     <div className="card">
@@ -77,8 +79,9 @@ export function CardDadosPaciente({ d, edicao, faltaCampo, podeHomecare }: {
           <CampoFicha label="Hora internação" valor={d.hora_entrada ? d.hora_entrada.slice(0, 5) : null} mono />
 
           <CampoFicha label="Data alta" valor={textoDataAlta(d)} />
+          <CampoFicha label="Motivo da alta" valor={rotuloMotivoAlta(d.motivo_alta)} />
           <CampoFicha label="Médico" valor={d.medico} campo="medico" {...ed} />
-          <CampoFicha label="Especialidade" valor={d.especialidade} span={2} campo="especialidade" {...ed} />
+          <CampoFicha label="Especialidade" valor={d.especialidade} campo="especialidade" {...ed} />
 
           <CampoFicha label="Diagnóstico" valor={d.diagnostico} span={4} campo="diagnostico" {...ed} />
           <CampoFicha label="Observações" valor={d.obs} span={4} multiline campo="obs" {...ed} />

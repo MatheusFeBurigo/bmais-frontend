@@ -6,11 +6,11 @@ import { useAuth } from '../auth/AuthContext'
 import { ehSomenteLeitura, podeExecutar, podeVer } from '../auth/permissions'
 import { LoadingState } from '../components/ui'
 import PacienteDrawer from '../components/PacienteDrawer'
-import HospitalDetalhesModal from '../components/HospitalDetalhesModal'
 import Toast from '../components/Toast'
 import Tabs from '../components/Tabs'
 import {
-  useDesfazerAtualizado, useDesfazerCobranca, useKanban, useMarcarAtualizado, useMarcarCobrado,
+  useAnotarCenso, useDesfazerAtualizado, useDesfazerCobranca, useKanban, useMarcarAtualizado,
+  useMarcarCobrado,
 } from '../hooks/useKanban'
 import { usePrefetchInternacao } from '../hooks/useInternacao'
 import { useEquipe } from '../hooks/useEquipe'
@@ -18,6 +18,9 @@ import { localStyles } from '../components/kanban/kanban.styles'
 import { KanbanCard } from '../components/kanban/KanbanCard'
 import { KanbanFiltros } from '../components/kanban/KanbanFiltros'
 import { ColunaInfo } from '../components/kanban/ColunaInfo'
+import CensoDrawer from '../components/kanban/CensoDrawer'
+import { AnotacaoCensoModal } from '../components/kanban/AnotacaoCensoModal'
+import { ACOES_CENSO, type AcaoCenso, type ExecutarCenso } from '../components/kanban/acoesCenso'
 import { contarCensos, contarChips, recortarColuna, type Recorte } from '../components/kanban/prioridade'
 // Definição de cada coluna (rótulo, cor, descrição) vive em components/kanban/
 // colunas.ts: a Volumetria reusa os mesmos textos para a quebra de demandas.
@@ -80,6 +83,7 @@ export default function Kanban() {
   const desfazer = useDesfazerCobranca()
   const atualizar = useMarcarAtualizado()
   const desfazerAtualizado = useDesfazerAtualizado()
+  const anotarCenso = useAnotarCenso()
   const navigate = useNavigate()
   // Hospitais com ação em andamento. Por CARD, não `isPending` da mutação: um
   // estado só para o quadro trocava o botão de todos os atrasados para
@@ -88,7 +92,12 @@ export default function Kanban() {
   // Espelho em ref para a trava: ler o estado dentro do callback mudaria a
   // identidade dele a cada clique, e o memo de TODOS os cards cairia.
   const ocupadosRef = useRef(new Set<string>())
-  const [hospitalFicha, setHospitalFicha] = useState<{ key: string; nome: string } | null>(null)
+  // Card de censo aberto no drawer. O drawer recebe o card vivo, relido do
+  // quadro pela chave (hospital|operadora), para seguir a coluna nova depois
+  // de um movimento; este retrato fica de reserva se o card sumir.
+  const [censoAberto, setCensoAberto] = useState<KanbanTarefa | null>(null)
+  // Movimento pedido pelos botões do próprio card: abre a modal da anotação.
+  const [movimento, setMovimento] = useState<{ tarefa: KanbanTarefa; acao: AcaoCenso } | null>(null)
   // Perfil de observação (analista interno): vê o quadro, mas não age nele.
   const { role, username } = useAuth()
   const somenteLeitura = ehSomenteLeitura(role)
@@ -198,47 +207,52 @@ export default function Kanban() {
     }
   }, [prefetch])
 
-  // Ação de censo com trava por hospital: um segundo clique no mesmo card
-  // enquanto o primeiro está no ar é ignorado.
-  const acaoCenso = useCallback((
-    t: KanbanTarefa, mutate: typeof cobrar.mutate, sucesso: string,
-  ) => {
+  // Ação de censo, já com a anotação, com trava por card: um segundo pedido no
+  // mesmo card enquanto o primeiro está no ar é ignorado. O erro sobe para a
+  // modal da anotação, que o mostra sem fechar.
+  const mutacoes = {
+    cobrar: cobrar.mutateAsync, desfazer: desfazer.mutateAsync, atualizar: atualizar.mutateAsync,
+    desfazerAtualizado: desfazerAtualizado.mutateAsync, anotar: anotarCenso.mutateAsync,
+  }
+  const mutacoesRef = useRef(mutacoes)
+  mutacoesRef.current = mutacoes
+  const executarCenso = useCallback<ExecutarCenso>(async (t, acao, anotacao) => {
     if (!t.hospital_key) return
     const hk = chaveCenso(t)
     if (ocupadosRef.current.has(hk)) return
     ocupadosRef.current.add(hk)
     setOcupados(new Set(ocupadosRef.current))
-    mutate({ hospitalKey: t.hospital_key, operadoraKey: t.operadora_key ?? '' }, {
-      onSuccess: () => setToast(sucesso),
-      onError: (e) => setToast(`Erro: ${(e as Error).message}`),
-      onSettled: () => {
-        ocupadosRef.current.delete(hk)
-        setOcupados(new Set(ocupadosRef.current))
-      },
-    })
+    try {
+      await mutacoesRef.current[acao]({
+        hospitalKey: t.hospital_key, operadoraKey: t.operadora_key ?? '', anotacao,
+      })
+      setToast(ACOES_CENSO[acao].sucesso(t))
+    } finally {
+      ocupadosRef.current.delete(hk)
+      setOcupados(new Set(ocupadosRef.current))
+    }
   }, [])
 
-  const onCobrar = useCallback((t: KanbanTarefa) => acaoCenso(
-    t, cobrar.mutate,
-    `${t.hospital_nome || 'Hospital'}${t.operadora_nome ? ` (${t.operadora_nome})` : ''} cobrado. Aguardando retorno`,
-  ), [acaoCenso, cobrar.mutate])
+  // Os botões do card não movem direto: toda movimentação pede a anotação.
+  const onCobrar = useCallback((t: KanbanTarefa) => setMovimento({ tarefa: t, acao: 'cobrar' }), [])
+  const onDesfazer = useCallback((t: KanbanTarefa) => setMovimento({ tarefa: t, acao: 'desfazer' }), [])
+  const onAtualizar = useCallback((t: KanbanTarefa) => setMovimento({ tarefa: t, acao: 'atualizar' }), [])
+  const onDesfazerAtualizado = useCallback(
+    (t: KanbanTarefa) => setMovimento({ tarefa: t, acao: 'desfazerAtualizado' }), [])
 
-  const onDesfazer = useCallback((t: KanbanTarefa) => acaoCenso(
-    t, desfazer.mutate, `Cobrança de ${t.hospital_nome || 'hospital'} desfeita`,
-  ), [acaoCenso, desfazer.mutate])
-
-  const onAtualizar = useCallback((t: KanbanTarefa) => acaoCenso(
-    t, atualizar.mutate,
-    `${t.hospital_nome || 'Hospital'}${t.operadora_nome ? ` (${t.operadora_nome})` : ''} marcado como atualizado`,
-  ), [acaoCenso, atualizar.mutate])
-
-  const onDesfazerAtualizado = useCallback((t: KanbanTarefa) => acaoCenso(
-    t, desfazerAtualizado.mutate, `Atualização de ${t.hospital_nome || 'hospital'} desfeita`,
-  ), [acaoCenso, desfazerAtualizado.mutate])
-
-  const abrirHospital = useCallback((t: KanbanTarefa) => {
-    if (t.hospital_key) setHospitalFicha({ key: t.hospital_key, nome: t.hospital_nome || t.titulo })
+  const abrirCenso = useCallback((t: KanbanTarefa) => {
+    if (t.hospital_key) setCensoAberto(t)
   }, [])
+  // O card aberto, relido do quadro (vivo); o retrato se ele saiu do payload.
+  const censoVivo = useMemo(() => {
+    if (!censoAberto) return null
+    const chave = chaveCenso(censoAberto)
+    for (const c of COLUNAS_CENSO) {
+      const achado = tarefasRaw?.[c.key]?.find((t) => chaveCenso(t) === chave)
+      if (achado) return achado
+    }
+    return censoAberto
+  }, [censoAberto, tarefasRaw])
 
   return (
     <>
@@ -331,7 +345,7 @@ export default function Kanban() {
                       onDesfazer={onDesfazer}
                       onAtualizar={onAtualizar}
                       onDesfazerAtualizado={onDesfazerAtualizado}
-                      onAbrirHospital={abrirHospital}
+                      onAbrirCenso={abrirCenso}
                       cobrando={ocupados.has(chaveCenso(t))}
                       somenteLeitura={somenteLeitura}
                       podeAprovar={podeAprovar}
@@ -351,15 +365,27 @@ export default function Kanban() {
         </div>
       )}
 
-      {hospitalFicha && (
-        <HospitalDetalhesModal
-          hospital={hospitalFicha}
-          onClose={() => setHospitalFicha(null)}
+      {censoVivo && (
+        <CensoDrawer
+          tarefa={censoVivo}
+          podeEscrever={!somenteLeitura}
+          ocupado={ocupados.has(chaveCenso(censoVivo))}
+          onExecutar={executarCenso}
+          onClose={() => setCensoAberto(null)}
           onAbrirCadastro={
             podeVer(role, 'configuracoes')
-              ? (key) => { setHospitalFicha(null); navigate(`/configuracoes?hospital=${encodeURIComponent(key)}`) }
+              ? (key) => { setCensoAberto(null); navigate(`/configuracoes?hospital=${encodeURIComponent(key)}`) }
               : undefined
           }
+        />
+      )}
+
+      {movimento && (
+        <AnotacaoCensoModal
+          tarefa={movimento.tarefa}
+          acao={movimento.acao}
+          onConfirmar={(texto) => executarCenso(movimento.tarefa, movimento.acao, texto)}
+          onClose={() => setMovimento(null)}
         />
       )}
 

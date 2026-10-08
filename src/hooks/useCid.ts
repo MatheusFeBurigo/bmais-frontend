@@ -11,7 +11,7 @@ const CATALOGO_STALE = Infinity
 // Mesmo prazo dos demais dados da ficha (useInternacao).
 const FICHA_STALE = 60_000
 
-function useDebounce(valor: string, ms: number): string {
+export function useDebounce(valor: string, ms: number): string {
   const [v, setV] = useState(valor)
   useEffect(() => {
     const t = setTimeout(() => setV(valor), ms)

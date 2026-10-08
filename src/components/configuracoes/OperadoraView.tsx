@@ -7,7 +7,7 @@ import { OpAvatar } from '../ui'
 import Toast from '../Toast'
 import { salvarRegrasOperadora } from '../../services/configuracoes.service'
 import { localStyles } from './configuracoes.styles'
-import { StatMini, NumField } from './shared'
+import { StatMini, NumField, CensoIntervaloField, censoIntervaloValido } from './shared'
 import HospitalFormModal from '../HospitalFormModal'
 
 export default function OperadoraView({ opSel, operadoras, onNav, onToast, onChanged, toast }: {
@@ -19,7 +19,9 @@ export default function OperadoraView({ opSel, operadoras, onNav, onToast, onCha
   onChanged: () => void
   toast: string | null
 }) {
-  const [regras, setRegras] = useState<OperadoraRegras>(opSel.regras)
+  // `?? 0`: backend anterior ao intervalo do censo não manda o campo.
+  const [regras, setRegras] = useState<OperadoraRegras>(
+    { ...opSel.regras, censo_tolerancia_dias: opSel.regras.censo_tolerancia_dias ?? 0 })
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [addHosp, setAddHosp] = useState(false)
@@ -46,11 +48,12 @@ export default function OperadoraView({ opSel, operadoras, onNav, onToast, onCha
     } catch (e) { onToast(`Erro: ${(e as Error).message}`) } finally { setSaving(false) }
   }
 
+  const censoValido = censoIntervaloValido(regras.censo_tolerancia_dias)
   const s = opSel.stats
   const actions = (
     <>
       <button className="btn btn-outline btn-sm" onClick={() => (window.location.href = `/?operadora=${opSel.key}`)}>Abrir dashboard</button>
-      <button className="btn btn-primary btn-sm" onClick={salvar} disabled={!dirty || saving} style={{ opacity: dirty ? 1 : 0.5 }}>
+      <button className="btn btn-primary btn-sm" onClick={salvar} disabled={!dirty || saving || !censoValido} style={{ opacity: dirty && censoValido ? 1 : 0.5 }}>
         {saving ? 'Salvando…' : 'Salvar alterações'}
       </button>
     </>
@@ -124,6 +127,13 @@ export default function OperadoraView({ opSel, operadoras, onNav, onToast, onCha
                 <button type="button" className={`toggle${regras.usar_longa_permanencia ? ' on' : ''}`} onClick={() => upd('usar_longa_permanencia', !regras.usar_longa_permanencia)} title="Ativar/desativar monitoramento de longa permanência">
                   <div className="toggle-knob" />
                 </button>
+              </div>
+            </div>
+
+            <div className="config-group">
+              <div className="config-group-title">Cobrança de Censo</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+                <CensoIntervaloField tolerancia={regras.censo_tolerancia_dias} onChange={(v) => upd('censo_tolerancia_dias', v)} hint="Passado esse prazo, o censo fica atrasado" />
               </div>
             </div>
 

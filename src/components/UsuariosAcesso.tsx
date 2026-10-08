@@ -15,6 +15,7 @@ import { ConfirmarModal } from './ConfirmarModal'
 import MenuAcoes, { IconesAcao } from './MenuAcoes'
 import { useUsuarios } from '../hooks/useUsuarios'
 import { useTodosHospitais } from '../hooks/useEquipe'
+import { operadorasDosHospitais } from '../lib/operadorasDosHospitais'
 import { useDefinirAtivoUsuario } from '../hooks/useAuditoria'
 import { ROLE_LABEL, ROLE_VARIANT, ROLES_ORDEM } from '../lib/usuarioRoles'
 
@@ -33,7 +34,6 @@ const IconLimpar = (
 )
 
 type Situacao = 'todas' | 'ativas' | 'suspensas'
-type Escopo = 'todos' | 'restrito' | 'livre'
 
 // Busca sem acento nem caixa: "joao" acha "João".
 function normalizar(s: string | null | undefined): string {
@@ -44,7 +44,7 @@ export default function UsuariosAcesso() {
   const { role, username } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  // Filtros vivem na URL (?nivel=&situacao=&escopo=&q=) para sobreviver à ida à
+  // Filtros vivem na URL (?nivel=&situacao=&q=) para sobreviver à ida à
   // página de edição: ela volta para `voltar`, que é esta URL com tudo junto.
   const [params, setParams] = useSearchParams()
   const setParam = (chave: string, valor: string | null) => setParams((prev) => {
@@ -55,7 +55,6 @@ export default function UsuariosAcesso() {
   }, { replace: true })
   const nivelUrl = (params.get('nivel') as UserRole | null) ?? 'todos'
   const situacao = (['ativas', 'suspensas'].includes(params.get('situacao') ?? '') ? params.get('situacao') : 'todas') as Situacao
-  const escopo = (['restrito', 'livre'].includes(params.get('escopo') ?? '') ? params.get('escopo') : 'todos') as Escopo
   const busca = params.get('q') ?? ''
   const irPara = (rota: string) => navigate(rota, { state: { voltar: location.pathname + location.search } })
   // Usuário cuja senha está sendo redefinida na modal (null = fechada).
@@ -80,6 +79,10 @@ export default function UsuariosAcesso() {
     () => new Map((hospitais ?? []).map((h) => [h.key, h.nome])),
     [hospitais],
   )
+  const nomeOperadora = useMemo(
+    () => new Map(operadorasDosHospitais(hospitais ?? []).map((o) => [o.key, o.nome])),
+    [hospitais],
+  )
 
   if (!gestor) return null
 
@@ -89,7 +92,6 @@ export default function UsuariosAcesso() {
     return (a.nome || a.email || '').localeCompare(b.nome || b.email || '', 'pt-BR')
   })
   const suspenso = (u: Usuario) => u.ativo === false
-  const restrito = (u: Usuario) => (u.hospitais?.length ?? 0) > 0
 
   // Cada filtro menos o de nível: as contagens dos chips de nível refletem a
   // busca e os outros filtros, para mostrar onde estão os resultados.
@@ -97,8 +99,6 @@ export default function UsuariosAcesso() {
   const casaOutros = (u: Usuario) => {
     if (situacao === 'ativas' && suspenso(u)) return false
     if (situacao === 'suspensas' && !suspenso(u)) return false
-    if (escopo === 'restrito' && !restrito(u)) return false
-    if (escopo === 'livre' && restrito(u)) return false
     if (!q) return true
     return normalizar(u.nome).includes(q) || normalizar(u.email).includes(q)
       || normalizar(ROLE_LABEL[u.role]).includes(q)
@@ -114,11 +114,10 @@ export default function UsuariosAcesso() {
   const usuariosVisiveis = base.filter((u) => roleFiltro === 'todos' || u.role === roleFiltro)
 
   const nSuspensos = usuarios.filter(suspenso).length
-  const nRestritos = usuarios.filter(restrito).length
-  const filtrando = roleFiltro !== 'todos' || situacao !== 'todas' || escopo !== 'todos' || !!q
+  const filtrando = roleFiltro !== 'todos' || situacao !== 'todas' || !!q
   const limparFiltros = () => setParams((prev) => {
     const next = new URLSearchParams(prev)
-    for (const k of ['nivel', 'situacao', 'escopo', 'q']) next.delete(k)
+    for (const k of ['nivel', 'situacao', 'q']) next.delete(k)
     return next
   }, { replace: true })
 
@@ -195,17 +194,6 @@ export default function UsuariosAcesso() {
             </div>
           </div>
         )}
-        {nRestritos > 0 && nRestritos < usuarios.length && (
-          <div className="uac-filtro">
-            <span className="uac-filtro-rotulo">Hospitais</span>
-            <div className="ops-seg" role="group" aria-label="Filtrar por escopo de hospitais">
-              {([['todos', 'Todos'], ['restrito', 'Com restrição'], ['livre', 'Veem todos']] as const).map(([v, lbl]) => (
-                <button key={v} type="button" className={`ops-seg-btn${escopo === v ? ' active' : ''}`}
-                  onClick={() => setParam('escopo', v === 'todos' ? null : v)}>{lbl}</button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {data && (
@@ -242,7 +230,7 @@ export default function UsuariosAcesso() {
                   <th>Nome</th>
                   <th>E-mail</th>
                   <th>Nível de acesso</th>
-                  <th>Hospitais</th>
+                  <th>Área</th>
                   <th style={{ width: 1 }}></th>
                 </tr>
               </thead>
@@ -257,7 +245,11 @@ export default function UsuariosAcesso() {
                         <Badge variant={ROLE_VARIANT[u.role]}>{ROLE_LABEL[u.role]}</Badge>
                         {suspenso(u) && <> <Badge variant="warning" dot>Desativado</Badge></>}
                       </td>
-                      <td><HospitaisResumo keys={u.hospitais ?? []} nomePorKey={nomePorKey} /></td>
+                      <td>
+                        {(u.operadoras?.length ?? 0) > 0
+                          ? <AreaResumo keys={u.operadoras ?? []} nomePorKey={nomeOperadora} plural="operadoras" />
+                          : <AreaResumo keys={u.hospitais ?? []} nomePorKey={nomePorKey} plural="hospitais" />}
+                      </td>
                       <td>
                         {/* Conta de administrador: só o administrador mexe. */}
                         {podeGerirConta(role, u.role) && (
@@ -348,15 +340,18 @@ export default function UsuariosAcesso() {
   )
 }
 
-// Resumo compacto dos hospitais de um usuário na tabela.
-function HospitaisResumo({ keys, nomePorKey }: { keys: string[]; nomePorKey: Map<string, string> }) {
+// Resumo compacto da área de um usuário na tabela: hospitais do técnico ou
+// operadoras do operacional.
+function AreaResumo({ keys, nomePorKey, plural }: {
+  keys: string[]; nomePorKey: Map<string, string>; plural: string
+}) {
   if (keys.length === 0) {
     return <span style={{ fontSize: 'var(--t-xs)', color: 'var(--muted-2)' }}>Todos</span>
   }
   const nomes = keys.map((k) => nomePorKey.get(k) || k)
   return (
     <span title={nomes.join(', ')} style={{ fontSize: 'var(--t-sm)' }}>
-      {keys.length === 1 ? nomes[0] : `${keys.length} hospitais`}
+      {keys.length === 1 ? nomes[0] : `${keys.length} ${plural}`}
     </span>
   )
 }

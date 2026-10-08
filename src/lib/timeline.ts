@@ -29,6 +29,8 @@ export const TIPO_CLASSE: Record<string, string> = {
   ALTA_AUTO: 'tp-alta-auto',
   ALTA_MANUAL: 'tp-status',
   ALTA_DESFEITA: 'tp-edit',
+  // Troca de acomodação negociada (folha rosa, 08/10/2026): rosa como o relatório.
+  TROCA_ACOMODACAO: 'tp-folha-rosa',
   EDIT: 'tp-edit',
   PENDENTE: 'tp-pendente',
   VISITA_AGENDADA: 'tp-visita-agendada',
@@ -40,6 +42,15 @@ export const TIPO_CLASSE: Record<string, string> = {
   // agendamento. Nada volta a criar este tipo — ver `classeDoEvento` abaixo,
   // que decide a cor de um VISITA_AGENDADA vigente pelo `status_visita`.
   VISITA_DESMARCADA: 'tp-visita-cancelada',
+  // Timeline do card de censo (Tarefas, aba Censos). Reaproveita as cores da
+  // coluna para onde o movimento leva: cobrado → Aguardando retorno (laranja),
+  // atualizado/censo recebido → Censos atualizados (verde).
+  CENSO_COBRADO: 'tp-alta-auto',
+  CENSO_ATUALIZADO: 'tp-relatorio',
+  CENSO_RECEBIDO: 'tp-admissao',
+  CENSO_COBRANCA_DESFEITA: 'tp-edit',
+  CENSO_ATUALIZADO_DESFEITO: 'tp-edit',
+  CENSO_NOTA: 'tp-status',
 }
 
 /**
@@ -52,6 +63,8 @@ export function classeDoEvento(ev: TimelineEvento): string | undefined {
   if (ev.tipo === 'VISITA_AGENDADA' && ev.status_visita === 'cancelada') {
     return 'tp-visita-cancelada'
   }
+  // Relatório com folha rosa (0052): rosa claro no lugar do verde.
+  if (ev.tipo === 'RELATORIO' && ev.folha_rosa) return 'tp-folha-rosa'
   return TIPO_CLASSE[ev.tipo]
 }
 
@@ -103,9 +116,10 @@ export function apresentacaoDoEvento(ev: TimelineEvento) {
     cancelada,
     cardClass: tipoClasse ? `tl-card ${tipoClasse}` : '',
     dotClass: tipoClasse || ev.variante,
-    // Hora só em VISITA_AGENDADA (migration 0035): os demais tipos não têm hora
-    // registrada, e um "—" gratuito seria ruído.
-    hora: visita && ev.hora ? ev.hora.slice(0, 5) : null,
+    // Hora só quando o evento traz: VISITA_AGENDADA (migration 0035) e os da
+    // timeline do card de censo. Os demais não têm hora registrada, e um "—"
+    // gratuito seria ruído.
+    hora: ev.hora ? ev.hora.slice(0, 5) : null,
     chip,
   }
 }

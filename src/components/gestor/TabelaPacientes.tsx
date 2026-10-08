@@ -4,6 +4,7 @@ import type { GestorMetrics } from '../../types/api'
 import { Badge, OpAvatar } from '../ui'
 import { COR } from './gestor.styles'
 import { identificacaoPaciente } from '../../lib/texto'
+import { rotuloMotivoAlta } from '../../lib/motivoAlta'
 
 export default function TabelaPacientes({ pacientes, onSelecionar, onPrefetch, vazio, maxHeight = 480 }: {
   pacientes: GestorMetrics['pacientes_dia']
@@ -39,9 +40,15 @@ export default function TabelaPacientes({ pacientes, onSelecionar, onPrefetch, v
               <td className="mono" style={{ fontSize: 'var(--t-base)' }}>{p.data_entrada}</td>
               <td className="t-right mono fw-6" style={{ color: p.faixa === '30p' ? COR.vermelho : p.faixa === '10_29' ? COR.laranja : undefined }}>{p.dias}</td>
               <td>
-                {p.situacao === 'ALTA'
-                  ? <Badge variant="success" dot>Alta</Badge>
-                  : <Badge variant="info" dot>Internado</Badge>}
+                {p.situacao === 'ALTA' ? (
+                  <>
+                    <Badge variant="success" dot>Alta</Badge>
+                    {/* O motivo da alta (homecare, óbito...). A do censo ainda chega sem. */}
+                    <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', marginTop: 3 }}>
+                      {rotuloMotivoAlta(p.motivo_alta) ?? 'Não informado'}
+                    </div>
+                  </>
+                ) : <Badge variant="info" dot>Internado</Badge>}
               </td>
             </tr>
           ))}

@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { opcoesAutoRefresh } from '../lib/autoRefresh'
 import { queryKeys } from '../lib/queryKeys'
 import {
-  desfazerAtualizado, desfazerCobranca, fetchKanban, marcarAtualizado, marcarCobrado, type CensoAlvo,
+  anotarCenso, desfazerAtualizado, desfazerCobranca, fetchKanban, fetchTimelineCenso,
+  marcarAtualizado, marcarCobrado, type CensoAlvo, type MovimentoCenso,
 } from '../services/kanban.service'
 import {
   aprovarRelatorio, devolverRelatorio, fetchCatalogosProrrogacao, pausarProrrogacao, reenviarRelatorio,
@@ -50,7 +51,7 @@ function moverCenso(
 export function useMarcarCobrado() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (alvo: CensoAlvo) => marcarCobrado(alvo),
+    mutationFn: (m: MovimentoCenso) => marcarCobrado(m),
     onSuccess: (_res, alvo) => {
       qc.setQueryData<KanbanPayload>(queryKeys.kanban(), (atual) => moverCenso(
         atual, alvo, 'censos_atrasados', 'aguardando_retorno',
@@ -64,7 +65,7 @@ export function useMarcarCobrado() {
 export function useDesfazerCobranca() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (alvo: CensoAlvo) => desfazerCobranca(alvo),
+    mutationFn: (m: MovimentoCenso) => desfazerCobranca(m),
     onSuccess: (_res, alvo) => {
       qc.setQueryData<KanbanPayload>(queryKeys.kanban(), (atual) => moverCenso(
         atual, alvo, 'aguardando_retorno', 'censos_atrasados',
@@ -78,7 +79,7 @@ export function useDesfazerCobranca() {
 export function useMarcarAtualizado() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (alvo: CensoAlvo) => marcarAtualizado(alvo),
+    mutationFn: (m: MovimentoCenso) => marcarAtualizado(m),
     onSuccess: (_res, alvo) => {
       qc.setQueryData<KanbanPayload>(queryKeys.kanban(), (atual) => moverCenso(
         atual, alvo, 'aguardando_retorno', 'censos_processados',
@@ -92,8 +93,29 @@ export function useMarcarAtualizado() {
 export function useDesfazerAtualizado() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (alvo: CensoAlvo) => desfazerAtualizado(alvo),
+    mutationFn: (m: MovimentoCenso) => desfazerAtualizado(m),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.kanban() }),
+  })
+}
+
+// Anotação avulsa no card de censo: não move nada, só renova a timeline dele.
+export function useAnotarCenso() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (m: MovimentoCenso) => anotarCenso(m),
+    onSuccess: (_r, m) => qc.invalidateQueries({
+      queryKey: queryKeys.censoTimeline(m.hospitalKey, m.operadoraKey),
+    }),
+  })
+}
+
+// Timeline do card de censo, buscada só com o drawer aberto. Os movimentos
+// invalidam ['kanban'] e, por prefixo, ela junto.
+export function useTimelineCenso(alvo: CensoAlvo | null) {
+  return useQuery({
+    queryKey: queryKeys.censoTimeline(alvo?.hospitalKey ?? '', alvo?.operadoraKey ?? ''),
+    queryFn: () => fetchTimelineCenso(alvo as CensoAlvo),
+    enabled: alvo != null,
   })
 }
 

@@ -16,7 +16,7 @@ import { ProrrogacaoCard } from './ProrrogacaoCard'
 // re-renderizariam a cada setState do quadro.
 export const KanbanCard = memo(function KanbanCard({
   tarefa, onAbrir, onPrefetch, onCobrar, onDesfazer, onAtualizar, onDesfazerAtualizado,
-  onAbrirHospital, cobrando, somenteLeitura, podeAprovar = false, usuario, medicos, onAviso,
+  onAbrirCenso, cobrando, somenteLeitura, podeAprovar = false, usuario, medicos, onAviso,
   podeControlarProrrogacao = false,
 }: {
   tarefa: KanbanTarefa
@@ -26,12 +26,13 @@ export const KanbanCard = memo(function KanbanCard({
   /** true = perfil de observação: os botões de ação do card não aparecem. */
   somenteLeitura?: boolean
   onCobrar: (t: KanbanTarefa) => void
-  /** Cards de censo: desfazer a cobrança e abrir a ficha do hospital. */
+  /** Cards de censo: desfazer a cobrança. */
   onDesfazer?: (t: KanbanTarefa) => void
   /** Hospital cobrado respondeu que não há censo novo: dá o dia por atualizado. */
   onAtualizar?: (t: KanbanTarefa) => void
   onDesfazerAtualizado?: (t: KanbanTarefa) => void
-  onAbrirHospital?: (t: KanbanTarefa) => void
+  /** Card de censo: abre o drawer com a timeline de anotações. */
+  onAbrirCenso?: (t: KanbanTarefa) => void
   /** Ação em andamento NESTE card (não no quadro inteiro). */
   cobrando: boolean
   /** Aba de aprovação: o técnico aprova/devolve; o autor corrige o devolvido. */
@@ -49,7 +50,7 @@ export const KanbanCard = memo(function KanbanCard({
                       onDesfazer={onDesfazer ? () => onDesfazer(tarefa) : undefined}
                       onAtualizar={onAtualizar ? () => onAtualizar(tarefa) : undefined}
                       onDesfazerAtualizado={onDesfazerAtualizado ? () => onDesfazerAtualizado(tarefa) : undefined}
-                      onAbrir={onAbrirHospital ? () => onAbrirHospital(tarefa) : undefined}
+                      onAbrir={onAbrirCenso ? () => onAbrirCenso(tarefa) : undefined}
                       somenteLeitura={somenteLeitura} />
   }
   // Card de RELATÓRIO em aprovação: um por relatório, não por paciente.

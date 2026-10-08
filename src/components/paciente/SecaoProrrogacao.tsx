@@ -1,18 +1,22 @@
-// Seção "Pedir prorrogação" do formulário de relatório, só na ficha "Detalhes".
+// Seção "Pedir prorrogação" da modal "Registrar relatório" (ficha "Detalhes").
 //
-// Desenho do DePara (seção 5.3): fechada até ser marcada; um ou mais períodos
-// por acomodação; justificativa escolhida numa lista (os motivos do Márcia) e
-// complemento livre. A prorrogação só vale com o relatório aprovado, e não muda
-// o prazo do próximo relatório.
+// Vem no topo da modal: pedir prorrogação é o motivo de ser da maioria dos
+// relatórios (65% no Márcia), e o resto da modal é o que sustenta o pedido.
+// Fechada até ser marcada; os períodos seguem o padrão do portal (acomodação,
+// data inicial, data final e "Adicionar"), como as outras listas da modal;
+// justificativa escolhida numa lista (os motivos do Márcia) e complemento
+// livre. A prorrogação só vale com o relatório aprovado, e não muda o prazo do
+// próximo relatório.
 //
-// Sem "Pausar" aqui (pedido do usuário, 01/10/2026): o pedido já tem data
-// final. Pausar e retomar ficam no card da coluna "Em prorrogação" em Tarefas.
-//
-// Cada período empilha acomodação e, abaixo, De e Até lado a lado: o card de
-// Relatórios da ficha é estreito, e os campos numa linha só se sobrepunham.
+// A pausa é o botão "Pausar prorrogação" do rodapé da modal, ao lado de "Alta"
+// (pedido do usuário, 08/10/2026), para quem pausa no card de Tarefas (admin e
+// operacional). Depois, pausar e retomar seguem no card da coluna "Em
+// prorrogação".
 import { useCatalogosProrrogacao } from '../../hooks/useKanban'
 import { dataBR, diasNoPeriodo } from '../../lib/datas'
 import type { PedidoProrrogacao } from '../../types/api'
+import { BlocoOpcional } from './relatorio/BlocoOpcional'
+import { SecaoPeriodos } from './relatorio/SecoesListas'
 import type { FormRelatorio } from './useFormRelatorio'
 
 export function SecaoProrrogacao({ form }: { form: FormRelatorio }) {
@@ -21,79 +25,32 @@ export function SecaoProrrogacao({ form }: { form: FormRelatorio }) {
   // Sem a migration os catálogos vêm vazios: a seção não aparece.
   if (!prr || !catalogos.data?.acomodacoes.length) return null
   const { acomodacoes, justificativas } = catalogos.data
+  const total = prr.periodos.finais().reduce((n, p) => n + diasNoPeriodo(p.data_inicio, p.data_fim), 0)
 
   return (
-    <div className="prr-sec">
-      <style>{`
-        .prr-sec{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface-2)}
-        .prr-tg{display:flex;align-items:center;gap:8px;font-weight:600;font-size:var(--t-base);cursor:pointer}
-        .prr-tg input{width:15px;height:15px;accent-color:var(--accent);margin:0}
-        .prr-corpo{display:grid;gap:10px;margin-top:10px}
-        .prr-per{display:grid;gap:8px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
-        .prr-per-topo{display:flex;align-items:center;justify-content:space-between;gap:8px}
-        .prr-datas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
-        .prr-datas .bm-input{min-width:0;width:100%}
-        .prr-dias{font-size:var(--t-sm);color:var(--muted)}
-        .prr-x{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:var(--t-sm);padding:2px 6px;border-radius:6px}
-        .prr-x:hover{background:var(--surface-3);color:var(--danger)}
-      `}</style>
-      <label className="prr-tg">
-        <input type="checkbox" checked={prr.ativa} onChange={(e) => prr.alternar(e.target.checked)} />
-        Pedir prorrogação
-      </label>
-      {prr.ativa && (
-        <div className="prr-corpo">
-          {prr.periodos.map((p, i) => (
-            <div className="prr-per" key={i}>
-              <label>
-                <span className="prr-per-topo">
-                  <span className="form-lbl">Acomodação<span className="req">*</span></span>
-                  {prr.periodos.length > 1 && (
-                    <button type="button" className="prr-x" onClick={() => prr.removerPeriodo(i)}>Remover</button>
-                  )}
-                </span>
-                <select className="bm-input" value={p.acomodacao}
-                        onChange={(e) => prr.mudarPeriodo(i, 'acomodacao', e.target.value)}>
-                  <option value="">Escolher</option>
-                  {acomodacoes.map((a) => <option key={a.id} value={a.nome}>{a.nome}</option>)}
-                </select>
-              </label>
-              <div className="prr-datas">
-                <label>
-                  <span className="form-lbl">De<span className="req">*</span></span>
-                  <input type="date" className="bm-input" value={p.data_inicio}
-                         onChange={(e) => prr.mudarPeriodo(i, 'data_inicio', e.target.value)} />
-                </label>
-                <label>
-                  <span className="form-lbl">Até<span className="req">*</span></span>
-                  <input type="date" className="bm-input" value={p.data_fim} min={p.data_inicio || undefined}
-                         onChange={(e) => prr.mudarPeriodo(i, 'data_fim', e.target.value)} />
-                </label>
-              </div>
-              {diasNoPeriodo(p.data_inicio, p.data_fim) > 0 && (
-                <span className="prr-dias">{diasNoPeriodo(p.data_inicio, p.data_fim)} dias</span>
-              )}
-            </div>
-          ))}
-          <div>
-            <button type="button" className="btn btn-outline btn-sm" onClick={prr.maisPeriodo}>Mais um período</button>
-          </div>
-          <label>
-            <span className="form-lbl">Justificativa<span className="req">*</span></span>
-            <select className="bm-input" value={prr.justificativa}
-                    onChange={(e) => prr.setJustificativa(e.target.value)}>
-              <option value="">Escolher o motivo clínico</option>
-              {justificativas.map((j) => <option key={j.codigo} value={j.codigo}>{j.descricao}</option>)}
-            </select>
-          </label>
-          <label>
-            <span className="form-lbl">Complemento</span>
-            <input className="bm-input" maxLength={1000} value={prr.complemento}
-                   onChange={(e) => prr.setComplemento(e.target.value)} />
-          </label>
-        </div>
-      )}
-    </div>
+    <BlocoOpcional titulo="Pedir prorrogação" marcado={prr.ativa} onMarcar={prr.alternar}
+                   desabilitado={form.salvando}
+                   extra={[
+                     total > 0 ? `${total} ${total === 1 ? 'dia' : 'dias'}` : '',
+                     prr.pausada ? 'pausada' : '',
+                   ].filter(Boolean).join(' · ')}>
+      <div className="rr-pilha">
+        <SecaoPeriodos lista={prr.periodos} acomodacoes={acomodacoes} desabilitado={form.salvando} />
+        <label className="rr-campo">
+          <span className="form-lbl">Justificativa<span className="req">*</span></span>
+          <select className="bm-input bm-select" value={prr.justificativa}
+                  onChange={(e) => prr.setJustificativa(e.target.value)}>
+            <option value="">Escolher o motivo clínico</option>
+            {justificativas.map((j) => <option key={j.codigo} value={j.codigo}>{j.descricao}</option>)}
+          </select>
+        </label>
+        <label className="rr-campo">
+          <span className="form-lbl">Complemento</span>
+          <input className="bm-input" maxLength={1000} value={prr.complemento}
+                 onChange={(e) => prr.setComplemento(e.target.value)} />
+        </label>
+      </div>
+    </BlocoOpcional>
   )
 }
 

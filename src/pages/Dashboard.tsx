@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { usePageHeader } from '../components/PageHeader'
 import PacienteDrawer from '../components/PacienteDrawer'
@@ -19,7 +19,7 @@ import { useIsFetching } from '@tanstack/react-query'
 import { queryRoots } from '../lib/queryKeys'
 import { AUTO_REFRESH_MS } from '../lib/autoRefresh'
 import { NOME_TODAS } from '../services/dashboard.service'
-import { hojeISO, paraISO } from '../lib/datas'
+import { dataBR, hojeISO, paraISO } from '../lib/datas'
 import type {
   DashboardOverview, DashboardOverviewOperadora, DashboardStats, Hospital, Internacao,
 } from '../types/api'
@@ -62,8 +62,18 @@ function consolidarOverview(overview: DashboardOverview | undefined): DashboardO
 const SEM_HOSPITAIS: Hospital[] = []
 const SEM_INTERNACOES: Internacao[] = []
 
-// Valores de `filtro` que recortam pela situação do relatório (seletor da tabela).
-const FILTROS_STATUS = new Set(['sem_relatorio', 'vencido', 'proximo', 'em_dia'])
+// Mínimos de dias oferecidos pelo chip "Longa permanência". Substituem os chips
+// "Longa 10d+", "Longa 30d+" e "> 30 dias", que se sobrepunham (30d+ e > 30 dias
+// davam quase a mesma lista) e não deixavam escolher outro corte.
+const OPCOES_PERMANENCIA = [3, 7, 10, 15, 30] as const
+
+const IconChevron = ({ aberto }: { aberto: boolean }) => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: aberto ? 'rotate(180deg)' : undefined, transition: 'transform .12s' }}><path d="m6 9 6 6 6-6" /></svg>
+)
+
+const IconFechar = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+)
 
 // Ícone do avatar no modo consolidado (mesma grade da "Visão Geral" na sidebar).
 const IconTodas = () => (
@@ -93,10 +103,15 @@ export default function Dashboard() {
   // Filtros client-side
   const [busca, setBusca] = useState('')
   const [utiOn, setUtiOn] = useState(false)
-  const [d30On, setD30On] = useState(false)
-  // Permanência: '' (todas), '10' (≥10d, campo longa_10) ou '30' (≥30d, longa_30).
-  // Usa os campos reais (limites por operadora) — coerente com a coluna Permanência.
-  const [permanencia, setPermanencia] = useState<'' | '10' | '30'>('')
+  // Longa permanência: mínimo de dias escolhido (null = sem recorte). Compara com
+  // `dias` da linha, e não com as marcas longa_10/longa_30: essas só existem nos
+  // dois limites da operadora e zeram com a alta. `dias` conta até hoje, ou até
+  // a alta no modo "Altas", então o mesmo chip serve às duas listas.
+  const [permanencia, setPermanencia] = useState<number | null>(null)
+  // Opções de dias à mostra. Escolher uma recolhe as opções; o chip fica marcado
+  // com o corte escolhido.
+  const [permAberta, setPermAberta] = useState(false)
+  const permRef = useRef<HTMLSpanElement>(null)
   // Ordenação da lista: '' (padrão do backend), 'sem_rel' (mais dias sem relatório
   // primeiro) ou 'dias' (mais dias internado primeiro). Ajuda a priorizar.
   const [ordenar, setOrdenar] = useState<'' | 'sem_rel' | 'dias'>('')
@@ -247,12 +262,8 @@ export default function Dashboard() {
       const senha = (p.senha || '').toLowerCase()
       const okBusca = !q || nome.includes(q) || atend.includes(q) || senha.includes(q)
       const okUti = !utiOn || (p.tipo_leito || '').toUpperCase() === 'UTI'
-      const ok30 = !d30On || Number(p.dias || 0) > 30
-      // Permanência pelos campos reais (limites por operadora), não por dias>N:
-      // '30' = longa_30; '10' = longa_10 (que já inclui os 30+, é o piso).
-      const okPerm =
-        permanencia === '' ||
-        (permanencia === '30' ? Boolean(p.longa_30) : Boolean(p.longa_10))
+      // Sem data de internação não há como contar dias: sai do recorte.
+      const okPerm = permanencia == null || (p.dias != null && p.dias >= permanencia)
       // Censo traz datas em dd/mm/aaaa ou ISO: normaliza antes de comparar. Sem
       // data reconhecível, a linha não cabe em nenhum período e sai do recorte.
       let okData = true
@@ -260,7 +271,7 @@ export default function Dashboard() {
         const d = paraISO(vendoAltas ? p.data_alta : p.data_entrada)
         okData = Boolean(d) && (!dataDe || d >= dataDe) && (!dataAte || d <= dataAte)
       }
-      return okBusca && okUti && ok30 && okPerm && okData
+      return okBusca && okUti && okPerm && okData
     })
     if (ordenar === 'sem_rel') {
       // Mais dias sem relatório primeiro; sem relatório (null) vai ao topo.
@@ -272,7 +283,7 @@ export default function Dashboard() {
       return [...filtrados].sort((a, b) => (b.dias ?? 0) - (a.dias ?? 0))
     }
     return filtrados
-  }, [internacoes, busca, utiOn, d30On, permanencia, ordenar, dataDe, dataAte, vendoAltas])
+  }, [internacoes, busca, utiOn, permanencia, ordenar, dataDe, dataAte, vendoAltas])
 
   // Paginação client-side: renderizar todas as internações de uma vez trava a
   // tabela em operadoras grandes (cada linha tem vários componentes). Fatiamos
@@ -288,14 +299,55 @@ export default function Dashboard() {
   // Qualquer mudança de filtro reinicia a paginação na primeira página.
   useEffect(() => {
     setPagina(1)
-  }, [busca, utiOn, d30On, permanencia, ordenar, operadora, filtro, hospital, dataDe, dataAte])
+  }, [busca, utiOn, permanencia, ordenar, operadora, filtro, hospital, dataDe, dataAte])
 
-  // Entrar em "Altas" com um recorte de permanência ativo deixaria a lista vazia
-  // (longa_10/30 não valem para quem já saiu). Os chips somem nesse modo, então
-  // o recorte precisa cair junto — senão ficaria ligado e invisível.
+  // Chave da lista em tela: muda quando um filtro, a ordem ou a página trocam as
+  // linhas, e a tabela refaz a entrada delas (senão a lista muda "do nada"). A
+  // busca fica de fora para não animar a cada tecla, e o polling também, porque
+  // não mexe na chave. Num filtro do backend a chave só vira quando a lista nova
+  // chega: enquanto `trocando`, a tela ainda mostra a anterior, esmaecida.
+  const assinaturaLista = [operadora, filtro, hospital, dataDe, dataAte, utiOn, permanencia, ordenar, paginaAtual].join('|')
+  const [chaveLista, setChaveLista] = useState(assinaturaLista)
+  if (!trocando && chaveLista !== assinaturaLista) setChaveLista(assinaturaLista)
+
+  // Recortes ligados, ditos ao lado da contagem da tabela.
+  const filtrosAtivos: string[] = []
+  if (utiOn) filtrosAtivos.push('UTI / CTI')
+  if (permanencia != null) filtrosAtivos.push(`Longa permanência ${permanencia}d+`)
+  if (dataDe || dataAte) {
+    filtrosAtivos.push(
+      dataDe && dataAte ? `${dataBR(dataDe)} a ${dataBR(dataAte)}`
+        : dataDe ? `Desde ${dataBR(dataDe)}` : `Até ${dataBR(dataAte)}`,
+    )
+  }
+
+  // O chip abre e fecha as opções sem mexer no corte escolhido; quem tira o
+  // filtro é o "x" do chip (ou o "Limpar" da barra).
+  function escolherPermanencia(n: number) {
+    // Clicar no corte já marcado desliga o filtro.
+    setPermanencia((v) => (v === n ? null : n))
+    setPermAberta(false)
+  }
+  function removerPermanencia() {
+    setPermanencia(null)
+    setPermAberta(false)
+  }
+  // Opções abertas: clique fora ou Esc recolhem, como um menu.
   useEffect(() => {
-    if (vendoAltas) setPermanencia('')
-  }, [vendoAltas])
+    if (!permAberta) return
+    function fora(e: MouseEvent) {
+      if (permRef.current && !permRef.current.contains(e.target as Node)) setPermAberta(false)
+    }
+    function esc(e: KeyboardEvent) {
+      if (e.key === 'Escape') setPermAberta(false)
+    }
+    document.addEventListener('mousedown', fora)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('mousedown', fora)
+      document.removeEventListener('keydown', esc)
+    }
+  }, [permAberta])
 
   const kpis: Array<[string, number, string, string, string]> = [
     ['sem_relatorio', Number(stats.sem_relatorio || 0), 'danger', 'Sem Relatório', 'nunca registrado'],
@@ -472,25 +524,53 @@ export default function Dashboard() {
           {/* Quick filters — os status (Sem relatório/Vencidos) saíram daqui: os
               cards KPI do topo já são o atalho clicável desses status. Estes chips
               cobrem o que a tabela mostra mas o topo não filtra: leito, permanência
-              (campos reais longa_10/30) e ordenação por urgência. */}
+              e ordenação por urgência. */}
           <div className="quick-filters" style={{ marginTop: 14 }}>
             <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', flexShrink: 0 }}>Filtros rápidos:</span>
             <span className={`qf-chip${utiOn ? ' active' : ''}`} onClick={() => setUtiOn((v) => !v)}>UTI / CTI</span>
-            {/* Longa permanência só existe para quem está internado: as marcas
-                longa_10/longa_30 são zeradas quando há data de alta. Oferecê-las
-                na lista de altas seria um chip que sempre devolve zero. */}
-            {!vendoAltas && (
-              <>
-                <span className={`qf-chip${permanencia === '10' ? ' active' : ''}`} onClick={() => setPermanencia((v) => (v === '10' ? '' : '10'))}>
-                  Longa 10d+
+            {/* Longa permanência: o chip abre os cortes de dias; escolher um
+                recolhe as opções e o chip fica marcado com o corte ("10d+").
+                Clicar de novo reabre para trocar; o "x" tira o filtro. */}
+            <span ref={permRef} className="qf-grupo">
+              <span className={`qf-chip qf-composto${permanencia != null ? ' active' : ''}`}>
+                <button
+                  type="button"
+                  aria-expanded={permAberta}
+                  onClick={() => setPermAberta((v) => !v)}
+                  title={permanencia != null ? 'Trocar o mínimo de dias' : 'Escolher o mínimo de dias'}
+                >
+                  {permanencia != null ? <>Longa permanência: <strong>{permanencia}d+</strong></> : 'Longa permanência'}
+                  <IconChevron aberto={permAberta} />
+                </button>
+                {permanencia != null && (
+                  <button
+                    type="button"
+                    className="qf-remover"
+                    onClick={removerPermanencia}
+                    title="Remover filtro"
+                    aria-label="Remover filtro de longa permanência"
+                  >
+                    <IconFechar />
+                  </button>
+                )}
+              </span>
+              {permAberta && (
+                <span className="qf-opcoes" role="radiogroup" aria-label="Mínimo de dias">
+                  {OPCOES_PERMANENCIA.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      role="radio"
+                      aria-checked={permanencia === n}
+                      className={`qf-chip${permanencia === n ? ' active' : ''}`}
+                      title={vendoAltas ? `Ficou ${n} dias ou mais` : `Internado há ${n} dias ou mais`}
+                      onClick={() => escolherPermanencia(n)}
+                    >
+                      {n}d+
+                    </button>
+                  ))}
                 </span>
-                <span className={`qf-chip${permanencia === '30' ? ' active' : ''}`} onClick={() => setPermanencia((v) => (v === '30' ? '' : '30'))}>
-                  Longa 30d+
-                </span>
-              </>
-            )}
-            <span className={`qf-chip${d30On ? ' active' : ''}`} onClick={() => setD30On((v) => !v)}>
-              {vendoAltas ? 'Ficou > 30 dias' : '> 30 dias'}
+              )}
             </span>
             {/* Altas: troca a BASE da lista (altas no lugar de internados ativos),
                 por isso vai na URL como filtro do backend e não é um recorte
@@ -514,12 +594,12 @@ export default function Dashboard() {
               <option value="sem_rel">Mais dias sem relatório</option>
               <option value="dias">{vendoAltas ? 'Mais dias internado (até a alta)' : 'Mais dias internado'}</option>
             </select>
-            {(utiOn || d30On || permanencia !== '' || ordenar !== '' || vendoAltas) && (
+            {(utiOn || permanencia != null || ordenar !== '' || vendoAltas) && (
               <button
                 className="btn btn-ghost btn-sm"
                 style={{ color: 'var(--muted)' }}
                 onClick={() => {
-                  setUtiOn(false); setD30On(false); setPermanencia(''); setOrdenar('')
+                  setUtiOn(false); setPermanencia(null); setPermAberta(false); setOrdenar('')
                   // "Altas" mora na URL (é filtro de backend): limpar também o desfaz,
                   // senão o botão some e a lista continua mostrando altas.
                   if (vendoAltas) applyFilter('altas')
@@ -564,8 +644,8 @@ export default function Dashboard() {
                     porPagina={POR_PAGINA}
                     mostrarOperadora={todas}
                     vendoAltas={vendoAltas}
-                    filtroRelatorio={FILTROS_STATUS.has(filtro) ? filtro : ''}
-                    onFiltroRelatorio={(f) => setParam('filtro', f || null)}
+                    chaveLista={chaveLista}
+                    filtrosAtivos={filtrosAtivos}
                     onExportar={() => setExportOpen(true)}
                     onAdicionarPaciente={somenteLeitura ? undefined : () => setAddOpen(true)}
                     onSelecionar={setDrawerId}

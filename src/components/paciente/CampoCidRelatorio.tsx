@@ -31,7 +31,24 @@ const estilos = `
 .ccr-x:focus-visible{outline:2px solid var(--accent)}
 `
 
-export function CampoCidRelatorio({ form }: { form: FormRelatorio }) {
+/** Onde o campo guarda o que foi escolhido. Sem ela, nos CIDs do formulário
+ *  (o drawer e o "Diagnóstico secundário" da modal). */
+export interface SelecaoCid {
+  escolhidos: CidEscolhido[]
+  adicionar: (c: CidEscolhido) => void
+  remover: (codigo: string) => void
+  /** Códigos escolhidos no OUTRO campo, que não aparecem na lista deste. */
+  ocultar?: string[]
+}
+
+export function CampoCidRelatorio({ form, rotulo = 'CID', selecao }: {
+  form: FormRelatorio
+  rotulo?: string
+  selecao?: SelecaoCid
+}) {
+  const sel: SelecaoCid = selecao ?? {
+    escolhidos: form.cids, adicionar: form.adicionarCid, remover: form.removerCid,
+  }
   const { role } = useAuth()
   const podeNovo = podeExecutar(role, 'atribuirCid')
   const doPaciente = useListaCidsPaciente(form.internacaoId).data?.cids
@@ -41,7 +58,10 @@ export function CampoCidRelatorio({ form }: { form: FormRelatorio }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const busca = useCidBusca(texto, aberto && podeNovo)
 
-  const escolhidos = useMemo(() => new Set(form.cids.map((c) => c.codigo)), [form.cids])
+  const escolhidos = useMemo(
+    () => new Set([...sel.escolhidos.map((c) => c.codigo), ...(sel.ocultar ?? [])]),
+    [sel.escolhidos, sel.ocultar],
+  )
   const doPacienteSet = useMemo(() => new Set((doPaciente ?? []).map((c) => c.codigo)), [doPaciente])
 
   // Os do paciente vêm primeiro e filtrados pelo texto aqui mesmo (são poucos);
@@ -67,7 +87,7 @@ export function CampoCidRelatorio({ form }: { form: FormRelatorio }) {
   }, [aberto])
 
   function escolher(c: CidEscolhido) {
-    form.adicionarCid(c)
+    sel.adicionar(c)
     setTexto('')
     setAtivo(0)
   }
@@ -103,7 +123,7 @@ export function CampoCidRelatorio({ form }: { form: FormRelatorio }) {
     <div>
       <style>{estilos}</style>
       <span className="form-lbl">
-        CID <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--muted)' }}>(opcional)</span>
+        {rotulo} <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--muted)' }}>(opcional)</span>
       </span>
       {semOpcoes ? (
         <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Nenhum CID cadastrado no paciente.</div>
@@ -150,16 +170,16 @@ export function CampoCidRelatorio({ form }: { form: FormRelatorio }) {
         </div>
       )}
 
-      {form.cids.length > 0 && (
+      {sel.escolhidos.length > 0 && (
         <div className="ccr-tags">
-          {form.cids.map((c) => (
+          {sel.escolhidos.map((c) => (
             <span key={c.codigo} className="ccr-tag" title={`${c.codigo} ${c.descricao}`}>
               <b>{c.codigo}</b>
               <span className="ccr-tag-txt">{c.descricao}</span>
               {/* Avisa que o CID entra também no paciente ao registrar. */}
               {doPaciente && !doPacienteSet.has(c.codigo) && <span className="ccr-novo">Novo no paciente</span>}
               <button type="button" className="ccr-x" aria-label={`Tirar CID ${c.codigo}`} disabled={form.salvando}
-                onClick={() => form.removerCid(c.codigo)}>✕</button>
+                onClick={() => sel.remover(c.codigo)}>✕</button>
             </span>
           ))}
         </div>

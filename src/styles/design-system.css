@@ -42,6 +42,9 @@
      colidir com o azul (--info) da admissão. */
   --indigo: #5B4CC4;
   --indigo-bg: #E7E4F7;
+  /* Rosa: a folha rosa do relatório (custo evitado negociado com o hospital). */
+  --rosa: #B4235E;
+  --rosa-bg: #FBE7F0;
   --sidebar-w: 248px;
   --font-sans: "Geist", system-ui, -apple-system, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
@@ -598,6 +601,33 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .qf-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;background:var(--surface-3);border:1px solid var(--border);font-size:var(--t-sm);color:var(--ink-2);cursor:pointer;transition:background .12s,border-color .12s,color .12s;white-space:nowrap}
 .qf-chip:hover{border-color:var(--ink-3)}
 .qf-chip.active{background:var(--primary-soft);border-color:var(--primary-3);color:var(--primary)}
+/* button.qf-chip: sem herdar a altura de linha, ficaria mais baixo que o chip em <span>. */
+button.qf-chip{line-height:inherit}
+.qf-opcoes{display:inline-flex;align-items:center;gap:4px;animation:qf-opcoes-in .14s ease-out}
+.qf-opcoes .qf-chip{padding:4px 8px}
+@keyframes qf-opcoes-in{from{opacity:0;transform:translateX(-4px)}}
+/* Chip com escolha (Longa permanência): o rótulo reabre as opções e o "x" tira o
+   filtro. São dois botões dentro de um chip, porque botão não pode conter botão. */
+.qf-grupo{display:inline-flex;align-items:center;gap:6px}
+.qf-chip.qf-composto{padding:0}
+.qf-composto>button{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:none;border:0;border-radius:99px;font:inherit;line-height:inherit;color:inherit;cursor:pointer}
+.qf-composto>button.qf-remover{padding:4px 8px 4px 2px}
+.qf-composto>button:first-child:not(:last-child){padding-right:4px}
+.qf-remover svg{opacity:.65;transition:opacity .12s}
+.qf-remover:hover svg{opacity:1}
+
+/* Lista da Visão Geral: quando um filtro muda, as linhas entram em cascata e a
+   contagem pisca. Sem isso a lista trocava de uma vez e passava despercebida. */
+.lista-entra tbody tr{animation:lista-entra .3s ease-out both}
+@keyframes lista-entra{from{opacity:0;transform:translateY(6px)}}
+.contagem-pulso{padding:0 3px;margin:0 -3px;border-radius:4px;animation:contagem-pulso 1.2s ease-out}
+@keyframes contagem-pulso{0%,35%{background:var(--primary-soft);color:var(--primary)}}
+.filtro-tag{display:inline-flex;align-items:center;padding:1px 8px;border-radius:99px;background:var(--primary-soft);color:var(--primary);font-size:var(--t-xs);font-weight:600;white-space:nowrap}
+@media (prefers-reduced-motion:reduce){
+  .lista-entra tbody tr{animation-name:lista-entra-parado}
+  .qf-opcoes{animation:none}
+}
+@keyframes lista-entra-parado{from{opacity:0}}
 
 /* ── Modal ──
    Flex no backdrop centraliza nos dois eixos e o gap do padding garante folga
@@ -647,6 +677,7 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
    classe de variante genérica acima (mesma especificidade, declarada depois). */
 .tl-dot.tp-admissao{background:var(--info)}
 .tl-dot.tp-relatorio{background:var(--success)}
+.tl-dot.tp-folha-rosa{background:var(--rosa)}
 .tl-dot.tp-relatorio-interno{background:var(--indigo)}
 .tl-dot.tp-status{background:var(--ink-2)}
 .tl-dot.tp-alta-auto{background:var(--warning)}
@@ -677,6 +708,8 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .tl-item.tl-card.tp-admissao .tl-label{color:var(--info)}
 .tl-item.tl-card.tp-relatorio{background:var(--success-bg);border-color:rgba(14,122,83,.25);border-left-color:var(--success)}
 .tl-item.tl-card.tp-relatorio .tl-label{color:var(--success-2)}
+.tl-item.tl-card.tp-folha-rosa{background:var(--rosa-bg);border-color:rgba(180,35,94,.22);border-left-color:var(--rosa)}
+.tl-item.tl-card.tp-folha-rosa .tl-label{color:var(--rosa)}
 .tl-item.tl-card.tp-relatorio-interno{background:var(--indigo-bg);border-color:rgba(91,76,196,.25);border-left-color:var(--indigo)}
 .tl-item.tl-card.tp-relatorio-interno .tl-label{color:var(--indigo)}
 .tl-item.tl-card.tp-alta-auto{background:var(--warning-bg);border-color:rgba(217,105,12,.25);border-left-color:var(--warning)}

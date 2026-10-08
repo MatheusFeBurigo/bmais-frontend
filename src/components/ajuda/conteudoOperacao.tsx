@@ -30,7 +30,7 @@ export function ModuloOperacional({ irPara }: Props) {
         passos={[
           { n: 1, titulo: "Escolha a operadora, ou deixe todas", corpo: <>A tela abre com todas as operadoras juntas. Troque aqui para ver só uma delas.</> },
           { n: 2, titulo: "Clique no cartão da situação que quer atacar", corpo: <><strong>Sem Relatório</strong> e <strong>Atrasado</strong> são os mais urgentes. O cartão clicado ganha um contorno e a lista passa a mostrar só aqueles pacientes. Clique de novo para voltar a ver todos.</> },
-          { n: 3, titulo: "Afine com os filtros rápidos, se precisar", corpo: <>Por exemplo, <strong>UTI / CTI</strong> para começar pelos leitos de terapia intensiva, ou{' '} <strong>Longa 10d+</strong> para quem está internado há mais tempo.</> },
+          { n: 3, titulo: "Afine com os filtros rápidos, se precisar", corpo: <>Por exemplo, <strong>UTI / CTI</strong> para começar pelos leitos de terapia intensiva, ou{' '} <strong>Longa permanência</strong> e depois a partir de quantos dias (3, 7, 10, 15 ou 30) para ver quem está internado há mais tempo.</> },
           { n: 4, titulo: "Clique na linha do paciente", corpo: <>Abre a ficha rápida ao lado, sem sair da lista. É ali que se registra o relatório e se agenda a visita (veja{' '} <button type="button" className="aj-link" onClick={() => irPara('ficha-do-paciente')}>Ficha do Paciente</button>).</> },
         ]}
       >
@@ -99,8 +99,7 @@ export function ModuloOperacional({ irPara }: Props) {
         <tr><Key>Hospital</Key><td>Restringe a uma unidade. Cada opção já mostra quantos internados e quantos alertas ela tem. Na visão consolidada, os hospitais aparecem agrupados por operadora.</td></tr>
         <tr><Key>Busca</Key><td>Procura por nome do segurado, número de atendimento e senha de autorização.</td></tr>
         <tr><Key>UTI e CTI</Key><td>Mantém apenas leitos de terapia intensiva.</td></tr>
-        <tr><Key>Longa permanência</Key><td>Dois filtros, de 10 e de 30 dias, que usam os marcadores reais da operadora e não uma contagem fixa. São mutuamente exclusivos.</td></tr>
-        <tr><Key>Mais de 30 dias</Key><td>Contagem bruta de dias de internação, independente da regra da operadora.</td></tr>
+        <tr><Key>Longa permanência</Key><td>Escolha a partir de quantos dias de internação: 3, 7, 10, 15 ou 30. O chip fica marcado com o corte escolhido. Clique nele para trocar, ou no x para tirar o filtro. Na lista de altas, conta os dias até a alta.</td></tr>
         <tr><Key>Altas</Key><td>Troca a base da lista para os pacientes que já saíram, em vez dos internados.</td></tr>
         <tr><Key>Ordenação</Key><td>Padrão, mais dias sem relatório, ou mais dias internado. Na primeira opção, quem nunca teve relatório vai ao topo.</td></tr>
       </Tabela>
@@ -277,21 +276,47 @@ export function ModuloPaciente({ irPara }: Props) {
 
       <h3>Relatórios</h3>
       <p>
-        Lista os relatórios de auditoria já registrados, com contador. Para o perfil técnico, o
-        botão de registrar abre o formulário na própria tela, com quatro campos.
+        Lista os relatórios de auditoria já registrados, com contador. O botão{' '}
+        <strong>Registrar</strong> abre o relatório completo numa janela. No alto ficam os dados do
+        paciente; os relatórios anteriores continuam na timeline da ficha. A ordem é a do pedido:
+        primeiro a prorrogação, depois o que a sustenta.
       </p>
       <ul>
-        <li><strong>Data da visita</strong>, obrigatória, já preenchida com a data de hoje.</li>
-        <li><strong>Médico auditor</strong>, campo com busca entre os médicos auditores ativos do
-          cadastro, aceitando também texto livre.</li>
-        <li><strong>CID</strong>, opcional: os do paciente primeiro, depois o catálogo. O CID que o
-          paciente ainda não tem passa a constar na ficha dele.</li>
-        <li><strong>Observação</strong>, em texto livre.</li>
+        <li><strong>Prorrogação</strong>: marque <strong>Pedir prorrogação</strong>, adicione os
+          períodos (acomodação, início e fim) e escolha a justificativa. O período seguinte já vem
+          começando no dia depois do anterior. Admin e operacional podem pedir já pausada, pelo
+          botão <strong>Pausar prorrogação</strong> do rodapé.</li>
+        <li><strong>Visita</strong>: a data, obrigatória e já com a data de hoje, o médico auditor
+          e o enfermeiro auditor.</li>
+        <li><strong>Internação</strong>: caráter (urgência ou eletivo), tipo de internação e as
+          acomodações utilizadas, com entrada e saída. Vem preenchida como no último relatório:
+          para registrar uma mudança, edite a acomodação atual, informe a saída e adicione a nova.</li>
+        <li><strong>Quadro clínico</strong>: diagnóstico principal e secundário, opcionais, e o
+          texto do relatório, obrigatório. O CID que o paciente ainda não tem passa a constar na
+          ficha dele.</li>
+        <li><strong>No período</strong>: procedimentos realizados, medicação de alto custo e evento
+          adverso.</li>
+        <li><strong>Negociação com o hospital</strong>: folha rosa (a troca de acomodação), glosa
+          de diárias, medicação negada, procedimento negado e troca de procedimento. Quando o
+          relatório com folha rosa passa a valer, a timeline ganha o evento{' '}
+          <strong>Troca de acomodação</strong>.</li>
       </ul>
       <p>
+        A prorrogação e os blocos de <strong>No período</strong> e{' '}
+        <strong>Negociação com o hospital</strong> abrem quando marcados. Nas listas, preencha a
+        linha e clique em <strong>Adicionar</strong>; a última linha completa também entra ao
+        registrar. O lápis devolve o item à linha para corrigir. Se o paciente teve alta, use o
+        botão <strong>Alta</strong> do rodapé, ao lado de <strong>Registrar relatório</strong>: é o
+        mesmo do topo da ficha e vale na hora. Com o motivo <strong>Homecare</strong>, a alta pede
+        as perguntas de home care (solicitado, oxigenioterapia, mobilização, nível de consciência,
+        acesso venoso, traqueostomia, curativo e ostomias), todas obrigatórias, e a alimentação; as
+        respostas ficam no evento da alta na timeline.
+      </p>
+      <p>
         Cada relatório aparece como um cartão com borda colorida pelo papel de quem o registrou, com
-        data e hora, autor, médico responsável, os CIDs informados e, quando há anexo, o botão de
-        baixar o documento.
+        data e hora, autor, médico responsável, os CIDs informados e um resumo do que foi marcado
+        e, quando há anexo, o botão de baixar o documento. Prorrogação e folha rosa valem quando o
+        relatório é aprovado.
       </p>
 
       <h3>Timeline</h3>
@@ -357,7 +382,7 @@ export function ModuloKanban({ irPara }: Props) {
       <ComoFazer
         titulo="Cobrar um censo atrasado"
         passos={[
-          { n: 1, titulo: "Contate o hospital e clique em Marcar como cobrado", corpo: <>O card mostra desde que dia falta o censo e até quando os dados do hospital estão atualizados.</> },
+          { n: 1, titulo: "Contate o hospital e clique em Marcar como cobrado", corpo: <>O card mostra desde que dia falta o censo e até quando os dados do hospital estão atualizados. Ao marcar, anote com quem falou: a anotação é obrigatória e fica na timeline do card.</> },
           { n: 2, titulo: "O card espera em Aguardando retorno", corpo: <>Quando o censo chegar pelo{' '} <button type="button" className="aj-link" onClick={() => irPara('envio-de-censos')}>Envio de Censos</button>, ele sai sozinho. Se o dia virar sem censo, ele volta para Censos atrasados para uma nova cobrança.</> },
         ]}
       >
@@ -411,7 +436,9 @@ export function ModuloKanban({ irPara }: Props) {
         paciente: marque <strong>Pedir prorrogação</strong>, informe os períodos por acomodação e
         escolha a justificativa. Ela vale quando o relatório é aprovado e não muda o prazo do
         próximo relatório. A coluna, no quadro de pacientes, lista quem está em prorrogação,
-        primeiro as que terminam hoje. Passada a data final, o paciente volta para{' '}
+        primeiro as que terminam hoje. Nas outras colunas de pacientes, o card do paciente
+        prorrogado mostra <strong>Prorrogado até</strong> a data final (ou{' '}
+        <strong>Prorrogação pausada</strong>). Passada a data final, o paciente volta para{' '}
         <strong>Sem relatório</strong>. Admin e operacional podem{' '}
         <strong>Pausar</strong> e <strong>Retomar</strong> no próprio card.
       </p>
@@ -421,12 +448,13 @@ export function ModuloKanban({ irPara }: Props) {
         Cada hospital aparece uma vez por operadora com paciente internado, pela data do último
         censo daquela operadora. O censo da Porto chegar não conta para a Bradesco do mesmo
         hospital. O card muda de coluna sozinho quando o censo chega, e o filtro de operadora
-        mostra só os censos de uma delas. Clicar no card abre a
-        ficha do hospital, com telefone, e-mail e o histórico de censos.
+        mostra só os censos de uma delas. Clicar no card abre a timeline dos últimos 15 dias,
+        com as anotações e os censos recebidos, e o contato do hospital. Toda mudança de coluna
+        feita à mão pede uma anotação do que aconteceu.
       </p>
       <Tabela cabecalho={['Coluna', 'Quando o hospital está aqui', 'O que fazer']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Censos atrasados</Key>
-          <td>Falta o censo de ontem ou de dias anteriores, ou o hospital nunca enviou.</td>
+          <td>Falta o censo de ontem ou de dias anteriores, ou o hospital nunca enviou. Hospital que manda censo a cada tantos dias só atrasa depois desse prazo.</td>
           <td>Cobrar o hospital e clicar em Marcar como cobrado.</td></tr>
         <tr><Key>Aguardando retorno</Key>
           <td>O hospital já foi cobrado e o censo ainda não chegou.</td>

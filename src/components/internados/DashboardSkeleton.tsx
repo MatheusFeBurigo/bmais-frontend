@@ -77,9 +77,9 @@ export default function DashboardSkeleton() {
       {/* Filtros rápidos */}
       <div className="quick-filters" style={{ marginTop: 14 }}>
         <Skeleton w={80} h={13} />
-        <Skeleton w={96} h={26} radius={999} />
-        <Skeleton w={80} h={26} radius={999} />
-        <Skeleton w={78} h={26} radius={999} />
+        <Skeleton w={72} h={26} radius={999} />
+        <Skeleton w={140} h={26} radius={999} />
+        <Skeleton w={54} h={26} radius={999} />
         <div style={{ flex: 1 }} />
         <Skeleton w={260} h={32} radius={8} />
       </div>

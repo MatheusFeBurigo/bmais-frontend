@@ -14,6 +14,7 @@ import { Badge, OpAvatar } from '../ui'
 import { LeitoTag } from '../StatusBadge'
 import { nomeProprio } from '../../lib/texto'
 import { dataBR, hojeISO } from '../../lib/datas'
+import { etiquetaProrrogacao } from '../../lib/prorrogacao'
 import { ehLonga, ehUTI, nuncaVisitado } from './prioridade'
 
 /** Etiqueta curta de prioridade, exibida sob o nome. */
@@ -63,6 +64,9 @@ export const PacienteCard = memo(function PacienteCard({ tarefa: t, onAbrir, onP
   // A prorrogação acabou e o paciente voltou para a fila: a etiqueta diz por quê.
   const prorrogacaoTerminou = Boolean(
     t.prorrogacao_ate && !t.prorrogacao_pausada && t.prorrogacao_ate.slice(0, 10) < hojeISO())
+  // Prorrogação em curso: o card diz que o paciente está prorrogado, em
+  // qualquer coluna de pacientes (a coluna "Em prorrogação" tem card próprio).
+  const prorrogado = etiquetaProrrogacao(t.prorrogacao_ate, t.prorrogacao_pausada)
 
   return (
     <article
@@ -126,12 +130,17 @@ export const PacienteCard = memo(function PacienteCard({ tarefa: t, onAbrir, onP
 
       {/* Etiquetas de prioridade: os mesmos sinais dos chips da barra, para o que
           foi filtrado lá em cima ficar explicado aqui embaixo. */}
-      {(t.visita_agendada || prorrogacaoTerminou || ehUTI(t) || ehLonga(t) || nuncaVisitado(t)) && (
+      {(t.visita_agendada || prorrogacaoTerminou || prorrogado || ehUTI(t) || ehLonga(t) || nuncaVisitado(t)) && (
         <div className="kb-tags">
           {prorrogacaoTerminou && (
             <Etiqueta texto={`Prorrogação terminou em ${dataBR(t.prorrogacao_ate)}`}
                       cor="var(--danger)" bg="var(--danger-bg)"
                       titulo="A prorrogação acabou: registre um relatório ou peça nova prorrogação" />
+          )}
+          {prorrogado && (
+            <Etiqueta texto={prorrogado.texto} titulo={prorrogado.titulo}
+                      cor={prorrogado.pausada ? 'var(--muted)' : 'var(--caution)'}
+                      bg={prorrogado.pausada ? 'var(--surface-3)' : 'var(--caution-bg)'} />
           )}
           {/* Vem primeiro: quando há compromisso marcado, é o que decide o que
               fazer com o card. Atrasada já tem a faixa de alerta no topo (com

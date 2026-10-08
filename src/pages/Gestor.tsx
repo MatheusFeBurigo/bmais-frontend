@@ -7,6 +7,7 @@ import { Deferred } from '../components/Deferred'
 import { usePrefetchInternacao } from '../hooks/useInternacao'
 import { useGestorView } from '../hooks/useGestorView'
 import { localStyles, COR } from '../components/gestor/gestor.styles'
+import { rotuloMotivoAlta } from '../lib/motivoAlta'
 import { OperadoraPills, ChipsAtivos } from '../components/gestor/FiltrosBar'
 import FluxoCard from '../components/gestor/FluxoCard'
 import MediasJanelaCard from '../components/gestor/MediasJanelaCard'
@@ -165,6 +166,17 @@ export default function Gestor() {
                 <span className={`pill-faixa${v.faixa === 'altas' ? ' active' : ''}`} onClick={() => v.toggleFaixa('altas')}><span className="faixa-dot" style={{ background: COR.verde }} />Altas</span>
               </div>
             </div>
+            {/* Altas por motivo: é como o homecare (alta hospitalar) vira número. */}
+            {v.faixa === 'altas' && (m.altas_por_motivo ?? []).length > 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
+                {(m.altas_por_motivo ?? []).map((a) => (
+                  <span key={a.motivo} className="pill-faixa" style={{ cursor: 'default' }}>
+                    {rotuloMotivoAlta(a.motivo) ?? 'Não informado'}
+                    <span className="fw-6 mono">{a.total}</span>
+                  </span>
+                ))}
+              </div>
+            )}
             <TabelaPacientes pacientes={v.visiveis} onSelecionar={setDrawerId} onPrefetch={prefetchPaciente} vazio={v.modoIntervalo ? 'Nenhum paciente neste período' : v.diaHistorico ? 'Nenhum paciente neste dia' : 'Nenhum paciente internado'} />
           </div>
 

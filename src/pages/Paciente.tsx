@@ -50,6 +50,10 @@ export default function Paciente() {
     () => (equipe?.medicos ?? []).filter((m) => Boolean(m.ativo)).map((m) => m.nome),
     [equipe],
   )
+  const enfermeiros = useMemo(
+    () => (equipe?.enfermeiros ?? []).filter((m) => Boolean(m.ativo)).map((m) => m.nome),
+    [equipe],
+  )
 
   const [toast, setToast] = useState<string | null>(null)
   // Ficha do hospital, aberta pelo nome no subtítulo da página.
@@ -145,13 +149,20 @@ export default function Paciente() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, minHeight: 0 }}>
           <CardRelatorios
             internacaoId={internacaoId}
+            paciente={d}
             relatorios={relatorios.data?.relatorios}
             carregando={relatorios.isLoading}
             erro={relatorios.isError}
             podeRegistrar={podeExecutar(role, 'registrarRelatorio')}
             medicos={medicos}
-            prorrogacao={{ ate: d?.prorrogacao_ate, acomodacao: d?.prorrogacao_acomodacao }}
+            enfermeiros={enfermeiros}
+            prorrogacao={{
+              ate: d?.prorrogacao_ate, acomodacao: d?.prorrogacao_acomodacao,
+              pausada: d?.prorrogacao_pausada,
+            }}
+            folhaRosa={{ acomodacao: d?.prorrogacao_acomodacao || d?.tipo_leito }}
             onRegistrado={(pendente) => setToast(pendente ? '✓ Relatório enviado para aprovação' : '✓ Relatório registrado')}
+            onAviso={setToast}
           />
 
           <div className="card" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
