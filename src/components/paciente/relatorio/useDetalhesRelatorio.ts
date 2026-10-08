@@ -81,11 +81,24 @@ export function useDetalhesRelatorio() {
     for (const l of [procedimentos, negados, altoCusto, glosas, medNegadas, trocas]) l.carregar([])
   }
 
-  /** Acomodação sugerida pela ficha (prorrogação vigente ou leito): só entra
-   *  na linha de entrada, e só se a modal abriu sem nenhuma. */
+  /** A acomodação em que a ficha diz que o paciente está (prorrogação vigente
+   *  ou leito) entra nas acomodações utilizadas (pedido de 08/10/2026: "deve
+   *  puxar a que o paciente está atualmente"):
+   *  - sem acomodação anterior, vira a linha "Atual", desde a internação;
+   *  - se a atual do último relatório é outra, a linha de entrada já vem com a
+   *    da ficha (a data de entrada quem sabe é o usuário). */
   function sugerirAcomodacao(nome: string) {
-    if (acomodacoes.itens.length || acomodacoes.rascunho.acomodacao) return
-    acomodacoes.mudar('acomodacao', nome)
+    const itens = acomodacoes.itens
+    if (!itens.length) {
+      const entrada = acomodacoes.rascunho.data_entrada
+      if (acomodacoes.rascunho.acomodacao) return
+      if (entrada) acomodacoes.carregar([{ acomodacao: nome, data_entrada: entrada, data_saida: '' }])
+      else acomodacoes.sugerir({ acomodacao: nome, data_entrada: '', data_saida: '' })
+      return
+    }
+    const atual = [...itens].reverse().find((a) => !a.data_saida)
+    if (atual?.acomodacao === nome) return
+    acomodacoes.sugerir({ acomodacao: nome, data_entrada: '', data_saida: '' })
   }
 
   const ligado = (b: Bloco) => marcados.has(b)

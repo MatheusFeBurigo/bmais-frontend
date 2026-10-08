@@ -2,6 +2,9 @@
 // Resumo da internação + timeline + ações rápidas (registrar relatório, agendar
 // visita). As peças são as mesmas da ficha completa (components/paciente/ e
 // components/timeline/); aqui só se compõe.
+//
+// As ações rápidas estão OCULTAS desde 08/10/2026 (`ACOES_NO_PAINEL`, em
+// lib/recursos): o relatório se registra pela modal da ficha Detalhes.
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { StatusBadge, LeitoTag } from './StatusBadge'
@@ -17,6 +20,7 @@ import { useInternacaoDados, useInternacaoTimeline } from '../hooks/useInternaca
 import { useEquipe } from '../hooks/useEquipe'
 import { useAuth } from '../auth/AuthContext'
 import { podeExecutar, podeVerFichaPaciente } from '../auth/permissions'
+import { ACOES_NO_PAINEL } from '../lib/recursos'
 import { corDaGravidade, gravidadeDoStatus, KPI_PERIGO } from '../lib/statusRelatorio'
 import { identificacaoPaciente } from '../lib/texto'
 import { useTravarScroll } from '../lib/travarScroll'
@@ -61,8 +65,8 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
   const navigate = useNavigate()
   // Ações exclusivas do perfil técnico (admin supervisiona). Demais papéis veem
   // o drawer somente-leitura (KPIs + timeline).
-  const podeRegistrar = podeExecutar(role, 'registrarRelatorio')
-  const podeAgendar = podeExecutar(role, 'agendarVisita')
+  const podeRegistrar = ACOES_NO_PAINEL && podeExecutar(role, 'registrarRelatorio')
+  const podeAgendar = ACOES_NO_PAINEL && podeExecutar(role, 'agendarVisita')
   const podeDarAlta = podeExecutar(role, 'darAlta')
   const medicos = useMemo(
     () => (equipe?.medicos ?? []).filter((m) => Boolean(m.ativo)).map((m) => m.nome),

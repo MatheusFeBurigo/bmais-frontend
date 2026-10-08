@@ -4,6 +4,7 @@ import type { KanbanTarefa } from '../types/api'
 import { usePageHeader } from '../components/PageHeader'
 import { useAuth } from '../auth/AuthContext'
 import { ehSomenteLeitura, podeExecutar, podeVer } from '../auth/permissions'
+import { ACOES_NO_PAINEL } from '../lib/recursos'
 import { LoadingState } from '../components/ui'
 import PacienteDrawer from '../components/PacienteDrawer'
 import Toast from '../components/Toast'
@@ -55,7 +56,7 @@ const SEM_ACAO = new Set(['aguardando_censo', 'censos_processados', 'em_prorroga
 const chaveCenso = (t: KanbanTarefa) => `${t.hospital_key}|${t.operadora_key ?? ''}`
 
 const VAZIO: Record<string, string> = {
-  aguardando_visita: 'Nenhuma visita marcada. Abra um paciente para agendar.',
+  aguardando_visita: ACOES_NO_PAINEL ? 'Nenhuma visita marcada. Abra um paciente para agendar.' : 'Nenhuma visita marcada.',
   visitas_atrasadas: 'Nenhuma visita atrasada. Tudo dentro do prazo.',
   censos_atrasados: 'Nenhum hospital atrasado.',
   aguardando_retorno: 'Nenhuma cobrança esperando resposta.',

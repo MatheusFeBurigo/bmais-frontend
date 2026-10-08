@@ -15,6 +15,11 @@
 //      glosa, medicação negada, procedimento negado, troca de procedimento.
 // Os blocos opcionais ficam fechados até serem marcados (no lugar dos "Tem X?
 // Sim/Não" do portal). Os relatórios anteriores ficam na timeline da ficha.
+//
+// Cada seção reduz e expande (`GrupoRecolhivel`, 08/10/2026). A modal abre
+// simples: Prorrogação, Visita e Quadro clínico abertos; Internação, No período
+// e Negociação fechados, com o resumo do que já está preenchido. Se o registro
+// esbarra num campo de uma seção fechada, ela abre sozinha.
 // A alta não é bloco: é o botão "Alta" do rodapé, ao lado de "Registrar
 // relatório" (o mesmo do topo da ficha), e vale na hora, sem esperar o relatório.
 // As perguntas de home care ficam nela, com o motivo Homecare.
@@ -23,10 +28,12 @@
 //
 // Sem a 0054 no banco, só aparece o que já existia (visita, CID, relatório,
 // prorrogação, folha rosa).
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../../auth/AuthContext'
 import { podeExecutar } from '../../../auth/permissions'
 import { useCatalogosProrrogacao } from '../../../hooks/useKanban'
-import { dataBR, paraISO } from '../../../lib/datas'
+import { dataBR, diasNoPeriodo, paraISO } from '../../../lib/datas'
+import { CARATER, TIPOS_INTERNACAO, rotulo } from '../../../lib/relatorioDetalhes'
 import { identificacaoPaciente } from '../../../lib/texto'
 import type { InternacaoDados } from '../../../types/api'
 import { Modal } from '../../ui'
@@ -35,6 +42,7 @@ import { SecaoFolhaRosa } from '../SecaoFolhaRosa'
 import { SecaoProrrogacao } from '../SecaoProrrogacao'
 import type { FormRelatorio } from '../useFormRelatorio'
 import { BlocoOpcional } from './BlocoOpcional'
+import { GrupoRecolhivel } from './GrupoRecolhivel'
 import { SecaoInternacao, SecaoQuadroClinico, SecaoVisita } from './SecoesPrincipais'
 import {
   SecaoAltoCusto, SecaoGlosa, SecaoMedicacaoNegada, SecaoProcedimentos, SecaoTrocaProcedimento,
@@ -58,6 +66,14 @@ const estilos = `
 .rr-form{min-width:0}
 .rr-form .bm-input:not(textarea),.rr-form .cal-campo{height:36px;padding-top:0;padding-bottom:0}
 .rr-sec .rr-titulo{margin:18px 0 10px}
+.rr-grupo-cab{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;margin:18px 0 10px;cursor:pointer;border-radius:6px}
+.rr-grupo-cab:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.rr-grupo-seta{flex-shrink:0;color:var(--muted);transition:transform .15s;transform:rotate(-90deg)}
+.rr-grupo.aberto .rr-grupo-seta{transform:none}
+.rr-grupo-tit{font-size:10px;text-transform:uppercase;letter-spacing:.14em;font-weight:700;color:var(--muted);white-space:nowrap}
+.rr-grupo-cab:hover .rr-grupo-tit,.rr-grupo-cab:hover .rr-grupo-seta{color:var(--ink)}
+.rr-grupo-traco{flex:1;min-width:16px;height:1px;background:var(--border)}
+.rr-grupo-resumo{flex:0 1 auto;max-width:62%;font-size:var(--t-sm);color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rr-titulo-nota{font-size:var(--t-xs);font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted-2)}
 .rr-g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;align-items:end}
 .rr-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px;align-items:end}
@@ -132,6 +148,62 @@ function diasInternado(entrada?: string | null): number | null {
 
 const SEXO: Record<string, string> = { M: 'Masculino', F: 'Feminino' }
 
+type Grupo = 'prorrogacao' | 'visita' | 'internacao' | 'quadro' | 'periodo' | 'negociacao'
+
+/** A seção do campo que barrou o registro, pela mensagem (as mensagens são as
+ *  de useFormRelatorio, useDetalhesRelatorio e do backend). */
+function grupoDoErro(erro: string | null): Grupo | null {
+  const e = (erro ?? '').toLowerCase()
+  if (!e) return null
+  if (e.includes('prorrogação')) return 'prorrogacao'
+  if (e.includes('relatório da visita') || e.includes('diagnóstico')) return 'quadro'
+  if (e.includes('data da visita')) return 'visita'
+  if (e.includes('acomodações utilizadas') || e.includes('acomodação utilizada')
+      || e.includes('caráter') || e.includes('tipo de internação')) return 'internacao'
+  if (e.includes('procedimento realizado') || e.includes('alto custo') || e.includes('evento adverso')) return 'periodo'
+  if (e.includes('folha rosa') || e.includes('glosa') || e.includes('medicação negada')
+      || e.includes('procedimento negado') || e.includes('troca de procedimento')) return 'negociacao'
+  return null
+}
+
+const comQtde = (rot: string, n: number) => (n > 1 ? `${rot} (${n})` : rot)
+
+/** O resumo de uma linha de cada seção, para ler com ela fechada. */
+function resumos(form: FormRelatorio): Record<Grupo, string> {
+  const c = form.completo
+  const prr = form.prorrogacao
+  const dias = prr ? prr.periodos.finais().reduce((n, p) => n + diasNoPeriodo(p.data_inicio, p.data_fim), 0) : 0
+  const atual = c ? [...c.acomodacoes.finais()].reverse().find((a) => !a.data_saida) : undefined
+  const marcados = (pares: [boolean, string][]) => pares.filter(([on]) => on).map(([, t]) => t).join(' · ') || 'Nada marcado'
+  return {
+    prorrogacao: prr?.ativa
+      ? `Pedida${dias ? `: ${dias} ${dias === 1 ? 'dia' : 'dias'}` : ''}${prr.pausada ? ' · pausada' : ''}`
+      : 'Não pedida',
+    visita: [dataBR(form.dataVisita) || 'Sem data', form.medico, c?.enfermeiro].filter(Boolean).join(' · '),
+    internacao: c
+      ? [rotulo(CARATER, c.carater), rotulo(TIPOS_INTERNACAO, c.tipoInternacao),
+         atual ? `${atual.acomodacao} (atual)` : ''].filter(Boolean).join(' · ') || 'Nada preenchido'
+      : '',
+    quadro: [
+      form.cidPrincipal ? `Principal ${form.cidPrincipal.codigo}` : '',
+      form.cids.length ? comQtde('Secundário', form.cids.length) : '',
+      form.obs.trim() ? 'Relatório escrito' : 'Relatório em branco',
+    ].filter(Boolean).join(' · '),
+    periodo: c ? marcados([
+      [c.ligado('procedimentos'), comQtde('Procedimentos', c.procedimentos.finais().length)],
+      [c.ligado('altoCusto'), comQtde('Alto custo', c.altoCusto.finais().length)],
+      [c.ligado('evento'), 'Evento adverso'],
+    ]) : '',
+    negociacao: marcados([
+      [Boolean(form.folhaRosa?.ativa), 'Folha rosa'],
+      [Boolean(c?.ligado('glosas')), comQtde('Glosa', c?.glosas.finais().length ?? 0)],
+      [Boolean(c?.ligado('medNegadas')), comQtde('Medicação negada', c?.medNegadas.finais().length ?? 0)],
+      [Boolean(c?.ligado('negados')), comQtde('Procedimento negado', c?.negados.finais().length ?? 0)],
+      [Boolean(c?.ligado('trocas')), comQtde('Troca de procedimento', c?.trocas.finais().length ?? 0)],
+    ]),
+  }
+}
+
 /** Os dados do paciente que o portal mostrava no alto do relatório, só leitura
  *  (corrigir é na ficha). */
 function DadosPaciente({ p }: { p: InternacaoDados }) {
@@ -178,6 +250,23 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
   const c = form.completo
   const novos = Boolean(c?.noBanco)
   const desab = form.salvando
+
+  // Abre simples: o que todo relatório tem fica aberto; o resto, fechado com
+  // o resumo à vista.
+  const [abertos, setAbertos] = useState<Set<Grupo>>(() => new Set<Grupo>(['prorrogacao', 'visita', 'quadro']))
+  const alternar = (g: Grupo) => setAbertos((atual) => {
+    const novo = new Set(atual)
+    if (novo.has(g)) novo.delete(g)
+    else novo.add(g)
+    return novo
+  })
+  // O registro esbarrou num campo de uma seção fechada: ela abre sozinha.
+  useEffect(() => {
+    const g = grupoDoErro(form.erro)
+    if (g) setAbertos((atual) => (atual.has(g) ? atual : new Set(atual).add(g)))
+  }, [form.erro])
+
+  const resumo = resumos(form)
 
   function fechar() {
     if (!desab) onFechar()
@@ -230,22 +319,34 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
 
       <div className="rr-form">
         {temProrrogacao && (
-          <section className="rr-sec">
-            <div className="section-label rr-titulo">Prorrogação</div>
+          <GrupoRecolhivel titulo="Prorrogação" resumo={resumo.prorrogacao}
+                           aberto={abertos.has('prorrogacao')} onAlternar={() => alternar('prorrogacao')}>
             <SecaoProrrogacao form={form} />
-          </section>
+          </GrupoRecolhivel>
         )}
-        <SecaoVisita form={form} medicos={medicos} enfermeiros={enfermeiros} />
-        <SecaoInternacao
-          form={form}
-          acomodacoes={acomodacoes}
-          acomodacaoPaciente={paciente.prorrogacao_acomodacao || paciente.tipo_leito}
-        />
-        <SecaoQuadroClinico form={form} />
+        <GrupoRecolhivel titulo="Visita" resumo={resumo.visita}
+                         aberto={abertos.has('visita')} onAlternar={() => alternar('visita')}>
+          <SecaoVisita form={form} medicos={medicos} enfermeiros={enfermeiros} />
+        </GrupoRecolhivel>
+        {c && novos && (
+          <GrupoRecolhivel titulo="Internação" resumo={resumo.internacao}
+                           nota={c.doUltimo ? 'Como no último relatório' : undefined}
+                           aberto={abertos.has('internacao')} onAlternar={() => alternar('internacao')}>
+            <SecaoInternacao
+              form={form}
+              acomodacoes={acomodacoes}
+              acomodacaoPaciente={paciente.prorrogacao_acomodacao || paciente.tipo_leito}
+            />
+          </GrupoRecolhivel>
+        )}
+        <GrupoRecolhivel titulo="Quadro clínico" resumo={resumo.quadro}
+                         aberto={abertos.has('quadro')} onAlternar={() => alternar('quadro')}>
+          <SecaoQuadroClinico form={form} />
+        </GrupoRecolhivel>
 
         {c && novos && (
-          <section className="rr-sec">
-            <div className="section-label rr-titulo">No período</div>
+          <GrupoRecolhivel titulo="No período" resumo={resumo.periodo}
+                           aberto={abertos.has('periodo')} onAlternar={() => alternar('periodo')}>
             <div className="rr-blocos">
               <BlocoOpcional titulo="Procedimentos realizados" marcado={c.ligado('procedimentos')}
                              onMarcar={(l) => c.marcar('procedimentos', l)} desabilitado={desab}
@@ -262,12 +363,12 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
                 <SecaoEventoAdverso c={c} />
               </BlocoOpcional>
             </div>
-          </section>
+          </GrupoRecolhivel>
         )}
 
         {(temFolhaRosa || (c && novos)) && (
-          <section className="rr-sec">
-            <div className="section-label rr-titulo">Negociação com o hospital</div>
+          <GrupoRecolhivel titulo="Negociação com o hospital" resumo={resumo.negociacao}
+                           aberto={abertos.has('negociacao')} onAlternar={() => alternar('negociacao')}>
             <div className="rr-blocos">
               <SecaoFolhaRosa form={form} />
               {c && novos && (
@@ -295,7 +396,7 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
                 </>
               )}
             </div>
-          </section>
+          </GrupoRecolhivel>
         )}
       </div>
     </Modal>

@@ -1,7 +1,8 @@
 // As três seções que todo relatório tem: Visita (quem e quando), Internação
-// (como entrou e as acomodações utilizadas, vindas do último relatório) e
-// Quadro clínico (diagnósticos e a evolução, o único texto obrigatório). Só
-// apresentação: o estado vem de `useFormRelatorio`.
+// (como entrou e as acomodações utilizadas, vindas do último relatório e da
+// ficha) e Quadro clínico (diagnósticos e o texto, o único obrigatório). Só o
+// miolo: o título e o recolher são do `GrupoRecolhivel` da modal; o estado vem
+// de `useFormRelatorio`.
 import { useEffect } from 'react'
 import MedicoCombobox from '../../MedicoCombobox'
 import { CalendarioVisita } from '../../kanban/CalendarioVisita'
@@ -29,8 +30,7 @@ export function SecaoVisita({ form, medicos, enfermeiros }: {
 }) {
   const c = form.completo
   return (
-    <section className="rr-sec">
-      <div className="section-label rr-titulo">Visita</div>
+    <div>
       <div className="rr-g3">
         <div className="rr-campo">
           {/* Visita que já aconteceu: a PREVISTA tem campo próprio (Agendar visita). */}
@@ -49,7 +49,7 @@ export function SecaoVisita({ form, medicos, enfermeiros }: {
           </div>
         )}
       </div>
-    </section>
+    </div>
   )
 }
 
@@ -72,11 +72,7 @@ export function SecaoInternacao({ form, acomodacoes, acomodacaoPaciente }: {
 
   if (!c?.noBanco) return null
   return (
-    <section className="rr-sec">
-      <div className="section-label rr-titulo">
-        Internação
-        {c.doUltimo && <span className="rr-titulo-nota">Como no último relatório</span>}
-      </div>
+    <div>
       <div className="rr-pilha">
         <div className="rr-g3">
           <div className="rr-campo">
@@ -108,15 +104,14 @@ export function SecaoInternacao({ form, acomodacoes, acomodacaoPaciente }: {
           </div>
         </div>
       </div>
-    </section>
+    </div>
   )
 }
 
 export function SecaoQuadroClinico({ form }: { form: FormRelatorio }) {
   const principal = form.cidPrincipal
   return (
-    <section className="rr-sec">
-      <div className="section-label rr-titulo">Quadro clínico</div>
+    <div>
       <div className="rr-pilha">
         {/* O CID é do técnico: relatório que vai para aprovação não leva. */}
         {!form.vaiParaAprovacao && (
@@ -155,6 +150,6 @@ export function SecaoQuadroClinico({ form }: { form: FormRelatorio }) {
           />
         </label>
       </div>
-    </section>
+    </div>
   )
 }

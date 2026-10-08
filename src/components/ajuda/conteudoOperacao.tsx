@@ -3,6 +3,7 @@
 // acessa essa tela.
 import { Callout, Chip, Key, Metric, Metrics, Passo, Passos, Tabela } from './blocos'
 import { ComoFazer, Tela } from './replica'
+import { ACOES_NO_PAINEL } from '../../lib/recursos'
 import {
   ReplicaAdicionarPaciente, ReplicaCidsPaciente, ReplicaCobranca, ReplicaConferencia, ReplicaDadosPaciente,
   ReplicaFichaRapida, ReplicaFormularioEnvio, ReplicaModalAlta, ReplicaPainel, ReplicaQuadro,
@@ -123,7 +124,7 @@ export function ModuloOperacional({ irPara }: Props) {
 
       <h3>Ações disponíveis</h3>
       <Tabela cabecalho={['Ação', 'Efeito']} larguras={['185px']}>
-        <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação e, para técnico, gestor e operacional, o formulário de registrar relatório. Técnico, gestor e operacional têm ainda o botão <strong>Alta</strong>, no rodapé.</td></tr>
+        <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação{ACOES_NO_PAINEL ? ' e, para técnico, gestor e operacional, o formulário de registrar relatório' : ''}. Técnico, gestor e operacional têm ainda o botão <strong>Alta</strong>, no rodapé.</td></tr>
         <tr><Key>Clicar no hospital</Key><td>Abre a ficha do hospital, com indicadores, operadoras atendidas, dados cadastrais e histórico de censos sob demanda.</td></tr>
         <tr><Key>Adicionar paciente</Key><td>Cadastro manual: operadora, hospital, nome, atendimento, situação (internado ou alta), data de entrada, data de alta quando for o caso e, opcionalmente, leito, especialidade e médico. Não duplica: se o atendimento já existir no hospital, avisa que o paciente não foi duplicado.</td></tr>
         <tr><Key>Exportar</Key><td>Gera a planilha de controle de auditoria, da operadora aberta ou de todas num único arquivo, com uma aba por hospital.</td></tr>
@@ -153,6 +154,9 @@ export function ModuloPaciente({ irPara }: Props) {
       </p>
 
       <h3>Passo a passo</h3>
+      {/* Registrar pela ficha rápida está oculto (lib/recursos): o relatório
+          se registra pela modal da ficha, explicada em "Relatórios" abaixo. */}
+      {ACOES_NO_PAINEL && (<>
       <ComoFazer
         titulo="Registrar o relatório de uma visita"
         passos={[
@@ -174,6 +178,7 @@ export function ModuloPaciente({ irPara }: Props) {
         de pacientes, em Tarefas. O do técnico e o do gestor valem na hora. Os demais perfis veem a ficha, mas o bloco de
         registrar não aparece para eles.
       </Callout>
+      </>)}
 
       <ComoFazer
         titulo="Corrigir um dado que veio errado ou faltando"
@@ -341,6 +346,8 @@ export function ModuloKanban({ irPara }: Props) {
       </p>
 
       <h3>Passo a passo</h3>
+      {/* Agendar e cancelar visita pela ficha rápida estão ocultos (lib/recursos). */}
+      {ACOES_NO_PAINEL && (<>
       <ComoFazer
         titulo="Agendar a visita de um paciente"
         passos={[
@@ -378,6 +385,7 @@ export function ModuloKanban({ irPara }: Props) {
           <ReplicaFichaRapida atrasada marcas={{ agendaResumo: 1, registrar: 2, cancelar: 3 }} />
         </Tela>
       </ComoFazer>
+      </>)}
 
       <ComoFazer
         titulo="Cobrar um censo atrasado"
@@ -483,6 +491,7 @@ export function ModuloKanban({ irPara }: Props) {
           um perfil de observação.</li>
       </ul>
 
+      {ACOES_NO_PAINEL && (<>
       <h3>Agendar a visita</h3>
       <p>
         Abrir um paciente do quadro mostra a ficha rápida dele, e é ali que a visita é marcada. O
@@ -507,6 +516,7 @@ export function ModuloKanban({ irPara }: Props) {
         O agendamento pertence a quem realiza a visita, e por isso é feito pelo perfil técnico. Os
         perfis de observação acompanham o quadro, mas não marcam nem cancelam visitas.
       </Callout>
+      </>)}
 
       <h3>O que o card mostra</h3>
       <Tabela cabecalho={['Tipo de tarefa', 'O que apresenta']} larguras={['175px']}>

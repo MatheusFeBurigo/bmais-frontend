@@ -52,6 +52,12 @@ export function useLista<T extends object>(
     finais(): T[] {
       return valido(rascunho) ? [...itens, rascunho] : itens
     },
+    /** Preenche a linha de entrada com uma sugestão (que, intocada, não conta
+     *  como linha pela metade). */
+    sugerir(r: T) {
+      setRascunho(r)
+      setBase(r)
+    },
     carregar(novos: T[], rascunhoInicial?: T) {
       setItens(novos)
       setRascunho(rascunhoInicial ?? vazio())
