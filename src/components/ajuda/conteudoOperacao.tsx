@@ -301,17 +301,16 @@ export function ModuloPaciente({ irPara }: Props) {
         <li><strong>Quadro clínico</strong>: diagnóstico principal e secundário, opcionais, e o
           texto do relatório, obrigatório. O CID que o paciente ainda não tem passa a constar na
           ficha dele.</li>
-        <li><strong>No período</strong>: procedimentos realizados, medicação de alto custo e evento
-          adverso.</li>
+        <li><strong>No período</strong>: procedimentos realizados, medicação de alto custo, evento
+          adverso e folha rosa (a troca de acomodação). Quando o relatório com folha rosa passa a
+          valer, a timeline ganha o evento <strong>Troca de acomodação</strong>.</li>
         <li><strong>Prorrogação</strong>: marque <strong>Pedir prorrogação</strong>, adicione os
           períodos (acomodação, início e fim) e escolha a justificativa. O período seguinte já vem
           começando no dia depois do anterior. Depois que a prorrogação vale, admin e operacional
           pausam e retomam pelo botão <strong>Pausar prorrogação</strong>, no topo da ficha.</li>
 {NEGOCIACAO_NO_RELATORIO && (
-        <li><strong>Negociação com o hospital</strong>: folha rosa (a troca de acomodação), glosa
-          de diárias, medicação negada, procedimento negado e troca de procedimento. Quando o
-          relatório com folha rosa passa a valer, a timeline ganha o evento{' '}
-          <strong>Troca de acomodação</strong>.</li>
+        <li><strong>Negociação com o hospital</strong>: glosa de diárias, medicação negada,
+          procedimento negado e troca de procedimento.</li>
         )}
       </ul>
       <p>

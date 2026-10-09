@@ -9,12 +9,13 @@
 //      pela UTI e voltou) vira card na timeline quando o relatório vale.
 //   3. Quadro clínico: diagnóstico principal e secundário e o texto do
 //      relatório (o único texto obrigatório).
-//   4. No período: procedimentos, alto custo, evento adverso.
+//   4. No período: procedimentos, alto custo, evento adverso e a folha rosa (a
+//      troca de acomodação do portal; voltou da Negociação em 09/10/2026).
 //   5. Prorrogação: o pedido (períodos por acomodação e justificativa). Pausar
 //      e retomar ficam fora da modal: no topo da ficha, depois de valer.
 //   6. Negociação com o hospital (OCULTA desde 08/10/2026, `NEGOCIACAO_NO_RELATORIO`
-//      em lib/recursos): folha rosa (a troca de acomodação do portal),
-//      glosa, medicação negada, procedimento negado, troca de procedimento.
+//      em lib/recursos): glosa, medicação negada, procedimento negado, troca
+//      de procedimento.
 // Os blocos opcionais ficam fechados até serem marcados (no lugar dos "Tem X?
 // Sim/Não" do portal). Os relatórios anteriores ficam na timeline da ficha.
 //
@@ -188,7 +189,8 @@ function grupoDoErro(erro: string | null): Grupo | null {
   if (e.includes('acomodações utilizadas') || e.includes('acomodação utilizada') || e.includes('movimentação')
       || e.includes('caráter') || e.includes('tipo de internação')) return 'internacao'
   if (e.includes('procedimento realizado') || e.includes('alto custo') || e.includes('evento adverso')) return 'periodo'
-  if (e.includes('folha rosa') || e.includes('glosa') || e.includes('medicação negada')
+  if (e.includes('folha rosa')) return 'periodo'
+  if (e.includes('glosa') || e.includes('medicação negada')
       || e.includes('procedimento negado') || e.includes('troca de procedimento')) return 'negociacao'
   return null
 }
@@ -216,13 +218,13 @@ function resumos(form: FormRelatorio): Record<Grupo, string> {
       form.cids.length ? comQtde('Secundário', form.cids.length) : '',
       form.obs.trim() ? 'Relatório escrito' : 'Relatório em branco',
     ].filter(Boolean).join(' · '),
-    periodo: c ? marcados([
-      [c.ligado('procedimentos'), comQtde('Procedimentos', c.procedimentos.finais().length)],
-      [c.ligado('altoCusto'), comQtde('Alto custo', c.altoCusto.finais().length)],
-      [c.ligado('evento'), 'Evento adverso'],
-    ]) : '',
-    negociacao: marcados([
+    periodo: marcados([
+      [Boolean(c?.ligado('procedimentos')), comQtde('Procedimentos', c?.procedimentos.finais().length ?? 0)],
+      [Boolean(c?.ligado('altoCusto')), comQtde('Alto custo', c?.altoCusto.finais().length ?? 0)],
+      [Boolean(c?.ligado('evento')), 'Evento adverso'],
       [Boolean(form.folhaRosa?.ativa), 'Folha rosa'],
+    ]),
+    negociacao: marcados([
       [Boolean(c?.ligado('glosas')), comQtde('Glosa', c?.glosas.finais().length ?? 0)],
       [Boolean(c?.ligado('medNegadas')), comQtde('Medicação negada', c?.medNegadas.finais().length ?? 0)],
       [Boolean(c?.ligado('negados')), comQtde('Procedimento negado', c?.negados.finais().length ?? 0)],
@@ -358,24 +360,30 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
           <SecaoQuadroClinico form={form} />
         </GrupoRecolhivel>
 
-        {c && novos && (
+        {((c && novos) || temFolhaRosa) && (
           <GrupoRecolhivel titulo="No período" resumo={resumo.periodo}
                            aberto={abertos.has('periodo')} onAlternar={() => alternar('periodo')}>
             <div className="rr-blocos">
-              <BlocoOpcional titulo="Procedimentos realizados" marcado={c.ligado('procedimentos')}
-                             onMarcar={(l) => c.marcar('procedimentos', l)} desabilitado={desab}
-                             extra={c.procedimentos.itens.length || ''}>
-                <SecaoProcedimentos lista={c.procedimentos} desabilitado={desab} />
-              </BlocoOpcional>
-              <BlocoOpcional titulo="Medicação de alto custo" marcado={c.ligado('altoCusto')}
-                             onMarcar={(l) => c.marcar('altoCusto', l)} desabilitado={desab}
-                             extra={c.altoCusto.itens.length || ''}>
-                <SecaoAltoCusto lista={c.altoCusto} desabilitado={desab} />
-              </BlocoOpcional>
-              <BlocoOpcional titulo="Evento adverso" marcado={c.ligado('evento')}
-                             onMarcar={(l) => c.marcar('evento', l)} desabilitado={desab}>
-                <SecaoEventoAdverso c={c} />
-              </BlocoOpcional>
+              {c && novos && (
+                <>
+                  <BlocoOpcional titulo="Procedimentos realizados" marcado={c.ligado('procedimentos')}
+                                 onMarcar={(l) => c.marcar('procedimentos', l)} desabilitado={desab}
+                                 extra={c.procedimentos.itens.length || ''}>
+                    <SecaoProcedimentos lista={c.procedimentos} desabilitado={desab} />
+                  </BlocoOpcional>
+                  <BlocoOpcional titulo="Medicação de alto custo" marcado={c.ligado('altoCusto')}
+                                 onMarcar={(l) => c.marcar('altoCusto', l)} desabilitado={desab}
+                                 extra={c.altoCusto.itens.length || ''}>
+                    <SecaoAltoCusto lista={c.altoCusto} desabilitado={desab} />
+                  </BlocoOpcional>
+                  <BlocoOpcional titulo="Evento adverso" marcado={c.ligado('evento')}
+                                 onMarcar={(l) => c.marcar('evento', l)} desabilitado={desab}>
+                    <SecaoEventoAdverso c={c} />
+                  </BlocoOpcional>
+                </>
+              )}
+              {/* Sai da Negociação (oculta) e volta aqui (pedido de 09/10/2026). */}
+              <SecaoFolhaRosa form={form} />
             </div>
           </GrupoRecolhivel>
         )}
@@ -387,11 +395,10 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
           </GrupoRecolhivel>
         )}
 
-        {NEGOCIACAO_NO_RELATORIO && (temFolhaRosa || (c && novos)) && (
+        {NEGOCIACAO_NO_RELATORIO && c && novos && (
           <GrupoRecolhivel titulo="Negociação com o hospital" resumo={resumo.negociacao}
                            aberto={abertos.has('negociacao')} onAlternar={() => alternar('negociacao')}>
             <div className="rr-blocos">
-              <SecaoFolhaRosa form={form} />
               {c && novos && (
                 <>
                   <BlocoOpcional titulo="Glosa de diárias" marcado={c.ligado('glosas')}
