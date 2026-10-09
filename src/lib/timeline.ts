@@ -31,6 +31,11 @@ export const TIPO_CLASSE: Record<string, string> = {
   ALTA_DESFEITA: 'tp-edit',
   // Troca de acomodação negociada (folha rosa, 08/10/2026): rosa como o relatório.
   TROCA_ACOMODACAO: 'tp-folha-rosa',
+  // Mudança de acomodação vista pelo censo (08/10/2026): mesma cor da troca de
+  // hospital, o outro marco de "o paciente mudou de lugar".
+  MUDANCA_ACOMODACAO: 'tp-troca-hospital',
+  // Troca de leito feita à mão na ficha (08/10/2026).
+  MUDANCA_LEITO: 'tp-troca-hospital',
   EDIT: 'tp-edit',
   PENDENTE: 'tp-pendente',
   VISITA_AGENDADA: 'tp-visita-agendada',
@@ -109,7 +114,9 @@ export function apresentacaoDoEvento(ev: TimelineEvento) {
   if (relatorio && interno && ev.autor) chip = { tipo: 'medico', nome: ev.autor, titulo: 'Autor' }
   else if (relatorio && !interno && ev.medico) chip = { tipo: 'medico', nome: ev.medico }
   else if (visita && ev.medico) chip = { tipo: 'medico', nome: ev.medico, titulo: 'Responsável' }
-  else if (!relatorio && !visita && ev.autor) chip = { tipo: 'autor', autor: ev.autor }
+  // "sistema" é o autor dos eventos automáticos (censo, alta inferida): sem
+  // pessoa por trás, sem chip, como diz a regra acima.
+  else if (!relatorio && !visita && ev.autor && ev.autor !== 'sistema') chip = { tipo: 'autor', autor: ev.autor }
 
   return {
     relatorio,

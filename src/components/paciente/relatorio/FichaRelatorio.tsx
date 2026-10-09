@@ -1,6 +1,7 @@
 // Ficha do relatório (08/10/2026): o que foi preenchido, só para ler. Abre ao
 // clicar num relatório na timeline (ou no card Relatórios da ficha). Segue as
-// seções da modal "Registrar relatório", na mesma ordem, mas só mostra o que
+// seções da modal "Registrar relatório", na mesma ordem (Visita, Quadro de
+// internação, Quadro clínico, No período, Prorrogação), mas só mostra o que
 // tem conteúdo, em listas e tabelas simples.
 //
 // Os dados vêm da lista de relatórios da internação (o mesmo cache do card
@@ -25,8 +26,10 @@ const ACEITES: Record<string, string> = { sim: 'Sim, carimbado', nao: 'Não', ag
 
 const estilos = `
 .fx-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--t-sm);color:var(--muted)}
-.fx-sec{margin-top:18px}
-.fx-sec .section-label{margin:0 0 10px}
+.fx-sec{margin-top:20px}
+/* Título da seção acima dos rótulos (10,5px, caixa alta), como na modal. */
+.fx-sec-tit{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:var(--t-lg);font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.fx-sec-tit::after{content:"";flex:1;height:1px;background:var(--border)}
 .fx-dl{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px 16px}
 .fx-dl dt{font-size:var(--t-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
 .fx-dl dd{margin:2px 0 0;font-size:var(--t-sm);color:var(--ink);overflow-wrap:anywhere}
@@ -50,7 +53,7 @@ function acharRelatorio(lista: RelatorioItem[], alvo: AlvoRelatorio): RelatorioI
 function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
     <section className="fx-sec">
-      <div className="section-label">{titulo}</div>
+      <div className="fx-sec-tit">{titulo}</div>
       {children}
     </section>
   )
@@ -102,31 +105,21 @@ function Conteudo({ r }: { r: RelatorioItem }) {
 
   return (
     <>
-      {prr && (
-        <Secao titulo="Prorrogação">
-          <Tabela colunas={['Acomodação', 'Início', 'Fim', 'Dias']} linhas={prr.periodos.map((p) => [
-            p.acomodacao, d(p.data_inicio), d(p.data_fim), diasNoPeriodo(p.data_inicio, p.data_fim),
-          ])} />
-          <div style={{ marginTop: 10 }}>
-            <Dados itens={[
-              ['Justificativa', prr.justificativa_desc, true],
-              ['Complemento', prr.complemento, true],
-              ['Situação', prr.pausada ? 'Pausada' : ''],
-            ]} />
-          </div>
-        </Secao>
-      )}
-
-      <Secao titulo="Visita">
+      <Secao titulo="Relatório de visita">
         <Dados itens={[
           ['Data da visita', d(r.data_visita)],
-          ['Médico auditor', r.medico],
-          ['Enfermeiro auditor', det.enfermeiro],
+          ['Médico ou enfermeiro', [r.medico, det.enfermeiro].filter(Boolean).join(' · ')],
         ]} />
+        {det.analise && (
+          <>
+            <div className="fx-sub">O que foi analisado</div>
+            <div className="fx-texto">{det.analise}</div>
+          </>
+        )}
       </Secao>
 
       {temInternacao && (
-        <Secao titulo="Internação">
+        <Secao titulo="Quadro de internação">
           <Dados itens={[
             ['Caráter', rotulo(CARATER, det.carater)],
             ['Tipo de internação', rotulo(TIPOS_INTERNACAO, det.tipo_internacao)],
@@ -166,6 +159,21 @@ function Conteudo({ r }: { r: RelatorioItem }) {
               ]} />
             </>
           )}
+        </Secao>
+      )}
+
+      {prr && (
+        <Secao titulo="Prorrogação">
+          <Tabela colunas={['Acomodação', 'Início', 'Fim', 'Dias']} linhas={prr.periodos.map((p) => [
+            p.acomodacao, d(p.data_inicio), d(p.data_fim), diasNoPeriodo(p.data_inicio, p.data_fim),
+          ])} />
+          <div style={{ marginTop: 10 }}>
+            <Dados itens={[
+              ['Justificativa', prr.justificativa_desc, true],
+              ['Complemento', prr.complemento, true],
+              ['Situação', prr.pausada ? 'Pausada' : ''],
+            ]} />
+          </div>
         </Secao>
       )}
 

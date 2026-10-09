@@ -5,10 +5,12 @@
 import { useState } from 'react'
 import { hojeISO } from '../../../lib/datas'
 import type { PedidoDetalhes } from '../../../services/internacao.service'
-import type { DetalhesRelatorio } from '../../../types/api'
+import type { AcomodacaoUtilizada, DetalhesRelatorio } from '../../../types/api'
 import { useLista } from './useLista'
 
 export interface ItemAcomodacao { acomodacao: string; data_entrada: string; data_saida: string }
+/** Troca de acomodação lançada na modal: para onde foi e em que dia. */
+export interface Movimentacao { acomodacao: string; data: string }
 export interface ItemProcedimento { codigo: string; nome: string; qtde: string; data: string }
 export interface ItemAltoCusto { tipo: string; medicacao: string; dose: string; data_inicio: string; data_fim: string }
 export interface ItemGlosa { acomodacao: string; diarias: string; data_inicio: string; data_fim: string }
@@ -26,6 +28,7 @@ const qtdeValida = (q: string) => /^\d{1,3}$/.test(q.trim()) && Number(q) >= 1
 const periodoValido = (ini: string, fim: string) => !fim || (Boolean(ini) && fim >= ini)
 
 const acomodacaoVazia = (): ItemAcomodacao => ({ acomodacao: '', data_entrada: '', data_saida: '' })
+const movimentacaoVazia = (): Movimentacao => ({ acomodacao: '', data: '' })
 const procedimentoVazio = (): ItemProcedimento => ({ codigo: '', nome: '', qtde: '1', data: '' })
 const altoCustoVazio = (): ItemAltoCusto => ({ tipo: '', medicacao: '', dose: '', data_inicio: '', data_fim: '' })
 const glosaVazia = (): ItemGlosa => ({ acomodacao: '', diarias: '', data_inicio: '', data_fim: '' })
@@ -34,12 +37,21 @@ const trocaVazia = (): ItemTrocaProcedimento => ({ codigo_de: '', nome_de: '', c
 
 export type { ListaRelatorio } from './useLista'
 
+/** A troca fecha o local atual no dia dela e abre o novo. */
+function mover(itens: ItemAcomodacao[], m: Movimentacao): ItemAcomodacao[] {
+  const ultimo = itens[itens.length - 1]
+  if (!ultimo) return itens
+  return [...itens.slice(0, -1), { ...ultimo, data_saida: ultimo.data_saida || m.data },
+          { acomodacao: m.acomodacao, data_entrada: m.data, data_saida: '' }]
+}
+
 export function useDetalhesRelatorio() {
   const [carater, setCarater] = useState('')
   const [tipoInternacao, setTipoInternacao] = useState('')
   // A classificação veio do último relatório (a tela avisa).
   const [doUltimo, setDoUltimo] = useState(false)
   const [enfermeiro, setEnfermeiro] = useState('')
+  const [analise, setAnalise] = useState('')
   const [marcados, setMarcados] = useState<Set<Bloco>>(new Set())
   const [evento, setEvento] = useState({ data: hojeISO(), descricao: '' })
 
@@ -54,6 +66,62 @@ export function useDetalhesRelatorio() {
   const trocas = useLista(trocaVazia,
     (t) => Boolean(t.codigo_de) && Boolean(t.codigo_para) && t.codigo_de !== t.codigo_para)
 
+  // Com o local do paciente conhecido (censo, último relatório ou ficha), a
+  // tela mostra onde ele está e as trocas entram uma a uma por "Adicionar
+  // movimentação" (pedido de 08/10/2026). Sem local conhecido, fica a lista com
+  // linha de entrada. As acomodações de antes ficam em `acomodacoes.itens`, sem
+  // mexer; as trocas desta visita, em `movimentos`.
+  const [comLocal, setComLocal] = useState(false)
+  const [movimentos, setMovimentos] = useState<Movimentacao[]>([])
+  const [movendo, setMovendo] = useState(false)
+  const [movimento, setMovimento] = useState(movimentacaoVazia)
+  // A troca já sugerida pela ficha: intocada, não conta como pela metade.
+  const [movimentoBase, setMovimentoBase] = useState(movimentacaoVazia)
+
+  const comMovimentos = movimentos.reduce(mover, acomodacoes.itens)
+  const localAtual = comMovimentos[comMovimentos.length - 1]
+  const movimentoValido = (m: Movimentacao) => Boolean(localAtual) && Boolean(m.acomodacao)
+    && m.acomodacao !== localAtual.acomodacao && Boolean(m.data)
+    && m.data >= localAtual.data_entrada && m.data <= hojeISO()
+  const movimentoPendente = movendo && Boolean(movimento.acomodacao || movimento.data)
+    && JSON.stringify(movimento) !== JSON.stringify(movimentoBase) && !movimentoValido(movimento)
+
+  const movimentacao = {
+    /** Há local conhecido: a tela de movimentação no lugar da lista. */
+    ativa: comLocal,
+    atual: localAtual,
+    /** Do local em que o paciente estava ao abrir a modal em diante. */
+    linhas: comMovimentos.slice(Math.max(acomodacoes.itens.length - 1, 0)),
+    podeDesfazer: movimentos.length > 0,
+    /** Tira a última troca lançada; o local anterior volta a ser o atual. */
+    desfazer() { setMovimentos((ms) => ms.slice(0, -1)) },
+    aberta: movendo,
+    abrir() { setMovendo(true) },
+    cancelar() {
+      setMovendo(false)
+      setMovimento(movimentoBase)
+    },
+    rascunho: movimento,
+    mudar<K extends keyof Movimentacao>(campo: K, valor: Movimentacao[K]) {
+      setMovimento((m) => ({ ...m, [campo]: valor }))
+    },
+    podeAdicionar: movimentoValido(movimento),
+    adicionar() {
+      if (!movimentoValido(movimento)) return
+      setMovimentos((ms) => [...ms, movimento])
+      setMovendo(false)
+      setMovimento(movimentacaoVazia())
+      setMovimentoBase(movimentacaoVazia())
+    },
+  }
+
+  /** As acomodações utilizadas que vão no registro. A troca completa que
+   *  ficou sem "Adicionar" também vai, como nas listas. */
+  function acomodacoesFinais(): ItemAcomodacao[] {
+    if (!comLocal) return acomodacoes.finais()
+    return movendo && movimentoValido(movimento) ? mover(comMovimentos, movimento) : comMovimentos
+  }
+
   function marcar(bloco: Bloco, ligar: boolean) {
     setMarcados((atual) => {
       const novo = new Set(atual)
@@ -63,19 +131,29 @@ export function useDetalhesRelatorio() {
     })
   }
 
-  /** Abre a modal limpa, com a classificação e as acomodações do último
-   *  relatório. Sem acomodações anteriores, a linha de entrada já vem com a
-   *  data da internação (a acomodação a seção sugere quando tem o catálogo). */
-  function iniciar(ultimo: DetalhesRelatorio | null, dataEntrada?: string) {
+  /** Abre a modal limpa, com a classificação do último relatório. As
+   *  acomodações utilizadas vêm do censo (`censo`, montadas da timeline:
+   *  "já deve vir nativamente quando capturado pelo censo"); sem censo, as do
+   *  último relatório; sem nenhuma, a linha de entrada já vem com a data da
+   *  internação (a acomodação a seção sugere pela ficha). */
+  function iniciar(ultimo: DetalhesRelatorio | null, dataEntrada?: string,
+                   censo?: AcomodacaoUtilizada[]) {
     setCarater(ultimo?.carater ?? '')
     setTipoInternacao(ultimo?.tipo_internacao ?? '')
     setDoUltimo(Boolean(ultimo))
-    const anteriores = (ultimo?.acomodacoes ?? []).map((a) => ({
+    const base = censo?.length ? censo : (ultimo?.acomodacoes ?? [])
+    const anteriores = base.map((a) => ({
       acomodacao: a.acomodacao, data_entrada: a.data_entrada, data_saida: a.data_saida ?? '',
     }))
     acomodacoes.carregar(anteriores,
       anteriores.length ? undefined : { ...acomodacaoVazia(), data_entrada: dataEntrada ?? '' })
+    setComLocal(anteriores.length > 0)
+    setMovimentos([])
+    setMovendo(false)
+    setMovimento(movimentacaoVazia())
+    setMovimentoBase(movimentacaoVazia())
     setEnfermeiro('')
+    setAnalise('')
     setMarcados(new Set())
     setEvento({ data: hojeISO(), descricao: '' })
     for (const l of [procedimentos, negados, altoCusto, glosas, medNegadas, trocas]) l.carregar([])
@@ -84,21 +162,23 @@ export function useDetalhesRelatorio() {
   /** A acomodação em que a ficha diz que o paciente está (prorrogação vigente
    *  ou leito) entra nas acomodações utilizadas (pedido de 08/10/2026: "deve
    *  puxar a que o paciente está atualmente"):
-   *  - sem acomodação anterior, vira a linha "Atual", desde a internação;
-   *  - se a atual do último relatório é outra, a linha de entrada já vem com a
-   *    da ficha (a data de entrada quem sabe é o usuário). */
+   *  - sem acomodação anterior, vira o local atual, desde a internação (sem a
+   *    data da internação, só a linha de entrada já vem com ela);
+   *  - se o local atual é outro, a troca já vem com a da ficha (a data quem
+   *    sabe é o usuário). */
   function sugerirAcomodacao(nome: string) {
-    const itens = acomodacoes.itens
-    if (!itens.length) {
+    if (!comLocal) {
+      if (acomodacoes.itens.length || acomodacoes.rascunho.acomodacao) return
       const entrada = acomodacoes.rascunho.data_entrada
-      if (acomodacoes.rascunho.acomodacao) return
-      if (entrada) acomodacoes.carregar([{ acomodacao: nome, data_entrada: entrada, data_saida: '' }])
-      else acomodacoes.sugerir({ acomodacao: nome, data_entrada: '', data_saida: '' })
+      if (entrada) {
+        acomodacoes.carregar([{ acomodacao: nome, data_entrada: entrada, data_saida: '' }])
+        setComLocal(true)
+      } else acomodacoes.sugerir({ acomodacao: nome, data_entrada: '', data_saida: '' })
       return
     }
-    const atual = [...itens].reverse().find((a) => !a.data_saida)
-    if (atual?.acomodacao === nome) return
-    acomodacoes.sugerir({ acomodacao: nome, data_entrada: '', data_saida: '' })
+    if (localAtual?.acomodacao === nome) return
+    setMovimento({ acomodacao: nome, data: '' })
+    setMovimentoBase({ acomodacao: nome, data: '' })
   }
 
   const ligado = (b: Bloco) => marcados.has(b)
@@ -106,7 +186,8 @@ export function useDetalhesRelatorio() {
   /** A primeira coisa que impede o registro, ou null. Mesmas regras de
    *  domain/relatorio_detalhes.py, que confere de novo. */
   function conferir(): string | null {
-    if (acomodacoes.pendente) return 'Termine a linha das acomodações utilizadas ou limpe os campos.'
+    if (comLocal && movimentoPendente) return 'Termine a movimentação ou cancele.'
+    if (!comLocal && acomodacoes.pendente) return 'Termine a linha das acomodações utilizadas ou limpe os campos.'
     if (ligado('procedimentos')) {
       if (procedimentos.pendente) return 'Termine a linha do procedimento realizado ou limpe os campos.'
       if (!procedimentos.finais().length) return 'Adicione um procedimento realizado ou desmarque o bloco.'
@@ -154,8 +235,9 @@ export function useDetalhesRelatorio() {
     return {
       carater,
       tipo_internacao: tipoInternacao,
-      acomodacoes: acomodacoes.finais(),
+      acomodacoes: acomodacoesFinais(),
       enfermeiro: enfermeiro.trim(),
+      analise: analise.trim(),
       cid_principal: '',
       procedimentos: ligado('procedimentos') ? procedimentos.finais().map(proc) : [],
       alto_custo: ligado('altoCusto')
@@ -175,8 +257,8 @@ export function useDetalhesRelatorio() {
 
   return {
     carater, setCarater, tipoInternacao, setTipoInternacao, doUltimo,
-    acomodacoes, sugerirAcomodacao,
-    enfermeiro, setEnfermeiro,
+    acomodacoes, sugerirAcomodacao, movimentacao, acomodacoesFinais,
+    enfermeiro, setEnfermeiro, analise, setAnalise,
     ligado, marcar,
     procedimentos, negados, altoCusto, glosas, medNegadas, trocas,
     evento, setEvento,

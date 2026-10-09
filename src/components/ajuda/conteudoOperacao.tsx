@@ -3,7 +3,7 @@
 // acessa essa tela.
 import { Callout, Chip, Key, Metric, Metrics, Passo, Passos, Tabela } from './blocos'
 import { ComoFazer, Tela } from './replica'
-import { ACOES_NO_PAINEL } from '../../lib/recursos'
+import { ACOES_NO_PAINEL, NEGOCIACAO_NO_RELATORIO } from '../../lib/recursos'
 import {
   ReplicaAdicionarPaciente, ReplicaCidsPaciente, ReplicaCobranca, ReplicaConferencia, ReplicaDadosPaciente,
   ReplicaFichaRapida, ReplicaFormularioEnvio, ReplicaModalAlta, ReplicaPainel, ReplicaQuadro,
@@ -283,35 +283,41 @@ export function ModuloPaciente({ irPara }: Props) {
       <p>
         Lista os relatórios de auditoria já registrados, com contador. O botão{' '}
         <strong>Registrar</strong> abre o relatório completo numa janela. No alto ficam os dados do
-        paciente; os relatórios anteriores continuam na timeline da ficha. A ordem é a do pedido:
-        primeiro a prorrogação, depois o que a sustenta. Cada seção reduz e expande pela seta ao
-        lado do título: a janela abre simples (prorrogação, visita e quadro clínico abertos) e as
-        seções fechadas mostram o resumo do que já está preenchido.
+        paciente; os relatórios anteriores continuam na timeline da ficha. A janela abre simples:
+        só o relatório de visita aberto, e as demais seções fechadas, com o resumo do que já está
+        preenchido.
+        Cada uma reduz e expande pela seta ao lado do título.
       </p>
       <ul>
-        <li><strong>Prorrogação</strong>: marque <strong>Pedir prorrogação</strong>, adicione os
-          períodos (acomodação, início e fim) e escolha a justificativa. O período seguinte já vem
-          começando no dia depois do anterior. Admin e operacional podem pedir já pausada, pelo
-          botão <strong>Pausar prorrogação</strong> do rodapé.</li>
-        <li><strong>Visita</strong>: a data, obrigatória e já com a data de hoje, o médico auditor
-          e o enfermeiro auditor.</li>
-        <li><strong>Internação</strong>: caráter (urgência ou eletivo), tipo de internação e as
-          acomodações utilizadas, com entrada e saída. Vem como no último relatório, com a
-          acomodação em que a ficha diz que o paciente está: para registrar uma mudança, edite a
-          acomodação atual, informe a saída e adicione a nova.</li>
+        <li><strong>Relatório de visita</strong>: a data, obrigatória e já com a data de hoje, o médico
+          ou o enfermeiro que fez a visita (um campo só) e o que foi analisado.</li>
+        <li><strong>Quadro de internação</strong>: caráter (urgência ou eletivo), tipo de
+          internação e as acomodações utilizadas, com entrada e saída. Elas vêm do censo e das
+          trocas já registradas, e a janela mostra onde o paciente está. Para cada troca que
+          faltar, como a ida para a UTI e a volta para o quarto, use{' '}
+          <strong>Adicionar movimentação</strong> e escolha a nova acomodação e a data: ao
+          registrar, ela entra na timeline como <strong>Mudança de acomodação</strong>. Sem
+          nenhuma acomodação conhecida, preencha a acomodação, a entrada e a saída.</li>
         <li><strong>Quadro clínico</strong>: diagnóstico principal e secundário, opcionais, e o
           texto do relatório, obrigatório. O CID que o paciente ainda não tem passa a constar na
           ficha dele.</li>
         <li><strong>No período</strong>: procedimentos realizados, medicação de alto custo e evento
           adverso.</li>
+        <li><strong>Prorrogação</strong>: marque <strong>Pedir prorrogação</strong>, adicione os
+          períodos (acomodação, início e fim) e escolha a justificativa. O período seguinte já vem
+          começando no dia depois do anterior. Depois que a prorrogação vale, admin e operacional
+          pausam e retomam pelo botão <strong>Pausar prorrogação</strong>, no topo da ficha.</li>
+{NEGOCIACAO_NO_RELATORIO && (
         <li><strong>Negociação com o hospital</strong>: folha rosa (a troca de acomodação), glosa
           de diárias, medicação negada, procedimento negado e troca de procedimento. Quando o
           relatório com folha rosa passa a valer, a timeline ganha o evento{' '}
           <strong>Troca de acomodação</strong>.</li>
+        )}
       </ul>
       <p>
-        A prorrogação e os blocos de <strong>No período</strong> e{' '}
-        <strong>Negociação com o hospital</strong> abrem quando marcados. Nas listas, preencha a
+        A prorrogação e os blocos de <strong>No período</strong>
+        {NEGOCIACAO_NO_RELATORIO && <> e <strong>Negociação com o hospital</strong></>} abrem quando
+        marcados. Nas listas, preencha a
         linha e clique em <strong>Adicionar</strong>; a última linha completa também entra ao
         registrar. O lápis devolve o item à linha para corrigir. Se o paciente teve alta, use o
         botão <strong>Alta</strong> do rodapé, ao lado de <strong>Registrar relatório</strong>: é o
@@ -334,7 +340,10 @@ export function ModuloPaciente({ irPara }: Props) {
         topo. Registra admissão, relatórios externos, pareceres internos, mudanças de status, altas
         automáticas, altas dadas à mão e desfeitas, edições manuais e pendências. Relatórios internos exibem o autor; os externos,
         o médico responsável. Clicar num relatório (ou numa troca de acomodação) abre a ficha do
-        relatório.
+        relatório. Quando o censo mostra o paciente noutra acomodação, entra o card{' '}
+        <strong>Mudança de acomodação</strong>, no dia do censo, dizendo de onde ele saiu e para
+        onde foi. Trocar o tipo de leito pelo <strong>Editar</strong> da ficha gera o mesmo card, com
+        o nome de quem editou; trocar só o leito gera <strong>Mudança de leito</strong>.
       </p>
     </>
   )

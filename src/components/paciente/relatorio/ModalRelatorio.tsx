@@ -1,25 +1,27 @@
 // Modal "Registrar relatório" da ficha "Detalhes" (08/10/2026).
 //
 // Leva tudo o que o portal antigo (Márcia) registrava na visita, sem copiar as
-// 9 abas dele. A ordem é a do pedido: o relatório existe, na maioria das vezes,
-// para pedir prorrogação (65% no Márcia), e o resto é o que sustenta o pedido:
+// 9 abas dele. Ordem (revista em 08/10/2026):
 //   0. Paciente: os dados do alto, só leitura.
-//   1. Prorrogação: o pedido (períodos por acomodação e justificativa).
-//   2. Visita: quem e quando.
-//   3. Internação: caráter, tipo e as acomodações utilizadas, vindos do último
-//      relatório.
-//   4. Quadro clínico: diagnóstico principal e secundário e o texto do
+//   1. Relatório de visita: quem e quando. Abre aberto e pode ser reduzido.
+//   2. Quadro de internação: caráter, tipo e as acomodações utilizadas, do
+//      censo e do último relatório; cada troca adicionada aqui (ex.: passou
+//      pela UTI e voltou) vira card na timeline quando o relatório vale.
+//   3. Quadro clínico: diagnóstico principal e secundário e o texto do
 //      relatório (o único texto obrigatório).
-//   5. No período: procedimentos, alto custo, evento adverso.
-//   6. Negociação com o hospital: folha rosa (a troca de acomodação do portal),
+//   4. No período: procedimentos, alto custo, evento adverso.
+//   5. Prorrogação: o pedido (períodos por acomodação e justificativa). Pausar
+//      e retomar ficam fora da modal: no topo da ficha, depois de valer.
+//   6. Negociação com o hospital (OCULTA desde 08/10/2026, `NEGOCIACAO_NO_RELATORIO`
+//      em lib/recursos): folha rosa (a troca de acomodação do portal),
 //      glosa, medicação negada, procedimento negado, troca de procedimento.
 // Os blocos opcionais ficam fechados até serem marcados (no lugar dos "Tem X?
 // Sim/Não" do portal). Os relatórios anteriores ficam na timeline da ficha.
 //
 // Cada seção reduz e expande (`GrupoRecolhivel`, 08/10/2026). A modal abre
-// simples: Prorrogação, Visita e Quadro clínico abertos; Internação, No período
-// e Negociação fechados, com o resumo do que já está preenchido. Se o registro
-// esbarra num campo de uma seção fechada, ela abre sozinha.
+// simples: só o Relatório de visita aberto; as demais fechadas, com o
+// resumo do que já está preenchido. Se o registro esbarra num campo de uma
+// seção fechada, ela abre sozinha.
 // A alta não é bloco: é o botão "Alta" do rodapé, ao lado de "Registrar
 // relatório" (o mesmo do topo da ficha), e vale na hora, sem esperar o relatório.
 // As perguntas de home care ficam nela, com o motivo Homecare.
@@ -34,6 +36,7 @@ import { podeExecutar } from '../../../auth/permissions'
 import { useCatalogosProrrogacao } from '../../../hooks/useKanban'
 import { dataBR, diasNoPeriodo, paraISO } from '../../../lib/datas'
 import { CARATER, TIPOS_INTERNACAO, rotulo } from '../../../lib/relatorioDetalhes'
+import { NEGOCIACAO_NO_RELATORIO } from '../../../lib/recursos'
 import { identificacaoPaciente } from '../../../lib/texto'
 import type { InternacaoDados } from '../../../types/api'
 import { Modal } from '../../ui'
@@ -56,87 +59,111 @@ import { SecaoEventoAdverso } from './SecoesOcorrencias'
 // Nas listas, cada valor adicionado fica na coluna do seu campo, com o texto
 // no mesmo recuo do texto do campo (12px = borda + padding do .bm-input).
 const estilos = `
-.rr-ctx{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 14px;margin-bottom:4px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)}
-.rr-ctx-dados{flex:1;min-width:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 16px}
-.rr-ctx-dados div{min-width:0}
-.rr-ctx-dados dt{font-size:var(--t-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
-.rr-ctx-dados dd{margin:2px 0 0;font-size:var(--t-sm);color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rr-ctx-dados .rr-dado-nome{grid-column:span 2}
-.rr-ctx-dados .rr-dado-nome dd{font-size:var(--t-md);font-weight:600}
-.rr-form{min-width:0}
-.rr-form .bm-input:not(textarea),.rr-form .cal-campo{height:36px;padding-top:0;padding-bottom:0}
-.rr-sec .rr-titulo{margin:18px 0 10px}
-.rr-grupo-cab{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;margin:18px 0 10px;cursor:pointer;border-radius:6px}
-.rr-grupo-cab:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-.rr-grupo-seta{flex-shrink:0;color:var(--muted);transition:transform .15s;transform:rotate(-90deg)}
+/* Textos e campos da modal refeitos em 08/10/2026 ("as informações estão
+   amontoadas"). Tudo vale só aqui dentro (.rr-raiz): os mesmos campos em outras
+   telas (drawer, ficha) seguem o padrão da casa.
+   Hierarquia: título da seção 15px > título de bloco 13,5px > valor do campo
+   13,5px > rótulo do campo 11,5px (cinza, sem caixa alta) > resumo/dica 11,5px. */
+.rr-raiz{min-width:0}
+.rr-raiz .form-lbl{font-size:var(--t-sm);font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-3);margin-bottom:6px}
+.rr-raiz .bm-input{font-size:var(--t-md);color:var(--ink)}
+.rr-raiz .bm-input::placeholder{color:var(--muted-2)}
+.rr-raiz .bm-input:not(textarea),.rr-raiz .cal-campo{height:38px;padding-top:0;padding-bottom:0;padding-left:12px}
+.rr-raiz textarea.bm-input{padding:10px 12px;line-height:1.6}
+
+/* Cabeçalho do paciente: o nome, e os dados numa linha com rótulo próprio. */
+.rr-ctx{padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)}
+.rr-ctx-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.rr-ctx-nome{font-size:var(--t-lg);font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.rr-ctx-linha{font-size:var(--t-sm);color:var(--ink-2);margin-top:2px}
+.rr-ctx-fatos{display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:var(--t-sm);color:var(--ink)}
+.rr-ctx-fatos span{white-space:nowrap}
+.rr-ctx-fatos b{font-weight:400;color:var(--muted);margin-right:6px}
+
+/* Seções: lista com divisórias. Fechada, título e o resumo embaixo. */
+.rr-grupos{margin-top:8px}
+.rr-grupo{border-bottom:1px solid var(--border)}
+.rr-grupo-cab{all:unset;box-sizing:border-box;display:flex;align-items:flex-start;gap:10px;width:100%;padding:16px 2px;cursor:pointer;border-radius:6px}
+.rr-grupo-cab:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.rr-grupo-seta{flex-shrink:0;width:16px;height:16px;margin-top:2px;color:var(--muted);transition:transform .15s;transform:rotate(-90deg)}
 .rr-grupo.aberto .rr-grupo-seta{transform:none}
-.rr-grupo-tit{font-size:10px;text-transform:uppercase;letter-spacing:.14em;font-weight:700;color:var(--muted);white-space:nowrap}
-.rr-grupo-cab:hover .rr-grupo-tit,.rr-grupo-cab:hover .rr-grupo-seta{color:var(--ink)}
-.rr-grupo-traco{flex:1;min-width:16px;height:1px;background:var(--border)}
-.rr-grupo-resumo{flex:0 1 auto;max-width:62%;font-size:var(--t-sm);color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rr-titulo-nota{font-size:var(--t-xs);font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted-2)}
-.rr-g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;align-items:end}
-.rr-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px;align-items:end}
+.rr-grupo-textos{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.rr-grupo-linha1{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rr-grupo-tit{font-size:var(--t-lg);font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.rr-grupo-cab:hover .rr-grupo-tit,.rr-grupo-cab:hover .rr-grupo-seta{color:var(--primary)}
+.rr-grupo-nota{font-size:var(--t-xs);font-weight:500;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:1px 9px}
+.rr-grupo-resumo{font-size:var(--t-sm);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rr-grupo-corpo{padding:2px 2px 24px}
+
+/* Grades de campos. */
+.rr-g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:end}
+.rr-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:end}
 .rr-g-topo{align-items:start}
-.rr-g-evento{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px 12px;align-items:end}
-.rr-pilha{display:grid;gap:12px}
+.rr-g-evento{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:end}
+.rr-pilha{display:grid;gap:18px}
 .rr-campo{min-width:0;display:block}
 .rr-campo .bm-input{width:100%;min-width:0}
-.rr-nota{font-size:var(--t-sm);color:var(--muted);margin-top:6px}
-.rr-seg{display:flex;height:36px;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;width:max-content}
-.rr-seg-op{position:relative;display:inline-flex;align-items:center;padding:0 16px;font-size:var(--t-sm);color:var(--ink-2);cursor:pointer;background:var(--surface)}
+.rr-nota{font-size:var(--t-sm);color:var(--muted);margin-top:8px}
+.rr-seg{display:flex;height:38px;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;width:max-content}
+.rr-seg-op{position:relative;display:inline-flex;align-items:center;padding:0 18px;font-size:var(--t-base);color:var(--ink-2);cursor:pointer;background:var(--surface)}
 .rr-seg-op+.rr-seg-op{border-left:1px solid var(--border-strong)}
 .rr-seg-op input{position:absolute;opacity:0;pointer-events:none}
 .rr-seg-op.on{background:var(--primary-soft);color:var(--primary);font-weight:600}
 .rr-seg-op:focus-within{outline:2px solid var(--accent);outline-offset:-2px}
-.rr-chips{display:flex;flex-wrap:wrap;gap:6px}
-.rr-chip{position:relative;display:inline-flex;align-items:center;height:36px;padding:0 14px;border:1px solid var(--border-strong);border-radius:999px;font-size:var(--t-sm);color:var(--ink-2);cursor:pointer;background:var(--surface)}
+.rr-chips{display:flex;flex-wrap:wrap;gap:8px}
+.rr-chip{position:relative;display:inline-flex;align-items:center;height:36px;padding:0 14px;border:1px solid var(--border-strong);border-radius:999px;font-size:var(--t-base);color:var(--ink-2);cursor:pointer;background:var(--surface)}
 .rr-chip input{position:absolute;opacity:0;pointer-events:none}
 .rr-chip.on{background:var(--primary-soft);color:var(--primary);border-color:var(--primary-3);font-weight:600}
 .rr-chip:focus-within{outline:2px solid var(--accent);outline-offset:1px}
-.rr-roteiro{padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2)}
-.rr-roteiro-tit{font-size:var(--t-sm);font-weight:600;color:var(--ink)}
-.rr-roteiro ol{margin-top:4px;list-style:none;display:flex;flex-wrap:wrap;gap:4px 18px;counter-reset:rot}
+
+/* Roteiro do relatório. */
+.rr-roteiro{padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2)}
+.rr-roteiro-tit{font-size:var(--t-sm);font-weight:600;color:var(--ink-2)}
+.rr-roteiro ol{margin-top:6px;list-style:none;display:flex;flex-wrap:wrap;gap:6px 22px;counter-reset:rot}
 .rr-roteiro li{counter-increment:rot;font-size:var(--t-sm);color:var(--ink-2)}
-.rr-roteiro li::before{content:counter(rot) ". ";font-weight:700;color:var(--primary)}
-.rr-blocos{display:grid;gap:8px}
+.rr-roteiro li::before{content:counter(rot) ". ";font-weight:600;color:var(--primary)}
+
+/* Blocos que abrem ao marcar, e o painel das acomodações. */
+.rr-blocos{display:grid;gap:10px}
 .rr-bloco{border:1px solid var(--border);border-radius:10px;background:var(--surface)}
 .rr-bloco.on{border-color:var(--border-strong);background:var(--surface-2)}
-.rr-bloco-tg{display:flex;align-items:center;gap:10px;padding:9px 12px;font-weight:600;font-size:var(--t-base);color:var(--ink);cursor:pointer}
-.rr-bloco-tg input{width:15px;height:15px;accent-color:var(--accent);margin:0;flex-shrink:0}
+.rr-bloco-tg{display:flex;align-items:center;gap:10px;padding:12px 16px;font-weight:600;font-size:var(--t-md);color:var(--ink);cursor:pointer}
+.rr-bloco-tg input{width:16px;height:16px;accent-color:var(--accent);margin:0;flex-shrink:0}
 .rr-bloco.rosa .rr-bloco-tg input{accent-color:var(--rosa)}
 .rr-bloco.rosa.on{background:var(--rosa-bg)}
 .rr-bloco-fixo{cursor:default}
 .rr-bloco-extra{margin-left:auto;font-size:var(--t-sm);font-weight:500;color:var(--muted)}
-.rr-bloco-corpo{padding:0 12px 12px}
-.rr-lista-wrap{display:grid;gap:8px}
-.rr-lista-entrada{display:grid;gap:10px;align-items:end}
-.rr-lista-add{grid-column:-2/-1;height:36px;width:100%;justify-content:center}
+.rr-bloco-dica{font-size:var(--t-sm);color:var(--muted);margin:-4px 0 14px}
+.rr-bloco-corpo{padding:2px 16px 18px}
+
+/* Listas: linha de entrada, respiro, e os itens nas mesmas colunas. */
+.rr-lista-wrap{display:grid;gap:14px}
+.rr-lista-entrada{display:grid;gap:14px;align-items:end}
+.rr-lista-add{grid-column:-2/-1;height:38px;width:100%;justify-content:center}
 .rr-resto{grid-column:2/-1}
 .rr-linha{grid-column:1/-1}
 .rr-dupla{grid-column:1/3}
 .rr-lista{border:1px solid var(--border);border-radius:8px;background:var(--surface);overflow:hidden}
-.rr-lista-linha{display:grid;column-gap:10px;row-gap:3px;align-items:center;padding:7px 0;font-size:var(--t-sm);color:var(--ink-2)}
+.rr-lista-linha{display:grid;column-gap:14px;row-gap:4px;align-items:center;padding:10px 0;font-size:var(--t-base);color:var(--ink)}
 .rr-lista-linha+.rr-lista-linha{border-top:1px solid var(--border)}
-.rr-cel{min-width:0;padding:0 11px;overflow-wrap:anywhere}
+.rr-cel{min-width:0;padding:0 12px;overflow-wrap:anywhere}
 .rr-cel-nota{margin-left:6px;color:var(--muted)}
-.rr-acoes{grid-column:-2/-1;display:flex;justify-content:flex-end;gap:2px;padding-right:6px}
-.rr-x{all:unset;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:6px;font-size:11px;color:var(--muted);cursor:pointer;flex-shrink:0}
+.rr-acoes{grid-column:-2/-1;display:flex;justify-content:flex-end;gap:2px;padding-right:8px}
+.rr-x{all:unset;display:inline-grid;place-items:center;width:26px;height:26px;border-radius:6px;font-size:11px;color:var(--muted);cursor:pointer;flex-shrink:0}
 .rr-x:hover{background:var(--surface-3);color:var(--ink)}
 .rr-x:focus-visible{outline:2px solid var(--accent)}
+/* Movimentação: cabeçalho das colunas e o Cancelar ao lado do Adicionar. */
+.rr-lista-cab{padding:8px 0;background:var(--surface-2);font-size:var(--t-sm);font-weight:500;color:var(--muted)}
+.rr-mov-cancelar{grid-column:-3/-2;justify-self:end;height:38px}
+
 .rr-erro{font-size:var(--t-sm);color:var(--danger);margin-right:auto;align-self:center}
-.rr-pausa{gap:6px;color:var(--caution);border-color:color-mix(in srgb,var(--caution) 45%,transparent);font-weight:600}
-.rr-pausa:hover:not(:disabled){background:var(--caution-bg);border-color:var(--caution)}
-.rr-pausa.on{background:var(--caution-bg);border-color:var(--caution)}
 @media (max-width:900px){
   .rr-g3{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .rr-ctx-dados{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:620px){
   .rr-g2,.rr-g3,.rr-g-evento{grid-template-columns:minmax(0,1fr)}
   .rr-lista-entrada,.rr-lista-linha{grid-template-columns:minmax(0,1fr) !important}
-  .rr-resto,.rr-linha,.rr-dupla{grid-column:auto}
-  .rr-ctx{flex-direction:column}
+  .rr-resto,.rr-linha,.rr-dupla,.rr-mov-cancelar{grid-column:auto}
 }
 `
 
@@ -158,7 +185,7 @@ function grupoDoErro(erro: string | null): Grupo | null {
   if (e.includes('prorrogação')) return 'prorrogacao'
   if (e.includes('relatório da visita') || e.includes('diagnóstico')) return 'quadro'
   if (e.includes('data da visita')) return 'visita'
-  if (e.includes('acomodações utilizadas') || e.includes('acomodação utilizada')
+  if (e.includes('acomodações utilizadas') || e.includes('acomodação utilizada') || e.includes('movimentação')
       || e.includes('caráter') || e.includes('tipo de internação')) return 'internacao'
   if (e.includes('procedimento realizado') || e.includes('alto custo') || e.includes('evento adverso')) return 'periodo'
   if (e.includes('folha rosa') || e.includes('glosa') || e.includes('medicação negada')
@@ -173,11 +200,11 @@ function resumos(form: FormRelatorio): Record<Grupo, string> {
   const c = form.completo
   const prr = form.prorrogacao
   const dias = prr ? prr.periodos.finais().reduce((n, p) => n + diasNoPeriodo(p.data_inicio, p.data_fim), 0) : 0
-  const atual = c ? [...c.acomodacoes.finais()].reverse().find((a) => !a.data_saida) : undefined
+  const atual = c ? [...c.acomodacoesFinais()].reverse().find((a) => !a.data_saida) : undefined
   const marcados = (pares: [boolean, string][]) => pares.filter(([on]) => on).map(([, t]) => t).join(' · ') || 'Nada marcado'
   return {
     prorrogacao: prr?.ativa
-      ? `Pedida${dias ? `: ${dias} ${dias === 1 ? 'dia' : 'dias'}` : ''}${prr.pausada ? ' · pausada' : ''}`
+      ? `Pedida${dias ? `: ${dias} ${dias === 1 ? 'dia' : 'dias'}` : ''}`
       : 'Não pedida',
     visita: [dataBR(form.dataVisita) || 'Sem data', form.medico, c?.enfermeiro].filter(Boolean).join(' · '),
     internacao: c
@@ -204,31 +231,42 @@ function resumos(form: FormRelatorio): Record<Grupo, string> {
   }
 }
 
+/** Idade em anos completos na data de hoje, ou null. */
+function idade(nascimento?: string | null): number | null {
+  const iso = paraISO(nascimento)
+  if (!iso) return null
+  const [a, m, d] = iso.split('-').map(Number)
+  const hoje = new Date()
+  let anos = hoje.getFullYear() - a
+  if (hoje.getMonth() + 1 < m || (hoje.getMonth() + 1 === m && hoje.getDate() < d)) anos -= 1
+  return anos >= 0 && anos < 130 ? anos : null
+}
+
 /** Os dados do paciente que o portal mostrava no alto do relatório, só leitura
- *  (corrigir é na ficha). */
+ *  (corrigir é na ficha): o nome em destaque, operadora e hospital, e os demais
+ *  dados numa linha, cada um com o seu rótulo. */
 function DadosPaciente({ p }: { p: InternacaoDados }) {
   const dias = diasInternado(p.data_entrada)
-  const internacao = [
-    dataBR(p.data_entrada),
-    p.hora_entrada ? p.hora_entrada.slice(0, 5) : '',
-    dias != null ? `${dias} ${dias === 1 ? 'dia' : 'dias'}` : '',
-  ].filter(Boolean).join(' · ')
+  const anos = idade(p.data_nascimento)
   const sexo = (p.sexo ?? '').trim().toUpperCase()
-  const dados: [string, string][] = [
-    ['Operadora', p.convenio || '—'],
-    ['Hospital', p.hospital_nome || '—'],
-    ['Sexo', SEXO[sexo] ?? (p.sexo || '—')],
-    ['Nascimento', dataBR(p.data_nascimento) || '—'],
-    ['Carteirinha', p.carteirinha || '—'],
-    ['Internação', internacao || '—'],
+  const internacao = p.data_entrada
+    ? `${dataBR(p.data_entrada)}${p.hora_entrada ? `, ${p.hora_entrada.slice(0, 5)}` : ''}`
+      + (dias != null ? ` (${dias} ${dias === 1 ? 'dia' : 'dias'})` : '')
+    : ''
+  const fatos: [string, string][] = [
+    ['Internado desde', internacao],
+    ['Nascimento', p.data_nascimento ? `${dataBR(p.data_nascimento)}${anos != null ? ` (${anos} anos)` : ''}` : ''],
+    ['Sexo', SEXO[sexo] ?? (p.sexo || '')],
+    ['Carteirinha', p.carteirinha || ''],
   ]
   return (
-    <dl className="rr-ctx-dados">
-      <div className="rr-dado-nome"><dt>Paciente</dt><dd>{identificacaoPaciente(p)}</dd></div>
-      {dados.map(([rot, valor]) => (
-        <div key={rot}><dt>{rot}</dt><dd title={valor}>{valor}</dd></div>
-      ))}
-    </dl>
+    <div className="rr-ctx">
+      <div className="rr-ctx-nome">{identificacaoPaciente(p)}</div>
+      <div className="rr-ctx-linha">{[p.convenio, p.hospital_nome].filter(Boolean).join(' · ')}</div>
+      <div className="rr-ctx-fatos">
+        {fatos.filter(([, v]) => v).map(([rot, v]) => <span key={rot}><b>{rot}</b>{v}</span>)}
+      </div>
+    </div>
   )
 }
 
@@ -251,9 +289,10 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
   const novos = Boolean(c?.noBanco)
   const desab = form.salvando
 
-  // Abre simples: o que todo relatório tem fica aberto; o resto, fechado com
+  // Abre simples: o Relatório de visita aberto (pedido de 08/10/2026: "pode
+  // ser expansivo, mas com a possibilidade de reduzir"); o resto, fechado com
   // o resumo à vista.
-  const [abertos, setAbertos] = useState<Set<Grupo>>(() => new Set<Grupo>(['prorrogacao', 'visita', 'quadro']))
+  const [abertos, setAbertos] = useState<Set<Grupo>>(() => new Set<Grupo>(['visita']))
   const alternar = (g: Grupo) => setAbertos((atual) => {
     const novo = new Set(atual)
     if (novo.has(g)) novo.delete(g)
@@ -282,25 +321,6 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
       {/* O mesmo botão do topo da ficha: abre a janela da alta por cima desta
           (data, hora e motivo) e vale na hora. Depois da alta manual vira
           "Desfazer alta"; alta que veio do censo não mostra nada. */}
-      {temProrrogacao && form.prorrogacao?.ativa && podeExecutar(role, 'controlarProrrogacao') && (
-        <button
-          type="button"
-          className={`btn btn-outline rr-pausa${form.prorrogacao.pausada ? ' on' : ''}`}
-          aria-pressed={form.prorrogacao.pausada}
-          disabled={desab}
-          title={form.prorrogacao.pausada
-            ? 'A prorrogação vai pausada. Clique para pedir sem pausa.'
-            : 'Pede a prorrogação já pausada'}
-          onClick={() => form.prorrogacao?.setPausada(!form.prorrogacao.pausada)}
-        >
-          {form.prorrogacao.pausada ? (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5v14l12-7z" /></svg>
-          ) : (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" /></svg>
-          )}
-          {form.prorrogacao.pausada ? 'Retomar prorrogação' : 'Pausar prorrogação'}
-        </button>
-      )}
       {podeExecutar(role, 'darAlta') && (
         <AcaoAlta d={paciente} sobreposta pequeno={false} onFeito={onAviso} />
       )}
@@ -313,23 +333,17 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
   return (
     <Modal title="Registrar relatório" onClose={fechar} largura={940} footer={rodape}>
       <style>{estilos}</style>
-      <div className="rr-ctx">
-        <DadosPaciente p={paciente} />
-      </div>
+      <div className="rr-raiz">
+      <DadosPaciente p={paciente} />
 
-      <div className="rr-form">
-        {temProrrogacao && (
-          <GrupoRecolhivel titulo="Prorrogação" resumo={resumo.prorrogacao}
-                           aberto={abertos.has('prorrogacao')} onAlternar={() => alternar('prorrogacao')}>
-            <SecaoProrrogacao form={form} />
-          </GrupoRecolhivel>
-        )}
-        <GrupoRecolhivel titulo="Visita" resumo={resumo.visita}
+      <div className="rr-grupos">
+        <GrupoRecolhivel titulo="Relatório de visita" resumo={resumo.visita}
                          aberto={abertos.has('visita')} onAlternar={() => alternar('visita')}>
-          <SecaoVisita form={form} medicos={medicos} enfermeiros={enfermeiros} />
+          <SecaoVisita form={form} medicos={medicos} enfermeiros={enfermeiros}
+                       dataEntrada={paraISO(paciente.data_entrada) || undefined} />
         </GrupoRecolhivel>
         {c && novos && (
-          <GrupoRecolhivel titulo="Internação" resumo={resumo.internacao}
+          <GrupoRecolhivel titulo="Quadro de internação" resumo={resumo.internacao}
                            nota={c.doUltimo ? 'Como no último relatório' : undefined}
                            aberto={abertos.has('internacao')} onAlternar={() => alternar('internacao')}>
             <SecaoInternacao
@@ -366,7 +380,14 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
           </GrupoRecolhivel>
         )}
 
-        {(temFolhaRosa || (c && novos)) && (
+        {temProrrogacao && (
+          <GrupoRecolhivel titulo="Prorrogação" resumo={resumo.prorrogacao}
+                           aberto={abertos.has('prorrogacao')} onAlternar={() => alternar('prorrogacao')}>
+            <SecaoProrrogacao form={form} />
+          </GrupoRecolhivel>
+        )}
+
+        {NEGOCIACAO_NO_RELATORIO && (temFolhaRosa || (c && novos)) && (
           <GrupoRecolhivel titulo="Negociação com o hospital" resumo={resumo.negociacao}
                            aberto={abertos.has('negociacao')} onAlternar={() => alternar('negociacao')}>
             <div className="rr-blocos">
@@ -398,6 +419,7 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
             </div>
           </GrupoRecolhivel>
         )}
+      </div>
       </div>
     </Modal>
   )

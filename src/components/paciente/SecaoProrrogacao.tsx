@@ -8,10 +8,10 @@
 // livre. A prorrogação só vale com o relatório aprovado, e não muda o prazo do
 // próximo relatório.
 //
-// A pausa é o botão "Pausar prorrogação" do rodapé da modal, ao lado de "Alta"
-// (pedido do usuário, 08/10/2026), para quem pausa no card de Tarefas (admin e
-// operacional). Depois, pausar e retomar seguem no card da coluna "Em
-// prorrogação".
+// Pausar e retomar ficam fora daqui (08/10/2026: "o pausar prorrogação só deve
+// aparecer quando eu registrar o relatório"): no topo da ficha, depois que a
+// prorrogação vale (`AcaoPausarProrrogacao`), e no card da coluna "Em
+// prorrogação" de Tarefas. Admin e operacional.
 import { useCatalogosProrrogacao } from '../../hooks/useKanban'
 import { dataBR, diasNoPeriodo } from '../../lib/datas'
 import type { PedidoProrrogacao } from '../../types/api'
@@ -30,10 +30,7 @@ export function SecaoProrrogacao({ form }: { form: FormRelatorio }) {
   return (
     <BlocoOpcional titulo="Pedir prorrogação" marcado={prr.ativa} onMarcar={prr.alternar}
                    desabilitado={form.salvando}
-                   extra={[
-                     total > 0 ? `${total} ${total === 1 ? 'dia' : 'dias'}` : '',
-                     prr.pausada ? 'pausada' : '',
-                   ].filter(Boolean).join(' · ')}>
+                   extra={total > 0 ? `${total} ${total === 1 ? 'dia' : 'dias'}` : ''}>
       <div className="rr-pilha">
         <SecaoPeriodos lista={prr.periodos} acomodacoes={acomodacoes} desabilitado={form.salvando} />
         <label className="rr-campo">

@@ -986,6 +986,8 @@ export interface DetalhesRelatorio {
   acomodacao_desde?: string | null
   acomodacoes?: AcomodacaoUtilizada[]
   enfermeiro?: string | null
+  /** O que foi analisado na visita (texto livre). */
+  analise?: string | null
   /** Código do diagnóstico principal (um dos `cids` do relatório). */
   cid_principal?: string | null
   procedimentos?: ProcedimentoRelatorio[]
@@ -1712,6 +1714,10 @@ export interface TimelineEvento {
   hora?: string | null
   /** Relatório com folha rosa (0052): o card vai rosa. Só em RELATORIO. */
   folha_rosa?: boolean
+  /** MUDANCA_ACOMODACAO (08/10/2026): de onde o censo tirou o paciente e para
+   *  onde ele foi (valores do `tipo_leito`, ex.: "UTI", "APARTAMENTO"). */
+  de?: string | null
+  para?: string | null
   /** Ficha do paciente (0049): o evento é de OUTRA internação da mesma pessoa
    *  (outro hospital, reinternação). Ausente nos eventos da internação aberta. */
   outra_internacao?: boolean

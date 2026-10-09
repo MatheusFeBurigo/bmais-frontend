@@ -9,7 +9,7 @@ import { queryKeys } from '../../lib/queryKeys'
 import { useAuth } from '../../auth/AuthContext'
 import { precisaAprovacao } from '../../auth/permissions'
 import { hojeISO, somarDias } from '../../lib/datas'
-import type { AceiteFolhaRosa, DetalhesRelatorio, PeriodoProrrogacao } from '../../types/api'
+import type { AceiteFolhaRosa, AcomodacaoUtilizada, DetalhesRelatorio, PeriodoProrrogacao } from '../../types/api'
 import { useDetalhesRelatorio } from './relatorio/useDetalhesRelatorio'
 import { useLista } from './relatorio/useLista'
 
@@ -26,9 +26,6 @@ export interface ContextoProrrogacao {
   ate?: string | null
   /** Acomodação sugerida para o 1º período (a da prorrogação vigente). */
   acomodacao?: string | null
-  /** A vigente está pausada: o novo pedido já nasce pausado, para não retomar
-   *  sem querer (quem pode, retoma no botão do rodapé). */
-  pausada?: boolean | null
 }
 
 /** Contexto do paciente para sugerir a acomodação "de" da folha rosa. */
@@ -43,6 +40,9 @@ export interface ContextoCompleto {
   ultimo: DetalhesRelatorio | null
   /** Data da internação (ISO): a 1ª acomodação utilizada começa nela. */
   dataEntrada?: string
+  /** Acomodações utilizadas como o censo as capturou (timeline): vêm antes
+   *  das do último relatório. */
+  censo?: AcomodacaoUtilizada[]
 }
 
 /** A folha rosa enquanto é preenchida (diárias em texto, como no campo). */
@@ -109,8 +109,6 @@ export function useFormRelatorio(internacaoId: number, {
   )
   const [justificativa, setJustificativa] = useState('')
   const [complemento, setComplemento] = useState('')
-  // "Pausar prorrogação" do rodapé da modal: vai no pedido e vale com ele.
-  const [prrPausada, setPrrPausada] = useState(false)
   // Folha rosa (custo evitado negociado com o hospital): fechada até ser marcada.
   const [frAtiva, setFrAtiva] = useState(false)
   const [folha, setFolha] = useState<RascunhoFolhaRosa>(folhaVazia)
@@ -146,7 +144,6 @@ export function useFormRelatorio(internacaoId: number, {
     setPrrAtiva(ligar)
     if (ligar && !periodos.itens.length && !periodos.rascunho.acomodacao) {
       periodos.carregar([], primeiroPeriodo())
-      setPrrPausada(Boolean(ctxProrrogacao?.pausada))
     }
   }
 
@@ -173,12 +170,11 @@ export function useFormRelatorio(internacaoId: number, {
     setErro(null)
     setPrrAtiva(false)
     periodos.carregar([])
-    setPrrPausada(false)
     setJustificativa('')
     setComplemento('')
     setFrAtiva(false)
     setFolha(folhaVazia())
-    det.iniciar(ctxCompleto?.ultimo ?? null, ctxCompleto?.dataEntrada)
+    det.iniciar(ctxCompleto?.ultimo ?? null, ctxCompleto?.dataEntrada, ctxCompleto?.censo)
   }
 
   async function salvar() {
@@ -242,7 +238,7 @@ export function useFormRelatorio(internacaoId: number, {
         data_visita: dataVisita, medico, descricao: obs,
         cids: todosCids.map((c) => c.codigo),
         ...(pedeProrrogacao
-          ? { prorrogacao: { periodos: periodos.finais(), justificativa, complemento, pausada: prrPausada } }
+          ? { prorrogacao: { periodos: periodos.finais(), justificativa, complemento } }
           : {}),
         ...(aplicaFolha
           ? { folha_rosa: { ...folha, diarias, obs: folha.obs.trim() } }
@@ -266,7 +262,7 @@ export function useFormRelatorio(internacaoId: number, {
     cids, adicionarCid, removerCid, cidPrincipal, definirCidPrincipal, vaiParaAprovacao,
     prorrogacao: ctxProrrogacao ? {
       ativa: prrAtiva, alternar: alternarProrrogacao,
-      periodos, pausada: prrPausada, setPausada: setPrrPausada,
+      periodos,
       justificativa, setJustificativa, complemento, setComplemento,
     } : null,
     folhaRosa: ctxFolhaRosa ? {

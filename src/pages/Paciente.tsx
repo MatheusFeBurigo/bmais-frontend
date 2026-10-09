@@ -14,6 +14,7 @@ import { LoadingState } from '../components/ui'
 import HospitalDetalhesModal from '../components/HospitalDetalhesModal'
 import { alertaStyles } from '../components/Alerta'
 import { AcaoAlta } from '../components/paciente/AcaoAlta'
+import { AcaoPausarProrrogacao } from '../components/paciente/AcaoPausarProrrogacao'
 import { AlertaCamposFaltantes } from '../components/paciente/AlertaCamposFaltantes'
 import { AlertaInternacaoMaisRecente, AlertaSugestoesPessoa } from '../components/paciente/AlertasPessoa'
 import { CardCids } from '../components/paciente/CardCids'
@@ -104,6 +105,7 @@ export default function Paciente() {
         ) : undefined,
         actions: (
           <div style={{ display: 'flex', gap: 8 }}>
+            {d && podeExecutar(role, 'controlarProrrogacao') && <AcaoPausarProrrogacao d={d} onFeito={setToast} />}
             {d && podeExecutar(role, 'darAlta') && <AcaoAlta d={d} onFeito={setToast} />}
             <button className="btn btn-outline btn-sm" onClick={() => navigate(-1)}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
@@ -159,14 +161,12 @@ export default function Paciente() {
             podeRegistrar={podeExecutar(role, 'registrarRelatorio')}
             medicos={medicos}
             enfermeiros={enfermeiros}
-            prorrogacao={{
-              ate: d?.prorrogacao_ate, acomodacao: d?.prorrogacao_acomodacao,
-              pausada: d?.prorrogacao_pausada,
-            }}
+            prorrogacao={{ ate: d?.prorrogacao_ate, acomodacao: d?.prorrogacao_acomodacao }}
             folhaRosa={{ acomodacao: d?.prorrogacao_acomodacao || d?.tipo_leito }}
             onRegistrado={(pendente) => setToast(pendente ? '✓ Relatório enviado para aprovação' : '✓ Relatório registrado')}
             onAviso={setToast}
             onAbrirRelatorio={(id) => setRelatorioAberto({ relatorio_id: id })}
+            eventos={timeline.data?.eventos}
           />
 
           <div className="card" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>

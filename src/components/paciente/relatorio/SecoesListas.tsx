@@ -8,13 +8,14 @@
 // Larguras comuns a todas: data 150px, quantidade 110px, botão 96px, e as
 // datas de início e fim sempre nas duas colunas antes do botão. Assim os campos
 // do mesmo tipo caem na mesma vertical de um bloco para o outro.
+import type { CSSProperties } from 'react'
 import { dataBR, diasNoPeriodo, hojeISO } from '../../../lib/datas'
 import { TIPOS_ALTO_CUSTO, rotulo } from '../../../lib/relatorioDetalhes'
 import { CampoTuss } from './CampoTuss'
 import { ListaItens } from './ListaItens'
 import type { PeriodoProrrogacao } from '../../../types/api'
 import type {
-  ItemAcomodacao, ItemAltoCusto, ItemGlosa, ItemMedicacaoNegada, ItemProcedimento,
+  DetalhesForm, ItemAcomodacao, ItemAltoCusto, ItemGlosa, ItemMedicacaoNegada, ItemProcedimento,
   ItemTrocaProcedimento, ListaRelatorio,
 } from './useDetalhesRelatorio'
 
@@ -151,6 +152,80 @@ export function SecaoAcomodacoes({ lista, acomodacoes, desabilitado }: {
       onEditar={lista.editar}
       desabilitado={desabilitado}
     />
+  )
+}
+
+/** Com o local do paciente conhecido: onde ele está e as trocas desta visita,
+ *  uma a uma (pedido de 08/10/2026: "exibir o último local onde ele está
+ *  internado" e um botão "Adicionar movimentação"). Mesmas colunas das
+ *  acomodações utilizadas, com a data da troca sob a entrada. */
+export function SecaoMovimentacao({ mov, acomodacoes, desabilitado }: {
+  mov: DetalhesForm['movimentacao']
+  acomodacoes: Acomodacoes
+  desabilitado?: boolean
+}) {
+  const grade = { gridTemplateColumns: COL_ACOMODACAO } as CSSProperties
+  const r = mov.rascunho
+  const atual = mov.atual
+  return (
+    <div className="rr-lista-wrap">
+      <div className="rr-lista">
+        <div className="rr-lista-linha rr-lista-cab" style={grade}>
+          <span className="rr-cel">Acomodação</span>
+          <span className="rr-cel">Entrada</span>
+          <span className="rr-cel">Saída</span>
+        </div>
+        {mov.linhas.map((a, i) => (
+          <div className="rr-lista-linha" style={grade} key={i}>
+            <span className="rr-cel">{a.acomodacao}</span>
+            <span className="rr-cel">{data(a.data_entrada)}</span>
+            <span className="rr-cel">
+              {a.data_saida ? data(a.data_saida) : <span className="badge info">Atual</span>}
+            </span>
+            {i === mov.linhas.length - 1 && mov.podeDesfazer && (
+              <span className="rr-acoes">
+                <button type="button" className="rr-x" aria-label="Remover" title="Remover"
+                        disabled={desabilitado} onClick={mov.desfazer}>✕</button>
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+      {mov.aberta ? (
+        <div className="rr-lista-entrada" style={grade}>
+          <label className="rr-campo">
+            <Rotulo texto="Nova acomodação" obrigatorio />
+            <select className="bm-input bm-select" value={r.acomodacao}
+                    onChange={(e) => mov.mudar('acomodacao', e.target.value)}>
+              <option value="">Escolher</option>
+              {acomodacoes.filter((a) => a.nome !== atual?.acomodacao)
+                .map((a) => <option key={a.id} value={a.nome}>{a.nome}</option>)}
+            </select>
+          </label>
+          <label className="rr-campo">
+            <Rotulo texto="Data" obrigatorio />
+            <input type="date" className="bm-input" value={r.data}
+                   min={atual?.data_entrada || undefined} max={hojeISO()}
+                   onChange={(e) => mov.mudar('data', e.target.value)} />
+          </label>
+          <button type="button" className="btn btn-ghost btn-sm rr-mov-cancelar"
+                  disabled={desabilitado} onClick={mov.cancelar}>
+            Cancelar
+          </button>
+          <button type="button" className="btn btn-outline btn-sm rr-lista-add"
+                  disabled={!mov.podeAdicionar || desabilitado} onClick={mov.adicionar}>
+            Adicionar
+          </button>
+        </div>
+      ) : (
+        <div>
+          <button type="button" className="btn btn-outline btn-sm rr-mov-abrir"
+                  disabled={desabilitado} onClick={mov.abrir}>
+            Adicionar movimentação
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 

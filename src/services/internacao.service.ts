@@ -30,6 +30,7 @@ export interface PedidoDetalhes {
   tipo_internacao: string
   acomodacoes: { acomodacao: string; data_entrada: string; data_saida: string }[]
   enfermeiro: string
+  analise: string
   cid_principal: string
   procedimentos: { codigo: string; qtde: string; data: string }[]
   alto_custo: { tipo: string; medicacao: string; dose: string; data_inicio: string; data_fim: string }[]
