@@ -101,6 +101,7 @@ export function ModuloOperacional({ irPara }: Props) {
         <tr><Key>Busca</Key><td>Procura por nome do segurado, número de atendimento e senha de autorização.</td></tr>
         <tr><Key>UTI e CTI</Key><td>Mantém apenas leitos de terapia intensiva.</td></tr>
         <tr><Key>Longa permanência</Key><td>Escolha a partir de quantos dias de internação: 3, 7, 10, 15 ou 30. O chip fica marcado com o corte escolhido. Clique nele para trocar, ou no x para tirar o filtro. Na lista de altas, conta os dias até a alta.</td></tr>
+        <tr><Key>Em prorrogação</Key><td>Mantém apenas os internados com prorrogação aprovada em andamento, inclusive as pausadas. Não aparece na lista de altas.</td></tr>
         <tr><Key>Altas</Key><td>Troca a base da lista para os pacientes que já saíram, em vez dos internados.</td></tr>
         <tr><Key>Ordenação</Key><td>Padrão, mais dias sem relatório, ou mais dias internado. Na primeira opção, quem nunca teve relatório vai ao topo.</td></tr>
       </Tabela>
@@ -175,7 +176,8 @@ export function ModuloPaciente({ irPara }: Props) {
       </ComoFazer>
       <Callout tipo="info" titulo="Técnico ou gestor aprova o relatório do operacional">
         O relatório do operacional vai para a coluna <strong>Aguardando aprovação</strong> do quadro
-        de pacientes, em Tarefas. O do técnico e o do gestor valem na hora. Os demais perfis veem a ficha, mas o bloco de
+        de pacientes, em Tarefas. O clique no card abre a ficha do paciente com o relatório, e
+        Aprovar e Devolver ficam no rodapé dele. O do técnico e o do gestor valem na hora. Os demais perfis veem a ficha, mas o bloco de
         registrar não aparece para eles.
       </Callout>
       </>)}
@@ -290,7 +292,7 @@ export function ModuloPaciente({ irPara }: Props) {
       </p>
       <ul>
         <li><strong>Relatório de visita</strong>: a data, obrigatória e já com a data de hoje, o médico
-          ou o enfermeiro que fez a visita (um campo só) e o que foi analisado.</li>
+          auditor, o enfermeiro auditor e o que foi analisado.</li>
         <li><strong>Quadro de internação</strong>: caráter (urgência ou eletivo), tipo de
           internação e as acomodações utilizadas, com entrada e saída. Elas vêm do censo e das
           trocas já registradas, e a janela mostra onde o paciente está. Para cada troca que
@@ -444,34 +446,38 @@ export function ModuloKanban({ irPara }: Props) {
       </p>
       <Tabela cabecalho={['Coluna', 'O que reúne', 'O que fazer']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Aguardando aprovação</Key>
-          <td>Relatórios enviados pelo operacional, com o texto no próprio card.</td>
-          <td>Técnico ou gestor: Aprovar, ou Devolver dizendo o que corrigir.</td></tr>
+          <td>Relatórios enviados pelo operacional: paciente, visita, quem enviou e a prorrogação pedida.</td>
+          <td>Técnico ou gestor: clique no card. A ficha do paciente abre com o relatório, e Aprovar e Devolver ficam no rodapé dele.</td></tr>
         <tr><Key>Devolvidos</Key>
           <td>Relatórios que o técnico pediu para corrigir, com o motivo.</td>
-          <td>Quem escreveu: Corrigir e reenviar.</td></tr>
+          <td>Quem escreveu: clique no card e use Corrigir e reenviar, no rodapé do relatório.</td></tr>
       </Tabela>
 
-      <h3>A coluna Em prorrogação</h3>
+      <h3>Pacientes em prorrogação</h3>
       <p>
         A prorrogação é pedida ao registrar o relatório na ficha <strong>Detalhes</strong> do
         paciente: marque <strong>Pedir prorrogação</strong>, informe os períodos por acomodação e
         escolha a justificativa. Ela vale quando o relatório é aprovado e não muda o prazo do
-        próximo relatório. A coluna, no quadro de pacientes, lista quem está em prorrogação,
-        primeiro as que terminam hoje. Nas outras colunas de pacientes, o card do paciente
-        prorrogado mostra <strong>Prorrogado até</strong> a data final (ou{' '}
-        <strong>Prorrogação pausada</strong>). Passada a data final, o paciente volta para{' '}
+        próximo relatório. No quadro de pacientes, o card do paciente prorrogado mostra{' '}
+        <strong>Prorrogado até</strong> a data final (ou <strong>Prorrogação pausada</strong>).
+        Para ver só quem está em prorrogação, use o filtro <strong>Em prorrogação</strong> do
+        Painel Operacional. Passada a data final, o paciente volta para{' '}
         <strong>Sem relatório</strong>. Admin e operacional podem{' '}
-        <strong>Pausar</strong> e <strong>Retomar</strong> no próprio card.
+        <strong>Pausar prorrogação</strong> e <strong>Retomar prorrogação</strong> na ficha do
+        paciente.
       </p>
 
       <h3>As colunas de censos</h3>
       <p>
         Cada hospital aparece uma vez por operadora com paciente internado, pela data do último
         censo daquela operadora. O censo da Porto chegar não conta para a Bradesco do mesmo
-        hospital. O card muda de coluna sozinho quando o censo chega, e o filtro de operadora
-        mostra só os censos de uma delas. Clicar no card abre a timeline dos últimos 15 dias,
+        hospital. O operacional recebe os censos de todas as operadoras dos hospitais dele, e os
+        da operadora dele ficam no topo de cada coluna. O de outra operadora sai do quadro dele
+        quando fica atualizado. O card muda de coluna sozinho quando o
+        censo chega, e o filtro de operadora mostra só os censos de uma delas. Clicar no card abre a timeline dos últimos 15 dias,
         com as anotações e os censos recebidos, e o contato do hospital. Toda mudança de coluna
-        feita à mão pede uma anotação do que aconteceu.
+        feita à mão pede uma anotação do que aconteceu, menos desfazer a atualização: esse pedido
+        vai para aprovação do Gestor ou de um Coordenador.
       </p>
       <Tabela cabecalho={['Coluna', 'Quando o hospital está aqui', 'O que fazer']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Censos atrasados</Key>
@@ -485,7 +491,7 @@ export function ModuloKanban({ irPara }: Props) {
           <td>Nada por enquanto.</td></tr>
         <tr><Key>Censos atualizados</Key>
           <td>O censo de hoje já chegou, ou o hospital confirmou que não há censo novo.</td>
-          <td>Nada. O hospital está em dia.</td></tr>
+          <td>Nada. O hospital está em dia. Marcou como atualizado por engano? Desfazer, que espera a aprovação do Gestor ou de um Coordenador.</td></tr>
       </Tabela>
 
       <h3>O que cada perfil vê</h3>
@@ -497,7 +503,8 @@ export function ModuloKanban({ irPara }: Props) {
         <li>O perfil <strong>técnico</strong> vê as três colunas de pacientes, que são a agenda de
           visitas dele, sem a cobrança de censo.</li>
         <li>O perfil <strong>operacional</strong> vê as colunas de censos, que são a
-          providência dele junto aos hospitais.</li>
+          providência dele junto aos hospitais. Na aba <strong>Pacientes</strong>, vê a coluna{' '}
+          <strong>Sem relatório</strong> e as de aprovação.</li>
         <li>Quem acompanha as duas equipes alterna entre os quadros pelas abas{' '}
           <strong>Pacientes</strong> e <strong>Censos</strong>.</li>
         <li>O perfil <strong>analista</strong> acompanha o quadro sem executar as tarefas, por ser
@@ -544,7 +551,8 @@ export function ModuloKanban({ irPara }: Props) {
       </Tabela>
       <p>
         Os cards de paciente trazem ainda etiquetas que explicam por que aquele caso merece atenção:
-        leito de UTI, longa permanência e nunca visitado.
+        longa permanência e nunca visitado. O leito de UTI aparece no tipo do leito, ao lado do
+        código.
       </p>
 
       <h3>Priorizar o quadro</h3>

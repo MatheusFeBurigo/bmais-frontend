@@ -40,6 +40,24 @@ export function nomeProprio(valor?: string | null): string {
 }
 
 /**
+ * Nome de uma pessoa do sistema para a tela, NUNCA o e-mail (13/10/2026).
+ *
+ * `nome` é o que o backend resolveu do cadastro (`autor_nome`). Sem ele (dado em
+ * cache de antes da mudança, anotação de censo), deriva da parte local do login,
+ * como `domain/nomes.nome_do_email` no backend: "ana.souza2@x" vira "Ana Souza".
+ * Login que não é e-mail ("sistema") volta como está.
+ */
+export function nomeDePessoa(nome?: string | null, login?: string | null): string {
+  const cadastrado = (nome || '').trim()
+  if (cadastrado) return cadastrado
+  const l = (login || '').trim()
+  if (!l.includes('@')) return l
+  const local = l.split('@')[0]
+  const partes = local.split(/[\s._-]+/).map((p) => p.replace(/\d+$/, '')).filter(Boolean)
+  return nomeProprio(partes.join(' ')) || local
+}
+
+/**
  * Como identificar um paciente na tela quando o censo não traz o nome.
  *
  * O "Relatório Personalizado" do SOULMV (Clínica São Gonçalo, São Gonçalo,

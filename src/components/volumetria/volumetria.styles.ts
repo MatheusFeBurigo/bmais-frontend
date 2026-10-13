@@ -114,6 +114,12 @@ export const localStyles = `
 .vol-sc{display:grid;grid-template-columns:28px 1fr minmax(180px,220px);gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-soft)}
 .vol-sc:last-child{border-bottom:0}
 
+/* Pedidos para desfazer a atualização de um censo */
+.vol-pedido{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-soft)}
+.vol-pedido:last-child{border-bottom:0}
+.vol-pedido-acoes{display:flex;gap:8px}
+@media (max-width:640px){.vol-pedido{grid-template-columns:28px 1fr}.vol-pedido-acoes{grid-column:2}}
+
 /* Produtividade e distribuição */
 .vol-prod{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
 @media (max-width:900px){.vol-prod{grid-template-columns:1fr}}

@@ -63,7 +63,7 @@ export function TimelineItem({ ev, onDesvincular, onAbrirRelatorio }: {
           <span style={{ marginLeft: 8, verticalAlign: 'middle' }}>
             {chip.tipo === 'medico'
               ? <MedicoChip nome={chip.nome} role={ev.autor_role} titulo={chip.titulo} />
-              : <AutorChip role={ev.autor_role} autor={chip.autor} />}
+              : <AutorChip role={ev.autor_role} autor={chip.autor} nome={ev.autor_nome} />}
           </span>
         )}
       </div>

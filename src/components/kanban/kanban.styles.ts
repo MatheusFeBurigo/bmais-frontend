@@ -151,7 +151,6 @@ export const localStyles = `
 .kb-det-linha{display:flex;gap:8px;font-size:var(--t-sm);line-height:1.5}
 .kb-det-lbl{color:var(--muted-2);flex-shrink:0;min-width:86px}
 .kb-det-val{color:var(--ink-2);min-width:0;overflow-wrap:anywhere}
-.kb-det-acao{margin-top:5px;font-size:var(--t-xs);color:var(--muted-2);font-style:italic}
 /* Agendar visita direto no card (sem abrir a ficha do paciente). */
 .kb-card-actions{margin-top:8px;display:flex;gap:8px;justify-content:flex-end;align-items:center}
 /* Duas ações no card de censo ("Aguardando retorno"): lado a lado não cabem na
@@ -165,11 +164,7 @@ export const localStyles = `
 .kb-empty{padding:22px 12px;text-align:center;color:var(--muted-2);font-size:var(--t-sm);line-height:1.5}
 .kb-dias{font-family:var(--font-mono);font-weight:600}
 /* ── Colunas de aprovação (quadro de pacientes) ── */
-.ap-rel{margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border-soft);display:grid;gap:4px}
-.ap-rel-linha{font-size:var(--t-xs);color:var(--muted);font-weight:600}
-.ap-rel-texto{font-size:var(--t-sm);color:var(--ink-2);white-space:pre-wrap;line-height:1.45;word-break:break-word}
-.ap-rel-texto.recolhido{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
-.ap-rel-autor{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--t-xs)}
-.ap-motivo{margin-top:8px;padding:7px 10px;border-radius:8px;background:var(--danger-bg);color:var(--danger);font-size:var(--t-sm);white-space:pre-wrap;word-break:break-word}
-.ap-acoes{display:flex;justify-content:flex-end;gap:6px;margin-top:8px}
+.ap-motivo{margin-top:8px;padding:6px 10px;border-radius:8px;background:var(--danger-bg);color:var(--danger);font-size:var(--t-sm);word-break:break-word}
+/* Até 2 linhas: o corte fica no texto, não na caixa (com o padding, a 3ª linha aparecia pela metade). */
+.ap-motivo>span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 `

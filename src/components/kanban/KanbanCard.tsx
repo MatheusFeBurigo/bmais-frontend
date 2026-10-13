@@ -8,7 +8,6 @@ import type { KanbanTarefa } from '../../types/api'
 import { AprovacaoCard } from './AprovacaoCard'
 import { CensoCard } from './CensoCard'
 import { PacienteCard } from './PacienteCard'
-import { ProrrogacaoCard } from './ProrrogacaoCard'
 
 // memo: só re-renderiza quando SUA tarefa/props mudam. Os handlers recebem a
 // própria tarefa (bind interno), então o pai passa funções ESTÁVEIS (useCallback)
@@ -16,8 +15,7 @@ import { ProrrogacaoCard } from './ProrrogacaoCard'
 // re-renderizariam a cada setState do quadro.
 export const KanbanCard = memo(function KanbanCard({
   tarefa, onAbrir, onPrefetch, onCobrar, onDesfazer, onAtualizar, onDesfazerAtualizado,
-  onAbrirCenso, cobrando, somenteLeitura, podeAprovar = false, usuario, medicos, onAviso,
-  podeControlarProrrogacao = false,
+  onAbrirCenso, onAbrirAprovacao, cobrando, somenteLeitura,
 }: {
   tarefa: KanbanTarefa
   corBg: string
@@ -35,14 +33,9 @@ export const KanbanCard = memo(function KanbanCard({
   onAbrirCenso?: (t: KanbanTarefa) => void
   /** Ação em andamento NESTE card (não no quadro inteiro). */
   cobrando: boolean
-  /** Aba de aprovação: o técnico aprova/devolve; o autor corrige o devolvido. */
-  podeAprovar?: boolean
-  /** Quem está logado (e-mail), para saber se o devolvido é dele. */
-  usuario?: string | null
-  medicos?: string[]
-  onAviso?: (msg: string) => void
-  /** Coluna "Em prorrogação": admin e administrativo pausam e retomam. */
-  podeControlarProrrogacao?: boolean
+  /** Card de aprovação: leva à ficha do paciente com o relatório aberto, onde
+   *  se aprova, devolve ou corrige (13/10/2026). Sem isto, abre como paciente. */
+  onAbrirAprovacao?: (t: KanbanTarefa) => void
 }) {
   // Card do fluxo de CENSOS — por hospital, não por paciente.
   if (tarefa.estado_censo) {
@@ -55,18 +48,7 @@ export const KanbanCard = memo(function KanbanCard({
   }
   // Card de RELATÓRIO em aprovação: um por relatório, não por paciente.
   if (tarefa.relatorio) {
-    const autor = tarefa.relatorio.autor?.toLowerCase()
-    return <AprovacaoCard tarefa={tarefa} onAbrir={onAbrir}
-                          podeAprovar={podeAprovar && !somenteLeitura}
-                          podeCorrigir={!somenteLeitura && (podeAprovar || (!!autor && autor === usuario?.toLowerCase()))}
-                          medicos={medicos ?? []} onAviso={onAviso ?? (() => {})} />
-  }
-  // Card da coluna "Em prorrogação". Pela coluna, não pelos campos: o card de
-  // "Sem relatório" também traz `prorrogacao_ate` (a que terminou).
-  if (tarefa.coluna === 'em_prorrogacao') {
-    return <ProrrogacaoCard tarefa={tarefa} onAbrir={onAbrir}
-                            podeControlar={podeControlarProrrogacao && !somenteLeitura}
-                            onAviso={onAviso ?? (() => {})} />
+    return <AprovacaoCard tarefa={tarefa} onAbrir={onAbrirAprovacao ?? onAbrir} onPrefetch={onPrefetch} />
   }
   // Card de PACIENTE: o resto do quadro (colunas derivadas de internação).
   return <PacienteCard tarefa={tarefa} onAbrir={onAbrir} onPrefetch={onPrefetch} />

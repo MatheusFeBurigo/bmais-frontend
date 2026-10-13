@@ -163,6 +163,7 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
             <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>Filtros rápidos:</span>
             <span className={`qf-chip${uti ? ' active' : ''}`}>UTI / CTI</span>
             <span className="qf-chip">Longa permanência</span>
+            <span className="qf-chip">Em prorrogação</span>
             <span className="qf-chip">Altas</span>
           </span>
         ))}

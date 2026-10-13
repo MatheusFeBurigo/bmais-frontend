@@ -52,6 +52,9 @@ export const queryKeys = {
    *  invalidação do quadro (cobrar, atualizar, censo novo) a renova junto. */
   censoTimeline: (hospitalKey: string, operadoraKey: string) =>
     ['kanban', 'censo', hospitalKey, operadoraKey, 'timeline'] as const,
+  /** Pedidos para desfazer a atualização de um censo (Distribuição de tarefas).
+   *  Também debaixo de ['kanban']: o que move o card renova a lista. */
+  pedidosDesfazerCenso: () => ['kanban', 'censo', 'pedidos-desfazer'] as const,
   /** Catálogos da prorrogação (estáticos). */
   prorrogacaoCatalogos: () => ['prorrogacao', 'catalogos'] as const,
 

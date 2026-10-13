@@ -51,13 +51,6 @@ export const COLUNAS: ColunaKanban[] = [
     cor: 'var(--danger)',
     corBg: 'var(--danger-bg)',
   },
-  {
-    key: 'em_prorrogacao',
-    titulo: 'Em prorrogação',
-    descricao: 'Prorrogação aprovada e em curso. Quando termina, o paciente volta para Sem relatório',
-    cor: 'var(--caution)',
-    corBg: 'var(--caution-bg)',
-  },
   // ── Fluxo de censos: um card por hospital, e o card anda sozinho ──────────
   // A coluna vem da data do último censo recebido. Manuais: "Marcar como
   // cobrado" (atrasados → aguardando retorno) e "Marcar como atualizado"

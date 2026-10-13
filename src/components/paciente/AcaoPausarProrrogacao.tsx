@@ -3,8 +3,9 @@
 // Só aparece depois que a prorrogação passou a valer, isto é, depois que o
 // relatório com o pedido foi registrado (e aprovado, no caso do operacional):
 // "o pausar prorrogação só deve aparecer quando eu registrar o relatório". Saiu
-// da modal "Registrar relatório". Mesma rota e mesma regra do card da coluna
-// "Em prorrogação" de Tarefas: admin e operacional (`controlarProrrogacao`).
+// da modal "Registrar relatório". É o único lugar de pausar/retomar desde que a
+// coluna "Em prorrogação" saiu de Tarefas (12/10/2026): admin e operacional
+// (`controlarProrrogacao`).
 import { usePausarProrrogacao } from '../../hooks/useKanban'
 import type { InternacaoDados } from '../../types/api'
 

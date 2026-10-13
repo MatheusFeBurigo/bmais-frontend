@@ -20,6 +20,7 @@ import { queryRoots } from '../lib/queryKeys'
 import { AUTO_REFRESH_MS } from '../lib/autoRefresh'
 import { NOME_TODAS } from '../services/dashboard.service'
 import { dataBR, hojeISO, paraISO } from '../lib/datas'
+import { etiquetaProrrogacao } from '../lib/prorrogacao'
 import type {
   DashboardOverview, DashboardOverviewOperadora, DashboardStats, Hospital, Internacao,
 } from '../types/api'
@@ -103,6 +104,10 @@ export default function Dashboard() {
   // Filtros client-side
   const [busca, setBusca] = useState('')
   const [utiOn, setUtiOn] = useState(false)
+  // Em prorrogação: ativa, termina hoje ou pausada (`etiquetaProrrogacao`).
+  // Só vale para internados: na lista de altas o chip some.
+  const [prorrogOn, setProrrogOn] = useState(false)
+  const soProrrogados = prorrogOn && !vendoAltas
   // Longa permanência: mínimo de dias escolhido (null = sem recorte). Compara com
   // `dias` da linha, e não com as marcas longa_10/longa_30: essas só existem nos
   // dois limites da operadora e zeram com a alta. `dias` conta até hoje, ou até
@@ -253,6 +258,7 @@ export default function Dashboard() {
 
   const visiveis = useMemo(() => {
     const q = busca.toLowerCase().trim()
+    const hoje = hojeISO()
     const filtrados = internacoes.filter((p) => {
       const nome = (p.nome || '').toLowerCase()
       const atend = String(p.atendimento || '').toLowerCase()
@@ -262,6 +268,7 @@ export default function Dashboard() {
       const senha = (p.senha || '').toLowerCase()
       const okBusca = !q || nome.includes(q) || atend.includes(q) || senha.includes(q)
       const okUti = !utiOn || (p.tipo_leito || '').toUpperCase() === 'UTI'
+      const okProrrog = !soProrrogados || etiquetaProrrogacao(p.prorrogacao_ate, p.prorrogacao_pausada, hoje) != null
       // Sem data de internação não há como contar dias: sai do recorte.
       const okPerm = permanencia == null || (p.dias != null && p.dias >= permanencia)
       // Censo traz datas em dd/mm/aaaa ou ISO: normaliza antes de comparar. Sem
@@ -271,7 +278,7 @@ export default function Dashboard() {
         const d = paraISO(vendoAltas ? p.data_alta : p.data_entrada)
         okData = Boolean(d) && (!dataDe || d >= dataDe) && (!dataAte || d <= dataAte)
       }
-      return okBusca && okUti && okPerm && okData
+      return okBusca && okUti && okProrrog && okPerm && okData
     })
     if (ordenar === 'sem_rel') {
       // Mais dias sem relatório primeiro; sem relatório (null) vai ao topo.
@@ -283,7 +290,7 @@ export default function Dashboard() {
       return [...filtrados].sort((a, b) => (b.dias ?? 0) - (a.dias ?? 0))
     }
     return filtrados
-  }, [internacoes, busca, utiOn, permanencia, ordenar, dataDe, dataAte, vendoAltas])
+  }, [internacoes, busca, utiOn, soProrrogados, permanencia, ordenar, dataDe, dataAte, vendoAltas])
 
   // Paginação client-side: renderizar todas as internações de uma vez trava a
   // tabela em operadoras grandes (cada linha tem vários componentes). Fatiamos
@@ -299,20 +306,21 @@ export default function Dashboard() {
   // Qualquer mudança de filtro reinicia a paginação na primeira página.
   useEffect(() => {
     setPagina(1)
-  }, [busca, utiOn, permanencia, ordenar, operadora, filtro, hospital, dataDe, dataAte])
+  }, [busca, utiOn, soProrrogados, permanencia, ordenar, operadora, filtro, hospital, dataDe, dataAte])
 
   // Chave da lista em tela: muda quando um filtro, a ordem ou a página trocam as
   // linhas, e a tabela refaz a entrada delas (senão a lista muda "do nada"). A
   // busca fica de fora para não animar a cada tecla, e o polling também, porque
   // não mexe na chave. Num filtro do backend a chave só vira quando a lista nova
   // chega: enquanto `trocando`, a tela ainda mostra a anterior, esmaecida.
-  const assinaturaLista = [operadora, filtro, hospital, dataDe, dataAte, utiOn, permanencia, ordenar, paginaAtual].join('|')
+  const assinaturaLista = [operadora, filtro, hospital, dataDe, dataAte, utiOn, soProrrogados, permanencia, ordenar, paginaAtual].join('|')
   const [chaveLista, setChaveLista] = useState(assinaturaLista)
   if (!trocando && chaveLista !== assinaturaLista) setChaveLista(assinaturaLista)
 
   // Recortes ligados, ditos ao lado da contagem da tabela.
   const filtrosAtivos: string[] = []
   if (utiOn) filtrosAtivos.push('UTI / CTI')
+  if (soProrrogados) filtrosAtivos.push('Em prorrogação')
   if (permanencia != null) filtrosAtivos.push(`Longa permanência ${permanencia}d+`)
   if (dataDe || dataAte) {
     filtrosAtivos.push(
@@ -572,6 +580,11 @@ export default function Dashboard() {
                 </span>
               )}
             </span>
+            {!vendoAltas && (
+              <span className={`qf-chip${prorrogOn ? ' active' : ''}`} onClick={() => setProrrogOn((v) => !v)}>
+                Em prorrogação
+              </span>
+            )}
             {/* Altas: troca a BASE da lista (altas no lugar de internados ativos),
                 por isso vai na URL como filtro do backend e não é um recorte
                 client-side como os chips acima. Sem ele, um paciente que recebeu
@@ -594,12 +607,12 @@ export default function Dashboard() {
               <option value="sem_rel">Mais dias sem relatório</option>
               <option value="dias">{vendoAltas ? 'Mais dias internado (até a alta)' : 'Mais dias internado'}</option>
             </select>
-            {(utiOn || permanencia != null || ordenar !== '' || vendoAltas) && (
+            {(utiOn || soProrrogados || permanencia != null || ordenar !== '' || vendoAltas) && (
               <button
                 className="btn btn-ghost btn-sm"
                 style={{ color: 'var(--muted)' }}
                 onClick={() => {
-                  setUtiOn(false); setPermanencia(null); setPermAberta(false); setOrdenar('')
+                  setUtiOn(false); setProrrogOn(false); setPermanencia(null); setPermAberta(false); setOrdenar('')
                   // "Altas" mora na URL (é filtro de backend): limpar também o desfaz,
                   // senão o botão some e a lista continua mostrando altas.
                   if (vendoAltas) applyFilter('altas')

@@ -5,7 +5,7 @@
 // Orquestrador: busca os dados, decide permissões e compõe os cards de
 // components/paciente/. Regras de exibição e de edição moram lá.
 import { useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { usePageHeader } from '../components/PageHeader'
 import { StatusBadge } from '../components/StatusBadge'
 import Toast from '../components/Toast'
@@ -58,8 +58,32 @@ export default function Paciente() {
   )
 
   const [toast, setToast] = useState<string | null>(null)
-  // Ficha do relatório aberta pelo clique na timeline ou no card Relatórios.
-  const [relatorioAberto, setRelatorioAberto] = useState<AlvoRelatorio | null>(null)
+  // Ficha do relatório aberta pelo clique na timeline ou no card Relatórios, ou
+  // já na chegada (`?relatorio=`): o card de aprovação de Tarefas traz o técnico
+  // para cá com o relatório em análise aberto (13/10/2026).
+  const [params, setParams] = useSearchParams()
+  const [relatorioAberto, setRelatorioAberto] = useState<AlvoRelatorio | null>(() => {
+    const rid = Number(params.get('relatorio'))
+    return rid ? { relatorio_id: rid } : null
+  })
+  // Veio do card de Tarefas: decidido o relatório, volta para o quadro.
+  const veioDeTarefas = params.get('origem') === 'tarefas'
+  function fecharRelatorio() {
+    setRelatorioAberto(null)
+    if (params.has('relatorio')) {
+      const p = new URLSearchParams(params)
+      p.delete('relatorio')
+      setParams(p, { replace: true })
+    }
+  }
+  function relatorioDecidido(aviso: string) {
+    if (veioDeTarefas) {
+      navigate('/tarefas', { state: { aviso } })
+      return
+    }
+    fecharRelatorio()
+    setToast(aviso)
+  }
   // Ficha do hospital, aberta pelo nome no subtítulo da página.
   const [hospitalAberto, setHospitalAberto] = useState(false)
   const edicao = useEdicaoFicha(internacaoId, d, { onSalvo: setToast })
@@ -226,7 +250,8 @@ export default function Paciente() {
 
       {relatorioAberto && (
         <FichaRelatorio internacaoId={internacaoId} alvo={relatorioAberto}
-                        onFechar={() => setRelatorioAberto(null)} />
+                        onFechar={fecharRelatorio}
+                        acoes={{ nomePaciente: identificacaoPaciente(d), onDecidido: relatorioDecidido }} />
       )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </div>

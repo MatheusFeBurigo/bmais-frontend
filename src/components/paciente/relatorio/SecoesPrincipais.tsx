@@ -31,16 +31,8 @@ export function SecaoVisita({ form, medicos, enfermeiros, dataEntrada }: {
   dataEntrada?: string
 }) {
   const c = form.completo
-  // Um campo só, para o médico ou o enfermeiro (pedido de 08/10/2026). O nome
-  // vai na coluna do cargo dele; sem a 0054 (sem coluna do enfermeiro), em
-  // `medico`, que guarda quem fez a visita.
-  const comEnfermeiro = Boolean(c?.noBanco)
-  const auditor = form.medico || c?.enfermeiro || ''
-  function escolherAuditor(nome: string) {
-    const enfermeiro = comEnfermeiro && enfermeiros.includes(nome)
-    form.setMedico(enfermeiro ? '' : nome)
-    c?.setEnfermeiro(enfermeiro ? nome : '')
-  }
+  // Um campo para o médico e outro para o enfermeiro (voltou em 13/10/2026; de
+  // 08/10 a 13/10 foi um campo só). O do enfermeiro precisa da 0054.
   return (
     <div className="rr-pilha">
       <div className="rr-g3">
@@ -54,10 +46,16 @@ export function SecaoVisita({ form, medicos, enfermeiros, dataEntrada }: {
                  onChange={(e) => form.setDataVisita(e.target.value)} />
         </label>
         <div className="rr-campo">
-          <span className="form-lbl">Médico ou enfermeiro</span>
-          <MedicoCombobox value={auditor} onChange={escolherAuditor} nomes={[...medicos, ...enfermeiros]}
-                          placeholder="Digite ou selecione…" />
+          <span className="form-lbl">Médico auditor</span>
+          <MedicoCombobox value={form.medico} onChange={form.setMedico} nomes={medicos} />
         </div>
+        {c?.noBanco && (
+          <div className="rr-campo">
+            <span className="form-lbl">Enfermeiro auditor</span>
+            <MedicoCombobox value={c.enfermeiro} onChange={c.setEnfermeiro} nomes={enfermeiros}
+                            placeholder="Digite ou selecione o enfermeiro…" />
+          </div>
+        )}
       </div>
       {c?.noBanco && (
         <label className="rr-campo">

@@ -57,7 +57,7 @@ function passosDaConta(papel: UserRole): PassoAjuda[] {
     passos.push({
       n: 4,
       titulo: 'Escolha as operadoras',
-      corpo: <>A pessoa atende todos os hospitais das operadoras marcadas e verá só os pacientes, censos e tarefas delas. Num hospital que atende várias operadoras, ela vê só os pacientes das que foram marcadas. <strong>Sem nenhuma marcada, ela vê a operação inteira.</strong></>,
+      corpo: <>A pessoa atende todos os hospitais das operadoras marcadas e verá só os pacientes e tarefas delas. Nesses hospitais ela recebe os censos de todas as operadoras, com os das marcadas primeiro. Num hospital que atende várias operadoras, ela vê só os pacientes das que foram marcadas. <strong>Sem nenhuma marcada, ela vê a operação inteira.</strong></>,
     })
   } else if (escopo) {
     passos.push({

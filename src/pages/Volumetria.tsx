@@ -8,7 +8,8 @@
 // colunas de Tarefas), e é avisado de quem passou da capacidade. Clicar no
 // cartão abre o drawer para ver e ajustar a área da pessoa.
 //
-// Blocos: resumo (KPIs) → equipe (cartões) → demandas x distribuição →
+// Blocos: pedidos para desfazer a atualização de um censo (se houver; 12/10/2026)
+// → resumo (KPIs) → equipe (cartões) → demandas x distribuição →
 // produtividade (e, para o admin, entre as equipes) → onde o tempo está indo
 // (barra por tipo de tarefa) → por região (quem responde por cada uma) → hospitais sem
 // cobertura (se houver) → comparativo (gráfico, recolhido) → parâmetros
@@ -27,6 +28,7 @@ import GradePessoas from '../components/volumetria/GradePessoas'
 import HospitaisSemCobertura from '../components/volumetria/HospitaisSemCobertura'
 import ParametrosCarga from '../components/volumetria/ParametrosCarga'
 import { ConcluidasPorDia, EntreEquipes, ProdutividadePorPessoa } from '../components/volumetria/ProdutividadeCharts'
+import PedidosDesfazerAtualizacao from '../components/volumetria/PedidosDesfazerAtualizacao'
 import PorRegiao from '../components/volumetria/PorRegiao'
 import TempoPorTarefa from '../components/volumetria/TempoPorTarefa'
 import { localStyles } from '../components/volumetria/volumetria.styles'
@@ -84,6 +86,9 @@ export default function Volumetria() {
   return (
     <>
       <style>{localStyles}</style>
+
+      {/* Pedidos que esperam decisão: não dependem do grupo escolhido. */}
+      <PedidosDesfazerAtualizacao onErro={setAviso} onAviso={setAviso} />
 
       {grupos.length > 1 && (
         <div className="vol-seg" role="tablist" aria-label="Grupo">

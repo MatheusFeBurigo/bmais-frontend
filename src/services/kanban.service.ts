@@ -2,7 +2,7 @@
 // Um único GET traz as colunas já separadas. Isola o contrato HTTP — a UI só
 // fala com o hook.
 import { apiFetch } from '../api/client'
-import type { CensoTimeline, ConcluirAnalisePayload, KanbanPayload } from '../types/api'
+import type { CensoTimeline, ConcluirAnalisePayload, KanbanPayload, PedidoDesfazerCenso } from '../types/api'
 
 /** Tarefas do kanban agrupadas por coluna. O quadro já vem recortado ao escopo de
  *  hospitais/operadoras do analista pelo backend — sem filtro manual. */
@@ -43,9 +43,22 @@ export function marcarAtualizado(m: MovimentoCenso): Promise<{ ok: boolean }> {
   return postCenso(m, 'atualizado')
 }
 
-/** Desfaz "Marcar como atualizado" de hoje. */
-export function desfazerAtualizado(m: MovimentoCenso): Promise<{ ok: boolean }> {
-  return postCenso(m, 'desfazer-atualizado')
+/** Desfaz "Marcar como atualizado" de hoje, sem anotação. Gestor, Coordenador
+ *  e Administrador desfazem na hora; os demais só pedem (`solicitado`), e o
+ *  pedido espera aprovação na Distribuição de tarefas. */
+export function desfazerAtualizado(a: CensoAlvo): Promise<{ ok: boolean; solicitado: boolean }> {
+  return apiFetch(`/kanban/censo/${urlCenso(a)}/desfazer-atualizado?${qsOperadora(a)}`, { method: 'POST' })
+}
+
+/** Pedidos para desfazer a atualização esperando decisão. */
+export function fetchPedidosDesfazerCenso(): Promise<{ pedidos: PedidoDesfazerCenso[] }> {
+  return apiFetch('/kanban/censo/pedidos-desfazer')
+}
+
+/** Aprova (desfaz a atualização) ou recusa o pedido. */
+export function decidirDesfazerCenso(a: CensoAlvo, aprovar: boolean): Promise<{ ok: boolean }> {
+  const acao = aprovar ? 'aprovar' : 'recusar'
+  return apiFetch(`/kanban/censo/${urlCenso(a)}/desfazer-atualizado/${acao}?${qsOperadora(a)}`, { method: 'POST' })
 }
 
 /** Anotação avulsa no card, sem mover (ligou e ninguém atendeu). */

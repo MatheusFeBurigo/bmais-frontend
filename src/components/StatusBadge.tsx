@@ -1,5 +1,6 @@
 // Mapeamento de status_relatorio para badge e classe de linha, espelhando
 // as macros sr_badge / sr_row do dashboard.html.
+import { nomeDePessoa } from '../lib/texto'
 
 const BADGE: Record<string, { cls: string; label: string; dot: boolean }> = {
   SEM_RELATORIO: { cls: 'danger', label: 'Sem Rel.', dot: true },
@@ -110,17 +111,24 @@ export function MedicoChip({ nome, role, titulo = 'Médico' }: { nome: string; r
   )
 }
 
-export function AutorChip({ role, autor }: { role?: string | null; autor?: string | null }) {
+// Papel + NOME de quem registrou, nunca o e-mail (13/10/2026). `autor` é o
+// login; `nome` é o que o backend resolveu do cadastro (`autor_nome`).
+export function AutorChip({ role, autor, nome }: {
+  role?: string | null
+  autor?: string | null
+  nome?: string | null
+}) {
   const v = roleVisual(role)
+  const quem = nomeDePessoa(nome, autor)
   return (
     <span
       className="badge"
       style={{ background: v.bg, color: v.color, textTransform: 'none', letterSpacing: 0, gap: 5 }}
-      title={autor ? `${v.label} · ${autor}` : v.label}
+      title={quem ? `${v.label} · ${quem}` : v.label}
     >
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: v.color, flexShrink: 0 }} />
       {v.label}
-      {autor && <span style={{ opacity: 0.75 }}>· {autor}</span>}
+      {quem && <span style={{ opacity: 0.75 }}>· {quem}</span>}
     </span>
   )
 }

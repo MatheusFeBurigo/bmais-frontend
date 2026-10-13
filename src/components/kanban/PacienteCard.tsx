@@ -15,7 +15,7 @@ import { LeitoTag } from '../StatusBadge'
 import { nomeProprio } from '../../lib/texto'
 import { dataBR, hojeISO } from '../../lib/datas'
 import { etiquetaProrrogacao } from '../../lib/prorrogacao'
-import { ehLonga, ehUTI, nuncaVisitado } from './prioridade'
+import { ehLonga, nuncaVisitado } from './prioridade'
 
 /** Etiqueta curta de prioridade, exibida sob o nome. */
 function Etiqueta({ texto, cor, bg, titulo }: { texto: string; cor: string; bg: string; titulo: string }) {
@@ -65,7 +65,7 @@ export const PacienteCard = memo(function PacienteCard({ tarefa: t, onAbrir, onP
   const prorrogacaoTerminou = Boolean(
     t.prorrogacao_ate && !t.prorrogacao_pausada && t.prorrogacao_ate.slice(0, 10) < hojeISO())
   // Prorrogação em curso: o card diz que o paciente está prorrogado, em
-  // qualquer coluna de pacientes (a coluna "Em prorrogação" tem card próprio).
+  // qualquer coluna de pacientes.
   const prorrogado = etiquetaProrrogacao(t.prorrogacao_ate, t.prorrogacao_pausada)
 
   return (
@@ -129,8 +129,9 @@ export const PacienteCard = memo(function PacienteCard({ tarefa: t, onAbrir, onP
       )}
 
       {/* Etiquetas de prioridade: os mesmos sinais dos chips da barra, para o que
-          foi filtrado lá em cima ficar explicado aqui embaixo. */}
-      {(t.visita_agendada || prorrogacaoTerminou || prorrogado || ehUTI(t) || ehLonga(t) || nuncaVisitado(t)) && (
+          foi filtrado lá em cima ficar explicado aqui embaixo. UTI não entra:
+          o tipo do leito, logo acima, já diz (12/10/2026: saíam duas "UTI"). */}
+      {(t.visita_agendada || prorrogacaoTerminou || prorrogado || ehLonga(t) || nuncaVisitado(t)) && (
         <div className="kb-tags">
           {prorrogacaoTerminou && (
             <Etiqueta texto={`Prorrogação terminou em ${dataBR(t.prorrogacao_ate)}`}
@@ -161,7 +162,6 @@ export const PacienteCard = memo(function PacienteCard({ tarefa: t, onAbrir, onP
               ].filter(Boolean).join(' · ') || 'Visita marcada'}
             />
           )}
-          {ehUTI(t) && <Etiqueta texto="UTI" cor="var(--warning-2)" bg="var(--warning-bg)" titulo="Paciente em leito de UTI" />}
           {ehLonga(t) && (
             <Etiqueta
               texto="Longa permanência"
@@ -216,9 +216,6 @@ export const PacienteCard = memo(function PacienteCard({ tarefa: t, onAbrir, onP
               viram linhas próprias, cada uma com o seu rótulo. */}
           {t.idade && <Linha rotulo="Idade" valor={t.idade} />}
           {t.sexo && <Linha rotulo="Sexo" valor={t.sexo} />}
-          <div className="kb-det-acao">
-            Abra o paciente para registrar relatório ou corrigir o cadastro.
-          </div>
         </div>
       )}
     </article>

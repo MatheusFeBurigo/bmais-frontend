@@ -1,10 +1,11 @@
 // Ações manuais sobre o card de censo. Todas pedem uma anotação do que aconteceu
 // ("Falei com a Maria da recepção") antes de ir ao backend, que também a exige.
 // Os textos de cada uma moram aqui para o card, o drawer e a modal dizerem o
-// mesmo.
+// mesmo. Desfazer a atualização não está aqui: não pede anotação e, para quem
+// não aprova, vira pedido de aprovação (12/10/2026).
 import type { KanbanTarefa } from '../../types/api'
 
-export type AcaoCenso = 'cobrar' | 'desfazer' | 'atualizar' | 'desfazerAtualizado' | 'anotar'
+export type AcaoCenso = 'cobrar' | 'desfazer' | 'atualizar' | 'anotar'
 
 const nomeDoCenso = (t: KanbanTarefa) =>
   `${t.hospital_nome || t.titulo || 'Hospital'}${t.operadora_nome ? ` (${t.operadora_nome})` : ''}`
@@ -35,12 +36,6 @@ export const ACOES_CENSO: Record<AcaoCenso, {
     placeholder: 'Ex.: Marquei o hospital errado',
     sucesso: (t) => `Cobrança de ${nomeDoCenso(t)} desfeita`,
   },
-  desfazerAtualizado: {
-    titulo: 'Desfazer atualização',
-    confirmar: 'Desfazer',
-    placeholder: 'Ex.: O hospital vai mandar o censo de hoje',
-    sucesso: (t) => `Atualização de ${nomeDoCenso(t)} desfeita`,
-  },
   anotar: {
     titulo: 'Nova anotação',
     confirmar: 'Salvar anotação',
@@ -48,6 +43,11 @@ export const ACOES_CENSO: Record<AcaoCenso, {
     sucesso: () => 'Anotação salva',
   },
 }
+
+/** Avisos do "Desfazer" da atualização: desfeito na hora ou pedido enviado. */
+export const desfazerAtualizadoSucesso = (t: KanbanTarefa, solicitado: boolean) =>
+  solicitado ? 'Pedido enviado. Aguardando aprovação do Gestor ou Coordenador'
+    : `Atualização de ${nomeDoCenso(t)} desfeita`
 
 /** Executa a ação com a anotação. Rejeita com o erro do backend, que a modal
  *  mostra sem fechar (o texto digitado não se perde). */

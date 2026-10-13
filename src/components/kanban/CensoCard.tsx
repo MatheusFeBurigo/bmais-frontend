@@ -11,7 +11,9 @@
 //   Censos atualizados → nenhuma, ou "Desfazer" se foi marcado à mão
 //
 // Os botões só pedem a ação: quem decide é o quadro, que abre a modal da
-// anotação obrigatória (AnotacaoCensoModal) antes de mover o card.
+// anotação obrigatória (AnotacaoCensoModal) antes de mover o card. O "Desfazer"
+// da atualização não tem anotação: quem aprova (Gestor, Coordenador) desfaz, os
+// demais pedem, e o card mostra o pedido aguardando aprovação no lugar do botão.
 //
 // Em qualquer coluna, clicar no card abre o drawer do censo (CensoDrawer): a
 // timeline das anotações, o contato do hospital e, de lá, a ficha dele.
@@ -160,7 +162,12 @@ export function CensoCard({
           )}
         </div>
       )}
-      {!somenteLeitura && atualizadoManual && onDesfazerAtualizado && (
+      {!somenteLeitura && atualizadoManual && tarefa.desfazer_pendente && (
+        <div className="kb-card-actions">
+          <span className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Desfazer aguardando aprovação</span>
+        </div>
+      )}
+      {!somenteLeitura && atualizadoManual && !tarefa.desfazer_pendente && onDesfazerAtualizado && (
         <div className="kb-card-actions">
           <button
             type="button"

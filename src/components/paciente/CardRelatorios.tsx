@@ -62,7 +62,7 @@ function RelatorioCard({ r, onAbrir }: { r: RelatorioItem; onAbrir?: () => void 
         <span style={{ fontSize: 'var(--t-sm)', fontWeight: 600, color: 'var(--ink)' }}>
           {dataHora(r.criado_em) || dataBR(r.data_visita) || '—'}
         </span>
-        {r.autor && <AutorChip role={r.autor_role} autor={r.autor} />}
+        {r.autor && <AutorChip role={r.autor_role} autor={r.autor} nome={r.autor_nome} />}
         <EtiquetaAprovacao r={r} />
       </div>
       {r.aprovacao === 'devolvido' && r.devolucao_motivo && (

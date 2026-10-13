@@ -9,6 +9,7 @@
 // qualquer feed. Compartilhada entre PacienteDrawer e pages/Paciente.tsx —
 // as duas telas mostram a mesma timeline, cada uma com seu próprio card.
 import type { TimelineEvento } from '../types/api'
+import { nomeDePessoa } from './texto'
 
 export function ordenarRecentePrimeiro(eventos: TimelineEvento[]): TimelineEvento[] {
   const hoje = eventos.filter((e) => e.hoje)
@@ -56,6 +57,10 @@ export const TIPO_CLASSE: Record<string, string> = {
   CENSO_COBRANCA_DESFEITA: 'tp-edit',
   CENSO_ATUALIZADO_DESFEITO: 'tp-edit',
   CENSO_NOTA: 'tp-status',
+  // Pedido para desfazer a atualização e a decisão sobre ele.
+  CENSO_DESFAZER_SOLICITADO: 'tp-status',
+  CENSO_DESFAZER_APROVADO: 'tp-edit',
+  CENSO_DESFAZER_RECUSADO: 'tp-relatorio',
 }
 
 /**
@@ -111,7 +116,7 @@ export function apresentacaoDoEvento(ev: TimelineEvento) {
   const tipoClasse = classeDoEvento(ev)
 
   let chip: ChipDoEvento | null = null
-  if (relatorio && interno && ev.autor) chip = { tipo: 'medico', nome: ev.autor, titulo: 'Autor' }
+  if (relatorio && interno && ev.autor) chip = { tipo: 'medico', nome: nomeDePessoa(ev.autor_nome, ev.autor), titulo: 'Autor' }
   else if (relatorio && !interno && ev.medico) chip = { tipo: 'medico', nome: ev.medico }
   else if (visita && ev.medico) chip = { tipo: 'medico', nome: ev.medico, titulo: 'Responsável' }
   // "sistema" é o autor dos eventos automáticos (censo, alta inferida): sem

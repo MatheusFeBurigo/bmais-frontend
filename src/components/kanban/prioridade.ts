@@ -189,6 +189,12 @@ export const ORDENS_CENSO: Array<{ key: OrdemCensoKey; label: string }> = [
 ]
 
 function compararCenso(a: KanbanTarefa, b: KanbanTarefa, ordem: OrdemCensoKey): number {
+  // A operadora do operacional vem antes das outras em qualquer ordem.
+  const prioridade = Number(!!b.prioritario) - Number(!!a.prioritario)
+  return prioridade || compararCensoNaOrdem(a, b, ordem)
+}
+
+function compararCensoNaOrdem(a: KanbanTarefa, b: KanbanTarefa, ordem: OrdemCensoKey): number {
   // "Nunca enviou" vai sempre para o fim das ordens por data: não tem data.
   const da = a.ultimo_censo ?? ''
   const db = b.ultimo_censo ?? ''

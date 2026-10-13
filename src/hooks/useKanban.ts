@@ -3,8 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { opcoesAutoRefresh } from '../lib/autoRefresh'
 import { queryKeys } from '../lib/queryKeys'
 import {
-  anotarCenso, desfazerAtualizado, desfazerCobranca, fetchKanban, fetchTimelineCenso,
-  marcarAtualizado, marcarCobrado, type CensoAlvo, type MovimentoCenso,
+  anotarCenso, decidirDesfazerCenso, desfazerAtualizado, desfazerCobranca, fetchKanban,
+  fetchPedidosDesfazerCenso, fetchTimelineCenso, marcarAtualizado, marcarCobrado,
+  type CensoAlvo, type MovimentoCenso,
 } from '../services/kanban.service'
 import {
   aprovarRelatorio, devolverRelatorio, fetchCatalogosProrrogacao, pausarProrrogacao, reenviarRelatorio,
@@ -89,12 +90,37 @@ export function useMarcarAtualizado() {
   })
 }
 
-// Desfazer o "atualizado": o card volta para onde estava (o backend decide).
+// Desfazer o "atualizado", sem anotação: quem aprova desfaz e o card volta
+// para onde estava (o backend decide); os demais só abrem o pedido.
 export function useDesfazerAtualizado() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (m: MovimentoCenso) => desfazerAtualizado(m),
+    mutationFn: (a: CensoAlvo) => desfazerAtualizado(a),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.kanban() }),
+  })
+}
+
+// Pedidos para desfazer a atualização (Distribuição de tarefas). Com polling:
+// o pedido nasce na tela de outra pessoa.
+export function usePedidosDesfazerCenso() {
+  return useQuery({
+    queryKey: queryKeys.pedidosDesfazerCenso(),
+    queryFn: fetchPedidosDesfazerCenso,
+    ...opcoesAutoRefresh,
+  })
+}
+
+// Aprovar move o card e pode mudar a carga do operacional (o censo volta a
+// ser pendente): renova o quadro, a lista e a Distribuição.
+export function useDecidirDesfazerCenso() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ aprovar, ...alvo }: CensoAlvo & { aprovar: boolean }) =>
+      decidirDesfazerCenso(alvo, aprovar),
+    onSuccess: (_r, { aprovar }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.kanban() })
+      if (aprovar) qc.invalidateQueries({ queryKey: queryKeys.volumetria() })
+    },
   })
 }
 
@@ -174,7 +200,7 @@ export function useCatalogosProrrogacao(ativo = true) {
   })
 }
 
-// Pausar/retomar muda o card da coluna "Em prorrogação" e a ficha do paciente.
+// Pausar/retomar muda a etiqueta do card em Tarefas e a ficha do paciente.
 export function usePausarProrrogacao() {
   const qc = useQueryClient()
   return useMutation({

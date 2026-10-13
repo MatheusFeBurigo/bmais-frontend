@@ -14,6 +14,7 @@ import { CARATER, TIPOS_ALTO_CUSTO, TIPOS_INTERNACAO, rotulo } from '../../../li
 import type { RelatorioItem } from '../../../types/api'
 import { AutorChip } from '../../StatusBadge'
 import { LoadingState, Modal } from '../../ui'
+import { RodapeAprovacao } from './AcoesAprovacao'
 
 /** Qual relatório abrir: pelo id, ou (evento antigo) pela data e pelo autor. */
 export interface AlvoRelatorio {
@@ -108,7 +109,8 @@ function Conteudo({ r }: { r: RelatorioItem }) {
       <Secao titulo="Relatório de visita">
         <Dados itens={[
           ['Data da visita', d(r.data_visita)],
-          ['Médico ou enfermeiro', [r.medico, det.enfermeiro].filter(Boolean).join(' · ')],
+          ['Médico auditor', r.medico],
+          ['Enfermeiro auditor', det.enfermeiro],
         ]} />
         {det.analise && (
           <>
@@ -215,19 +217,31 @@ function Conteudo({ r }: { r: RelatorioItem }) {
   )
 }
 
-export function FichaRelatorio({ internacaoId, alvo, onFechar, sobreposta }: {
+export function FichaRelatorio({ internacaoId, alvo, onFechar, sobreposta, acoes }: {
   internacaoId: number
   alvo: AlvoRelatorio
   onFechar: () => void
   /** Aberta sobre o painel lateral: sobe o z-index. */
   sobreposta?: boolean
+  /** Só na ficha do paciente (13/10/2026): o rodapé ganha Aprovar e Devolver
+   *  (pendente) ou Corrigir e reenviar (devolvido). Sem isto, só leitura. */
+  acoes?: { nomePaciente: string; onDecidido: (aviso: string) => void }
 }) {
   const relatorios = useInternacaoRelatorios(internacaoId)
   const r = relatorios.data ? acharRelatorio(relatorios.data.relatorios, alvo) : undefined
   const titulo = r?.data_visita ? `Relatório de ${dataBR(r.data_visita)}` : 'Relatório'
   return (
     <Modal title={titulo} onClose={onFechar} largura={780} sobreposta={sobreposta}
-           footer={<button className="btn btn-outline" onClick={onFechar}>Fechar</button>}>
+           footer={
+             <>
+               <button className="btn btn-outline" onClick={onFechar}
+                       style={acoes ? { marginRight: 'auto' } : undefined}>Fechar</button>
+               {acoes && r && (
+                 <RodapeAprovacao relatorio={r} internacaoId={internacaoId}
+                                  nomePaciente={acoes.nomePaciente} onDecidido={acoes.onDecidido} />
+               )}
+             </>
+           }>
       <style>{estilos}</style>
       {relatorios.isLoading && <LoadingState label="Carregando relatório…" size={22} />}
       {relatorios.isError && <div className="fx-vazio">Não foi possível carregar o relatório. Tente de novo.</div>}
@@ -235,7 +249,7 @@ export function FichaRelatorio({ internacaoId, alvo, onFechar, sobreposta }: {
       {r && (
         <>
           <div className="fx-topo">
-            {r.autor && <AutorChip role={r.autor_role} autor={r.autor} />}
+            {r.autor && <AutorChip role={r.autor_role} autor={r.autor} nome={r.autor_nome} />}
             {r.criado_em && <span>Registrado em {dataHora(r.criado_em)}</span>}
             {r.aprovacao === 'pendente' && <span className="badge info">Aguardando aprovação</span>}
             {r.aprovacao === 'devolvido' && <span className="badge danger">Devolvido</span>}

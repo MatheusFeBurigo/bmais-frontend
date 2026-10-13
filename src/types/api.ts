@@ -888,7 +888,6 @@ export type KanbanColuna = 'sem_relatorio' | 'aguardando_visita' | 'visitas_atra
 
 /** Colunas de aprovação (no quadro de pacientes): o relatório do administrativo espera o técnico. */
 export type ColunaAprovacao = 'aguardando_aprovacao' | 'relatorios_devolvidos'
-  | 'em_prorrogacao'
 
 /** Situação do relatório na aprovação do técnico (backend: aprovacao_relatorio). */
 export type AprovacaoRelatorio = 'aprovado' | 'pendente' | 'devolvido'
@@ -1032,10 +1031,13 @@ export interface RelatorioEmAprovacao {
   medico?: string | null
   descricao?: string | null
   autor?: string | null
+  /** Nome de quem escreveu, para exibir (o `autor` é o login). */
+  autor_nome?: string | null
   autor_role?: string | null
   criado_em?: string | null
   aprovacao: AprovacaoRelatorio
   aprovacao_por?: string | null
+  aprovacao_por_nome?: string | null
   aprovacao_em?: string | null
   /** Por que o técnico devolveu. */
   devolucao_motivo?: string | null
@@ -1057,6 +1059,7 @@ export type EstadoCenso =
  *  uma anotação (o que aconteceu num movimento, ou avulsa) ou um censo recebido. */
 export interface CensoEvento {
   tipo: 'COBRADO' | 'ATUALIZADO' | 'COBRANCA_DESFEITA' | 'ATUALIZADO_DESFEITO' | 'NOTA'
+    | 'DESFAZER_SOLICITADO' | 'DESFAZER_APROVADO' | 'DESFAZER_RECUSADO'
     | 'CENSO_RECEBIDO' | string
   titulo: string
   /** Texto da anotação. Ausente em CENSO_RECEBIDO. */
@@ -1067,6 +1070,19 @@ export interface CensoEvento {
   em: string
   autor?: string | null
   autor_role?: string | null
+}
+
+/** Pedido para desfazer "Marcar como atualizado" esperando Gestor ou
+ *  Coordenador (GET /kanban/censo/pedidos-desfazer, Distribuição de tarefas). */
+export interface PedidoDesfazerCenso {
+  hospital_key: string
+  hospital_nome: string
+  operadora_key?: string | null
+  operadora_nome?: string | null
+  solicitado_por?: string | null
+  solicitado_por_role?: string | null
+  /** Instante (ISO com fuso). */
+  solicitado_em?: string | null
 }
 
 export interface CensoTimeline {
@@ -1109,6 +1125,9 @@ export interface KanbanTarefa {
   /** Nome da operadora do card de censo: o mesmo hospital aparece uma vez por
    *  operadora, e a cor do avatar sozinha não diferencia os dois cards. */
   operadora_nome?: string | null
+  /** Card de censo da operadora do operacional. Ele recebe os censos de todas
+   *  as operadoras dos hospitais dele, mas os da operadora dele vêm primeiro. */
+  prioritario?: boolean
   /** Primeiro dia sem censo (YYYY-MM-DD); só em atrasados e aguardando retorno. */
   data_ref?: string | null
   /** Última cobrança feita e ainda sem resposta. Em "Censos atrasados" indica
@@ -1119,6 +1138,9 @@ export interface KanbanTarefa {
    *  paciente a gerar e alguém marcou o dia como atualizado. */
   atualizado_em?: string | null
   atualizado_por?: string | null
+  /** Alguém pediu para desfazer a atualização e o pedido espera o Gestor ou
+   *  um Coordenador: o card troca o "Desfazer" pelo aviso. */
+  desfazer_pendente?: boolean
   /** Dia (ISO) a que o último censo do hospital SE REFERE, não o dia do upload
    *  (null = nunca enviou). Quem sobe hoje o censo de uma semana atrás não cobriu
    *  o dia de hoje, e é esta data que o card conta. */
@@ -1182,17 +1204,9 @@ export interface KanbanTarefa {
   relatorio_em_aprovacao?: boolean | null
   /** Presente = card de aprovação (um card por relatório). */
   relatorio?: RelatorioEmAprovacao
-  // ── Card da coluna "Em prorrogação" ───────────────────────────────────────
-  prorrogacao_situacao?: SituacaoProrrogacao
-  prorrogacao_inicio?: string | null
+  // ── Prorrogação: etiqueta "Prorrogado até" / "Prorrogação terminou" ───────
   prorrogacao_ate?: string | null
-  /** Dias até o fim; negativo = já terminou. */
-  prorrogacao_dias_restantes?: number | null
-  prorrogacao_acomodacao?: string | null
-  prorrogacao_justificativa_desc?: string | null
   prorrogacao_pausada?: boolean
-  prorrogacao_pausada_por?: string | null
-  prorrogacao_pausada_em?: string | null
 }
 
 /** Colunas de tarefas. O board do técnico traz só `analise_tecnica`; o do
@@ -1207,8 +1221,6 @@ export interface KanbanColunas {
   censos_processados?: KanbanTarefa[]
   aguardando_aprovacao?: KanbanTarefa[]
   relatorios_devolvidos?: KanbanTarefa[]
-  /** Internados com prorrogação vigente (0047). */
-  em_prorrogacao?: KanbanTarefa[]
 }
 
 /** Payload do GET /api/kanban — tarefas + opções de filtro (recortadas ao escopo).
@@ -1702,6 +1714,8 @@ export interface TimelineEvento {
   variante: TimelineVariante
   /** Quem registrou (e-mail/identificador). Presente em eventos de relatório. */
   autor?: string | null
+  /** Nome de quem registrou: é o que a tela mostra, nunca o e-mail. */
+  autor_nome?: string | null
   /** Papel de quem registrou — colore o relatório na timeline. Null = histórico. */
   autor_role?: UserRole | string | null
   /** Médico auditor do relatório — exibido na timeline no lugar do autor. */
@@ -1770,6 +1784,8 @@ export interface RelatorioItem {
   criado_em?: string | null
   /** Quem anexou (e-mail/identificador). */
   autor?: string | null
+  /** Nome de quem anexou: é o que a tela mostra, nunca o e-mail. */
+  autor_nome?: string | null
   /** Papel de quem anexou — colore o marcador, igual à timeline. */
   autor_role?: UserRole | string | null
   fonte?: string | null

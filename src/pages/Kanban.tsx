@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import type { KanbanTarefa } from '../types/api'
+import type { CensoAlvo } from '../services/kanban.service'
 import { usePageHeader } from '../components/PageHeader'
 import { useAuth } from '../auth/AuthContext'
-import { ehSomenteLeitura, podeExecutar, podeVer } from '../auth/permissions'
+import { ehSomenteLeitura, podeVer, podeVerFichaPaciente } from '../auth/permissions'
 import { ACOES_NO_PAINEL } from '../lib/recursos'
 import { LoadingState } from '../components/ui'
 import PacienteDrawer from '../components/PacienteDrawer'
@@ -14,14 +15,15 @@ import {
   useMarcarCobrado,
 } from '../hooks/useKanban'
 import { usePrefetchInternacao } from '../hooks/useInternacao'
-import { useEquipe } from '../hooks/useEquipe'
 import { localStyles } from '../components/kanban/kanban.styles'
 import { KanbanCard } from '../components/kanban/KanbanCard'
 import { KanbanFiltros } from '../components/kanban/KanbanFiltros'
 import { ColunaInfo } from '../components/kanban/ColunaInfo'
 import CensoDrawer from '../components/kanban/CensoDrawer'
 import { AnotacaoCensoModal } from '../components/kanban/AnotacaoCensoModal'
-import { ACOES_CENSO, type AcaoCenso, type ExecutarCenso } from '../components/kanban/acoesCenso'
+import {
+  ACOES_CENSO, desfazerAtualizadoSucesso, type AcaoCenso, type ExecutarCenso,
+} from '../components/kanban/acoesCenso'
 import { contarCensos, contarChips, recortarColuna, type Recorte } from '../components/kanban/prioridade'
 // Definição de cada coluna (rótulo, cor, descrição) vive em components/kanban/
 // colunas.ts: a Volumetria reusa os mesmos textos para a quebra de demandas.
@@ -41,16 +43,14 @@ import {
 // administrativo (que só recebe essas colunas de paciente) acompanha o que mandou
 // e corrige o que voltou. O quadro mostra só as colunas que o payload trouxe.
 //
-// A prorrogação (01/10/2026) também: coluna "Em prorrogação" no quadro de
-// pacientes, e não aba à parte (pedido do usuário). Quem administra pausa e
-// retoma no próprio card.
+// A coluna "Em prorrogação" (01/10/2026) SAIU em 12/10/2026, a pedido do
+// usuário: quem está prorrogado se acha pelo chip do Painel Operacional, e
+// pausar/retomar ficou na ficha do paciente.
 type Quadro = 'pacientes' | 'censos'
 
 // Colunas de censo que não são tarefa: o hospital está em dia. Ficam no quadro
 // (é o retrato de quem mandou), mas não entram no "N tarefas pendentes".
-// "Em prorrogação" também: é acompanhamento, e o card que pede ação (terminou)
-// já vem no topo da coluna e em vermelho.
-const SEM_ACAO = new Set(['aguardando_censo', 'censos_processados', 'em_prorrogacao'])
+const SEM_ACAO = new Set(['aguardando_censo', 'censos_processados'])
 
 // Um card de censo = hospital + operadora: é a chave da trava de clique.
 const chaveCenso = (t: KanbanTarefa) => `${t.hospital_key}|${t.operadora_key ?? ''}`
@@ -64,7 +64,6 @@ const VAZIO: Record<string, string> = {
   censos_processados: 'Nenhum censo atualizado hoje ainda.',
   aguardando_aprovacao: 'Nenhum relatório aguardando aprovação.',
   relatorios_devolvidos: 'Nenhum relatório devolvido.',
-  em_prorrogacao: 'Nenhum paciente em prorrogação.',
 }
 
 
@@ -100,18 +99,19 @@ export default function Kanban() {
   // Movimento pedido pelos botões do próprio card: abre a modal da anotação.
   const [movimento, setMovimento] = useState<{ tarefa: KanbanTarefa; acao: AcaoCenso } | null>(null)
   // Perfil de observação (analista interno): vê o quadro, mas não age nele.
-  const { role, username } = useAuth()
+  const { role } = useAuth()
   const somenteLeitura = ehSomenteLeitura(role)
-  const podeAprovar = podeExecutar(role, 'aprovarRelatorio')
-  const podeControlarProrrogacao = podeExecutar(role, 'controlarProrrogacao')
-  const { data: equipe } = useEquipe()
-  const medicos = useMemo(
-    () => (equipe?.medicos ?? []).filter((m) => Boolean(m.ativo)).map((m) => m.nome),
-    [equipe],
-  )
   const prefetch = usePrefetchInternacao()
   const [drawerId, setDrawerId] = useState<number | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
+  // Quem aprovou ou devolveu na ficha do paciente volta para cá com o aviso
+  // (`state.aviso`, ver pages/Paciente).
+  const location = useLocation()
+  const avisoDaVolta = (location.state as { aviso?: string } | null)?.aviso
+  const [toast, setToast] = useState<string | null>(avisoDaVolta ?? null)
+  useEffect(() => {
+    // Some do histórico: um F5 não repete o aviso.
+    if (avisoDaVolta) navigate(location.pathname + location.search, { replace: true, state: null })
+  }, [avisoDaVolta, location.pathname, location.search, navigate])
   // Recorte da tela: busca + chips de prioridade + hospital + ordenação. Tudo é
   // aplicado no cliente sobre o payload que já veio (o quadro inteiro está em
   // memória), então trocar de filtro não custa uma ida ao servidor.
@@ -208,38 +208,59 @@ export default function Kanban() {
     }
   }, [prefetch])
 
-  // Ação de censo, já com a anotação, com trava por card: um segundo pedido no
-  // mesmo card enquanto o primeiro está no ar é ignorado. O erro sobe para a
-  // modal da anotação, que o mostra sem fechar.
+  // Card de aprovação (13/10/2026): a análise é na ficha do paciente, com o
+  // relatório aberto e Aprovar/Devolver no rodapé dele. Quem não abre a ficha
+  // (analista) vê o painel lateral, só leitura.
+  const abrirAprovacao = useCallback((t: KanbanTarefa) => {
+    if (!t.internacao_id || !t.relatorio) return
+    if (!podeVerFichaPaciente(role)) {
+      abrirPaciente(t)
+      return
+    }
+    navigate(`/paciente/${t.internacao_id}?relatorio=${t.relatorio.id}&origem=tarefas`)
+  }, [role, abrirPaciente, navigate])
+
+  // Ação de censo com trava por card: um segundo pedido no mesmo card enquanto
+  // o primeiro está no ar é ignorado.
   const mutacoes = {
     cobrar: cobrar.mutateAsync, desfazer: desfazer.mutateAsync, atualizar: atualizar.mutateAsync,
-    desfazerAtualizado: desfazerAtualizado.mutateAsync, anotar: anotarCenso.mutateAsync,
+    anotar: anotarCenso.mutateAsync, desfazerAtualizado: desfazerAtualizado.mutateAsync,
   }
   const mutacoesRef = useRef(mutacoes)
   mutacoesRef.current = mutacoes
-  const executarCenso = useCallback<ExecutarCenso>(async (t, acao, anotacao) => {
+  const comTrava = useCallback(async (t: KanbanTarefa, fn: (alvo: CensoAlvo) => Promise<void>) => {
     if (!t.hospital_key) return
     const hk = chaveCenso(t)
     if (ocupadosRef.current.has(hk)) return
     ocupadosRef.current.add(hk)
     setOcupados(new Set(ocupadosRef.current))
     try {
-      await mutacoesRef.current[acao]({
-        hospitalKey: t.hospital_key, operadoraKey: t.operadora_key ?? '', anotacao,
-      })
-      setToast(ACOES_CENSO[acao].sucesso(t))
+      await fn({ hospitalKey: t.hospital_key, operadoraKey: t.operadora_key ?? '' })
     } finally {
       ocupadosRef.current.delete(hk)
       setOcupados(new Set(ocupadosRef.current))
     }
   }, [])
+  // Já com a anotação. O erro sobe para a modal da anotação, que o mostra sem fechar.
+  const executarCenso = useCallback<ExecutarCenso>((t, acao, anotacao) => comTrava(t, async (alvo) => {
+    await mutacoesRef.current[acao]({ ...alvo, anotacao })
+    setToast(ACOES_CENSO[acao].sucesso(t))
+  }), [comTrava])
+  // Desfazer a atualização vai direto, sem anotação (12/10/2026): quem aprova
+  // desfaz, os demais abrem o pedido e o card fica com o aviso.
+  const desfazerAtualizadoCenso = useCallback((t: KanbanTarefa) => comTrava(t, async (alvo) => {
+    try {
+      const res = await mutacoesRef.current.desfazerAtualizado(alvo)
+      setToast(desfazerAtualizadoSucesso(t, res.solicitado))
+    } catch (e) {
+      setToast((e as Error).message || 'Não foi possível desfazer. Tente de novo.')
+    }
+  }), [comTrava])
 
-  // Os botões do card não movem direto: toda movimentação pede a anotação.
+  // Os botões do card não movem direto: a movimentação pede a anotação.
   const onCobrar = useCallback((t: KanbanTarefa) => setMovimento({ tarefa: t, acao: 'cobrar' }), [])
   const onDesfazer = useCallback((t: KanbanTarefa) => setMovimento({ tarefa: t, acao: 'desfazer' }), [])
   const onAtualizar = useCallback((t: KanbanTarefa) => setMovimento({ tarefa: t, acao: 'atualizar' }), [])
-  const onDesfazerAtualizado = useCallback(
-    (t: KanbanTarefa) => setMovimento({ tarefa: t, acao: 'desfazerAtualizado' }), [])
 
   const abrirCenso = useCallback((t: KanbanTarefa) => {
     if (t.hospital_key) setCensoAberto(t)
@@ -345,15 +366,11 @@ export default function Kanban() {
                       onCobrar={onCobrar}
                       onDesfazer={onDesfazer}
                       onAtualizar={onAtualizar}
-                      onDesfazerAtualizado={onDesfazerAtualizado}
+                      onDesfazerAtualizado={desfazerAtualizadoCenso}
                       onAbrirCenso={abrirCenso}
                       cobrando={ocupados.has(chaveCenso(t))}
                       somenteLeitura={somenteLeitura}
-                      podeAprovar={podeAprovar}
-                      podeControlarProrrogacao={podeControlarProrrogacao}
-                      usuario={username}
-                      medicos={medicos}
-                      onAviso={setToast}
+                      onAbrirAprovacao={abrirAprovacao}
                     />
                   ))}
                   {itens.length === 0 && (
@@ -372,6 +389,7 @@ export default function Kanban() {
           podeEscrever={!somenteLeitura}
           ocupado={ocupados.has(chaveCenso(censoVivo))}
           onExecutar={executarCenso}
+          onDesfazerAtualizado={desfazerAtualizadoCenso}
           onClose={() => setCensoAberto(null)}
           onAbrirCadastro={
             podeVer(role, 'configuracoes')

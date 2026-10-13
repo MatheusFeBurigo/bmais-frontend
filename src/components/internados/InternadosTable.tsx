@@ -7,7 +7,8 @@ import { StatusBadge, rowFlagClass, LeitoTag } from '../StatusBadge'
 import { OpAvatar } from '../ui'
 import { DiasRatio, Permanencia } from './cells'
 import { identificacaoPaciente } from '../../lib/texto'
-import { dataBR, hojeISO } from '../../lib/datas'
+import { dataBR } from '../../lib/datas'
+import { etiquetaProrrogacao } from '../../lib/prorrogacao'
 import { rotuloMotivoAlta } from '../../lib/motivoAlta'
 
 export interface InternadosTableProps {
@@ -190,8 +191,10 @@ export default function InternadosTable({
                   <td className="t-right">
                     {/* Em prorrogação (01/10/2026, pedido do usuário): a tag no
                         lugar da contagem de dias, que não diz nada enquanto a
-                        prorrogação cobre o paciente. Terminada, a contagem volta. */}
-                    {!vendoAltas && p.prorrogacao_ate && p.prorrogacao_ate.slice(0, 10) >= hojeISO() ? (
+                        prorrogação cobre o paciente. Terminada, a contagem volta.
+                        Mesma regra do chip "Em prorrogação": a pausada conta
+                        mesmo depois da data final, como na coluna de Tarefas. */}
+                    {!vendoAltas && p.prorrogacao_ate && etiquetaProrrogacao(p.prorrogacao_ate, p.prorrogacao_pausada) ? (
                       <span className="badge info" title={`Prorrogado até ${dataBR(p.prorrogacao_ate)}${p.prorrogacao_pausada ? ' (pausada)' : ''}`}>
                         {p.prorrogacao_pausada ? 'Prorrogação pausada' : 'Prorrogado'}
                       </span>

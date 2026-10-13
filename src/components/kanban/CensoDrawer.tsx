@@ -2,8 +2,9 @@
 // resumo do par hospital + operadora, contato do hospital, a timeline dos
 // últimos dias e as ações da coluna.
 //
-// A timeline junta as anotações (toda movimentação manual exige uma: "Falei com
-// a Maria da recepção") e os censos que chegaram. É a mesma timeline do
+// A timeline junta as anotações (a movimentação manual exige uma: "Falei com
+// a Maria da recepção"), os pedidos para desfazer a atualização, que não pedem
+// anotação e esperam o Gestor ou um Coordenador, e os censos que chegaram. É a mesma timeline do
 // paciente (TimelineEventos): os eventos de censo só são traduzidos para o
 // formato dela, com data e hora no fuso de quem lê.
 //
@@ -44,11 +45,11 @@ function paraTimeline(ev: CensoEvento): TimelineEvento {
   }
 }
 
-/** Ações do rodapé por coluna: a principal à direita, o desfazer à esquerda. */
+/** Ações do rodapé por coluna: a principal à direita, o desfazer à esquerda.
+ *  O desfazer da atualização fica fora: não abre a modal da anotação. */
 function acoesDaColuna(t: KanbanTarefa): { principal?: AcaoCenso; desfazer?: AcaoCenso } {
   if (t.estado_censo === 'censos_atrasados') return { principal: 'cobrar' }
   if (t.estado_censo === 'aguardando_retorno') return { principal: 'atualizar', desfazer: 'desfazer' }
-  if (t.estado_censo === 'censos_processados' && t.atualizado_em) return { desfazer: 'desfazerAtualizado' }
   return {}
 }
 
@@ -62,7 +63,7 @@ function Kpi({ rotulo, valor }: { rotulo: string; valor: string }) {
 }
 
 export default function CensoDrawer({
-  tarefa, podeEscrever, ocupado, onExecutar, onClose, onAbrirCadastro,
+  tarefa, podeEscrever, ocupado, onExecutar, onDesfazerAtualizado, onClose, onAbrirCadastro,
 }: {
   tarefa: KanbanTarefa
   /** false = perfil de observação: lê a timeline, sem ações. */
@@ -70,6 +71,8 @@ export default function CensoDrawer({
   /** Ação deste card em andamento (vinda do quadro). */
   ocupado: boolean
   onExecutar: ExecutarCenso
+  /** Desfaz a atualização feita à mão, ou pede (quem não aprova). Sem anotação. */
+  onDesfazerAtualizado: (t: KanbanTarefa) => void
   onClose: () => void
   onAbrirCadastro?: (key: string) => void
 }) {
@@ -96,6 +99,7 @@ export default function CensoDrawer({
 
   const coluna = COLUNAS_CENSO.find((c) => c.key === tarefa.estado_censo)
   const { principal, desfazer } = podeEscrever ? acoesDaColuna(tarefa) : {}
+  const desfazAtualizacao = podeEscrever && tarefa.estado_censo === 'censos_processados' && !!tarefa.atualizado_em
   const pendente = tarefa.estado_censo === 'censos_atrasados' || tarefa.estado_censo === 'aguardando_retorno'
   const contato = [hospital?.telefone, hospital?.email].filter(Boolean).join(' · ')
 
@@ -165,6 +169,16 @@ export default function CensoDrawer({
               {ACOES_CENSO[desfazer].titulo}
             </button>
           )}
+          {desfazAtualizacao && (tarefa.desfazer_pendente ? (
+            <span className="t-muted" style={{ marginRight: 'auto', alignSelf: 'center', fontSize: 'var(--t-sm)' }}>
+              Desfazer aguardando aprovação
+            </span>
+          ) : (
+            <button type="button" className="btn btn-ghost" style={{ marginRight: 'auto' }}
+                    disabled={ocupado} onClick={() => onDesfazerAtualizado(tarefa)}>
+              {ocupado ? 'Desfazendo…' : 'Desfazer atualização'}
+            </button>
+          ))}
           <button type="button" className="btn btn-outline" onClick={onClose}>Fechar</button>
           {principal && (
             <button type="button" className="btn btn-primary" disabled={ocupado} onClick={() => setAcao(principal)}>

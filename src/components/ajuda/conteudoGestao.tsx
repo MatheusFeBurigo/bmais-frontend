@@ -682,7 +682,8 @@ export function ModuloVolumetria() {
 
       <Callout tipo="info" titulo="Única tela em que o coordenador escreve">
         Os perfis de coordenação observam as demais telas sem alterá-las. Definir a área de cada
-        pessoa, dividir a carga por um período e calibrar os parâmetros, aqui, são as únicas
+        pessoa, dividir a carga por um período, calibrar os parâmetros e aprovar ou recusar os
+        pedidos para desfazer a atualização de um censo, aqui, são as únicas
         alterações que eles executam no sistema, e ficam registradas em Movimentações. Cada coordenador atua apenas sobre o próprio
         grupo, e a restrição vale também fora da tela.
       </Callout>
