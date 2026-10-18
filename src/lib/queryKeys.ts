@@ -66,6 +66,8 @@ export const queryKeys = {
 
   /** Ajustes manuais do avanço dos módulos (tela Progresso). */
   progresso: () => ['progresso'] as const,
+  /** Resumo detalhado das atividades (tela Progresso, grupo Em construção). */
+  progressoAtividades: () => ['progresso-atividades'] as const,
 
   /** Carga de trabalho por hospital (tela Volumetria, coordenadores). */
   volumetria: () => ['volumetria'] as const,

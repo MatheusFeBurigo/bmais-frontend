@@ -56,3 +56,36 @@ export function salvarProgressoModulo(
 export function descartarProgressoModulo(moduloId: string): Promise<{ ok: boolean }> {
   return apiFetch(`/progresso/${encodeURIComponent(moduloId)}`, { method: 'DELETE' })
 }
+
+// ── Resumo detalhado das atividades (migration 0055) ──────────────────────────
+
+export interface AtividadeProgresso {
+  id: string
+  /** Dia da atividade, ISO (AAAA-MM-DD). */
+  data: string
+  titulo: string
+  descricao: string
+  criado_por?: string | null
+  criado_em?: string | null
+}
+
+export interface NovaAtividadeProgresso {
+  data: string
+  titulo: string
+  descricao: string
+}
+
+/** Da mais recente para a mais antiga. */
+export function fetchAtividadesProgresso(): Promise<{ atividades: AtividadeProgresso[] }> {
+  return apiFetch<{ atividades: AtividadeProgresso[] }>('/progresso/atividades')
+}
+
+export function criarAtividadeProgresso(
+  nova: NovaAtividadeProgresso,
+): Promise<{ ok: boolean; atividade: AtividadeProgresso }> {
+  return apiFetch('/progresso/atividades', { method: 'POST', body: nova })
+}
+
+export function apagarAtividadeProgresso(id: string): Promise<{ ok: boolean }> {
+  return apiFetch(`/progresso/atividades/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}

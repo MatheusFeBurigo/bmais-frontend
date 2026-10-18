@@ -12,8 +12,9 @@ import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../lib/queryKeys'
 import {
-  descartarProgressoModulo, fetchProgresso, salvarProgressoModulo,
-  type AjustesProgresso, type DataEtapa,
+  apagarAtividadeProgresso, criarAtividadeProgresso, descartarProgressoModulo,
+  fetchAtividadesProgresso, fetchProgresso, salvarProgressoModulo,
+  type AjustesProgresso, type DataEtapa, type NovaAtividadeProgresso,
 } from '../services/progresso.service'
 import { MODULOS, type ModuloProjeto } from '../components/progresso/dados'
 import {
@@ -106,5 +107,33 @@ export function useDescartarProgresso() {
   return useMutation({
     mutationFn: (moduloId: string) => descartarProgressoModulo(moduloId),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.progresso() }),
+  })
+}
+
+// ── Resumo detalhado das atividades ───────────────────────────────────────────
+
+/** Só busca quando a janela abre: quem não a abre não paga a requisição. */
+export function useAtividadesProgresso(ativo = true) {
+  return useQuery({
+    queryKey: queryKeys.progressoAtividades(),
+    queryFn: fetchAtividadesProgresso,
+    enabled: ativo,
+    staleTime: 60_000,
+  })
+}
+
+export function useCriarAtividadeProgresso() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (nova: NovaAtividadeProgresso) => criarAtividadeProgresso(nova),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.progressoAtividades() }),
+  })
+}
+
+export function useApagarAtividadeProgresso() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apagarAtividadeProgresso(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.progressoAtividades() }),
   })
 }

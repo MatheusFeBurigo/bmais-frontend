@@ -262,3 +262,41 @@
 /* Origem e data da apuração: fecha a tela dizendo de onde vêm os números. */
 .prg-fonte{margin-top:18px;font-size:var(--t-sm);color:var(--muted-2);text-align:center;
   line-height:1.6}
+
+/* ── Detalhes do grupo Em construção ────────────────────────────────────────
+   Botão no título do grupo, à direita; abre a janela com o que está sendo
+   ajustado (components/progresso/DetalhesConstrucao). */
+.prg-grupo-detalhes{margin-left:auto;text-transform:none;letter-spacing:0}
+
+/* Conteúdo da janela. */
+.prg-detalhes{display:grid;gap:14px}
+.prg-detalhes-vazio{margin:0;font-size:var(--t-base);color:var(--muted);line-height:1.5}
+
+/* Botão "+" e formulário de nova atividade. */
+.prg-ativ-mais{justify-self:start;display:inline-flex;align-items:center;gap:6px}
+.prg-ativ-form{display:grid;grid-template-columns:160px minmax(0,1fr);gap:12px;padding:14px;
+  background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-sm)}
+.prg-ativ-campo{display:grid;gap:5px;min-width:0}
+.prg-ativ-campo label{font-size:var(--t-xs);font-weight:600;color:var(--muted)}
+.prg-ativ-campo-cheio,.prg-ativ-erro,.prg-ativ-acoes{grid-column:1 / -1}
+.prg-ativ-campo textarea{resize:vertical;min-height:84px;line-height:1.5}
+.prg-ativ-acoes{display:flex;justify-content:flex-end;gap:8px}
+.prg-ativ-erro{margin:0;font-size:var(--t-sm);color:var(--danger,#b42318)}
+@media(max-width:560px){ .prg-ativ-form{grid-template-columns:minmax(0,1fr)} }
+
+/* Lista: data em mono à esquerda, título forte, descrição em texto corrido. */
+.prg-ativ-lista{list-style:none;margin:0;padding:0;display:grid}
+.prg-ativ{padding:12px 0;display:grid;gap:6px}
+.prg-ativ + .prg-ativ{border-top:1px solid var(--border-soft)}
+.prg-ativ-topo{display:flex;align-items:baseline;gap:10px}
+.prg-ativ-data{font-family:var(--font-mono);font-size:var(--t-xs);font-weight:600;
+  color:var(--muted);font-variant-numeric:tabular-nums;flex-shrink:0}
+.prg-ativ-titulo{margin:0;flex:1;min-width:0;font-size:var(--t-base);font-weight:600;color:var(--ink)}
+.prg-ativ-descricao{margin:0;font-size:var(--t-base);color:var(--ink-2);line-height:1.5;
+  white-space:pre-wrap}
+.prg-ativ-autor{font-size:var(--t-xs);color:var(--muted-3)}
+.prg-ativ-apagar{display:grid;place-items:center;width:24px;height:24px;padding:0;flex-shrink:0;
+  align-self:center;border:1px solid transparent;background:none;border-radius:var(--r-sm);
+  color:var(--muted-3);cursor:pointer;transition:color .12s,background .12s,border-color .12s}
+.prg-ativ-apagar:hover{background:var(--surface-3);border-color:var(--border);color:var(--danger,#b42318)}
+.prg-ativ-apagar:focus-visible{outline:2px solid var(--accent);outline-offset:1px}

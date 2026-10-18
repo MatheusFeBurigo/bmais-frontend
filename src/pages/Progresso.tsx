@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { usePageHeader } from '../components/PageHeader'
+import DetalhesConstrucao from '../components/progresso/DetalhesConstrucao'
 import Toast from '../components/Toast'
 import {
   ATUALIZADO_EM, ETAPAS, GRUPOS, type GrupoModulo,
@@ -294,6 +295,8 @@ export default function Progresso() {
   // cópia antiga quando a lista recarregasse.
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [aviso, setAviso] = useState('')
+  // Janela "Resumo detalhado das atividades" do grupo Em construção.
+  const [detalhesAbertos, setDetalhesAbertos] = useState(false)
 
   // O relatório da auditoria é o plano de onde estes módulos saíram: quem
   // acompanha o avanço costuma querer, em seguida, o porquê da ordem e o que
@@ -393,6 +396,15 @@ export default function Progresso() {
               <h2 className="prg-grupo-titulo">
                 {grupo}
                 <span className="prg-grupo-total">{doGrupo.length}</span>
+                {/* Só o grupo em obra tem o que detalhar: é onde os ajustes
+                    acontecem. Nos outros, o botão abriria uma janela vazia. */}
+                {grupo === 'Em construção' && (
+                  <button type="button" className="btn btn-outline btn-sm prg-grupo-detalhes"
+                    onClick={() => setDetalhesAbertos(true)}
+                    title="Resumo detalhado das atividades nos módulos em construção">
+                    Resumo detalhado das atividades
+                  </button>
+                )}
               </h2>
               {doGrupo.map((m) => (
                 <Modulo m={m} key={m.id}
@@ -413,6 +425,9 @@ export default function Progresso() {
         {podeEditar && ' Os módulos ajustados por aqui trazem a marca "ajustado".'}
       </p>
 
+      {detalhesAbertos && (
+        <DetalhesConstrucao podeEditar={podeEditar} onClose={() => setDetalhesAbertos(false)} />
+      )}
       {aviso && <Toast message={aviso} onDone={() => setAviso('')} />}
     </div>
   )
