@@ -112,7 +112,8 @@ export function useDescartarProgresso() {
 
 // ── Resumo detalhado das atividades ───────────────────────────────────────────
 
-/** Só busca quando a janela abre: quem não a abre não paga a requisição. */
+/** Todas as atividades, de todos os módulos: a tela conta por módulo para o
+ *  botão de cada um, e a janela filtra a do módulo aberto no mesmo cache. */
 export function useAtividadesProgresso(ativo = true) {
   return useQuery({
     queryKey: queryKeys.progressoAtividades(),

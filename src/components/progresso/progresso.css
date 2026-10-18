@@ -78,19 +78,19 @@
 .prg-editar:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
 /* ── Quadro dos módulos ─────────────────────────────────────────────────── */
-.prg-quadro{margin-top:14px;background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--r-md);overflow:hidden}
-/* Respiro maior entre grupos que entre módulos do mesmo grupo: é a distância
-   que faz o olho enxergar os blocos antes de ler as linhas. */
-.prg-grupo{padding:16px 20px 10px}
-.prg-grupo + .prg-grupo{border-top:1px solid var(--border)}
-.prg-grupo-titulo{display:flex;align-items:center;gap:8px;margin:0 0 10px;
+/* Cada módulo é um CARD próprio (18/10/2026): no quadro único, os módulos
+   eram linhas de uma mesma caixa e o resumo de um parecia ser de todos. Os
+   grupos viram só o título acima dos seus cards. */
+.prg-quadro{margin-top:14px;display:grid;gap:22px}
+.prg-grupo{display:grid;gap:10px}
+.prg-grupo-titulo{display:flex;align-items:center;gap:8px;margin:0 0 2px 2px;
   font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.1em;font-weight:600;color:var(--muted)}
 .prg-grupo-total{font-family:var(--font-mono);font-size:10px;font-weight:600;padding:1px 7px;
   border-radius:99px;background:var(--surface-3);border:1px solid var(--border);color:var(--muted)}
 
-.prg-modulo{padding:16px 0}
-.prg-modulo + .prg-modulo{border-top:1px solid var(--border-soft)}
+.prg-modulo{padding:16px 20px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-md);box-shadow:var(--shadow-xs)}
+@media(max-width:620px){.prg-modulo{padding:14px}}
 /* Linha de cabeçalho do módulo: identificação à esquerda, situação e medida à
    direita. `auto` na barra evita que ela roube largura do nome. */
 /* A pastilha tem largura FIXA: com `auto`, "Em construção" e "Iniciado"
@@ -226,8 +226,8 @@
    Clicar no lápis transforma os campos do próprio módulo em inputs, sem modal:
    o cronograma tem 12 campos (início e previsão das 6 etapas), e numa janela
    flutuante o usuário perderia de vista a linha que está editando. */
-.prg-modulo.editando{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--accent);
-  border-radius:var(--r-sm);padding-left:14px;padding-right:12px;margin:2px -12px}
+.prg-modulo.editando{background:var(--surface-2);border-color:var(--accent);
+  box-shadow:inset 3px 0 0 var(--accent)}
 /* Os dois campos de data de uma etapa, na coluna onde a data aparece na
    leitura: a linha não muda de forma ao entrar em edição. */
 .prg-fase-edit{display:flex;align-items:center;gap:7px;flex-shrink:0}
@@ -263,12 +263,23 @@
 .prg-fonte{margin-top:18px;font-size:var(--t-sm);color:var(--muted-2);text-align:center;
   line-height:1.6}
 
-/* ── Detalhes do grupo Em construção ────────────────────────────────────────
-   Botão no título do grupo, à direita; abre a janela com o que está sendo
-   ajustado (components/progresso/DetalhesConstrucao). */
-.prg-grupo-detalhes{margin-left:auto;text-transform:none;letter-spacing:0}
+/* ── Resumo detalhado das atividades, por módulo ───────────────────────────
+   Botão no cabeçalho de cada módulo; abre a janela com o que foi feito nele
+   (components/progresso/ResumoAtividades). */
+
+/* Rodapé do card com o botão do resumo, escrito por extenso: é a entrada para
+   o que foi feito NESTE módulo, e um ícone solto passava despercebido. */
+.prg-modulo-rodape{display:flex;align-items:center;margin-top:14px;padding-top:12px;
+  border-top:1px solid var(--border-soft)}
+.prg-resumo{display:inline-flex;align-items:center;gap:7px}
+.prg-resumo-n{font-family:var(--font-mono);font-size:10px;font-weight:600;padding:0 6px;
+  border-radius:99px;background:var(--surface-3);border:1px solid var(--border);color:var(--muted);
+  font-variant-numeric:tabular-nums}
 
 /* Conteúdo da janela. */
+.prg-resumo-modulo{display:flex;flex-direction:column;gap:2px;padding-bottom:12px;
+  border-bottom:1px solid var(--border-soft)}
+.prg-resumo-modulo-nome{font-size:var(--t-md);font-weight:600;color:var(--ink)}
 .prg-detalhes{display:grid;gap:14px}
 .prg-detalhes-vazio{margin:0;font-size:var(--t-base);color:var(--muted);line-height:1.5}
 
@@ -300,3 +311,36 @@
   color:var(--muted-3);cursor:pointer;transition:color .12s,background .12s,border-color .12s}
 .prg-ativ-apagar:hover{background:var(--surface-3);border-color:var(--border);color:var(--danger,#b42318)}
 .prg-ativ-apagar:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ── Semanas e dias do resumo ───────────────────────────────────────────────
+   Dois níveis recolhíveis: a semana é o cabeçalho de seção, o dia é a linha
+   que abre as atividades. Nascem fechados, menos o último dia atualizado (e a
+   semana dele). Seta própria, girando ao abrir, nos dois níveis. */
+.prg-semana + .prg-semana{border-top:1px solid var(--border)}
+.prg-semana-cab,.prg-dia-cab{display:flex;align-items:center;gap:10px;cursor:pointer;
+  list-style:none;border-radius:var(--r-sm)}
+.prg-semana-cab::-webkit-details-marker,.prg-dia-cab::-webkit-details-marker{display:none}
+.prg-semana-cab::before,.prg-dia-cab::before{content:'';width:6px;height:6px;flex-shrink:0;
+  border-right:1.5px solid var(--muted-2);border-bottom:1.5px solid var(--muted-2);
+  transform:rotate(-45deg);transition:transform .15s}
+.prg-semana[open] > .prg-semana-cab::before,
+.prg-dia[open] > .prg-dia-cab::before{transform:rotate(45deg)}
+.prg-semana-cab:focus-visible,.prg-dia-cab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.prg-semana-cab{padding:12px 0}
+.prg-semana-nome{font-size:var(--t-xs);font-weight:600;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--muted)}
+.prg-semana-total{margin-left:auto;font-size:var(--t-xs);color:var(--muted-3)}
+/* Os dias recuados sob a semana: a hierarquia se lê pelo alinhamento. */
+.prg-semana > .prg-dia{margin-left:16px}
+.prg-dia + .prg-dia{border-top:1px solid var(--border-soft)}
+.prg-dia-cab{padding:9px 0}
+.prg-dia-nome{font-family:var(--font-mono);font-size:var(--t-sm);font-weight:600;
+  color:var(--ink-2);font-variant-numeric:tabular-nums}
+.prg-dia-total{font-family:var(--font-mono);font-size:10px;font-weight:600;padding:1px 7px;
+  border-radius:99px;background:var(--surface-3);border:1px solid var(--border);color:var(--muted)}
+.prg-dia > .prg-ativ-lista{padding:0 0 8px 16px}
+.prg-semana:last-child{padding-bottom:4px}
+@media(max-width:560px){
+  .prg-semana > .prg-dia{margin-left:8px}
+  .prg-dia > .prg-ativ-lista{padding-left:8px}
+}

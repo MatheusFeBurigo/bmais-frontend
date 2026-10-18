@@ -17,7 +17,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { usePageHeader } from '../components/PageHeader'
-import DetalhesConstrucao from '../components/progresso/DetalhesConstrucao'
+import ResumoAtividades from '../components/progresso/ResumoAtividades'
 import Toast from '../components/Toast'
 import {
   ATUALIZADO_EM, ETAPAS, GRUPOS, type GrupoModulo,
@@ -26,7 +26,8 @@ import {
   etapasConcluidas, etapasEmCurso, faseDoPct, pctDoModulo,
 } from '../components/progresso/calculo'
 import {
-  useDescartarProgresso, useProgresso, useSalvarProgresso, type ModuloResolvido,
+  useAtividadesProgresso, useDescartarProgresso, useProgresso, useSalvarProgresso,
+  type ModuloResolvido,
 } from '../hooks/useProgresso'
 import type { DataEtapa } from '../services/progresso.service'
 import { importRelatorio } from '../routes'
@@ -51,6 +52,10 @@ interface ModuloProps {
   /** Só para quem pode editar. Ausente = a linha é somente leitura. */
   editando?: boolean
   onEditar?: () => void
+  /** Abre o resumo detalhado das atividades do módulo. Ausente = sem botão. */
+  onResumo?: () => void
+  /** Quantas atividades o resumo do módulo tem (aparece ao lado do ícone). */
+  totalResumo?: number
   onCancelar?: () => void
   onSalvar?: (etapasPct: number[], datas: DataEtapa[]) => void
   onDescartar?: () => void
@@ -58,7 +63,7 @@ interface ModuloProps {
 }
 
 function Modulo({
-  m, editando, onEditar, onCancelar, onSalvar, onDescartar, salvando,
+  m, editando, onEditar, onResumo, totalResumo = 0, onCancelar, onSalvar, onDescartar, salvando,
 }: ModuloProps) {
   // Rascunho da edição. Nasce do módulo e é descartado no cancelar — o valor em
   // tela só muda quando o servidor confirma.
@@ -251,6 +256,18 @@ function Modulo({
         <p className="prg-nao-iniciado">Nenhuma etapa iniciada</p>
       )}
 
+      {/* Rodapé do card: o resumo detalhado das atividades DESTE módulo. Na
+          edição sai, para o rodapé ser só o de Salvar e Cancelar. */}
+      {onResumo && !editando && (
+        <div className="prg-modulo-rodape">
+          <button type="button" className="btn btn-outline btn-sm prg-resumo" onClick={onResumo}
+            aria-label={`Resumo detalhado das atividades de ${m.nome}`}>
+            Resumo detalhado das atividades
+            {totalResumo > 0 && <span className="prg-resumo-n">{totalResumo}</span>}
+          </button>
+        </div>
+      )}
+
       {editando && (
         <div className="prg-edit-acoes">
           {/* O total recalculado à vista de quem edita: é o número que a
@@ -295,8 +312,18 @@ export default function Progresso() {
   // cópia antiga quando a lista recarregasse.
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [aviso, setAviso] = useState('')
-  // Janela "Resumo detalhado das atividades" do grupo Em construção.
-  const [detalhesAbertos, setDetalhesAbertos] = useState(false)
+  // Módulo com a janela "Resumo detalhado das atividades" aberta, ou null.
+  const [resumoDe, setResumoDe] = useState<ModuloResolvido | null>(null)
+  // As atividades de todos os módulos numa leitura só: cada linha precisa do
+  // total do seu módulo para o botão, e a janela reaproveita o mesmo cache.
+  const atividades = useAtividadesProgresso()
+  const totalPorModulo = useMemo(() => {
+    const t = new Map<string, number>()
+    for (const a of atividades.data?.atividades ?? []) {
+      if (a.modulo_id) t.set(a.modulo_id, (t.get(a.modulo_id) ?? 0) + 1)
+    }
+    return t
+  }, [atividades.data])
 
   // O relatório da auditoria é o plano de onde estes módulos saíram: quem
   // acompanha o avanço costuma querer, em seguida, o porquê da ordem e o que
@@ -396,20 +423,17 @@ export default function Progresso() {
               <h2 className="prg-grupo-titulo">
                 {grupo}
                 <span className="prg-grupo-total">{doGrupo.length}</span>
-                {/* Só o grupo em obra tem o que detalhar: é onde os ajustes
-                    acontecem. Nos outros, o botão abriria uma janela vazia. */}
-                {grupo === 'Em construção' && (
-                  <button type="button" className="btn btn-outline btn-sm prg-grupo-detalhes"
-                    onClick={() => setDetalhesAbertos(true)}
-                    title="Resumo detalhado das atividades nos módulos em construção">
-                    Resumo detalhado das atividades
-                  </button>
-                )}
               </h2>
               {doGrupo.map((m) => (
                 <Modulo m={m} key={m.id}
                   editando={editandoId === m.id}
                   onEditar={podeEditar ? () => setEditandoId(m.id) : undefined}
+                  // Quem lê só vê o botão no módulo que tem atividades: nos
+                  // outros ele abriria uma janela vazia. Quem edita vê em todos,
+                  // porque é por ele que registra a primeira.
+                  onResumo={podeEditar || (totalPorModulo.get(m.id) ?? 0) > 0
+                    ? () => setResumoDe(m) : undefined}
+                  totalResumo={totalPorModulo.get(m.id) ?? 0}
                   onCancelar={() => setEditandoId(null)}
                   onSalvar={(etapasPct, datas) => aoSalvar(m, etapasPct, datas)}
                   onDescartar={() => aoDescartar(m)}
@@ -425,8 +449,9 @@ export default function Progresso() {
         {podeEditar && ' Os módulos ajustados por aqui trazem a marca "ajustado".'}
       </p>
 
-      {detalhesAbertos && (
-        <DetalhesConstrucao podeEditar={podeEditar} onClose={() => setDetalhesAbertos(false)} />
+      {resumoDe && (
+        <ResumoAtividades modulo={resumoDe} podeEditar={podeEditar}
+          onClose={() => setResumoDe(null)} />
       )}
       {aviso && <Toast message={aviso} onDone={() => setAviso('')} />}
     </div>

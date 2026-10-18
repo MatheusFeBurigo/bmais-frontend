@@ -61,6 +61,8 @@ export function descartarProgressoModulo(moduloId: string): Promise<{ ok: boolea
 
 export interface AtividadeProgresso {
   id: string
+  /** Módulo do catálogo ("Mód. 1"). Null nas gravadas antes da 0056. */
+  modulo_id: string | null
   /** Dia da atividade, ISO (AAAA-MM-DD). */
   data: string
   titulo: string
@@ -70,6 +72,7 @@ export interface AtividadeProgresso {
 }
 
 export interface NovaAtividadeProgresso {
+  moduloId: string
   data: string
   titulo: string
   descricao: string
@@ -83,7 +86,8 @@ export function fetchAtividadesProgresso(): Promise<{ atividades: AtividadeProgr
 export function criarAtividadeProgresso(
   nova: NovaAtividadeProgresso,
 ): Promise<{ ok: boolean; atividade: AtividadeProgresso }> {
-  return apiFetch('/progresso/atividades', { method: 'POST', body: nova })
+  const { moduloId, ...resto } = nova
+  return apiFetch('/progresso/atividades', { method: 'POST', body: { modulo_id: moduloId, ...resto } })
 }
 
 export function apagarAtividadeProgresso(id: string): Promise<{ ok: boolean }> {
