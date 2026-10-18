@@ -6,12 +6,13 @@
 // O conteúdo é escrito À MÃO por quem acompanha a obra, pela própria janela:
 // o botão "+" abre um formulário com data, título e descrição. As atividades
 // ficam no banco (tabela progresso_atividades, migration 0055), então todos
-// que abrem a tela veem a mesma lista. Só a administração adiciona e remove;
-// a diretoria lê.
-import { useState, type FormEvent } from 'react'
+// que abrem a tela veem a mesma lista. Só a administração adiciona, edita e
+// remove (o servidor aplica a mesma regra); a diretoria lê.
+import { useId, useState, type FormEvent } from 'react'
 import { LoadingState, Modal } from '../ui'
 import {
   useApagarAtividadeProgresso, useAtividadesProgresso, useCriarAtividadeProgresso,
+  useEditarAtividadeProgresso,
 } from '../../hooks/useProgresso'
 
 /** Hoje, no fuso local, em AAAA-MM-DD (o formato do <input type="date">). */
@@ -89,6 +90,75 @@ const IconMais = () => (
     <path d="M12 5v14" /><path d="M5 12h14" /></svg>
 )
 
+const IconLapis = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+)
+
+interface CamposAtividade { data: string; titulo: string; descricao: string }
+
+/** Formulário de uma atividade: o mesmo para adicionar e para editar. Guarda o
+ *  rascunho; quem chama decide o que fazer com ele ao salvar. */
+function FormAtividade({ inicial, salvando, erro, onSalvar, onCancelar }: {
+  inicial: CamposAtividade
+  salvando: boolean
+  erro: string
+  onSalvar: (campos: CamposAtividade) => void
+  onCancelar: () => void
+}) {
+  // Ids únicos: a edição pode abrir com o formulário de adicionar na tela.
+  const id = useId()
+  const [data, setData] = useState(inicial.data)
+  const [titulo, setTitulo] = useState(inicial.titulo)
+  const [descricao, setDescricao] = useState(inicial.descricao)
+  const [aviso, setAviso] = useState('')
+
+  function aoEnviar(e: FormEvent) {
+    e.preventDefault()
+    if (!data) return setAviso('Informe a data.')
+    if (!titulo.trim()) return setAviso('Informe o título.')
+    setAviso('')
+    onSalvar({ data, titulo: titulo.trim(), descricao: descricao.trim() })
+  }
+
+  const mensagem = aviso || erro
+  return (
+    <form className="prg-ativ-form" onSubmit={aoEnviar}>
+      <div className="prg-ativ-campo prg-ativ-campo-data">
+        <label htmlFor={`${id}-data`}>Data</label>
+        <input id={`${id}-data`} type="date" className="bm-input" value={data}
+          disabled={salvando} required
+          onChange={(e) => setData(e.target.value)} />
+      </div>
+      <div className="prg-ativ-campo">
+        <label htmlFor={`${id}-titulo`}>Título</label>
+        <input id={`${id}-titulo`} type="text" className="bm-input" value={titulo}
+          maxLength={200} disabled={salvando} required autoFocus
+          placeholder="O que foi feito"
+          onChange={(e) => setTitulo(e.target.value)} />
+      </div>
+      <div className="prg-ativ-campo prg-ativ-campo-cheio">
+        <label htmlFor={`${id}-descricao`}>Descrição</label>
+        <textarea id={`${id}-descricao`} className="bm-input" rows={4} value={descricao}
+          maxLength={5000} disabled={salvando}
+          placeholder="Detalhes da atividade"
+          onChange={(e) => setDescricao(e.target.value)} />
+      </div>
+      {mensagem && <p className="prg-ativ-erro" role="alert">{mensagem}</p>}
+      <div className="prg-ativ-acoes">
+        <button type="button" className="btn btn-outline btn-sm" disabled={salvando}
+          onClick={onCancelar}>
+          Cancelar
+        </button>
+        <button type="submit" className="btn btn-primary btn-sm" disabled={salvando}>
+          {salvando ? 'Salvando…' : 'Salvar'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
 const IconLixeira = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -99,34 +169,33 @@ export default function ResumoAtividades({ modulo, onClose, podeEditar }: {
   /** Módulo do quadro: a janela lista e grava só as atividades dele. */
   modulo: { id: string; nome: string }
   onClose: () => void
-  /** Só a administração adiciona e remove. Sem isto, a janela é de leitura. */
+  /** Só a administração adiciona, edita e remove. Sem isto, a janela é de leitura. */
   podeEditar: boolean
 }) {
   const atividades = useAtividadesProgresso()
   const criar = useCriarAtividadeProgresso()
   const apagar = useApagarAtividadeProgresso()
 
+  const editar = useEditarAtividadeProgresso()
+
   const [adicionando, setAdicionando] = useState(false)
-  const [data, setData] = useState(hojeIso)
-  const [titulo, setTitulo] = useState('')
-  const [descricao, setDescricao] = useState('')
+  // Atividade aberta para edição (o id), ou null. Uma de cada vez.
+  const [editandoId, setEditandoId] = useState<string | null>(null)
   const [erro, setErro] = useState('')
 
-  function limpar() {
-    setData(hojeIso())
-    setTitulo('')
-    setDescricao('')
+  function aoAdicionar(campos: CamposAtividade) {
     setErro('')
+    criar.mutate({ moduloId: modulo.id, ...campos }, {
+      onSuccess: () => setAdicionando(false),
+      onError: () => setErro('Não foi possível salvar. Tente de novo.'),
+    })
   }
 
-  function aoSalvar(e: FormEvent) {
-    e.preventDefault()
-    if (!data) return setErro('Informe a data.')
-    if (!titulo.trim()) return setErro('Informe o título.')
+  function aoEditar(id: string, campos: CamposAtividade) {
     setErro('')
-    criar.mutate({ moduloId: modulo.id, data, titulo: titulo.trim(), descricao: descricao.trim() }, {
-      onSuccess: () => { limpar(); setAdicionando(false) },
-      onError: () => setErro('Não foi possível salvar. Tente de novo.'),
+    editar.mutate({ id, ...campos }, {
+      onSuccess: () => setEditandoId(null),
+      onError: () => setErro('Não foi possível salvar a edição. Tente de novo.'),
     })
   }
 
@@ -151,45 +220,16 @@ export default function ResumoAtividades({ modulo, onClose, podeEditar }: {
 
         {podeEditar && !adicionando && (
           <button type="button" className="btn btn-outline btn-sm prg-ativ-mais"
-            onClick={() => setAdicionando(true)}>
+            onClick={() => { setErro(''); setEditandoId(null); setAdicionando(true) }}>
             <IconMais />
             Adicionar atividade
           </button>
         )}
 
         {podeEditar && adicionando && (
-          <form className="prg-ativ-form" onSubmit={aoSalvar}>
-            <div className="prg-ativ-campo prg-ativ-campo-data">
-              <label htmlFor="prg-ativ-data">Data</label>
-              <input id="prg-ativ-data" type="date" className="bm-input" value={data}
-                disabled={criar.isPending} required
-                onChange={(e) => setData(e.target.value)} />
-            </div>
-            <div className="prg-ativ-campo">
-              <label htmlFor="prg-ativ-titulo">Título</label>
-              <input id="prg-ativ-titulo" type="text" className="bm-input" value={titulo}
-                maxLength={200} disabled={criar.isPending} required autoFocus
-                placeholder="O que foi feito"
-                onChange={(e) => setTitulo(e.target.value)} />
-            </div>
-            <div className="prg-ativ-campo prg-ativ-campo-cheio">
-              <label htmlFor="prg-ativ-descricao">Descrição</label>
-              <textarea id="prg-ativ-descricao" className="bm-input" rows={4} value={descricao}
-                maxLength={5000} disabled={criar.isPending}
-                placeholder="Detalhes da atividade"
-                onChange={(e) => setDescricao(e.target.value)} />
-            </div>
-            {erro && <p className="prg-ativ-erro" role="alert">{erro}</p>}
-            <div className="prg-ativ-acoes">
-              <button type="button" className="btn btn-outline btn-sm" disabled={criar.isPending}
-                onClick={() => { limpar(); setAdicionando(false) }}>
-                Cancelar
-              </button>
-              <button type="submit" className="btn btn-primary btn-sm" disabled={criar.isPending}>
-                {criar.isPending ? 'Salvando…' : 'Salvar'}
-              </button>
-            </div>
-          </form>
+          <FormAtividade inicial={{ data: hojeIso(), titulo: '', descricao: '' }}
+            salvando={criar.isPending} erro={erro} onSalvar={aoAdicionar}
+            onCancelar={() => { setErro(''); setAdicionando(false) }} />
         )}
 
         {atividades.isLoading && <LoadingState label="Carregando atividades…" size={22} />}
@@ -218,12 +258,30 @@ export default function ResumoAtividades({ modulo, onClose, podeEditar }: {
                   <span className="prg-dia-total">{d.itens.length}</span>
                 </summary>
                 <ul className="prg-ativ-lista">
-                  {d.itens.map((a) => (
+                  {d.itens.map((a) => podeEditar && editandoId === a.id ? (
+                    // Em edição, o formulário toma o lugar da atividade: quem
+                    // edita não perde de vista em que dia ela está.
+                    <li className="prg-ativ" key={a.id}>
+                      <FormAtividade inicial={{ data: a.data.slice(0, 10), titulo: a.titulo,
+                        descricao: a.descricao ?? '' }}
+                        salvando={editar.isPending} erro={erro}
+                        onSalvar={(campos) => aoEditar(a.id, campos)}
+                        onCancelar={() => { setErro(''); setEditandoId(null) }} />
+                    </li>
+                  ) : (
                     <li className="prg-ativ" key={a.id}>
                       <div className="prg-ativ-topo">
                         <h4 className="prg-ativ-titulo">{a.titulo}</h4>
                         {podeEditar && (
-                          <button type="button" className="prg-ativ-apagar"
+                          <button type="button" className="prg-ativ-acao"
+                            disabled={editar.isPending}
+                            onClick={() => { setErro(''); setAdicionando(false); setEditandoId(a.id) }}
+                            title="Editar atividade" aria-label={`Editar ${a.titulo}`}>
+                            <IconLapis />
+                          </button>
+                        )}
+                        {podeEditar && (
+                          <button type="button" className="prg-ativ-acao prg-ativ-apagar"
                             disabled={apagar.isPending}
                             onClick={() => aoApagar(a.id, a.titulo)}
                             title="Remover atividade" aria-label={`Remover ${a.titulo}`}>

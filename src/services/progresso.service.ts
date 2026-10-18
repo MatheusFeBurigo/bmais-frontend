@@ -90,6 +90,13 @@ export function criarAtividadeProgresso(
   return apiFetch('/progresso/atividades', { method: 'POST', body: { modulo_id: moduloId, ...resto } })
 }
 
+/** Edita data, título e descrição (só administração). O módulo não muda. */
+export function editarAtividadeProgresso(
+  id: string, campos: { data: string; titulo: string; descricao: string },
+): Promise<{ ok: boolean; atividade: AtividadeProgresso }> {
+  return apiFetch(`/progresso/atividades/${encodeURIComponent(id)}`, { method: 'PUT', body: campos })
+}
+
 export function apagarAtividadeProgresso(id: string): Promise<{ ok: boolean }> {
   return apiFetch(`/progresso/atividades/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }

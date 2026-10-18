@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../lib/queryKeys'
 import {
   apagarAtividadeProgresso, criarAtividadeProgresso, descartarProgressoModulo,
+  editarAtividadeProgresso,
   fetchAtividadesProgresso, fetchProgresso, salvarProgressoModulo,
   type AjustesProgresso, type DataEtapa, type NovaAtividadeProgresso,
 } from '../services/progresso.service'
@@ -127,6 +128,15 @@ export function useCriarAtividadeProgresso() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (nova: NovaAtividadeProgresso) => criarAtividadeProgresso(nova),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.progressoAtividades() }),
+  })
+}
+
+export function useEditarAtividadeProgresso() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...campos }: { id: string; data: string; titulo: string; descricao: string }) =>
+      editarAtividadeProgresso(id, campos),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.progressoAtividades() }),
   })
 }

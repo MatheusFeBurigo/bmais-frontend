@@ -306,11 +306,13 @@
 .prg-ativ-descricao{margin:0;font-size:var(--t-base);color:var(--ink-2);line-height:1.5;
   white-space:pre-wrap}
 .prg-ativ-autor{font-size:var(--t-xs);color:var(--muted-3)}
-.prg-ativ-apagar{display:grid;place-items:center;width:24px;height:24px;padding:0;flex-shrink:0;
+/* Editar e remover, só para a administração: discretos até o hover. */
+.prg-ativ-acao{display:grid;place-items:center;width:24px;height:24px;padding:0;flex-shrink:0;
   align-self:center;border:1px solid transparent;background:none;border-radius:var(--r-sm);
   color:var(--muted-3);cursor:pointer;transition:color .12s,background .12s,border-color .12s}
-.prg-ativ-apagar:hover{background:var(--surface-3);border-color:var(--border);color:var(--danger,#b42318)}
-.prg-ativ-apagar:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.prg-ativ-acao:hover{background:var(--surface-3);border-color:var(--border);color:var(--accent)}
+.prg-ativ-acao:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.prg-ativ-apagar:hover{color:var(--danger,#b42318)}
 
 /* ── Semanas e dias do resumo ───────────────────────────────────────────────
    Dois níveis recolhíveis: a semana é o cabeçalho de seção, o dia é a linha
