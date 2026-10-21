@@ -12,6 +12,7 @@ import {
   fetchInternacaoRelatorios,
   fetchInternacaoTimeline,
   fetchSugestoesPessoa,
+  registrarRelatorioComAnexo,
   registrarRelatorioRapido,
   responderSugestaoPessoa,
   type InternacaoEdicao,
@@ -106,7 +107,9 @@ export function useEditarInternacao(id: number) {
 export function useRegistrarRelatorio(id: number) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (rel: RelatorioRapido) => registrarRelatorioRapido(id, rel),
+    // Com documento anexado, o mesmo corpo vai pela rota multipart.
+    mutationFn: ({ arquivo, ...rel }: RelatorioRapido & { arquivo?: File | null }) =>
+      (arquivo ? registrarRelatorioComAnexo(id, rel, arquivo) : registrarRelatorioRapido(id, rel)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.internacaoRelatorios(id) })
       qc.invalidateQueries({ queryKey: queryKeys.internacaoTimeline(id) })

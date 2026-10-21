@@ -24,6 +24,9 @@ export interface ItemTrocaProcedimento {
 export type Bloco = 'procedimentos' | 'altoCusto' | 'evento' | 'glosas'
   | 'medNegadas' | 'negados' | 'trocas'
 
+/** As seções da modal com campos daqui: o "OK" de cada uma confere só a sua. */
+export type ParteDetalhes = 'internacao' | 'periodo' | 'negociacao'
+
 const qtdeValida = (q: string) => /^\d{1,3}$/.test(q.trim()) && Number(q) >= 1
 const periodoValido = (ini: string, fim: string) => !fim || (Boolean(ini) && fim >= ini)
 
@@ -159,6 +162,57 @@ export function useDetalhesRelatorio() {
     for (const l of [procedimentos, negados, altoCusto, glosas, medNegadas, trocas]) l.carregar([])
   }
 
+  /** Correção de quem aprova (20/10/2026): a modal abre com o relatório completo
+   *  como foi gravado, os blocos preenchidos marcados. As acomodações vêm em
+   *  lista, com editar e tirar por linha, para dar para corrigir qualquer uma
+   *  (na movimentação só a troca nova se desfaz). */
+  function carregar(d: DetalhesRelatorio | null) {
+    const txt = (v?: string | number | null) => (v == null ? '' : String(v))
+    setCarater(d?.carater ?? '')
+    setTipoInternacao(d?.tipo_internacao ?? '')
+    setDoUltimo(false)
+    acomodacoes.carregar((d?.acomodacoes ?? []).map((a) => ({
+      acomodacao: a.acomodacao, data_entrada: a.data_entrada, data_saida: txt(a.data_saida),
+    })))
+    setComLocal(false)
+    setMovimentos([])
+    setMovendo(false)
+    setMovimento(movimentacaoVazia())
+    setMovimentoBase(movimentacaoVazia())
+    setEnfermeiro(d?.enfermeiro ?? '')
+    setAnalise(d?.analise ?? '')
+    const proc = (p: { codigo: string; nome: string; qtde: number; data?: string | null }) => ({
+      codigo: p.codigo, nome: p.nome, qtde: txt(p.qtde), data: txt(p.data),
+    })
+    procedimentos.carregar((d?.procedimentos ?? []).map(proc))
+    negados.carregar((d?.procedimentos_negados ?? []).map(proc))
+    altoCusto.carregar((d?.alto_custo ?? []).map((a) => ({
+      tipo: a.tipo, medicacao: txt(a.medicacao), dose: txt(a.dose),
+      data_inicio: txt(a.data_inicio), data_fim: txt(a.data_fim),
+    })))
+    glosas.carregar((d?.glosas ?? []).map((g) => ({
+      acomodacao: g.acomodacao, diarias: txt(g.diarias), data_inicio: txt(g.data_inicio), data_fim: txt(g.data_fim),
+    })))
+    medNegadas.carregar((d?.medicacoes_negadas ?? []).map((m) => ({
+      nome: m.nome, qtde: txt(m.qtde), unidade: txt(m.unidade),
+      data_inicio: txt(m.data_inicio), data_fim: txt(m.data_fim),
+    })))
+    trocas.carregar((d?.trocas_procedimento ?? []).map((t) => ({
+      codigo_de: t.codigo_de, nome_de: t.nome_de, codigo_para: t.codigo_para, nome_para: t.nome_para,
+      data: txt(t.data),
+    })))
+    setEvento(d?.evento_adverso
+      ? { data: d.evento_adverso.data, descricao: d.evento_adverso.descricao }
+      : { data: hojeISO(), descricao: '' })
+    const preenchidos: [Bloco, unknown][] = [
+      ['procedimentos', d?.procedimentos?.length], ['altoCusto', d?.alto_custo?.length],
+      ['evento', d?.evento_adverso], ['glosas', d?.glosas?.length],
+      ['medNegadas', d?.medicacoes_negadas?.length], ['negados', d?.procedimentos_negados?.length],
+      ['trocas', d?.trocas_procedimento?.length],
+    ]
+    setMarcados(new Set(preenchidos.filter(([, v]) => Boolean(v)).map(([b]) => b)))
+  }
+
   /** A acomodação em que a ficha diz que o paciente está (prorrogação vigente
    *  ou leito) entra nas acomodações utilizadas (pedido de 08/10/2026: "deve
    *  puxar a que o paciente está atualmente"):
@@ -184,10 +238,20 @@ export function useDetalhesRelatorio() {
   const ligado = (b: Bloco) => marcados.has(b)
 
   /** A primeira coisa que impede o registro, ou null. Mesmas regras de
-   *  domain/relatorio_detalhes.py, que confere de novo. */
-  function conferir(): string | null {
-    if (comLocal && movimentoPendente) return 'Termine a movimentação ou cancele.'
-    if (!comLocal && acomodacoes.pendente) return 'Termine a linha das acomodações utilizadas ou limpe os campos.'
+   *  domain/relatorio_detalhes.py, que confere de novo. Com `parte`, só a
+   *  daquela seção (o "OK" da seção); sem, tudo, na ordem da modal. */
+  function conferir(parte?: ParteDetalhes): string | null {
+    if (!parte) return conferir('internacao') ?? conferir('periodo') ?? conferir('negociacao')
+    if (parte === 'internacao') {
+      if (comLocal && movimentoPendente) return 'Termine a movimentação ou cancele.'
+      if (!comLocal && acomodacoes.pendente) return 'Termine a linha das acomodações utilizadas ou limpe os campos.'
+      return null
+    }
+    if (parte === 'periodo') return conferirPeriodo()
+    return conferirNegociacao()
+  }
+
+  function conferirPeriodo(): string | null {
     if (ligado('procedimentos')) {
       if (procedimentos.pendente) return 'Termine a linha do procedimento realizado ou limpe os campos.'
       if (!procedimentos.finais().length) return 'Adicione um procedimento realizado ou desmarque o bloco.'
@@ -202,6 +266,10 @@ export function useDetalhesRelatorio() {
     if (ligado('evento') && (!evento.data || !evento.descricao.trim())) {
       return 'Informe a data e o que aconteceu no evento adverso.'
     }
+    return null
+  }
+
+  function conferirNegociacao(): string | null {
     if (ligado('glosas')) {
       if (glosas.pendente) return 'Termine a linha da glosa ou limpe os campos.'
       if (!glosas.finais().length) return 'Adicione uma glosa ou desmarque o bloco.'
@@ -262,7 +330,7 @@ export function useDetalhesRelatorio() {
     ligado, marcar,
     procedimentos, negados, altoCusto, glosas, medNegadas, trocas,
     evento, setEvento,
-    iniciar, conferir, pedido,
+    iniciar, carregar, conferir, pedido,
   }
 }
 

@@ -45,7 +45,7 @@ export function ModuloOperacional({ irPara }: Props) {
         titulo="Encontrar um paciente específico"
         passos={[
           { n: 1, titulo: "Digite no campo de busca", corpo: <>Vale o nome do segurado, o número de atendimento ou a senha de autorização. Não precisa digitar o nome inteiro.</> },
-          { n: 2, titulo: "Não achou? Ligue o filtro Altas", corpo: <>A lista mostra só quem está internado. Um paciente que já saiu só aparece na busca com o filtro <strong>Altas</strong> ligado.</> },
+          { n: 2, titulo: "Quem já saiu aparece junto", corpo: <>A partir de duas letras, a busca procura também entre as altas: quem já saiu entra no fim da lista, com o selo <strong>Alta</strong> e a data da alta. Com um card de status do topo escolhido, a busca fica só nos internados.</> },
           { n: 3, titulo: "Clique na linha para abrir a ficha", corpo: <>Se nem assim aparecer, confira se a operadora e o hospital escolhidos no topo são os dele.</> },
         ]}
       >
@@ -98,10 +98,11 @@ export function ModuloOperacional({ irPara }: Props) {
       <Tabela cabecalho={['Filtro', 'O que faz']} larguras={['185px']}>
         <tr><Key>Operadora</Key><td>Recorta tudo para uma operadora, ou consolida todas.</td></tr>
         <tr><Key>Hospital</Key><td>Restringe a uma unidade. Cada opção já mostra quantos internados e quantos alertas ela tem. Na visão consolidada, os hospitais aparecem agrupados por operadora.</td></tr>
-        <tr><Key>Busca</Key><td>Procura por nome do segurado, número de atendimento e senha de autorização.</td></tr>
+        <tr><Key>Busca</Key><td>Procura por nome do segurado, número de atendimento e senha de autorização, entre os internados e também entre as altas (sem precisar ligar o filtro <strong>Altas</strong>).</td></tr>
         <tr><Key>UTI e CTI</Key><td>Mantém apenas leitos de terapia intensiva.</td></tr>
         <tr><Key>Longa permanência</Key><td>Escolha a partir de quantos dias de internação: 3, 7, 10, 15 ou 30. O chip fica marcado com o corte escolhido. Clique nele para trocar, ou no x para tirar o filtro. Na lista de altas, conta os dias até a alta.</td></tr>
         <tr><Key>Em prorrogação</Key><td>Mantém apenas os internados com prorrogação aprovada em andamento, inclusive as pausadas. Não aparece na lista de altas.</td></tr>
+        <tr><Key>Pendentes de aprovação</Key><td>Mantém apenas os pacientes com relatório aguardando aprovação, internados ou com alta.</td></tr>
         <tr><Key>Altas</Key><td>Troca a base da lista para os pacientes que já saíram, em vez dos internados.</td></tr>
         <tr><Key>Ordenação</Key><td>Padrão, mais dias sem relatório, ou mais dias internado. Na primeira opção, quem nunca teve relatório vai ao topo.</td></tr>
       </Tabela>
@@ -177,7 +178,10 @@ export function ModuloPaciente({ irPara }: Props) {
       <Callout tipo="info" titulo="Técnico ou gestor aprova o relatório do operacional">
         O relatório do operacional vai para a coluna <strong>Aguardando aprovação</strong> do quadro
         de pacientes, em Tarefas. O clique no card abre a ficha do paciente com o relatório, e
-        Aprovar e Devolver ficam no rodapé dele. O do técnico e o do gestor valem na hora. Os demais perfis veem a ficha, mas o bloco de
+        Aprovar, Editar e Devolver ficam no rodapé dele. <strong>Editar</strong> abre o relatório na
+        mesma janela do registro, já preenchido: corrija o que precisar e use{' '}
+        <strong>Salvar e aprovar</strong>, sem devolver. O relatório segue com o nome de quem o
+        escreveu. O do técnico e o do gestor valem na hora. Os demais perfis veem a ficha, mas o bloco de
         registrar não aparece para eles.
       </Callout>
       </>)}
@@ -288,11 +292,17 @@ export function ModuloPaciente({ irPara }: Props) {
         paciente; os relatórios anteriores continuam na timeline da ficha. A janela abre simples:
         só o relatório de visita aberto, e as demais seções fechadas, com o resumo do que já está
         preenchido.
-        Cada uma reduz e expande pela seta ao lado do título.
+        Cada uma reduz e expande pela seta ao lado do título. As seções vêm na ordem de
+        preenchimento: primeiro as que têm campo obrigatório (Relatório de visita e Quadro
+        clínico), depois as opcionais.
       </p>
       <ul>
-        <li><strong>Relatório de visita</strong>: a data, obrigatória e já com a data de hoje, o médico
-          auditor, o enfermeiro auditor e o que foi analisado.</li>
+        <li><strong>Relatório de visita</strong>: a data, obrigatória e já com a data de hoje, e quem
+          fez a visita: o médico auditor, o enfermeiro auditor ou os dois. Um deles é obrigatório. O
+          que foi analisado vai no texto do relatório, no Quadro clínico.</li>
+        <li><strong>Quadro clínico</strong>: diagnóstico principal e secundário, opcionais, e o
+          texto do relatório, obrigatório. O CID que o paciente ainda não tem passa a constar na
+          ficha dele.</li>
         <li><strong>Quadro de internação</strong>: caráter (urgência ou eletivo), tipo de
           internação e as acomodações utilizadas, com entrada e saída. Elas vêm do censo e das
           trocas já registradas, e a janela mostra onde o paciente está. Para cada troca que
@@ -300,15 +310,14 @@ export function ModuloPaciente({ irPara }: Props) {
           <strong>Adicionar movimentação</strong> e escolha a nova acomodação e a data: ao
           registrar, ela entra na timeline como <strong>Mudança de acomodação</strong>. Sem
           nenhuma acomodação conhecida, preencha a acomodação, a entrada e a saída.</li>
-        <li><strong>Quadro clínico</strong>: diagnóstico principal e secundário, opcionais, e o
-          texto do relatório, obrigatório. O CID que o paciente ainda não tem passa a constar na
-          ficha dele.</li>
         <li><strong>No período</strong>: procedimentos realizados, medicação de alto custo, evento
           adverso e folha rosa (a troca de acomodação). Quando o relatório com folha rosa passa a
           valer, a timeline ganha o evento <strong>Troca de acomodação</strong>.</li>
         <li><strong>Prorrogação</strong>: marque <strong>Pedir prorrogação</strong>, adicione os
           períodos (acomodação, início e fim) e escolha a justificativa. O período seguinte já vem
-          começando no dia depois do anterior. Depois que a prorrogação vale, admin e operacional
+          começando no dia depois do anterior. Se a operadora pede um documento, como o formulário
+          de prorrogação da Porto Seguro, use <strong>Anexar documento</strong> (PDF ou foto, até
+          25 MB); ele fica no relatório para baixar. Depois que a prorrogação vale, admin e operacional
           pausam e retomam pelo botão <strong>Pausar prorrogação</strong>, no topo da ficha.</li>
 {NEGOCIACAO_NO_RELATORIO && (
         <li><strong>Negociação com o hospital</strong>: glosa de diárias, medicação negada,
@@ -316,7 +325,11 @@ export function ModuloPaciente({ irPara }: Props) {
         )}
       </ul>
       <p>
-        A prorrogação e os blocos de <strong>No período</strong>
+        Ao terminar uma seção, clique em <strong>OK</strong>, no fim dela: os campos daquela seção são
+        conferidos, ela fecha com a marca verde <strong>Concluída</strong> ao lado do título, e a
+        seguinte abre. Se faltar algo, o aviso aparece no rodapé e a seção continua aberta.{' '}
+        <strong>Registrar relatório</strong> continua valendo
+        de qualquer ponto. A prorrogação e os blocos de <strong>No período</strong>
         {NEGOCIACAO_NO_RELATORIO && <> e <strong>Negociação com o hospital</strong></>} abrem quando
         marcados. Nas listas, preencha a
         linha e clique em <strong>Adicionar</strong>; a última linha completa também entra ao
@@ -447,7 +460,7 @@ export function ModuloKanban({ irPara }: Props) {
       <Tabela cabecalho={['Coluna', 'O que reúne', 'O que fazer']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Aguardando aprovação</Key>
           <td>Relatórios enviados pelo operacional: paciente, visita, quem enviou e a prorrogação pedida.</td>
-          <td>Técnico ou gestor: clique no card. A ficha do paciente abre com o relatório, e Aprovar e Devolver ficam no rodapé dele.</td></tr>
+          <td>Técnico ou gestor: clique no card. A ficha do paciente abre com o relatório, e Aprovar, Editar e Devolver ficam no rodapé dele.</td></tr>
         <tr><Key>Devolvidos</Key>
           <td>Relatórios que o técnico pediu para corrigir, com o motivo.</td>
           <td>Quem escreveu: clique no card e use Corrigir e reenviar, no rodapé do relatório.</td></tr>

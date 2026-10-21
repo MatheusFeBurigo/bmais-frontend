@@ -1042,6 +1042,7 @@ export interface RelatorioEmAprovacao {
   /** Por que o técnico devolveu. */
   devolucao_motivo?: string | null
   tem_anexo?: boolean
+  anexo_nome?: string | null
   /** Pedido de prorrogação; esses cards vêm primeiro na coluna. */
   prorrogacao?: PedidoProrrogacao | null
   /** Folha rosa negociada neste relatório. */
@@ -1791,6 +1792,8 @@ export interface RelatorioItem {
   fonte?: string | null
   /** True quando há documento anexado (baixável via /relatorio/:id/arquivo). */
   tem_anexo?: boolean
+  /** Nome do documento anexado, como foi enviado. */
+  anexo_nome?: string | null
   /** CIDs do paciente que o relatório trata, copiados no registro. */
   cids?: { codigo: string; descricao?: string | null }[]
   /** Aprovação do técnico: só o aprovado conta como visita. */

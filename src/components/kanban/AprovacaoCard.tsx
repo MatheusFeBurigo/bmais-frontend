@@ -42,7 +42,7 @@ export const AprovacaoCard = memo(function AprovacaoCard({ tarefa: t, onAbrir, o
       {rel.autor && (
         <div className="kb-card-meta"><span>Enviado por {nomeDePessoa(rel.autor_nome, rel.autor)}</span></div>
       )}
-      {(rel.prorrogacao || prorrogado) && (
+      {(rel.prorrogacao || prorrogado || rel.tem_anexo) && (
         <div className="kb-tags">
           {rel.prorrogacao && (
             <span className="kb-tag" style={{ color: 'var(--info)', background: 'var(--info-bg)' }}>
@@ -54,6 +54,12 @@ export const AprovacaoCard = memo(function AprovacaoCard({ tarefa: t, onAbrir, o
               ? { color: 'var(--muted)', background: 'var(--surface-3)' }
               : { color: 'var(--caution)', background: 'var(--caution-bg)' }}>
               {prorrogado.texto}
+            </span>
+          )}
+          {rel.tem_anexo && (
+            <span className="kb-tag" title={rel.anexo_nome ?? undefined}
+                  style={{ color: 'var(--muted)', background: 'var(--surface-3)' }}>
+              Com documento
             </span>
           )}
         </div>

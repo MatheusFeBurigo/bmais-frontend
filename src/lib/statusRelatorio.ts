@@ -8,6 +8,15 @@ export function gravidadeDoStatus(sr: string | null | undefined): Gravidade {
   return 'normal'
 }
 
+// Status de paciente que já saiu (alta registrada ou inferida do censo).
+const STATUS_ALTA = new Set(['ALTA_SEM_REL', 'ALTA_REL_VENCIDO', 'ALTA_OK', 'ALTA_AUTO'])
+
+/** O paciente já saiu. A busca do Painel Operacional mistura altas aos
+ *  internados, e cada linha se mostra pelo seu status. */
+export function ehAlta(sr?: string | null): boolean {
+  return STATUS_ALTA.has(sr ?? '')
+}
+
 export function corDaGravidade(g: Gravidade): string {
   if (g === 'perigo') return 'var(--danger)'
   if (g === 'atencao') return 'var(--warning)'

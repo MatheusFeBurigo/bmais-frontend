@@ -20,6 +20,7 @@ import { AlertaInternacaoMaisRecente, AlertaSugestoesPessoa } from '../component
 import { CardCids } from '../components/paciente/CardCids'
 import { CardDadosPaciente } from '../components/paciente/CardDadosPaciente'
 import { CardRelatorios } from '../components/paciente/CardRelatorios'
+import { CorrigirRelatorio } from '../components/paciente/relatorio/CorrigirRelatorio'
 import { FichaRelatorio, type AlvoRelatorio } from '../components/paciente/relatorio/FichaRelatorio'
 import { KpisPaciente } from '../components/paciente/KpisPaciente'
 import { SubtituloPaciente } from '../components/paciente/SubtituloPaciente'
@@ -32,6 +33,7 @@ import { podeExecutar, podeVer, podeVerFichaPaciente } from '../auth/permissions
 import { identificacaoPaciente } from '../lib/texto'
 import { dataBR } from '../lib/datas'
 import { camposIncompletos, type CampoFicha } from '../lib/fichaIncompleta'
+import type { RelatorioItem } from '../types/api'
 
 // O último card da coluna esquerda ocupa a altura que sobrar quando a coluna da
 // direita é a mais alta. É o de CIDs, ou o de dados quando o de CIDs não aparece.
@@ -76,7 +78,10 @@ export default function Paciente() {
       setParams(p, { replace: true })
     }
   }
+  // Relatório pendente em correção por quem aprova: abre por cima da ficha dele.
+  const [corrigindo, setCorrigindo] = useState<RelatorioItem | null>(null)
   function relatorioDecidido(aviso: string) {
+    setCorrigindo(null)
     if (veioDeTarefas) {
       navigate('/tarefas', { state: { aviso } })
       return
@@ -251,7 +256,16 @@ export default function Paciente() {
       {relatorioAberto && (
         <FichaRelatorio internacaoId={internacaoId} alvo={relatorioAberto}
                         onFechar={fecharRelatorio}
-                        acoes={{ nomePaciente: identificacaoPaciente(d), onDecidido: relatorioDecidido }} />
+                        acoes={{
+                          nomePaciente: identificacaoPaciente(d), onDecidido: relatorioDecidido,
+                          onCorrigir: setCorrigindo,
+                        }} />
+      )}
+      {corrigindo && (
+        <CorrigirRelatorio internacaoId={internacaoId} relatorio={corrigindo} paciente={d}
+                           medicos={medicos} enfermeiros={enfermeiros}
+                           onFechar={() => setCorrigindo(null)}
+                           onFeito={() => relatorioDecidido(`✓ Relatório de ${identificacaoPaciente(d)} corrigido e aprovado`)} />
       )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </div>

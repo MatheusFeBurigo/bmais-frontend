@@ -326,7 +326,11 @@ export async function apiFetch<T = unknown>(
   const headers: Record<string, string> = {}
 
   let payload: BodyInit | undefined
-  if (body !== undefined) {
+  // FormData (arquivo anexado) vai como está: o browser monta o boundary do
+  // multipart, e por isso o Content-Type não é definido aqui.
+  if (body instanceof FormData) {
+    payload = body
+  } else if (body !== undefined) {
     headers['Content-Type'] = 'application/json'
     payload = JSON.stringify(body)
   }

@@ -285,7 +285,7 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 
 /* ── Table ── */
 .bmais-table{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--t-base)}
-.bmais-table thead th{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600;text-align:left;padding:10px 12px;background:var(--surface-3);border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0}
+.bmais-table thead th{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600;text-align:left;padding:10px 12px;background:var(--surface-3);border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:2}
 .bmais-table tbody td{padding:10px 12px;border-bottom:1px solid var(--border-soft);vertical-align:middle;color:var(--ink-2)}
 .bmais-table tbody tr.flag-danger{background:linear-gradient(90deg,var(--danger-bg) 0%,rgba(252,231,234,.22) 100%)}
 .bmais-table tbody tr.flag-warning{background:linear-gradient(90deg,var(--warning-bg) 0%,rgba(253,236,219,.22) 100%)}

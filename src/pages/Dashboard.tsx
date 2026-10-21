@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthContext'
 import { ehSomenteLeitura, podeVer } from '../auth/permissions'
 import ExportarModal from '../components/dashboard/ExportarModal'
 import StatusAtualizacao from '../components/dashboard/StatusAtualizacao'
+import CampoDataFiltro from '../components/dashboard/CampoDataFiltro'
 import Toast from '../components/Toast'
 import { Spinner, Skeleton, opInitial } from '../components/ui'
 import { Deferred } from '../components/Deferred'
@@ -21,6 +22,7 @@ import { AUTO_REFRESH_MS } from '../lib/autoRefresh'
 import { NOME_TODAS } from '../services/dashboard.service'
 import { dataBR, hojeISO, paraISO } from '../lib/datas'
 import { etiquetaProrrogacao } from '../lib/prorrogacao'
+import { ehAlta } from '../lib/statusRelatorio'
 import type {
   DashboardOverview, DashboardOverviewOperadora, DashboardStats, Hospital, Internacao,
 } from '../types/api'
@@ -113,6 +115,9 @@ export default function Dashboard() {
   // dois limites da operadora e zeram com a alta. `dias` conta até hoje, ou até
   // a alta no modo "Altas", então o mesmo chip serve às duas listas.
   const [permanencia, setPermanencia] = useState<number | null>(null)
+  // Relatórios pendentes de aprovação (20/10/2026): quem tem relatório esperando
+  // quem aprova. Vale nas duas listas (o paciente pode ter tido alta depois).
+  const [aprovacaoOn, setAprovacaoOn] = useState(false)
   // Opções de dias à mostra. Escolher uma recolhe as opções; o chip fica marcado
   // com o corte escolhido.
   const [permAberta, setPermAberta] = useState(false)
@@ -232,6 +237,19 @@ export default function Dashboard() {
   // Um dos dois já chegou? Governa se KPIs/hospital mostram valor ou skeleton.
   const temPanorama = Boolean(ovAtual || data)
 
+  // A busca também acha quem já teve alta (20/10/2026: "buscar o paciente
+  // independente se internado ou alta, sem precisar clicar no filtro rápido").
+  // Com texto na busca e sem status escolhido nos cards, a lista de altas da
+  // mesma visão vem junto (a do chip "Altas", mesmo cache), e quem casa com a
+  // busca entra depois dos internados, com o selo "Alta".
+  const buscaComAltas = busca.trim().length >= 2 && filtro === 'todos'
+  const { data: dadosAltas, isPlaceholderData: altasDeOutraVisao } = useDashboard(
+    { operadora, filtro: 'altas', hospital }, { enabled: buscaComAltas })
+  // Trocou operadora/hospital: as altas da visão anterior não entram na lista.
+  const altasDaBusca = buscaComAltas && !altasDeOutraVisao
+    ? dadosAltas?.internacoes ?? SEM_INTERNACOES
+    : SEM_INTERNACOES
+
   // No consolidado, os hospitais vão agrupados por operadora (<optgroup>) — o
   // seletor diz de quem é cada hospital. Numa operadora só, lista plana como antes.
   const gruposHospitais = useMemo(() => {
@@ -259,7 +277,11 @@ export default function Dashboard() {
   const visiveis = useMemo(() => {
     const q = busca.toLowerCase().trim()
     const hoje = hojeISO()
-    const filtrados = internacoes.filter((p) => {
+    const ids = new Set(internacoes.map((p) => p.id))
+    const base = altasDaBusca.length
+      ? [...internacoes, ...altasDaBusca.filter((p) => !ids.has(p.id))]
+      : internacoes
+    const filtrados = base.filter((p) => {
       const nome = (p.nome || '').toLowerCase()
       const atend = String(p.atendimento || '').toLowerCase()
       // A senha entra na busca porque é a identificação exibida na coluna
@@ -268,7 +290,9 @@ export default function Dashboard() {
       const senha = (p.senha || '').toLowerCase()
       const okBusca = !q || nome.includes(q) || atend.includes(q) || senha.includes(q)
       const okUti = !utiOn || (p.tipo_leito || '').toUpperCase() === 'UTI'
-      const okProrrog = !soProrrogados || etiquetaProrrogacao(p.prorrogacao_ate, p.prorrogacao_pausada, hoje) != null
+      const okProrrog = !soProrrogados
+        || (!ehAlta(p.status_relatorio) && etiquetaProrrogacao(p.prorrogacao_ate, p.prorrogacao_pausada, hoje) != null)
+      const okAprovacao = !aprovacaoOn || Boolean(p.relatorio_em_aprovacao)
       // Sem data de internação não há como contar dias: sai do recorte.
       const okPerm = permanencia == null || (p.dias != null && p.dias >= permanencia)
       // Censo traz datas em dd/mm/aaaa ou ISO: normaliza antes de comparar. Sem
@@ -278,7 +302,7 @@ export default function Dashboard() {
         const d = paraISO(vendoAltas ? p.data_alta : p.data_entrada)
         okData = Boolean(d) && (!dataDe || d >= dataDe) && (!dataAte || d <= dataAte)
       }
-      return okBusca && okUti && okProrrog && okPerm && okData
+      return okBusca && okUti && okProrrog && okAprovacao && okPerm && okData
     })
     if (ordenar === 'sem_rel') {
       // Mais dias sem relatório primeiro; sem relatório (null) vai ao topo.
@@ -290,7 +314,7 @@ export default function Dashboard() {
       return [...filtrados].sort((a, b) => (b.dias ?? 0) - (a.dias ?? 0))
     }
     return filtrados
-  }, [internacoes, busca, utiOn, soProrrogados, permanencia, ordenar, dataDe, dataAte, vendoAltas])
+  }, [internacoes, altasDaBusca, busca, utiOn, soProrrogados, aprovacaoOn, permanencia, ordenar, dataDe, dataAte, vendoAltas])
 
   // Paginação client-side: renderizar todas as internações de uma vez trava a
   // tabela em operadoras grandes (cada linha tem vários componentes). Fatiamos
@@ -306,14 +330,14 @@ export default function Dashboard() {
   // Qualquer mudança de filtro reinicia a paginação na primeira página.
   useEffect(() => {
     setPagina(1)
-  }, [busca, utiOn, soProrrogados, permanencia, ordenar, operadora, filtro, hospital, dataDe, dataAte])
+  }, [busca, utiOn, soProrrogados, aprovacaoOn, permanencia, ordenar, operadora, filtro, hospital, dataDe, dataAte])
 
   // Chave da lista em tela: muda quando um filtro, a ordem ou a página trocam as
   // linhas, e a tabela refaz a entrada delas (senão a lista muda "do nada"). A
   // busca fica de fora para não animar a cada tecla, e o polling também, porque
   // não mexe na chave. Num filtro do backend a chave só vira quando a lista nova
   // chega: enquanto `trocando`, a tela ainda mostra a anterior, esmaecida.
-  const assinaturaLista = [operadora, filtro, hospital, dataDe, dataAte, utiOn, soProrrogados, permanencia, ordenar, paginaAtual].join('|')
+  const assinaturaLista = [operadora, filtro, hospital, dataDe, dataAte, utiOn, soProrrogados, aprovacaoOn, permanencia, ordenar, paginaAtual].join('|')
   const [chaveLista, setChaveLista] = useState(assinaturaLista)
   if (!trocando && chaveLista !== assinaturaLista) setChaveLista(assinaturaLista)
 
@@ -321,6 +345,8 @@ export default function Dashboard() {
   const filtrosAtivos: string[] = []
   if (utiOn) filtrosAtivos.push('UTI / CTI')
   if (soProrrogados) filtrosAtivos.push('Em prorrogação')
+  if (aprovacaoOn) filtrosAtivos.push('Pendentes de aprovação')
+  if (altasDaBusca.length && visiveis.some((p) => ehAlta(p.status_relatorio))) filtrosAtivos.push('Busca inclui altas')
   if (permanencia != null) filtrosAtivos.push(`Longa permanência ${permanencia}d+`)
   if (dataDe || dataAte) {
     filtrosAtivos.push(
@@ -493,25 +519,19 @@ export default function Dashboard() {
               <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
                 {vendoAltas ? 'Alta de' : 'Internação de'}
               </span>
-              <input
-                type="date"
-                className="bm-input"
-                style={{ width: 'auto' }}
-                value={dataDe}
+              <CampoDataFiltro
+                valor={dataDe}
                 max={dataAte || hojeISO()}
-                onChange={(e) => setParam('de', e.target.value || null)}
-                aria-label={vendoAltas ? 'Alta a partir de' : 'Internação a partir de'}
+                onChange={(v) => setParam('de', v || null)}
+                ariaLabel={vendoAltas ? 'Alta a partir de' : 'Internação a partir de'}
               />
               <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>até</span>
-              <input
-                type="date"
-                className="bm-input"
-                style={{ width: 'auto' }}
-                value={dataAte}
+              <CampoDataFiltro
+                valor={dataAte}
                 min={dataDe || undefined}
                 max={hojeISO()}
-                onChange={(e) => setParam('ate', e.target.value || null)}
-                aria-label={vendoAltas ? 'Alta até' : 'Internação até'}
+                onChange={(v) => setParam('ate', v || null)}
+                ariaLabel={vendoAltas ? 'Alta até' : 'Internação até'}
               />
               {(dataDe || dataAte) && (
                 <button
@@ -585,6 +605,15 @@ export default function Dashboard() {
                 Em prorrogação
               </span>
             )}
+            {/* Relatórios pendentes de aprovação (20/10/2026): o mesmo "Aguardando
+                aprovação" da coluna Relatório, que quem aprova procurava linha a linha. */}
+            <span
+              className={`qf-chip${aprovacaoOn ? ' active' : ''}`}
+              onClick={() => setAprovacaoOn((v) => !v)}
+              title="Pacientes com relatório esperando aprovação"
+            >
+              Pendentes de aprovação
+            </span>
             {/* Altas: troca a BASE da lista (altas no lugar de internados ativos),
                 por isso vai na URL como filtro do backend e não é um recorte
                 client-side como os chips acima. Sem ele, um paciente que recebeu
@@ -607,12 +636,12 @@ export default function Dashboard() {
               <option value="sem_rel">Mais dias sem relatório</option>
               <option value="dias">{vendoAltas ? 'Mais dias internado (até a alta)' : 'Mais dias internado'}</option>
             </select>
-            {(utiOn || soProrrogados || permanencia != null || ordenar !== '' || vendoAltas) && (
+            {(utiOn || soProrrogados || aprovacaoOn || permanencia != null || ordenar !== '' || vendoAltas) && (
               <button
                 className="btn btn-ghost btn-sm"
                 style={{ color: 'var(--muted)' }}
                 onClick={() => {
-                  setUtiOn(false); setProrrogOn(false); setPermanencia(null); setPermAberta(false); setOrdenar('')
+                  setUtiOn(false); setProrrogOn(false); setAprovacaoOn(false); setPermanencia(null); setPermAberta(false); setOrdenar('')
                   // "Altas" mora na URL (é filtro de backend): limpar também o desfaz,
                   // senão o botão some e a lista continua mostrando altas.
                   if (vendoAltas) applyFilter('altas')
@@ -625,8 +654,8 @@ export default function Dashboard() {
             <input
               type="text"
               className="bm-input"
-              style={{ width: 260 }}
-              placeholder={vendoAltas ? 'Buscar entre as altas…' : 'Buscar segurado, atendimento…'}
+              style={{ width: 300 }}
+              placeholder={vendoAltas ? 'Buscar entre as altas…' : 'Buscar segurado, atendimento (e altas)…'}
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
             />

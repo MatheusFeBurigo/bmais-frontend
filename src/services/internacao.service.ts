@@ -176,6 +176,41 @@ export function registrarRelatorioRapido(id: number, rel: RelatorioRapido): Prom
   })
 }
 
+/** Extensões aceitas no documento anexado ao relatório (espelho de
+ *  EXTS_ANEXO_RELATORIO no backend, que é quem recusa). */
+export const EXTENSOES_ANEXO = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
+/** Teto do anexo (MAX_BYTES do backend). */
+export const MAX_BYTES_ANEXO = 25 * 1024 * 1024
+
+/** O corpo JSON no campo `dados` e o arquivo ao lado: o formato das rotas com anexo. */
+function formComAnexo(dados: object, arquivo?: File | null): FormData {
+  const fd = new FormData()
+  fd.append('dados', JSON.stringify(dados))
+  if (arquivo) fd.append('arquivo', arquivo)
+  return fd
+}
+
+/** O registro da modal com um documento anexado (ex.: o pedido de prorrogação
+ *  da Porto Seguro). Mesmo corpo do registro rápido. */
+export function registrarRelatorioComAnexo(id: number, rel: RelatorioRapido, arquivo: File): Promise<unknown> {
+  return apiFetch(`/internacao/${id}/relatorio-com-anexo`, {
+    method: 'POST',
+    body: formComAnexo({ autor: 'operador', ...rel }, arquivo),
+  })
+}
+
+/** Quem aprova corrige o relatório pendente e o aprova no mesmo passo. O
+ *  conteúdo inteiro vai, como no registro; `arquivo` troca o anexo e
+ *  `remover_anexo` o tira. */
+export function editarEAprovarRelatorio(
+  relatorioId: number, rel: RelatorioRapido & { remover_anexo?: boolean }, arquivo?: File | null,
+): Promise<unknown> {
+  return apiFetch(`/relatorio/${relatorioId}/editar-aprovar`, {
+    method: 'POST',
+    body: formComAnexo(rel, arquivo),
+  })
+}
+
 /** Acomodações e justificativas da prorrogação (catálogos estáticos). */
 export function fetchCatalogosProrrogacao(): Promise<CatalogosProrrogacao> {
   return apiFetch<CatalogosProrrogacao>('/prorrogacao/catalogos')

@@ -3,7 +3,9 @@
 // A aprovação saiu do quadro de Tarefas (13/10/2026): o card leva à ficha do
 // paciente com o relatório aberto, e é aqui, depois de ler o relatório e poder
 // conferir a ficha, que o técnico decide. Duas situações:
-//   - pendente: quem aprova (técnico, gestor, admin) aprova ou devolve com o motivo;
+//   - pendente: quem aprova (técnico, gestor, admin) aprova, devolve com o motivo
+//     ou edita e aprova no mesmo passo (20/10/2026: corrigir uma palavra não
+//     precisa de devolução);
 //   - devolvido: quem escreveu (ou quem aprova) corrige e reenvia.
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -121,12 +123,14 @@ function ModalReenviar({ relatorio: rel, internacaoId, onFeito, onCancelar }: {
 
 /** Botões do rodapé da ficha do relatório, conforme o estado e quem olha.
  *  Nada a fazer (aprovado, ou sem permissão) = nada aparece. */
-export function RodapeAprovacao({ relatorio: rel, internacaoId, nomePaciente, onDecidido }: {
+export function RodapeAprovacao({ relatorio: rel, internacaoId, nomePaciente, onDecidido, onCorrigir }: {
   relatorio: RelatorioItem
   internacaoId: number
   nomePaciente: string
   /** Depois de aprovar, devolver ou reenviar, com o aviso para a tela. */
   onDecidido: (aviso: string) => void
+  /** Abre a modal do relatório já preenchida, para corrigir e aprovar. */
+  onCorrigir?: () => void
 }) {
   const { role, username } = useAuth()
   const aprovar = useAprovarRelatorio()
@@ -168,6 +172,11 @@ export function RodapeAprovacao({ relatorio: rel, internacaoId, nomePaciente, on
                 onClick={() => { setErro(null); setDevolvendo(true) }}>
           Devolver
         </button>
+        {onCorrigir && (
+          <button type="button" className="btn btn-outline" disabled={ocupado} onClick={onCorrigir}>
+            Editar
+          </button>
+        )}
         <button type="button" className="btn btn-success" disabled={ocupado} onClick={onAprovar}>
           {aprovar.isPending && <Spinner size={12} />}
           Aprovar

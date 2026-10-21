@@ -1,19 +1,21 @@
 // Ficha do relatório (08/10/2026): o que foi preenchido, só para ler. Abre ao
 // clicar num relatório na timeline (ou no card Relatórios da ficha). Segue as
-// seções da modal "Registrar relatório", na mesma ordem (Visita, Quadro de
-// internação, Quadro clínico, No período, Prorrogação), mas só mostra o que
-// tem conteúdo, em listas e tabelas simples.
+// seções da modal "Registrar relatório", na mesma ordem (Visita, Quadro
+// clínico, Quadro de internação, No período, Prorrogação: as obrigatórias
+// primeiro, desde 20/10/2026), mas só mostra o que tem conteúdo, em listas e
+// tabelas simples.
 //
 // Os dados vêm da lista de relatórios da internação (o mesmo cache do card
 // Relatórios). O evento novo traz o id do relatório; o antigo, sem id, é achado
 // pela data da visita e pelo autor.
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useInternacaoRelatorios } from '../../../hooks/useInternacao'
 import { dataBR, dataHora, diasNoPeriodo } from '../../../lib/datas'
 import { CARATER, TIPOS_ALTO_CUSTO, TIPOS_INTERNACAO, rotulo } from '../../../lib/relatorioDetalhes'
+import { baixarAnexoRelatorio } from '../../../services/internacao.service'
 import type { RelatorioItem } from '../../../types/api'
 import { AutorChip } from '../../StatusBadge'
-import { LoadingState, Modal } from '../../ui'
+import { LoadingState, Modal, Spinner } from '../../ui'
 import { RodapeAprovacao } from './AcoesAprovacao'
 
 /** Qual relatório abrir: pelo id, ou (evento antigo) pela data e pelo autor. */
@@ -42,6 +44,8 @@ const estilos = `
 .fx-texto{font-size:var(--t-sm);color:var(--ink-2);white-space:pre-wrap;overflow-wrap:anywhere;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2)}
 .fx-cid{font-family:var(--font-mono);font-weight:700;color:var(--primary);margin-right:6px}
 .fx-vazio{font-size:var(--t-sm);color:var(--muted)}
+.fx-anexo{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2)}
+.fx-anexo-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--t-sm);color:var(--ink)}
 `
 
 function acharRelatorio(lista: RelatorioItem[], alvo: AlvoRelatorio): RelatorioItem | undefined {
@@ -90,6 +94,38 @@ function Tabela({ titulo, colunas, linhas }: { titulo?: string; colunas: string[
 
 const d = (iso?: string | null) => dataBR(iso) || '—'
 
+/** O documento anexado (ex.: o formulário de prorrogação da operadora), com o
+ *  download pela URL assinada do backend. */
+function Anexo({ r }: { r: RelatorioItem }) {
+  const [baixando, setBaixando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const nome = r.anexo_nome || 'documento'
+  async function baixar() {
+    setErro(null)
+    setBaixando(true)
+    try {
+      await baixarAnexoRelatorio(r.id, nome)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível baixar o documento.')
+    } finally {
+      setBaixando(false)
+    }
+  }
+  return (
+    <>
+      <div className="fx-sub">Documento anexado</div>
+      <div className="fx-anexo">
+        <span className="fx-anexo-nome" title={nome}>{nome}</span>
+        <button type="button" className="btn btn-outline btn-sm" disabled={baixando} onClick={baixar}>
+          {baixando && <Spinner size={12} />}
+          Baixar
+        </button>
+      </div>
+      {erro && <div className="fx-vazio" style={{ color: 'var(--danger)', marginTop: 6 }}>{erro}</div>}
+    </>
+  )
+}
+
 function Conteudo({ r }: { r: RelatorioItem }) {
   const det = r.detalhes ?? {}
   const prr = r.prorrogacao
@@ -120,6 +156,15 @@ function Conteudo({ r }: { r: RelatorioItem }) {
         )}
       </Secao>
 
+      <Secao titulo="Quadro clínico">
+        <Dados itens={[
+          ['Diagnóstico principal', principal ? cid(principal) : ''],
+          [principal ? 'Diagnóstico secundário' : 'Diagnósticos', secundarios.length ? secundarios.map(cid) : '', true],
+        ]} />
+        <div className="fx-sub">Relatório</div>
+        {r.descricao ? <div className="fx-texto">{r.descricao}</div> : <div className="fx-vazio">Sem texto.</div>}
+      </Secao>
+
       {temInternacao && (
         <Secao titulo="Quadro de internação">
           <Dados itens={[
@@ -132,15 +177,6 @@ function Conteudo({ r }: { r: RelatorioItem }) {
                   ])} />
         </Secao>
       )}
-
-      <Secao titulo="Quadro clínico">
-        <Dados itens={[
-          ['Diagnóstico principal', principal ? cid(principal) : ''],
-          [principal ? 'Diagnóstico secundário' : 'Diagnósticos', secundarios.length ? secundarios.map(cid) : '', true],
-        ]} />
-        <div className="fx-sub">Relatório</div>
-        {r.descricao ? <div className="fx-texto">{r.descricao}</div> : <div className="fx-vazio">Sem texto.</div>}
-      </Secao>
 
       {temPeriodo && (
         <Secao titulo="No período">
@@ -176,6 +212,14 @@ function Conteudo({ r }: { r: RelatorioItem }) {
               ['Situação', prr.pausada ? 'Pausada' : ''],
             ]} />
           </div>
+          {r.tem_anexo && <Anexo r={r} />}
+        </Secao>
+      )}
+      {/* Anexo sem pedido de prorrogação: o do formulário antigo, ou o pedido
+          tirado na correção. */}
+      {!prr && r.tem_anexo && (
+        <Secao titulo="Documento">
+          <Anexo r={r} />
         </Secao>
       )}
 
@@ -223,9 +267,14 @@ export function FichaRelatorio({ internacaoId, alvo, onFechar, sobreposta, acoes
   onFechar: () => void
   /** Aberta sobre o painel lateral: sobe o z-index. */
   sobreposta?: boolean
-  /** Só na ficha do paciente (13/10/2026): o rodapé ganha Aprovar e Devolver
-   *  (pendente) ou Corrigir e reenviar (devolvido). Sem isto, só leitura. */
-  acoes?: { nomePaciente: string; onDecidido: (aviso: string) => void }
+  /** Só na ficha do paciente (13/10/2026): o rodapé ganha Aprovar, Editar e
+   *  Devolver (pendente) ou Corrigir e reenviar (devolvido). Sem isto, só leitura. */
+  acoes?: {
+    nomePaciente: string
+    onDecidido: (aviso: string) => void
+    /** Editar o pendente antes de aprovar (20/10/2026). */
+    onCorrigir?: (r: RelatorioItem) => void
+  }
 }) {
   const relatorios = useInternacaoRelatorios(internacaoId)
   const r = relatorios.data ? acharRelatorio(relatorios.data.relatorios, alvo) : undefined
@@ -238,7 +287,8 @@ export function FichaRelatorio({ internacaoId, alvo, onFechar, sobreposta, acoes
                        style={acoes ? { marginRight: 'auto' } : undefined}>Fechar</button>
                {acoes && r && (
                  <RodapeAprovacao relatorio={r} internacaoId={internacaoId}
-                                  nomePaciente={acoes.nomePaciente} onDecidido={acoes.onDecidido} />
+                                  nomePaciente={acoes.nomePaciente} onDecidido={acoes.onDecidido}
+                                  onCorrigir={acoes.onCorrigir ? () => acoes.onCorrigir?.(r) : undefined} />
                )}
              </>
            }>

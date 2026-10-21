@@ -33,6 +33,9 @@ export function SecaoVisita({ form, medicos, enfermeiros, dataEntrada }: {
   const c = form.completo
   // Um campo para o médico e outro para o enfermeiro (voltou em 13/10/2026; de
   // 08/10 a 13/10 foi um campo só). O do enfermeiro precisa da 0054.
+  // "O que foi analisado" saiu em 20/10/2026 (Dra. Erika): o texto já vai no
+  // Relatório do Quadro clínico. O relatório antigo que o tem segue mostrando
+  // na ficha, e editar um pendente não o apaga (o estado continua no hook).
   return (
     <div className="rr-pilha">
       <div className="rr-g3">
@@ -46,7 +49,8 @@ export function SecaoVisita({ form, medicos, enfermeiros, dataEntrada }: {
                  onChange={(e) => form.setDataVisita(e.target.value)} />
         </label>
         <div className="rr-campo">
-          <span className="form-lbl">Médico auditor</span>
+          {/* Sem o campo do enfermeiro (sem a 0054), o médico é o obrigatório. */}
+          <span className="form-lbl">Médico auditor{!c?.noBanco && <span className="req">*</span>}</span>
           <MedicoCombobox value={form.medico} onChange={form.setMedico} nomes={medicos} />
         </div>
         {c?.noBanco && (
@@ -57,15 +61,11 @@ export function SecaoVisita({ form, medicos, enfermeiros, dataEntrada }: {
           </div>
         )}
       </div>
+      {/* 20/10/2026: quem fez a visita é obrigatório, um dos dois ou ambos. */}
       {c?.noBanco && (
-        <label className="rr-campo">
-          <span className="form-lbl">O que foi analisado</span>
-          <textarea
-            className="bm-input" rows={4} maxLength={2000}
-            style={{ resize: 'vertical', fontFamily: 'inherit' }}
-            value={c.analise} onChange={(e) => c.setAnalise(e.target.value)}
-          />
-        </label>
+        <p className="rr-nota" style={{ marginTop: -6 }}>
+          Obrigatório: o médico auditor, o enfermeiro auditor ou os dois.
+        </p>
       )}
     </div>
   )

@@ -8,7 +8,8 @@ import {
   type CensoAlvo, type MovimentoCenso,
 } from '../services/kanban.service'
 import {
-  aprovarRelatorio, devolverRelatorio, fetchCatalogosProrrogacao, pausarProrrogacao, reenviarRelatorio,
+  aprovarRelatorio, devolverRelatorio, editarEAprovarRelatorio, fetchCatalogosProrrogacao,
+  pausarProrrogacao, reenviarRelatorio, type RelatorioRapido,
 } from '../services/internacao.service'
 import { invalidarPorEvento } from '../lib/invalidation'
 import type { EstadoCenso, KanbanPayload, KanbanTarefa } from '../types/api'
@@ -171,6 +172,18 @@ export function useDevolverRelatorio() {
   return useMutation({
     mutationFn: (v: { relatorioId: number; motivo: string; internacaoId?: number | null }) =>
       devolverRelatorio(v.relatorioId, v.motivo),
+    onSuccess: (_r, v) => aoMudarAprovacao(qc, v.internacaoId),
+  })
+}
+
+/** Quem aprova corrige o relatório pendente e o aprova no mesmo passo. */
+export function useEditarAprovarRelatorio() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: {
+      relatorioId: number; internacaoId?: number | null
+      rel: RelatorioRapido & { remover_anexo?: boolean }; arquivo?: File | null
+    }) => editarEAprovarRelatorio(v.relatorioId, v.rel, v.arquivo),
     onSuccess: (_r, v) => aoMudarAprovacao(qc, v.internacaoId),
   })
 }

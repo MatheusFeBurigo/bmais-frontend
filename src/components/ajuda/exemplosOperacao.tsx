@@ -164,13 +164,14 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
             <span className={`qf-chip${uti ? ' active' : ''}`}>UTI / CTI</span>
             <span className="qf-chip">Longa permanência</span>
             <span className="qf-chip">Em prorrogação</span>
+            <span className="qf-chip">Pendentes de aprovação</span>
             <span className="qf-chip">Altas</span>
           </span>
         ))}
         <div style={{ flex: 1 }} />
         {marcar(marcas.busca, (
           <input type="text" className="bm-input" style={{ width: 220 }} readOnly
-            placeholder="Buscar segurado, atendimento…" />
+            placeholder="Buscar segurado, atendimento (e altas)…" />
         ))}
       </div>
 

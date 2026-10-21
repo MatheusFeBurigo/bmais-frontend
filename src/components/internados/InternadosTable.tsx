@@ -4,6 +4,7 @@
 
 import type { Internacao } from '../../types/api'
 import { StatusBadge, rowFlagClass, LeitoTag } from '../StatusBadge'
+import { ehAlta } from '../../lib/statusRelatorio'
 import { OpAvatar } from '../ui'
 import { DiasRatio, Permanencia } from './cells'
 import { identificacaoPaciente } from '../../lib/texto'
@@ -134,8 +135,11 @@ export default function InternadosTable({
           <tbody>
             {paginados.map((p, i) => {
               const sr = p.status_relatorio || 'EM_DIA'
+              // A busca da lista de internados também traz altas (20/10/2026):
+              // a linha de alta se mostra como na lista de altas.
+              const alta = vendoAltas || ehAlta(sr)
               return (
-                <tr key={p.id} className={rowFlagClass(sr, vendoAltas)}
+                <tr key={p.id} className={rowFlagClass(sr, alta)}
                   // Cascata só nas primeiras linhas: o resto entra junto, sem esperar.
                   style={{ cursor: 'pointer', animationDelay: `${Math.min(i, 14) * 20}ms` }}
                   onClick={() => onSelecionar(p.id)}
@@ -143,7 +147,22 @@ export default function InternadosTable({
                   onFocus={onPrefetch ? () => onPrefetch(p.id) : undefined}>
                   {/* Na lista de altas o badge diz só "Alta"; a pendência de
                       relatório fica para a ficha do paciente. */}
-                  <td><StatusBadge sr={sr} resumido={vendoAltas} emAprovacao={p.relatorio_em_aprovacao} /></td>
+                  <td>
+                    <StatusBadge sr={sr} resumido={alta} emAprovacao={p.relatorio_em_aprovacao} />
+                    {/* Sem a coluna "Alta" (lista de internados), a data vai aqui. */}
+                    {alta && !vendoAltas && p.data_alta && (
+                      <div className="mono" style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)', marginTop: 2 }}>
+                        {p.data_alta}
+                      </div>
+                    )}
+                    {/* O badge da alta não diz que há relatório esperando; o
+                        filtro "Pendentes de aprovação" também traz altas. */}
+                    {alta && p.relatorio_em_aprovacao && (
+                      <div style={{ fontSize: 'var(--t-xs)', color: 'var(--info)', marginTop: 2, whiteSpace: 'nowrap' }}>
+                        Aguardando aprovação
+                      </div>
+                    )}
+                  </td>
                   {mostrarOperadora && (
                     <td>
                       <span className="row" style={{ gap: 6, alignItems: 'center' }} title={p.operadora_nome || p.operadora_key || undefined}>
@@ -194,7 +213,7 @@ export default function InternadosTable({
                         prorrogação cobre o paciente. Terminada, a contagem volta.
                         Mesma regra do chip "Em prorrogação": a pausada conta
                         mesmo depois da data final, como na coluna de Tarefas. */}
-                    {!vendoAltas && p.prorrogacao_ate && etiquetaProrrogacao(p.prorrogacao_ate, p.prorrogacao_pausada) ? (
+                    {!alta && p.prorrogacao_ate && etiquetaProrrogacao(p.prorrogacao_ate, p.prorrogacao_pausada) ? (
                       <span className="badge info" title={`Prorrogado até ${dataBR(p.prorrogacao_ate)}${p.prorrogacao_pausada ? ' (pausada)' : ''}`}>
                         {p.prorrogacao_pausada ? 'Prorrogação pausada' : 'Prorrogado'}
                       </span>
@@ -203,7 +222,7 @@ export default function InternadosTable({
                       value={p.dias_sem_relatorio}
                       limit={p.janela_relatorio}
                       tone={
-                        vendoAltas
+                        alta
                           ? 'neutral'
                           : sr === 'SEM_RELATORIO' || sr === 'ALTA_SEM_REL'
                             ? 'danger'
