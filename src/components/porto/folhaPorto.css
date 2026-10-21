@@ -1,0 +1,69 @@
+/* Réplica do formulário "Solicitação de prorrogação" da Porto Saúde.
+ *
+ * É papel: branco e preto, Arial, sem os tokens do design-system. A largura é a
+ * área útil de uma A4 paisagem com 5mm de margem (287mm ≈ 1077px), então a
+ * folha sai na impressão do mesmo tamanho que aparece na tela. As larguras das
+ * colunas ficam no componente (proporções medidas na folha original). */
+.fp-folha{
+  --fp-linha:#4a4a4a;--fp-cinza:#d9d9d9;--fp-l:14px;
+  width:1077px;margin:0 auto;background:#fff;color:#000;border:1.5px solid #000;
+  font-family:Arial,Helvetica,sans-serif;font-size:8px;line-height:1.15;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+}
+.fp-folha *{box-sizing:border-box}
+
+/* Faixas do topo (dados do paciente): sem linhas verticais, como no original. */
+.fp-faixa{display:flex;height:var(--fp-l);border-bottom:1px solid var(--fp-linha)}
+.fp-seg{flex:none;display:flex;align-items:center;gap:4px;min-width:0;padding:0 3px}
+.fp-seg.fim{justify-content:flex-end}
+.fp-rot{flex:none;font-weight:700;white-space:nowrap}
+.fp-topo{height:28px;background:var(--fp-cinza)}
+.fp-marca{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;padding-left:6px;
+  color:#0046B5;font-size:12px;font-weight:700;line-height:.95;letter-spacing:-.01em}
+.fp-solic{justify-content:center;text-align:center;font-size:7.5px;font-weight:700;line-height:1.5}
+
+/* Tabelas: uma por faixa, para as linhas da esquerda e da direita andarem
+ * juntas. A moldura da folha faz a borda de fora; as células, as de dentro. */
+.fp-t{width:100%;border-collapse:collapse;table-layout:fixed}
+.fp-t th,.fp-t td{height:var(--fp-l);padding:0 3px;border:1px solid var(--fp-linha);
+  vertical-align:middle;overflow:hidden;white-space:nowrap;font-weight:400}
+.fp-t th{font-weight:700;text-align:center}
+.fp-t tr:first-child>*{border-top:0}
+.fp-t tr>:first-child{border-left:0}
+.fp-t tr>:last-child{border-right:0}
+.fp-folha>:last-child tr:last-child>*{border-bottom:0}
+.fp-t .fp-campo{padding:0}
+.fp-cinza{background:var(--fp-cinza)}
+.fp-mini{font-size:6px}
+.fp-2l{line-height:1.45;white-space:normal}
+.fp-aviso th{line-height:var(--fp-l)}
+.fp-aviso .fp-sub{font-size:7.5px}
+
+/* Campos editáveis: invisíveis no papel, realçados só na tela. */
+.fp-in{display:block;width:100%;height:calc(var(--fp-l) - 1px);min-width:0;margin:0;padding:0 3px;
+  border:0;border-radius:0;outline:0;background:transparent;font:inherit;font-size:8.5px;color:inherit}
+.fp-seg .fp-in{flex:1;padding:0 2px}
+.fp-hospital{height:26px;font-size:18px;text-align:center;text-transform:uppercase}
+.fp-area{display:block;width:100%;margin:0;padding:3px 4px;border:0;border-radius:0;outline:0;resize:none;
+  overflow:hidden;background:transparent;font:inherit;font-size:8.5px;line-height:1.4;color:inherit;white-space:pre-wrap}
+
+/* "( ) SIM ( ) NÃO": cada metade é um botão; o X marca a escolhida. */
+.fp-sn{display:flex;align-items:center;justify-content:space-around;width:100%;height:calc(var(--fp-l) - 1px);
+  font-size:7px;font-weight:700}
+.fp-seg .fp-sn{flex:none;width:80px}
+.fp-sn-op{display:inline-flex;align-items:center;height:100%;padding:0 1px;border:0;background:transparent;
+  font:inherit;color:inherit;white-space:nowrap;cursor:pointer}
+.fp-sn-x{display:inline-block;width:8px;text-align:center}
+
+.fp-negociacao td{height:157px;vertical-align:top}
+.fp-negociacao .fp-area{height:156px}
+.fp-obs td{height:85px;vertical-align:top}
+.fp-obs .fp-area{height:84px}
+.fp-assinatura td{height:56px;padding:0 6px 3px;vertical-align:bottom;text-align:right;font-weight:700;white-space:pre}
+
+@media screen{
+  .fp-folha{box-shadow:0 1px 3px rgba(11,26,38,.08),0 8px 28px rgba(11,26,38,.10)}
+  .fp-in:hover,.fp-area:hover,.fp-sn-op:hover{background:#F1F5FB}
+  .fp-in:focus,.fp-area:focus{background:#E6EEFA;box-shadow:inset 0 0 0 1px #8AA9D6}
+  .fp-sn-op:focus-visible{outline:1px solid #8AA9D6;outline-offset:-1px}
+}

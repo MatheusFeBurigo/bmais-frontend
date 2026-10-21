@@ -16,6 +16,7 @@ import { BlocoRegistrarRelatorio } from './paciente/BlocoRegistrarRelatorio'
 import { SubtituloPaciente } from './paciente/SubtituloPaciente'
 import { useFormRelatorio } from './paciente/useFormRelatorio'
 import { FichaRelatorio, type AlvoRelatorio } from './paciente/relatorio/FichaRelatorio'
+import { BotaoFormularioPorto } from './porto/BotaoFormularioPorto'
 import { TimelineEventos } from './timeline/TimelineEventos'
 import { useInternacaoDados, useInternacaoTimeline } from '../hooks/useInternacao'
 import { useEquipe } from '../hooks/useEquipe'
@@ -118,6 +119,9 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
               {d && <SubtituloPaciente d={d} onAbrirHospital={() => setHospitalAberto(true)} />}
             </div>
           </div>
+          {/* Formulário de prorrogação da Porto: só paciente da Porto, e com o
+              mesmo acesso da ficha, de onde ele tira os dados. */}
+          {podeVerFichaPaciente(role) && <BotaoFormularioPorto d={d} />}
           {/* No topo, ao lado do X: é a saída do drawer para a ficha completa.
               Vale para todos os papéis menos o analista interno, que vê o
               drawer mas não abre a ficha (podeVerFichaPaciente). */}

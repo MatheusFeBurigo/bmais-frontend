@@ -166,7 +166,7 @@ const TELAS_MATRIZ: { tela: string; acesso: string; gestao?: boolean }[] = [
   { tela: 'Envio de Censos', acesso: 'SSSSNS' },
   { tela: 'Dashboard da Diretoria', acesso: 'NNNSNN', gestao: true },
   { tela: 'Painel do Gestor', acesso: 'NNSSNN', gestao: true },
-  { tela: 'Distribuição de tarefas', acesso: 'NNNNNS' },
+  { tela: 'Distribuição de tarefas', acesso: 'NNSNNS' },
   { tela: 'Configurações', acesso: 'NNSSNN' },
   { tela: 'Operações', acesso: 'NNNNSN' },
   { tela: 'Movimentações', acesso: 'NNNNSN' },
@@ -221,19 +221,24 @@ export function ModuloNavegacao() {
         <tr>
           <Key>Técnico</Key>
           <td>Faz as visitas de auditoria: registra os relatórios, agenda as visitas, informa os
-            CIDs do paciente e dá alta a quem já saiu. Trabalha no Painel Operacional, nas Tarefas
-            e no Envio de Censos.</td>
+            CIDs do paciente e dá alta a quem já saiu. Aprova o relatório do operacional, ou o
+            corrige e aprova no mesmo passo. Trabalha no Painel Operacional, nas Tarefas e no Envio
+            de Censos.</td>
         </tr>
         <tr>
           <Key>Operacional</Key>
           <td>Operação do dia a dia: envia os censos, cobra os hospitais que atrasam e dá alta a
-            quem já saiu. Trabalha no Painel Operacional, no Envio de Censos e nas Tarefas.</td>
+            quem já saiu. Registra relatórios, que só valem depois que um técnico ou gestor aprova.
+            Trabalha no Painel Operacional, no Envio de Censos e nas Tarefas.</td>
         </tr>
         <SoGestao>
           <tr>
             <Key>Gestor</Key>
-            <td>Painel do Gestor e Configurações, além do Painel Operacional, das Tarefas e do
-              Envio de Censos, para acompanhar quem ele gerencia. Não acessa a Diretoria.</td>
+            <td>Painel do Gestor, Configurações e Distribuição de tarefas, além do Painel
+              Operacional, das Tarefas e do Envio de Censos, para acompanhar quem ele gerencia.
+              Tem as ações do técnico: o
+              relatório dele vale na hora, e ele aprova, corrige e aprova, ou devolve o do
+              operacional. Não acessa a Diretoria.</td>
           </tr>
           <tr>
             <Key>Diretor</Key>

@@ -25,6 +25,7 @@ import { FichaRelatorio, type AlvoRelatorio } from '../components/paciente/relat
 import { KpisPaciente } from '../components/paciente/KpisPaciente'
 import { SubtituloPaciente } from '../components/paciente/SubtituloPaciente'
 import { useEdicaoFicha } from '../components/paciente/useEdicaoFicha'
+import { BotaoFormularioPorto } from '../components/porto/BotaoFormularioPorto'
 import { TimelineEventos } from '../components/timeline/TimelineEventos'
 import { useDesvincularPessoa, useInternacaoDados, useInternacaoRelatorios, useInternacaoTimeline } from '../hooks/useInternacao'
 import { useEquipe } from '../hooks/useEquipe'
@@ -136,6 +137,7 @@ export default function Paciente() {
           <div style={{ display: 'flex', gap: 8 }}>
             {d && podeExecutar(role, 'controlarProrrogacao') && <AcaoPausarProrrogacao d={d} onFeito={setToast} />}
             {d && podeExecutar(role, 'darAlta') && <AcaoAlta d={d} onFeito={setToast} />}
+            <BotaoFormularioPorto d={d} />
             <button className="btn btn-outline btn-sm" onClick={() => navigate(-1)}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
               Voltar

@@ -70,6 +70,15 @@ const SEM_INTERNACOES: Internacao[] = []
 // davam quase a mesma lista) e não deixavam escolher outro corte.
 const OPCOES_PERMANENCIA = [3, 7, 10, 15, 30] as const
 
+// Filtros do servidor que não são cards do topo (os cards dão o próprio
+// rótulo): o chip "Altas" e os que só chegam por URL antiga.
+const ROTULO_FILTRO: Record<string, string> = {
+  altas: 'Altas',
+  monitoramento: 'Em monitoramento',
+  longa_10: 'Longa 10d+',
+  longa_30: 'Longa 30d+',
+}
+
 const IconChevron = ({ aberto }: { aberto: boolean }) => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: aberto ? 'rotate(180deg)' : undefined, transition: 'transform .12s' }}><path d="m6 9 6 6 6-6" /></svg>
 )
@@ -389,6 +398,17 @@ export default function Dashboard() {
     ['proximo', Number(stats.proximo_vencer || 0), 'caution', 'Próx. Vencer', 'vence em 1–3 dias'],
     ['em_dia', Number(stats.relatorio_em_dia || 0), 'success', 'Em Dia', 'sem relatório devido'],
     ['todos', Number(stats.total_internados || 0), 'neutral', 'Total Ativos', `${stats.em_monitoramento || 0} em monitoramento`],
+  ]
+
+  // Tudo que recorta a lista, para a exportação (21/10/2026: "deve exportar com
+  // base nos filtros"): os filtros do servidor (card de status, hospital) e os
+  // da tela, inclusive a busca. A operadora fica de fora: ela é uma opção
+  // própria do modal. A ordenação também, porque não tira ninguém da lista.
+  const filtrosExportacao = [
+    ...(filtro !== 'todos' ? [kpis.find(([k]) => k === filtro)?.[3] ?? ROTULO_FILTRO[filtro] ?? filtro] : []),
+    ...(hospital ? [`Hospital: ${hospitaisPanorama.find((h) => h.key === hospital)?.nome ?? hospital}`] : []),
+    ...(busca.trim() ? [`Busca: “${busca.trim()}”`] : []),
+    ...filtrosAtivos,
   ]
 
   const actions = (
@@ -770,6 +790,9 @@ export default function Dashboard() {
           operadora={operadora}
           operadoraNome={opNome}
           somenteTodas={todas}
+          filtrado={filtrosExportacao.length
+            ? { internacoes: visiveis.map((p) => p.id), filtros: filtrosExportacao }
+            : null}
           onClose={() => setExportOpen(false)}
           onError={(msg) => setToast(msg)}
         />

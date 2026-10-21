@@ -286,8 +286,9 @@ export function ModuloVolumetria() {
 
       <h3>Quem acessa</h3>
       <p>
-        Os perfis de <strong>coordenação</strong>, operacional e técnica. Cada coordenador
-        enxerga apenas o seu grupo.
+        Os perfis de <strong>coordenação</strong>, operacional e técnica, e o{' '}
+        <strong>gestor</strong>. Cada coordenador enxerga apenas o seu grupo; o gestor vê os dois
+        e troca entre eles no seletor de grupo, no alto da tela.
       </p>
 
       <h3>Passo a passo</h3>

@@ -509,8 +509,15 @@ export async function apiUpload<T = unknown>(
 
 // Download autenticado: busca com o token Bearer e dispara o "salvar como".
 // Necessário porque <a href> não envia o header Authorization.
-export async function apiDownload(path: string, filename: string): Promise<void> {
-  const res = await fetchAutenticado(`${API_BASE}/api${path}`, {})
+export async function apiDownload(path: string, filename: string, body?: unknown): Promise<void> {
+  // Com `body`, o pedido vai por POST em JSON: é o caso de uma lista grande
+  // demais para a URL (a planilha com os filtros do painel).
+  const init: RequestInit = body === undefined ? {} : {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }
+  const res = await fetchAutenticado(`${API_BASE}/api${path}`, init)
   if (!res.ok) throw new ApiError(res.status, `Falha no download (${res.status})`)
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)

@@ -25,6 +25,9 @@ import { ListaPacientes } from '../upload/ListaPacientes'
 import { Alerta, alertaStyles } from '../Alerta'
 import { estilosCids } from '../paciente/CardCids'
 import { ColunaInfo } from '../kanban/ColunaInfo'
+import { BlocoOpcional } from '../paciente/relatorio/BlocoOpcional'
+import { GrupoRecolhivel } from '../paciente/relatorio/GrupoRecolhivel'
+import { estilosRelatorio } from '../paciente/relatorio/relatorio.styles'
 import { Alvo, ModalReplica } from './replica'
 
 const nada = () => {}
@@ -502,6 +505,205 @@ export function ReplicaModalAlta({ marcas = {} }: {
           </div>
         </div>
       </div>
+    </ModalReplica>
+  )
+}
+
+// ── Relatório da visita (modal da ficha completa) ─────────────────────────────
+// As seções são o GrupoRecolhivel e o BlocoOpcional reais, com os estilos da
+// modal (relatorio.styles). O miolo de cada seção é redesenhado: o real lê o
+// formulário e os catálogos.
+
+const IcoClipe = (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+  </svg>
+)
+
+const TEXTO_RELATORIO = 'Paciente internado por pneumonia comunitária, em antibioticoterapia intravenosa '
+  + 'desde a admissão. Evolui afebril há 48 horas, com melhora da saturação. Plano: manter o '
+  + 'antibiótico até completar 7 dias e reavaliar a alta.'
+
+/** O alto da modal: o paciente, só leitura. */
+function PacienteDoRelatorio() {
+  return (
+    <div className="rr-ctx">
+      <div className="rr-ctx-nome">Carlos Eduardo Lima</div>
+      <div className="rr-ctx-linha">Porto Seguro · Hospital São Lucas</div>
+      <div className="rr-ctx-fatos">
+        <span><b>Internado desde</b>12/09/2026, 08:40 (13 dias)</span>
+        <span><b>Nascimento</b>03/05/1961 (65 anos)</span>
+        <span><b>Sexo</b>Masculino</span>
+      </div>
+    </div>
+  )
+}
+
+/** A modal "Registrar relatório" a meio caminho: o Relatório de visita já
+ *  concluído no OK, o Quadro clínico aberto e as seções opcionais fechadas. Com
+ *  `corrigindo`, é a mesma janela aberta por quem aprova ("Corrigir relatório").
+ *  O OK do Quadro clínico se marca por `destaques` ('.rr-grupo.aberto .rr-grupo-okbtn'). */
+export function ReplicaModalRelatorio({ marcas = {}, corrigindo }: {
+  marcas?: Partial<Record<'visita' | 'texto' | 'opcionais' | 'registrar', number>>
+  corrigindo?: boolean
+}) {
+  return (
+    <ModalReplica
+      titulo={corrigindo ? 'Corrigir relatório' : 'Registrar relatório'}
+      largura={860}
+      rodape={
+        <>
+          <span className="btn btn-outline">Cancelar</span>
+          {!corrigindo && (
+            <span className="btn btn-outline" style={{ gap: 6, color: 'var(--success)', borderColor: 'color-mix(in srgb,var(--success) 45%,transparent)', fontWeight: 600 }}>
+              {IcoAlta}Alta
+            </span>
+          )}
+          {marcar(marcas.registrar, (
+            <span className="btn btn-primary">{corrigindo ? 'Salvar e aprovar' : 'Registrar relatório'}</span>
+          ))}
+        </>
+      }
+    >
+      <style>{estilosRelatorio}</style>
+      <div className="rr-raiz">
+        <PacienteDoRelatorio />
+        <div className="rr-grupos">
+          {marcar(marcas.visita, (
+            <GrupoRecolhivel titulo="Relatório de visita" concluida
+              resumo="20/10/2026 · Dr. Paulo Mendes · Ana Souza">{null}</GrupoRecolhivel>
+          ), true)}
+          <GrupoRecolhivel titulo="Quadro clínico" aberto onOk={nada} proxima="Quadro de internação">
+            <div className="rr-pilha">
+              <div className="rr-g2 rr-g-topo">
+                <div className="rr-campo">
+                  <span className="form-lbl">Diagnóstico principal</span>
+                  <input className="bm-input" readOnly value="J18.9 Pneumonia não especificada" />
+                </div>
+                <div className="rr-campo">
+                  <span className="form-lbl">Diagnóstico secundário</span>
+                  <input className="bm-input" readOnly placeholder="Digite o código ou o nome…" />
+                </div>
+              </div>
+              {marcar(marcas.texto, (
+                <label className="rr-campo">
+                  <span className="form-lbl">Relatório<span className="req">*</span></span>
+                  <textarea className="bm-input" rows={4} readOnly value={TEXTO_RELATORIO}
+                    style={{ resize: 'none', fontFamily: 'inherit' }} />
+                </label>
+              ), true)}
+            </div>
+          </GrupoRecolhivel>
+          {marcar(marcas.opcionais, (
+            <div>
+              <GrupoRecolhivel titulo="Quadro de internação" nota="Como no último relatório"
+                resumo="Urgência · Clínica geral · Apartamento (atual)">{null}</GrupoRecolhivel>
+              <GrupoRecolhivel titulo="No período" resumo="Nada marcado">{null}</GrupoRecolhivel>
+              <GrupoRecolhivel titulo="Prorrogação"
+                resumo={corrigindo ? 'Pedida: 5 dias · com documento' : 'Não pedida'}>{null}</GrupoRecolhivel>
+            </div>
+          ), true)}
+        </div>
+      </div>
+    </ModalReplica>
+  )
+}
+
+/** A seção Prorrogação aberta, com "Pedir prorrogação" marcado, dois períodos,
+ *  a justificativa e o documento da operadora anexado. O "Pedir prorrogação" se
+ *  marca por `destaques` ('.rr-bloco-tg'). */
+export function ReplicaProrrogacaoRelatorio({ marcas = {} }: {
+  marcas?: Partial<Record<'periodos' | 'justificativa' | 'anexo', number>>
+}) {
+  const periodo = (aco: string, de: string, ate: string, dias: string) => (
+    <div className="rr-lista-linha" style={{ gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) 80px' }}>
+      <span className="rr-cel">{aco}</span><span className="rr-cel">{de}</span>
+      <span className="rr-cel">{ate}</span><span className="rr-cel rr-cel-nota">{dias}</span>
+    </div>
+  )
+  return (
+    <div className="card" style={{ padding: '4px 18px 0' }}>
+      <style>{estilosRelatorio}</style>
+      <div className="rr-raiz">
+        <GrupoRecolhivel titulo="Prorrogação" aberto onOk={nada}>
+          <BlocoOpcional titulo="Pedir prorrogação" marcado onMarcar={nada} extra="5 dias">
+            <div className="rr-pilha">
+              {marcar(marcas.periodos, (
+                <div className="rr-lista">
+                  {periodo('UTI', '21/10/2026', '23/10/2026', '3 dias')}
+                  {periodo('Apartamento', '24/10/2026', '25/10/2026', '2 dias')}
+                </div>
+              ), true)}
+              {marcar(marcas.justificativa, (
+                <label className="rr-campo">
+                  <span className="form-lbl">Justificativa<span className="req">*</span></span>
+                  <input className="bm-input bm-select" readOnly value="Antibioticoterapia intravenosa" />
+                </label>
+              ), true)}
+              {marcar(marcas.anexo, (
+                <div className="rr-campo">
+                  <span className="form-lbl">Documento da operadora</span>
+                  <p className="rr-bloco-dica rr-anexo-dica">
+                    Opcional. Por exemplo, o formulário de prorrogação da Porto Seguro. PDF ou foto, até 25 MB.
+                  </p>
+                  <div className="rr-anexo">
+                    {IcoClipe}
+                    <span className="rr-anexo-nome">Prorrogação Porto Seguro.pdf</span>
+                    <span className="btn btn-ghost btn-sm">Trocar</span>
+                    <span className="btn btn-ghost btn-sm">Tirar</span>
+                  </div>
+                </div>
+              ), true)}
+            </div>
+          </BlocoOpcional>
+        </GrupoRecolhivel>
+      </div>
+    </div>
+  )
+}
+
+/** A ficha de um relatório do operacional esperando aprovação, aberta pelo card
+ *  de Tarefas: o rodapé de quem aprova. Redesenhada: a real (FichaRelatorio) lê
+ *  a lista de relatórios da internação. */
+export function ReplicaFichaRelatorioPendente({ marcas = {} }: {
+  marcas?: Partial<Record<'editar' | 'aprovar' | 'devolver', number>>
+}) {
+  const secao = (titulo: string, corpo: ReactNode) => (
+    <div style={{ marginTop: 18 }}>
+      <div style={{ fontSize: 'var(--t-lg)', fontWeight: 600, color: 'var(--ink)', marginBottom: 10 }}>{titulo}</div>
+      {corpo}
+    </div>
+  )
+  return (
+    <ModalReplica
+      titulo="Relatório de 20/10/2026"
+      largura={720}
+      rodape={
+        <>
+          <span className="btn btn-outline" style={{ marginRight: 'auto' }}>Fechar</span>
+          {marcar(marcas.devolver, <span className="btn btn-outline">Devolver</span>)}
+          {marcar(marcas.editar, <span className="btn btn-outline">Editar</span>)}
+          {marcar(marcas.aprovar, <span className="btn btn-success">Aprovar</span>)}
+        </>
+      }
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
+        <AutorChip role="administrativo" autor="marina.costa@bmais.com" nome="Marina Costa" />
+        <span>Registrado em 20/10/2026 14:32</span>
+        <span className="badge info">Aguardando aprovação</span>
+      </div>
+      {secao('Relatório de visita', (
+        <div style={{ display: 'flex', gap: 32, fontSize: 'var(--t-sm)', color: 'var(--ink)' }}>
+          <span><span className="aj-campo-lbl">Data da visita</span>20/10/2026</span>
+          <span><span className="aj-campo-lbl">Médico auditor</span>Dr. Paulo Mendes</span>
+        </div>
+      ))}
+      {secao('Quadro clínico', (
+        <div style={{ fontSize: 'var(--t-sm)', color: 'var(--ink-2)', lineHeight: 1.6, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-2)' }}>
+          {TEXTO_RELATORIO}
+        </div>
+      ))}
     </ModalReplica>
   )
 }

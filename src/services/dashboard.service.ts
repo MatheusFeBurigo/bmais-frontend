@@ -90,3 +90,18 @@ export function exportarRvm(operadora: string): Promise<void> {
     `CONTROLE_AUDITORIA_${nome}.xlsx`,
   )
 }
+
+/** A mesma planilha com os filtros do Painel Operacional: só as internações
+ *  que a lista filtrada mostra. Os filtros moram na tela (vários nem chegam ao
+ *  backend), então ela manda o resultado deles; o servidor só recorta a coleta
+ *  de sempre, e o escopo do usuário continua valendo.
+ *  `operadora` vazia ou EXPORTAR_TODAS = visão consolidada. */
+export function exportarRvmFiltrado(operadora: string, internacoes: number[]): Promise<void> {
+  const op = operadora || EXPORTAR_TODAS
+  const nome = op === EXPORTAR_TODAS ? 'TODAS' : op
+  return apiDownload(
+    '/export-rvm/selecao',
+    `CONTROLE_AUDITORIA_${nome}_FILTRADO.xlsx`,
+    { operadora: op, internacoes },
+  )
+}

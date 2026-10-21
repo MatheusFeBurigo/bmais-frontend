@@ -162,7 +162,7 @@ export function ModuloOperacoes() {
         titulo="Cadastrar um médico auditor ou um enfermeiro"
         passos={[
           { n: 1, titulo: 'Clique em Adicionar', corpo: <>Na aba <strong>Auditores</strong> da tela Operações.</> },
-          { n: 2, titulo: 'Escolha o tipo e informe o nome', corpo: <><strong>Médico(a) Auditor(a)</strong> ou <strong>Enfermeiro(a)</strong>. O tipo decide o portal que a pessoa vai usar, e só médicos ativos aparecem como auditor ao registrar relatório.</> },
+          { n: 2, titulo: 'Escolha o tipo e informe o nome', corpo: <><strong>Médico(a) Auditor(a)</strong> ou <strong>Enfermeiro(a)</strong>. O tipo decide o portal que a pessoa vai usar. Ao registrar relatório, os médicos ativos aparecem em <strong>Médico auditor</strong> e os enfermeiros ativos em <strong>Enfermeiro auditor</strong>.</> },
           { n: 3, titulo: 'Informe o e-mail e a senha inicial', corpo: <>São obrigatórios: com eles o profissional entra no portal dele, que não mostra nenhuma informação interna. A senha tem no mínimo 6 caracteres.</> },
           { n: 4, titulo: 'Marque os hospitais que ele cobre', corpo: <>Escolha a cidade e marque os hospitais dela; vários entram de uma vez. Um hospital que atende mais de uma operadora aparece uma vez só e vale para todas; na ficha dele dá para deixar só algumas. A escala também pode ficar para depois.</> },
           { n: 5, titulo: 'Escolha o serviço', corpo: <>Aparece quando há hospital marcado e vale para todos eles: análise de conta, auditoria concorrente, ambulatório ou pronto socorro. Serviço diferente por hospital se ajusta na ficha.</> },
@@ -560,12 +560,14 @@ export function ModuloProgresso() {
 
       <h3>Quem acessa</h3>
       <p>
-        <strong>Diretoria</strong>, para acompanhar o andamento da obra. O conteúdo diz respeito ao
-        que foi contratado e ao que já foi entregue, e por isso não alcança quem trabalha na
-        assistência.
+        <strong>Diretoria e administração</strong>, para acompanhar o andamento da obra. O conteúdo
+        diz respeito ao que foi contratado e ao que já foi entregue, e por isso não alcança quem
+        trabalha na assistência.
       </p>
       <p>
-        A tela é <strong>somente leitura</strong>: os números são acompanhados, não editados.
+        Para a <strong>diretoria</strong>, a tela é de leitura. A <strong>administração</strong>{' '}
+        ajusta o avanço dos módulos e mantém o resumo de atividades de cada um, como descrito
+        abaixo.
       </p>
 
       <Callout tipo="info" titulo="Nenhum número desta tela vem da operação">
@@ -587,6 +589,11 @@ export function ModuloProgresso() {
         <tr><Key>A construir</Key><td>Módulos previstos, com escopo definido e desenvolvimento ainda não começado.</td></tr>
         <tr><Key>A estudar</Key><td>Módulos ainda em avaliação, sem escopo fechado.</td></tr>
       </Tabela>
+
+      <p>
+        No alto da tela, <strong>Relatório da auditoria</strong> abre o documento de onde os
+        módulos saíram: o porquê da ordem e o que cada bloco entrega.
+      </p>
 
       <h3>As seis etapas de cada módulo</h3>
       <p>
@@ -621,6 +628,37 @@ export function ModuloProgresso() {
             apurados etapa a etapa. A etiqueta deixa de aparecer quando o módulo recebe uma
             atualização.</td></tr>
       </Tabela>
+
+      <h3>Resumo detalhado das atividades</h3>
+      <p>
+        Cada módulo tem, no rodapé, o botão <strong>Resumo detalhado das atividades</strong>, com o
+        número de atividades registradas ao lado. Ele abre a lista do que foi feito naquele
+        módulo, agrupada por semana e, dentro dela, por dia. A semana e o dia mais recentes abrem
+        aberto, e os anteriores ficam recolhidos.
+      </p>
+      <Tabela cabecalho={['Ação', 'Como funciona']} larguras={['185px']}>
+        <tr><Key>Adicionar atividade</Key>
+          <td>Data (já vem com a de hoje), título, obrigatório, e descrição. A atividade entra no
+            módulo da janela aberta.</td></tr>
+        <tr><Key>Editar</Key>
+          <td>O lápis da atividade abre o mesmo formulário, já preenchido.</td></tr>
+        <tr><Key>Remover</Key>
+          <td>A lixeira da atividade remove depois de confirmar.</td></tr>
+      </Tabela>
+      <p>
+        Só a administração adiciona, edita e remove. A diretoria vê a mesma lista, sem esses
+        botões.
+      </p>
+
+      <h3>Ajustar o avanço de um módulo</h3>
+      <p>
+        Só a administração. O lápis ao lado do percentual do módulo abre a edição: cada etapa ganha
+        o campo de avanço, em percentual, e as datas de início e de previsão. O avanço do módulo,
+        a média das seis etapas, é recalculado à vista enquanto se digita. <strong>Salvar</strong>{' '}
+        grava e marca o módulo como <strong>ajustado</strong>; <strong>Cancelar</strong> descarta o
+        que foi digitado. Num módulo já ajustado, <strong>Descartar ajuste</strong> remove o ajuste
+        manual e volta ao valor da conferência.
+      </p>
 
       <h3>De onde vêm os números</h3>
       <p>

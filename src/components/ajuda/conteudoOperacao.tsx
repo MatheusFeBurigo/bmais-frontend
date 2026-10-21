@@ -6,8 +6,8 @@ import { ComoFazer, Tela } from './replica'
 import { ACOES_NO_PAINEL, NEGOCIACAO_NO_RELATORIO } from '../../lib/recursos'
 import {
   ReplicaAdicionarPaciente, ReplicaCidsPaciente, ReplicaCobranca, ReplicaConferencia, ReplicaDadosPaciente,
-  ReplicaFichaRapida, ReplicaFormularioEnvio, ReplicaModalAlta, ReplicaPainel, ReplicaQuadro,
-  ReplicaResultadoEnvio,
+  ReplicaFichaRapida, ReplicaFichaRelatorioPendente, ReplicaFormularioEnvio, ReplicaModalAlta,
+  ReplicaModalRelatorio, ReplicaPainel, ReplicaProrrogacaoRelatorio, ReplicaQuadro, ReplicaResultadoEnvio,
 } from './exemplosOperacao'
 
 interface Props {
@@ -32,7 +32,9 @@ export function ModuloOperacional({ irPara }: Props) {
           { n: 1, titulo: "Escolha a operadora, ou deixe todas", corpo: <>A tela abre com todas as operadoras juntas. Troque aqui para ver só uma delas.</> },
           { n: 2, titulo: "Clique no cartão da situação que quer atacar", corpo: <><strong>Sem Relatório</strong> e <strong>Atrasado</strong> são os mais urgentes. O cartão clicado ganha um contorno e a lista passa a mostrar só aqueles pacientes. Clique de novo para voltar a ver todos.</> },
           { n: 3, titulo: "Afine com os filtros rápidos, se precisar", corpo: <>Por exemplo, <strong>UTI / CTI</strong> para começar pelos leitos de terapia intensiva, ou{' '} <strong>Longa permanência</strong> e depois a partir de quantos dias (3, 7, 10, 15 ou 30) para ver quem está internado há mais tempo.</> },
-          { n: 4, titulo: "Clique na linha do paciente", corpo: <>Abre a ficha rápida ao lado, sem sair da lista. É ali que se registra o relatório e se agenda a visita (veja{' '} <button type="button" className="aj-link" onClick={() => irPara('ficha-do-paciente')}>Ficha do Paciente</button>).</> },
+          { n: 4, titulo: "Clique na linha do paciente", corpo: ACOES_NO_PAINEL
+            ? <>Abre a ficha rápida ao lado, sem sair da lista. É ali que se registra o relatório e se agenda a visita (veja{' '} <button type="button" className="aj-link" onClick={() => irPara('ficha-do-paciente')}>Ficha do Paciente</button>).</>
+            : <>Abre a ficha rápida ao lado, sem sair da lista. Para registrar o relatório, clique em <strong>Detalhes</strong>: a ficha completa tem o botão <strong>Registrar</strong> (veja{' '} <button type="button" className="aj-link" onClick={() => irPara('ficha-do-paciente')}>Ficha do Paciente</button>).</> },
         ]}
       >
         <Tela nome="Painel Operacional" largura={960}
@@ -98,6 +100,7 @@ export function ModuloOperacional({ irPara }: Props) {
       <Tabela cabecalho={['Filtro', 'O que faz']} larguras={['185px']}>
         <tr><Key>Operadora</Key><td>Recorta tudo para uma operadora, ou consolida todas.</td></tr>
         <tr><Key>Hospital</Key><td>Restringe a uma unidade. Cada opção já mostra quantos internados e quantos alertas ela tem. Na visão consolidada, os hospitais aparecem agrupados por operadora.</td></tr>
+        <tr><Key>Período</Key><td><strong>Internação de</strong> e <strong>até</strong>: recorta a lista pela data de internação. Na lista de altas vira <strong>Alta de</strong> e recorta pela data da alta. Digite a data ou escolha no calendário; <strong>Limpar datas</strong> tira o recorte.</td></tr>
         <tr><Key>Busca</Key><td>Procura por nome do segurado, número de atendimento e senha de autorização, entre os internados e também entre as altas (sem precisar ligar o filtro <strong>Altas</strong>).</td></tr>
         <tr><Key>UTI e CTI</Key><td>Mantém apenas leitos de terapia intensiva.</td></tr>
         <tr><Key>Longa permanência</Key><td>Escolha a partir de quantos dias de internação: 3, 7, 10, 15 ou 30. O chip fica marcado com o corte escolhido. Clique nele para trocar, ou no x para tirar o filtro. Na lista de altas, conta os dias até a alta.</td></tr>
@@ -111,7 +114,9 @@ export function ModuloOperacional({ irPara }: Props) {
       <Tabela cabecalho={['Coluna', 'Conteúdo']} larguras={['150px']}>
         <tr><Key>Relatório</Key><td>Pastilha colorida de status, detalhada no{' '}
           <button type="button" className="aj-link" onClick={() => irPara('calculo-do-status')}>anexo de regras</button>.
-          A linha inteira recebe uma faixa da mesma cor.</td></tr>
+          A linha inteira recebe uma faixa da mesma cor. Paciente com relatório esperando aprovação
+          mostra <strong>Aguardando aprovação</strong>. Na busca, quem já teve alta aparece com o selo{' '}
+          <strong>Alta</strong> e a data da alta embaixo.</td></tr>
         <tr><Key>Operadora</Key><td>Só na visão consolidada. Identifica a operadora do paciente.</td></tr>
         <tr><Key>Hospital</Key><td>Clicável, abre a ficha de contato do hospital sem sair da tela.</td></tr>
         <tr><Key>Segurado</Key><td>Nome do paciente. Quando o censo não traz nome, identifica por senha de autorização; na falta desta, pelo número de atendimento.</td></tr>
@@ -175,16 +180,67 @@ export function ModuloPaciente({ irPara }: Props) {
             marcas={{ dataVisita: 1, medico: 2, cid: 3, obs: 4, registrar: 5 }} />
         </Tela>
       </ComoFazer>
-      <Callout tipo="info" titulo="Técnico ou gestor aprova o relatório do operacional">
-        O relatório do operacional vai para a coluna <strong>Aguardando aprovação</strong> do quadro
-        de pacientes, em Tarefas. O clique no card abre a ficha do paciente com o relatório, e
-        Aprovar, Editar e Devolver ficam no rodapé dele. <strong>Editar</strong> abre o relatório na
-        mesma janela do registro, já preenchido: corrija o que precisar e use{' '}
-        <strong>Salvar e aprovar</strong>, sem devolver. O relatório segue com o nome de quem o
-        escreveu. O do técnico e o do gestor valem na hora. Os demais perfis veem a ficha, mas o bloco de
-        registrar não aparece para eles.
-      </Callout>
       </>)}
+
+      <ComoFazer
+        titulo="Registrar o relatório de uma visita"
+        passos={[
+          { n: 1, titulo: "Preencha o Relatório de visita e clique em OK", corpo: <>A data já vem com a de hoje. Informe quem fez a visita: o médico auditor, o enfermeiro auditor ou os dois. Um deles é obrigatório. O <strong>OK</strong> confere a seção, fecha com a marca verde <strong>Concluída</strong> e abre a seguinte.</> },
+          { n: 2, titulo: "Escreva o relatório no Quadro clínico", corpo: <>O texto é obrigatório: motivo da internação, antecedentes, procedimentos, evolução e plano. Os diagnósticos são opcionais, e o CID que o paciente ainda não tem passa a constar na ficha dele. No perfil operacional os diagnósticos não aparecem: o CID fica com quem aprova.</> },
+          { n: 3, titulo: "Clique em OK", corpo: <>Faltou algo? O aviso aparece no rodapé e a seção continua aberta. Corrija e clique de novo.</> },
+          { n: 4, titulo: "Abra as seções opcionais que se aplicam", corpo: <>Quadro de internação, No período e Prorrogação não são obrigatórias. Abra cada uma pela seta ao lado do título.</> },
+          { n: 5, titulo: "Clique em Registrar relatório", corpo: <>Vale de qualquer ponto: se faltar algo, o aviso aparece e a seção do campo abre sozinha. No perfil operacional o botão é <strong>Enviar para aprovação</strong>, e o paciente fica como <strong>Aguardando aprovação</strong> até um técnico ou gestor aprovar.</> },
+        ]}
+      >
+        <Tela nome="Registrar relatório" largura={900}
+          destaques={{ '.rr-grupo.aberto .rr-grupo-okbtn': 3 }}
+          descricao="O botão Registrar do card Relatórios abre esta janela. O Relatório de visita já foi concluído no OK, e o Quadro clínico está aberto.">
+          <ReplicaModalRelatorio marcas={{ visita: 1, texto: 2, opcionais: 4, registrar: 5 }} />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Pedir prorrogação com o documento da operadora"
+        passos={[
+          { n: 1, titulo: "Marque Pedir prorrogação", corpo: <>Na seção <strong>Prorrogação</strong> da janela do relatório. O primeiro período já vem começando no dia seguinte ao fim da prorrogação atual, se houver.</> },
+          { n: 2, titulo: "Adicione os períodos", corpo: <>Acomodação, início e fim, e <strong>Adicionar</strong>. O período seguinte já vem começando no dia depois do anterior.</> },
+          { n: 3, titulo: "Escolha a justificativa", corpo: <>Obrigatória, entre os motivos clínicos da lista. O complemento é livre.</> },
+          { n: 4, titulo: "Anexe o documento, se a operadora pedir", corpo: <>Como o formulário de prorrogação da Porto Seguro: PDF ou foto, até 25 MB. <strong>Trocar</strong> e <strong>Tirar</strong> mudam o arquivo antes de registrar. O documento fica no relatório: o card mostra o nome dele, e a ficha do relatório tem o botão <strong>Baixar</strong>.</> },
+        ]}
+      >
+        <Tela nome="Registrar relatório" largura={760}
+          destaques={{ '.rr-bloco-tg': 1 }}
+          descricao="Seção Prorrogação com dois períodos, a justificativa e o formulário da operadora anexado.">
+          <ReplicaProrrogacaoRelatorio marcas={{ periodos: 2, justificativa: 3, anexo: 4 }} />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Corrigir e aprovar o relatório do operacional"
+        passos={[
+          { n: 1, titulo: "Abra o relatório e clique em Editar", corpo: <>Pelo card em <strong>Tarefas</strong>, coluna <strong>Aguardando aprovação</strong>, ou pela ficha do paciente. Só técnico e gestor veem o botão.</> },
+          { n: 2, titulo: "Corrija o que precisar", corpo: <>É a janela do registro, já com tudo o que o operacional preencheu: texto, diagnósticos, acomodações, prorrogação e documento. Uma palavra errada se corrige aqui, sem devolver.</> },
+          { n: 3, titulo: "Clique em Salvar e aprovar", corpo: <>A correção é gravada e o relatório já vale. Ele segue com o nome de quem escreveu; quem corrigiu fica na aprovação e na trilha de{' '} <button type="button" className="aj-link" onClick={() => irPara('movimentacoes')}>Movimentações</button>, com o que mudou.</> },
+        ]}
+      >
+        <>
+          <Tela nome="Ficha do relatório" largura={760}
+            descricao="Relatório do operacional esperando aprovação. Editar fica entre Devolver e Aprovar.">
+            <ReplicaFichaRelatorioPendente marcas={{ editar: 1 }} />
+          </Tela>
+          <Tela nome="Corrigir relatório" largura={900}
+            descricao="A mesma janela do registro, aberta por cima da ficha do relatório e já preenchida.">
+            <ReplicaModalRelatorio corrigindo marcas={{ texto: 2, registrar: 3 }} />
+          </Tela>
+        </>
+      </ComoFazer>
+      <Callout tipo="info" titulo="Técnico ou gestor aprova o relatório do operacional">
+        O relatório do operacional vai para a coluna <strong>Aguardando aprovação</strong>, em
+        Tarefas, e só vale depois de aprovado. No rodapé dele: <strong>Aprovar</strong> vale como
+        está, <strong>Editar</strong> corrige e aprova no mesmo passo, e <strong>Devolver</strong>{' '}
+        manda de volta ao autor com o motivo, para ele usar <strong>Corrigir e reenviar</strong>. O
+        relatório do técnico e o do gestor valem na hora.
+      </Callout>
 
       <ComoFazer
         titulo="Corrigir um dado que veio errado ou faltando"
@@ -224,7 +280,7 @@ export function ModuloPaciente({ irPara }: Props) {
         </Tela>
       </ComoFazer>
       <Callout tipo="info" titulo="Quem dá alta, e como desfazer">
-        Técnico e operacional. Deu alta por engano? No mesmo lugar aparece{' '}
+        Técnico, gestor e operacional. Deu alta por engano? No mesmo lugar aparece{' '}
         <strong>Desfazer alta</strong>, e o paciente volta para a lista de internados. Vale para a
         alta dada à mão e para a alta automática; a alta que veio no censo do hospital não se desfaz.
       </Callout>
@@ -243,9 +299,10 @@ export function ModuloPaciente({ irPara }: Props) {
           <ReplicaCidsPaciente marcas={{ campo: 1, opcao: 2, lista: 3, remover: 4 }} />
         </Tela>
       </ComoFazer>
-      <Callout tipo="info" titulo="Só o perfil técnico adiciona e remove CID">
-        Os demais perfis veem o card quando o paciente tem algum CID. Ao registrar um relatório, o
-        técnico também pode informar um CID novo, que entra junto na lista do paciente.
+      <Callout tipo="info" titulo="Só técnico e gestor adicionam e removem CID">
+        Os demais perfis veem o card quando o paciente tem algum CID. Ao registrar um relatório, ou
+        ao corrigir e aprovar o do operacional, técnico e gestor também podem informar um CID novo,
+        que entra junto na lista do paciente.
       </Callout>
 
       <p>
@@ -342,10 +399,12 @@ export function ModuloPaciente({ irPara }: Props) {
       </p>
       <p>
         Cada relatório aparece como um cartão com borda colorida pelo papel de quem o registrou, com
-        data e hora, autor, médico responsável, os CIDs informados e um resumo do que foi marcado
-        e, quando há anexo, o botão de baixar o documento. Prorrogação e folha rosa valem quando o
+        data e hora, autor, médico responsável, os CIDs informados, um resumo do que foi marcado e,
+        quando há documento anexado, o nome dele. Prorrogação e folha rosa valem quando o
         relatório é aprovado. Clicar num relatório abre a ficha dele, só para leitura, com o que
-        foi preenchido em cada seção.
+        foi preenchido em cada seção, na mesma ordem da janela de registro, e o botão{' '}
+        <strong>Baixar</strong> do documento. No relatório pendente, o rodapé da ficha traz as
+        ações de quem aprova.
       </p>
 
       <h3>Timeline</h3>
@@ -452,17 +511,17 @@ export function ModuloKanban({ irPara }: Props) {
       <h3>As colunas de aprovação</h3>
       <p>
         No mesmo quadro de pacientes, à direita da fila. O relatório que o operacional registra
-        chega aqui para o técnico conferir. Enquanto
+        chega aqui para o técnico ou o gestor conferir. Enquanto
         espera, o paciente aparece como <strong>Aguardando aprovação</strong> e não conta como
         visitado. Aprovado, o paciente sai do quadro e volta para <strong>Sem relatório</strong>{' '}
         quando o relatório vencer.
       </p>
       <Tabela cabecalho={['Coluna', 'O que reúne', 'O que fazer']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Aguardando aprovação</Key>
-          <td>Relatórios enviados pelo operacional: paciente, visita, quem enviou e a prorrogação pedida.</td>
-          <td>Técnico ou gestor: clique no card. A ficha do paciente abre com o relatório, e Aprovar, Editar e Devolver ficam no rodapé dele.</td></tr>
+          <td>Relatórios enviados pelo operacional: paciente, visita, quem enviou, a prorrogação pedida e se há documento anexado.</td>
+          <td>Técnico ou gestor: clique no card. A ficha do paciente abre com o relatório, e Aprovar, Editar e Devolver ficam no rodapé dele. Editar corrige e aprova no mesmo passo.</td></tr>
         <tr><Key>Devolvidos</Key>
-          <td>Relatórios que o técnico pediu para corrigir, com o motivo.</td>
+          <td>Relatórios que o técnico ou o gestor pediu para corrigir, com o motivo.</td>
           <td>Quem escreveu: clique no card e use Corrigir e reenviar, no rodapé do relatório.</td></tr>
       </Tabela>
 
@@ -513,8 +572,8 @@ export function ModuloKanban({ irPara }: Props) {
         não o quadro inteiro.
       </p>
       <ul>
-        <li>O perfil <strong>técnico</strong> vê as três colunas de pacientes, que são a agenda de
-          visitas dele, sem a cobrança de censo.</li>
+        <li>O perfil <strong>técnico</strong> vê as colunas de pacientes, que são a agenda de
+          visitas dele, e as de aprovação, sem a cobrança de censo.</li>
         <li>O perfil <strong>operacional</strong> vê as colunas de censos, que são a
           providência dele junto aos hospitais. Na aba <strong>Pacientes</strong>, vê a coluna{' '}
           <strong>Sem relatório</strong> e as de aprovação.</li>
@@ -557,6 +616,10 @@ export function ModuloKanban({ irPara }: Props) {
           <td>Operadora, nome do paciente, hospital e número de atendimento, além dos dias sem
             relatório. Quando há visita marcada, traz a data, o horário e o responsável; quando
             atrasada, o card inteiro é destacado, com a indicação de quando era.</td></tr>
+        <tr><Key>Aprovação</Key>
+          <td>Paciente, hospital, data da visita e quem enviou. Etiquetas mostram os dias de
+            prorrogação pedidos, se o paciente já está prorrogado e <strong>Com documento</strong>{' '}
+            quando há anexo. No devolvido, o motivo da devolução.</td></tr>
         <tr><Key>Cobrança de censo</Key>
           <td>Hospital e operadora, desde quando o censo está pendente, a última atualização
             recebida e, se já houve cobrança, quando e por quem. O selo de dias sem atualizar fica{' '}
