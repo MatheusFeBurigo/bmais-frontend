@@ -4,15 +4,16 @@
 //
 // O mesmo formulário corrige o relatório pendente (20/10/2026): quem aprova abre
 // a modal já preenchida (`carregarRelatorio`) e "Salvar e aprovar" grava a
-// correção e aprova no mesmo passo.
+// correção e aprova no mesmo passo; "Salvar" (21/10/2026) só grava, e o
+// relatório segue aguardando aprovação.
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRegistrarRelatorio } from '../../hooks/useInternacao'
-import { useCatalogosProrrogacao, useEditarAprovarRelatorio } from '../../hooks/useKanban'
+import { useCatalogosProrrogacao, useEditarRelatorio } from '../../hooks/useKanban'
 import { queryKeys } from '../../lib/queryKeys'
 import { useAuth } from '../../auth/AuthContext'
 import { precisaAprovacao } from '../../auth/permissions'
-import { hojeISO, paraISO, somarDias } from '../../lib/datas'
+import { hojeISO, paraISO } from '../../lib/datas'
 import type { RelatorioRapido } from '../../services/internacao.service'
 import type {
   AceiteFolhaRosa, AcomodacaoUtilizada, DetalhesRelatorio, PeriodoProrrogacao, RelatorioItem,
@@ -82,8 +83,10 @@ export function useFormRelatorio(internacaoId: number, {
    *  para o botão só acender depois que o técnico confirma a data. */
   dataInicial: () => string
   /** `pendente`: o relatório foi para a aprovação do técnico em vez de valer já. */
+  /** `pendente`: o relatório ficou esperando aprovação (enviado pelo
+   *  operacional, ou correção só salva). */
   onRegistrado: (pendente: boolean) => void
-  /** Só a ficha "Detalhes" passa: liga a seção "Pedir prorrogação". O painel
+  /** Só a ficha "Detalhes" passa: liga a seção "Prorrogar". O painel
    *  lateral da Visão Geral não tem prorrogação. */
   prorrogacao?: ContextoProrrogacao
   /** Só a ficha "Detalhes" passa: liga a seção "Aplicar folha rosa". */
@@ -95,7 +98,7 @@ export function useFormRelatorio(internacaoId: number, {
   const qc = useQueryClient()
   const { role } = useAuth()
   const registrar = useRegistrarRelatorio(internacaoId)
-  const editarAprovar = useEditarAprovarRelatorio()
+  const editar = useEditarRelatorio()
   // O relatório pendente em correção (null = registro novo).
   const [editandoId, setEditandoId] = useState<number | null>(null)
   // Relatório do administrativo espera o técnico, e não leva CID (o CID é dele).
@@ -114,12 +117,13 @@ export function useFormRelatorio(internacaoId: number, {
   // Pedido de prorrogação (DePara 5.3): fechado até ser marcado.
   const [prrAtiva, setPrrAtiva] = useState(false)
   // Períodos no padrão do portal (acomodação, data inicial, data final e
-  // "Adicionar"). O período seguinte já vem começando no dia depois do fim do
-  // anterior, na mesma acomodação.
+  // "Adicionar"). O período seguinte já vem começando na data final do
+  // anterior, na mesma acomodação: a diária do dia final é do período seguinte
+  // (a data final não conta, ver `diariasNoPeriodo`).
   const periodos = useLista<PeriodoProrrogacao>(
     () => ({ acomodacao: '', data_inicio: '', data_fim: '' }),
     (p) => Boolean(p.acomodacao) && Boolean(p.data_inicio) && Boolean(p.data_fim) && p.data_fim >= p.data_inicio,
-    (p) => ({ acomodacao: p.acomodacao, data_inicio: somarDias(p.data_fim, 1), data_fim: '' }),
+    (p) => ({ acomodacao: p.acomodacao, data_inicio: p.data_fim, data_fim: '' }),
   )
   const [justificativa, setJustificativa] = useState('')
   const [complemento, setComplemento] = useState('')
@@ -153,14 +157,15 @@ export function useFormRelatorio(internacaoId: number, {
     setFolha((f) => ({ ...f, [campo]: valor }))
   }
 
-  // O 1º período começa no dia seguinte ao fim da prorrogação vigente; sem ela
-  // (ou já terminada), hoje. Mesma regra de domain/prorrogacao.inicio_sugerido.
+  // O 1º período começa na data final da prorrogação vigente (a diária desse
+  // dia ainda não foi contada); sem ela (ou já terminada), hoje. Mesma regra de
+  // domain/prorrogacao.inicio_sugerido.
   function primeiroPeriodo(): PeriodoProrrogacao {
     const hoje = hojeISO()
     const ate = ctxProrrogacao?.ate?.slice(0, 10)
     return {
       acomodacao: ctxProrrogacao?.acomodacao ?? '',
-      data_inicio: ate && ate >= hoje ? somarDias(ate, 1) : hoje,
+      data_inicio: ate && ate >= hoje ? ate : hoje,
       data_fim: '',
     }
   }
@@ -208,7 +213,7 @@ export function useFormRelatorio(internacaoId: number, {
   }
 
   /** Correção de quem aprova: o formulário abre com o relatório pendente como
-   *  foi gravado, e o envio passa a ser "Salvar e aprovar". */
+   *  foi gravado, e o envio passa a ser "Salvar" ou "Salvar e aprovar". */
   function carregarRelatorio(rel: RelatorioItem) {
     setEditandoId(rel.id)
     setDataVisita(paraISO(rel.data_visita) || '')
@@ -254,13 +259,13 @@ export function useFormRelatorio(internacaoId: number, {
   function erroFolhaRosa(): string | null {
     if (!aplicaFolha) return null
     const diarias = Number(folha.diarias)
-    if (!folha.de || !folha.para) return 'Escolha as acomodações de e para da folha rosa.'
-    if (folha.de === folha.para) return 'Na folha rosa, as acomodações de e para precisam ser diferentes.'
+    if (!folha.de || !folha.para) return 'Escolha as acomodações de e para da negociação.'
+    if (folha.de === folha.para) return 'Na negociação, as acomodações de e para precisam ser diferentes.'
     if (!folha.diarias.trim() || !Number.isInteger(diarias) || diarias < 1 || diarias > 999) {
-      return 'Informe as diárias negociadas na folha rosa.'
+      return 'Informe as diárias da negociação.'
     }
     if (folha.data_fim && (!folha.data_inicio || folha.data_fim < folha.data_inicio)) {
-      return 'Confira o período da folha rosa.'
+      return 'Confira o período da negociação.'
     }
     return null
   }
@@ -284,14 +289,15 @@ export function useFormRelatorio(internacaoId: number, {
   }
 
   /** O "OK" da seção (20/10/2026): confere só ela. Com erro, a mensagem vai ao
-   *  rodapé e a seção fica aberta. */
+   *  alto da seção, em cima dos campos, e a seção fica aberta. */
   function concluirSecao(s: SecaoRelatorio): boolean {
     const e = conferirSecao(s)
     setErro(e)
     return !e
   }
 
-  async function salvar() {
+  /** Registra o relatório; na correção, `aprovar` diz se também aprova. */
+  async function salvar(aprovar = true) {
     const erroAntes = conferirSecao('visita') ?? conferirSecao('quadro') ?? erroProrrogacao()
       ?? erroFolhaRosa() ?? (comDetalhes ? det.conferir() : null)
     if (erroAntes) {
@@ -320,8 +326,8 @@ export function useFormRelatorio(internacaoId: number, {
     const arquivo = pedeProrrogacao ? anexo : null
     try {
       if (editandoId != null) {
-        await editarAprovar.mutateAsync({
-          relatorioId: editandoId, internacaoId, arquivo,
+        await editar.mutateAsync({
+          relatorioId: editandoId, internacaoId, arquivo, aprovar,
           rel: { ...pedido, remover_anexo: removerAnexo && !arquivo },
         })
       } else {
@@ -332,7 +338,7 @@ export function useFormRelatorio(internacaoId: number, {
       setCids([])
       setCidPrincipal(null)
       setAnexo(null)
-      onRegistrado(vaiParaAprovacao)
+      onRegistrado(editandoId != null ? !aprovar : vaiParaAprovacao)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar')
     }
@@ -341,7 +347,7 @@ export function useFormRelatorio(internacaoId: number, {
   return {
     internacaoId, dataVisita, setDataVisita, medico, setMedico, obs, setObs,
     cids, adicionarCid, removerCid, cidPrincipal, definirCidPrincipal, vaiParaAprovacao,
-    /** Correção do relatório pendente por quem aprova ("Salvar e aprovar"). */
+    /** Correção do relatório pendente por quem aprova ("Salvar" e "Salvar e aprovar"). */
     editando: editandoId != null,
     carregarRelatorio,
     prorrogacao: ctxProrrogacao ? {
@@ -356,7 +362,7 @@ export function useFormRelatorio(internacaoId: number, {
     } : null,
     // `noBanco` false = sem a 0054: só o texto obrigatório vale.
     completo: ctxCompleto ? { ...det, noBanco: detalhesNoBanco } : null,
-    erro, salvando: registrar.isPending || editarAprovar.isPending, salvar, limpar,
+    erro, salvando: registrar.isPending || editar.isPending, salvar, limpar,
     conferirSecao, concluirSecao,
   }
 }

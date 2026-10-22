@@ -25,7 +25,7 @@ import { useUsuarios } from '../hooks/useUsuarios'
 import { useTodosHospitais } from '../hooks/useEquipe'
 import { criarUsuario, atualizarUsuario, redefinirSenhaUsuario } from '../services/usuarios.service'
 import { invalidarPorEvento } from '../lib/invalidation'
-import { ROLE_LABEL, ROLE_DESC, ROLES_ORDEM, temEscopoHospital, temEscopoOperadora } from '../lib/usuarioRoles'
+import { ROLE_LABEL, ROLE_DESC, ROLES_ORDEM, temAreaNaDistribuicao, temEscopoHospital, temEscopoOperadora } from '../lib/usuarioRoles'
 import type { UserRole } from '../types/api'
 
 type Passo = 'conta' | 'nivel' | 'escopo'
@@ -184,7 +184,11 @@ export default function UsuarioForm() {
       // Técnico grava hospitais; operacional, operadoras; os demais veem tudo.
       // O que não é do papel vai vazio, para não deixar uma restrição
       // "invisível" gravada (trocar de técnico para operacional e voltar, p. ex.).
-      const hospitaisArea = temEscopoHospital(role) ? hospitaisSel : []
+      // O coordenador é a exceção (21/10/2026): os hospitais dele são definidos
+      // na Distribuição de tarefas, e esta tela não os mostra. Sem a lista
+      // (`undefined`), o backend não mexe neles; mandar vazio os apagaria.
+      const hospitaisArea = temEscopoHospital(role) ? hospitaisSel
+        : temAreaNaDistribuicao(role) ? undefined : []
       const operadorasArea = temEscopoOperadora(role) ? operadorasSel : []
       if (editando) {
         await atualizarUsuario(id!, { role, hospitais: hospitaisArea, operadoras: operadorasArea, nome: nome.trim() })

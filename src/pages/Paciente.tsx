@@ -137,6 +137,14 @@ export default function Paciente() {
           <div style={{ display: 'flex', gap: 8 }}>
             {d && podeExecutar(role, 'controlarProrrogacao') && <AcaoPausarProrrogacao d={d} onFeito={setToast} />}
             {d && podeExecutar(role, 'darAlta') && <AcaoAlta d={d} onFeito={setToast} />}
+            {/* Imprimir a internação (22/10/2026): dados do paciente e os
+                relatórios, todos ou um. Funciona mesmo sem relatório. */}
+            <button className="btn btn-outline btn-sm" style={{ gap: 6 }} disabled={!d}
+                    onClick={() => d && navigate(`/paciente/${d.id}/imprimir`)}
+                    title="Imprimir ou salvar em PDF os dados do paciente e os relatórios">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v8H6z" /></svg>
+              Imprimir / PDF
+            </button>
             <BotaoFormularioPorto d={d} />
             <button className="btn btn-outline btn-sm" onClick={() => navigate(-1)}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
@@ -267,7 +275,16 @@ export default function Paciente() {
         <CorrigirRelatorio internacaoId={internacaoId} relatorio={corrigindo} paciente={d}
                            medicos={medicos} enfermeiros={enfermeiros}
                            onFechar={() => setCorrigindo(null)}
-                           onFeito={() => relatorioDecidido(`✓ Relatório de ${identificacaoPaciente(d)} corrigido e aprovado`)} />
+                           onFeito={(aprovado) => {
+                             if (aprovado) {
+                               relatorioDecidido(`✓ Relatório de ${identificacaoPaciente(d)} corrigido e aprovado`)
+                               return
+                             }
+                             // Só salvo: a ficha do relatório fica aberta, já
+                             // com a correção, para aprovar agora ou depois.
+                             setCorrigindo(null)
+                             setToast(`✓ Correção salva. O relatório de ${identificacaoPaciente(d)} segue aguardando aprovação`)
+                           }} />
       )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </div>

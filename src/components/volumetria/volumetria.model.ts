@@ -54,12 +54,15 @@ export function maxDemandas(g: VolumetriaGrupo): number {
   return Math.max(0, ...g.pessoas.map((p) => p.total_pendencias ?? 0))
 }
 
-const ROTULO_GRUPO: Record<string, { plural: string; singular: string }> = {
-  coordenador_tecnico: { plural: 'Técnicos', singular: 'técnico' },
-  coordenador_administrativo: { plural: 'Operacionais', singular: 'operacional' },
+// `coordenador`: como chamar o coordenador do grupo, que desde 21/10/2026 também
+// é uma pessoa do grupo (tem hospitais e Tarefas).
+interface RotuloGrupo { plural: string; singular: string; coordenador: string }
+const ROTULO_GRUPO: Record<string, RotuloGrupo> = {
+  coordenador_tecnico: { plural: 'Técnicos', singular: 'técnico', coordenador: 'coordenador técnico' },
+  coordenador_administrativo: { plural: 'Operacionais', singular: 'operacional', coordenador: 'coordenador operacional' },
 }
-export function rotuloGrupo(papel: UserRole): { plural: string; singular: string } {
-  return ROTULO_GRUPO[papel] ?? { plural: 'Pessoas', singular: 'pessoa' }
+export function rotuloGrupo(papel: UserRole): RotuloGrupo {
+  return ROTULO_GRUPO[papel] ?? { plural: 'Pessoas', singular: 'pessoa', coordenador: 'coordenador' }
 }
 
 // Iniciais para o avatar: 2 primeiras letras significativas do nome/e-mail.

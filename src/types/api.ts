@@ -368,6 +368,11 @@ export interface VolumetriaRegiaoDoGrupo {
 
 export interface VolumetriaPessoa {
   user_id: string
+  /** Coordenador do grupo, que também trabalha nele (21/10/2026). */
+  coordenador?: boolean
+  /** Pendências avulsas abertas (pedidas pelo gestor ou coordenador). Fora da
+   *  carga em horas. Ausente com o backend antigo. */
+  pendencias_abertas?: number
   /** Nome cadastrado no perfil; sem ele, um legível derivado do e-mail. */
   nome: string
   /** True quando `nome` foi derivado do e-mail (perfil sem nome cadastrado). */
@@ -447,7 +452,7 @@ export interface VolumetriaGrupo {
 }
 
 /** Entregas do grupo na janela: série diária sem buracos (dia sem entrega vem
- *  0) e o que foi feito por gente de fora do grupo (admin, coordenador). */
+ *  0) e o que foi feito por gente de fora do grupo (admin, gestor). */
 export interface VolumetriaProdutividade {
   dias: number
   por_dia: Array<{ dia: string; concluidas: number }>
@@ -886,11 +891,13 @@ export interface GestorResposta {
 export type KanbanColuna = 'sem_relatorio' | 'aguardando_visita' | 'visitas_atrasadas' | EstadoCenso
   | ColunaAprovacao
 
-/** Colunas de aprovação (no quadro de pacientes): o relatório do administrativo espera o técnico. */
-export type ColunaAprovacao = 'aguardando_aprovacao' | 'relatorios_devolvidos'
+/** Coluna de aprovação (no quadro de pacientes): o relatório do administrativo
+ *  espera quem aprova. "Devolvidos" saiu em 21/10/2026. */
+export type ColunaAprovacao = 'aguardando_aprovacao'
 
-/** Situação do relatório na aprovação do técnico (backend: aprovacao_relatorio). */
-export type AprovacaoRelatorio = 'aprovado' | 'pendente' | 'devolvido'
+/** Situação do relatório na aprovação (backend: aprovacao_relatorio). A
+ *  devolução ao autor saiu em 21/10/2026 (migration 0057). */
+export type AprovacaoRelatorio = 'aprovado' | 'pendente'
 
 // ── Prorrogação (0047) ────────────────────────────────────────────────────
 /** Um período do pedido de prorrogação: acomodação e datas ISO. */
@@ -1039,8 +1046,6 @@ export interface RelatorioEmAprovacao {
   aprovacao_por?: string | null
   aprovacao_por_nome?: string | null
   aprovacao_em?: string | null
-  /** Por que o técnico devolveu. */
-  devolucao_motivo?: string | null
   tem_anexo?: boolean
   anexo_nome?: string | null
   /** Pedido de prorrogação; esses cards vêm primeiro na coluna. */
@@ -1221,7 +1226,6 @@ export interface KanbanColunas {
   aguardando_retorno?: KanbanTarefa[]
   censos_processados?: KanbanTarefa[]
   aguardando_aprovacao?: KanbanTarefa[]
-  relatorios_devolvidos?: KanbanTarefa[]
 }
 
 /** Payload do GET /api/kanban — tarefas + opções de filtro (recortadas ao escopo).
@@ -1800,7 +1804,6 @@ export interface RelatorioItem {
   aprovacao?: AprovacaoRelatorio
   aprovacao_por?: string | null
   aprovacao_em?: string | null
-  devolucao_motivo?: string | null
   /** Pedido de prorrogação deste relatório. */
   prorrogacao?: PedidoProrrogacao | null
   /** Folha rosa negociada neste relatório. */
@@ -1853,4 +1856,48 @@ export interface CidPaciente extends Partial<Omit<Cid, 'codigo' | 'descricao'>> 
 export interface InternacaoCids {
   internacao_id: number
   cids: CidPaciente[]
+}
+
+// ── Pendências avulsas da equipe (0058) ───────────────────────────────────
+/** Uma pendência que o gestor ou o coordenador deu a alguém da equipe
+ *  (backend: application/tarefas_avulsas). Só as abertas chegam à tela. */
+export interface Pendencia {
+  id: number
+  titulo: string
+  descricao: string | null
+  /** Texto livre (nome ou atendimento): não é ligado a uma internação. */
+  paciente: string | null
+  /** ISO (AAAA-MM-DD), ou null sem prazo. */
+  prazo: string | null
+  /** Prazo antes de hoje. */
+  vencida: boolean
+  /** user_id de quem recebeu. */
+  responsavel: string
+  responsavel_nome?: string | null
+  criado_por_nome?: string | null
+  criado_em: string
+  /** O que quem está vendo pode fazer com ela (calculado no backend). */
+  pode_concluir: boolean
+  pode_excluir: boolean
+}
+
+/** GET /api/pendencias: as que o usuário recebeu e as que ele pediu a outros. */
+export interface PendenciasMinhas {
+  para_mim: Pendencia[]
+  pedidas: Pendencia[]
+}
+
+/** Quem pode receber uma pendência de quem pede (GET /api/pendencias/equipe). */
+export interface PessoaEquipe {
+  user_id: string
+  nome: string
+  role: UserRole
+}
+
+export interface NovaPendencia {
+  responsavel: string
+  titulo: string
+  descricao?: string
+  paciente?: string
+  prazo?: string
 }

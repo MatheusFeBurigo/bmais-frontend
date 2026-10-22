@@ -8,10 +8,11 @@
 // No fim de cada seção, "OK" (pedido de 20/10/2026: "ao final do registro de
 // cada item, colocar um ok, para ir para o próximo passo") fecha a seção e abre
 // a seguinte; quem confere os campos é a modal (`onOk`). A seção finalizada
-// no OK ganha o "Concluída" verde ao lado do título.
+// no OK ganha o "Concluída" verde ao lado do título. O aviso do campo que
+// faltou fica no alto da seção, em cima dos campos (22/10/2026).
 import type { ReactNode } from 'react'
 
-export function GrupoRecolhivel({ id, titulo, nota, concluida, resumo, aberto, onAlternar, onOk, proxima, children }: {
+export function GrupoRecolhivel({ id, titulo, nota, concluida, resumo, aberto, erro, onAlternar, onOk, proxima, children }: {
   /** Âncora da seção: a modal rola até a próxima depois do "OK". */
   id?: string
   titulo: string
@@ -22,6 +23,8 @@ export function GrupoRecolhivel({ id, titulo, nota, concluida, resumo, aberto, o
   /** O que está preenchido, para ler com a seção fechada. */
   resumo?: string
   aberto?: boolean
+  /** O que impede a seção de seguir (OK ou registrar), em cima dos campos. */
+  erro?: string | null
   onAlternar?: () => void
   /** O "OK" do fim da seção. Sem ele, o botão não aparece. */
   onOk?: () => void
@@ -57,6 +60,7 @@ export function GrupoRecolhivel({ id, titulo, nota, concluida, resumo, aberto, o
         {textos}
       </button>
       <div className="rr-grupo-corpo" hidden={!aberto}>
+        {erro && <div className="rr-grupo-erro" role="alert">{erro}</div>}
         {children}
         {onOk && (
           <div className="rr-grupo-ok">

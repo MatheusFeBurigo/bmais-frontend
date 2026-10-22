@@ -1,10 +1,12 @@
 // Correção do relatório pendente por quem aprova (20/10/2026: "o gestor que
 // aprova precisa conseguir editar este relatório também; muitos casos só corrige
-// a palavra e já libera, não precisa devolver").
+// a palavra e já libera").
 //
 // É a modal "Registrar relatório", aberta por cima da ficha do relatório já com
 // o que foi gravado; "Salvar e aprovar" grava a correção e aprova no mesmo
-// passo. A autoria segue de quem escreveu: quem corrigiu fica na aprovação.
+// passo, e "Salvar" (21/10/2026: "serão liberados ou ficarão apenas salvos,
+// aguardando edição") só grava. A autoria segue de quem escreveu: quem corrigiu
+// fica na trilha e, ao aprovar, na aprovação.
 import { useEffect, useState } from 'react'
 import { paraISO } from '../../../lib/datas'
 import type { InternacaoDados, RelatorioItem } from '../../../types/api'
@@ -18,15 +20,15 @@ export function CorrigirRelatorio({ internacaoId, relatorio, paciente, medicos, 
   medicos: string[]
   enfermeiros: string[]
   onFechar: () => void
-  /** Corrigido e aprovado. */
-  onFeito: () => void
+  /** Corrigido: aprovado, ou só salvo (`aprovado` false, segue pendente). */
+  onFeito: (aprovado: boolean) => void
 }) {
   const form = useFormRelatorio(internacaoId, {
     dataInicial: () => '',
     prorrogacao: { ate: paciente.prorrogacao_ate, acomodacao: paciente.prorrogacao_acomodacao },
     folhaRosa: { acomodacao: paciente.prorrogacao_acomodacao || paciente.tipo_leito },
     completo: { ultimo: null, dataEntrada: paraISO(paciente.data_entrada) },
-    onRegistrado: onFeito,
+    onRegistrado: (pendente) => onFeito(!pendente),
   })
   // A modal só monta com o relatório carregado: as seções sugerem a acomodação
   // da ficha ao montar, e não podem fazer isso sobre o formulário vazio.

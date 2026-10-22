@@ -8,8 +8,8 @@
 // Larguras comuns a todas: data 150px, quantidade 110px, botão 96px, e as
 // datas de início e fim sempre nas duas colunas antes do botão. Assim os campos
 // do mesmo tipo caem na mesma vertical de um bloco para o outro.
-import type { CSSProperties } from 'react'
-import { dataBR, diasNoPeriodo, hojeISO } from '../../../lib/datas'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { dataBR, diariasNoPeriodo, hojeISO } from '../../../lib/datas'
 import { TIPOS_ALTO_CUSTO, rotulo } from '../../../lib/relatorioDetalhes'
 import { CampoTuss } from './CampoTuss'
 import { ListaItens } from './ListaItens'
@@ -53,6 +53,62 @@ function CampoData<T extends object>({ lista, campo, texto, min, max, obrigatori
              min={min || undefined} max={max || undefined}
              onChange={(e) => lista.mudar(campo, e.target.value as T[keyof T])} />
     </label>
+  )
+}
+
+/** Saída de uma acomodação (22/10/2026). Vazia = o paciente ainda está nela:
+ *  o campo mostra "Atual", como a linha da lista, em vez de "dd/mm/aaaa".
+ *  Clicar abre o calendário; escolhida a data, ela aparece, e o "×" volta para
+ *  "Atual". */
+function CampoSaida<T extends object>({ lista, campo, min, max }: {
+  lista: ListaRelatorio<T>
+  campo: keyof T
+  min?: string
+  max?: string
+}) {
+  const valor = String(lista.rascunho[campo] ?? '')
+  const [editando, setEditando] = useState(false)
+  const entrada = useRef<HTMLInputElement>(null)
+  // Ao trocar "Atual" pelo campo de data, já abre o calendário.
+  useEffect(() => {
+    if (!editando) return
+    const el = entrada.current
+    el?.focus()
+    try {
+      el?.showPicker()
+    } catch {
+      /* navegador sem showPicker: o foco no campo basta */
+    }
+  }, [editando])
+
+  return (
+    <div className="rr-campo">
+      <Rotulo texto="Saída" />
+      {!valor && !editando ? (
+        <button type="button" className="bm-input rr-saida-atual" onClick={() => setEditando(true)}
+                title="O paciente ainda está nesta acomodação. Clique para informar a saída.">
+          <span className="badge info">Atual</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+               strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+          </svg>
+        </button>
+      ) : (
+        <div className="rr-saida">
+          <input ref={entrada} type="date" className="bm-input" aria-label="Saída"
+                 value={valor} min={min || undefined} max={max || undefined}
+                 onChange={(e) => lista.mudar(campo, e.target.value as T[keyof T])}
+                 onBlur={() => setEditando(false)} />
+          {valor && (
+            <button type="button" className="rr-saida-limpar" title="Ainda está nesta acomodação"
+                    aria-label="Voltar para Atual"
+                    onClick={() => { lista.mudar(campo, '' as T[keyof T]); setEditando(false) }}>
+              ×
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -113,9 +169,9 @@ export function SecaoPeriodos({ lista, acomodacoes, desabilitado }: {
       onAdicionar={lista.adicionar}
       podeAdicionar={lista.podeAdicionar}
       linhas={lista.itens.map((p) => {
-        const dias = diasNoPeriodo(p.data_inicio, p.data_fim)
+        const diarias = diariasNoPeriodo(p.data_inicio, p.data_fim)
         return [
-          <>{p.acomodacao} <span className="rr-cel-nota">{dias} {dias === 1 ? 'dia' : 'dias'}</span></>,
+          <>{p.acomodacao} <span className="rr-cel-nota">{diarias} {diarias === 1 ? 'diária' : 'diárias'}</span></>,
           data(p.data_inicio), data(p.data_fim),
         ]
       })}
@@ -139,7 +195,7 @@ export function SecaoAcomodacoes({ lista, acomodacoes, desabilitado }: {
         <>
           <SelectAcomodacao lista={lista} campo="acomodacao" acomodacoes={acomodacoes} />
           <CampoData lista={lista} campo="data_entrada" texto="Entrada" max={hojeISO()} obrigatorio />
-          <CampoData lista={lista} campo="data_saida" texto="Saída" min={r.data_entrada} max={hojeISO()} />
+          <CampoSaida lista={lista} campo="data_saida" min={r.data_entrada} max={hojeISO()} />
         </>
       )}
       onAdicionar={lista.adicionar}

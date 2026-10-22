@@ -33,11 +33,16 @@ function normalizar(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
 
+/** O que o combobox lê de cada hospital: o cadastro completo (`Hospital`) e as
+ *  opções de filtro do Painel do Gestor servem. */
+export type OpcaoHospital = Pick<Hospital, 'key' | 'nome'> & { operadora_nome?: string | null }
+
 export function HospitalCombobox({
   hospitais, value, onChange, disabled, placeholder, mostrarOperadora, invalido, autoFocus, id,
+  sugerirCadastro = true,
 }: {
   /** Hospitais candidatos (já recortados ao escopo/operadora por quem chama). */
-  hospitais: Hospital[]
+  hospitais: OpcaoHospital[]
   /** Key do hospital escolhido; '' enquanto nada foi selecionado. */
   value: string
   onChange: (key: string) => void
@@ -49,6 +54,8 @@ export function HospitalCombobox({
   invalido?: boolean
   autoFocus?: boolean
   id?: string
+  /** Sem resultado, sugere "Cadastrar agora". Num filtro não há o que cadastrar. */
+  sugerirCadastro?: boolean
 }) {
   const escolhido = useMemo(
     () => hospitais.find((h) => h.key === value) ?? null,
@@ -81,7 +88,7 @@ export function HospitalCombobox({
     // duplicado), e listar o nome duas vezes só faz o usuário escolher no escuro —
     // as duas linhas se parecem idênticas na tela. Fica a primeira em ordem
     // alfabética de key, para a escolha ser estável entre carregamentos.
-    const porNome = new Map<string, Hospital>()
+    const porNome = new Map<string, OpcaoHospital>()
     for (const h of [...hospitais].sort((a, b) => a.key.localeCompare(b.key))) {
       const chave = h.nome.trim().toLocaleLowerCase('pt-BR')
       if (!porNome.has(chave)) porNome.set(chave, h)
@@ -129,7 +136,7 @@ export function HospitalCombobox({
   // fechar. O usuário escolhia o hospital e a lista continuava aberta.
   const acabouDeEscolher = useRef(false)
 
-  function selecionar(h: Hospital) {
+  function selecionar(h: OpcaoHospital) {
     // Escolheu um item: o texto volta a ser espelho do valor, e a sincronização
     // externa pode agir de novo.
     digitando.current = false
@@ -232,7 +239,7 @@ export function HospitalCombobox({
               <div className="hc-empty">
                 {ordenados.length === 0
                   ? 'Nenhum hospital disponível.'
-                  : `Nenhum hospital com “${busca}”. Se ele não existe ainda, use “Cadastrar agora”.`}
+                  : `Nenhum hospital com “${busca}”.${sugerirCadastro ? ' Se ele não existe ainda, use “Cadastrar agora”.' : ''}`}
               </div>
             )}
             {totalFiltrado > visiveis.length && (

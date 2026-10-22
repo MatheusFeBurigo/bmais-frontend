@@ -8,6 +8,7 @@ import { ehSomenteLeitura, podeVer } from '../auth/permissions'
 import ExportarModal from '../components/dashboard/ExportarModal'
 import StatusAtualizacao from '../components/dashboard/StatusAtualizacao'
 import CampoDataFiltro from '../components/dashboard/CampoDataFiltro'
+import { BuscaExpansivel } from '../components/dashboard/BuscaExpansivel'
 import Toast from '../components/Toast'
 import { Spinner, Skeleton, opInitial } from '../components/ui'
 import { Deferred } from '../components/Deferred'
@@ -115,7 +116,8 @@ export default function Dashboard() {
   // Filtros client-side
   const [busca, setBusca] = useState('')
   const [utiOn, setUtiOn] = useState(false)
-  // Em prorrogação: ativa, termina hoje ou pausada (`etiquetaProrrogacao`).
+  // Prorrogados ("Em prorrogação" até 21/10/2026, renomeado a pedido do
+  // usuário): ativa, termina hoje ou pausada (`etiquetaProrrogacao`).
   // Só vale para internados: na lista de altas o chip some.
   const [prorrogOn, setProrrogOn] = useState(false)
   const soProrrogados = prorrogOn && !vendoAltas
@@ -353,7 +355,7 @@ export default function Dashboard() {
   // Recortes ligados, ditos ao lado da contagem da tabela.
   const filtrosAtivos: string[] = []
   if (utiOn) filtrosAtivos.push('UTI / CTI')
-  if (soProrrogados) filtrosAtivos.push('Em prorrogação')
+  if (soProrrogados) filtrosAtivos.push('Prorrogados')
   if (aprovacaoOn) filtrosAtivos.push('Pendentes de aprovação')
   if (altasDaBusca.length && visiveis.some((p) => ehAlta(p.status_relatorio))) filtrosAtivos.push('Busca inclui altas')
   if (permanencia != null) filtrosAtivos.push(`Longa permanência ${permanencia}d+`)
@@ -621,8 +623,9 @@ export default function Dashboard() {
               )}
             </span>
             {!vendoAltas && (
-              <span className={`qf-chip${prorrogOn ? ' active' : ''}`} onClick={() => setProrrogOn((v) => !v)}>
-                Em prorrogação
+              <span className={`qf-chip${prorrogOn ? ' active' : ''}`} onClick={() => setProrrogOn((v) => !v)}
+                    title="Internados com prorrogação aprovada que ainda não terminou, inclusive as pausadas">
+                Prorrogados
               </span>
             )}
             {/* Relatórios pendentes de aprovação (20/10/2026): o mesmo "Aguardando
@@ -670,14 +673,12 @@ export default function Dashboard() {
                 Limpar
               </button>
             )}
-            <div style={{ flex: 1 }} />
-            <input
-              type="text"
-              className="bm-input"
-              style={{ width: 300 }}
+            {/* Busca recolhida numa lupa (22/10/2026): fechada, os filtros cabem
+                numa linha; o clique abre o campo com transição. */}
+            <BuscaExpansivel
+              valor={busca}
+              onChange={setBusca}
               placeholder={vendoAltas ? 'Buscar entre as altas…' : 'Buscar segurado, atendimento (e altas)…'}
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
             />
           </div>
 

@@ -8,8 +8,8 @@ import {
   type CensoAlvo, type MovimentoCenso,
 } from '../services/kanban.service'
 import {
-  aprovarRelatorio, devolverRelatorio, editarEAprovarRelatorio, fetchCatalogosProrrogacao,
-  pausarProrrogacao, reenviarRelatorio, type RelatorioRapido,
+  aprovarRelatorio, editarRelatorio, fetchCatalogosProrrogacao,
+  pausarProrrogacao, type RelatorioRapido,
 } from '../services/internacao.service'
 import { invalidarPorEvento } from '../lib/invalidation'
 import type { EstadoCenso, KanbanPayload, KanbanTarefa } from '../types/api'
@@ -148,8 +148,8 @@ export function useTimelineCenso(alvo: CensoAlvo | null) {
 
 // ── Aprovação de relatório (colunas do quadro de pacientes) ──────────────────
 // Aprovar muda o status do paciente (o relatório passa a contar como visita), então
-// recompõe tudo que conta status, como registrar um relatório. Devolver e reenviar
-// só mexem na fila e na ficha. A ficha do paciente é invalidada pelo prefixo.
+// recompõe tudo que conta status, como registrar um relatório. Só salvar a
+// correção mexe na fila e na ficha. A ficha do paciente é invalidada pelo prefixo.
 function aoMudarAprovacao(qc: ReturnType<typeof useQueryClient>, internacaoId: number | null | undefined) {
   invalidarPorEvento(qc, 'relatorioAdicionado')
   if (internacaoId != null) {
@@ -167,36 +167,15 @@ export function useAprovarRelatorio() {
   })
 }
 
-export function useDevolverRelatorio() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (v: { relatorioId: number; motivo: string; internacaoId?: number | null }) =>
-      devolverRelatorio(v.relatorioId, v.motivo),
-    onSuccess: (_r, v) => aoMudarAprovacao(qc, v.internacaoId),
-  })
-}
-
-/** Quem aprova corrige o relatório pendente e o aprova no mesmo passo. */
-export function useEditarAprovarRelatorio() {
+/** Quem aprova corrige o relatório pendente: salva e aprova no mesmo passo, ou
+ *  só salva (`aprovar` false) e ele segue aguardando aprovação. */
+export function useEditarRelatorio() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (v: {
-      relatorioId: number; internacaoId?: number | null
+      relatorioId: number; internacaoId?: number | null; aprovar: boolean
       rel: RelatorioRapido & { remover_anexo?: boolean }; arquivo?: File | null
-    }) => editarEAprovarRelatorio(v.relatorioId, v.rel, v.arquivo),
-    onSuccess: (_r, v) => aoMudarAprovacao(qc, v.internacaoId),
-  })
-}
-
-export function useReenviarRelatorio() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (v: {
-      relatorioId: number; internacaoId?: number | null
-      data_visita: string; medico: string; descricao: string
-    }) => reenviarRelatorio(v.relatorioId, {
-      data_visita: v.data_visita, medico: v.medico, descricao: v.descricao,
-    }),
+    }) => editarRelatorio(v.relatorioId, v.rel, v.arquivo, v.aprovar),
     onSuccess: (_r, v) => aoMudarAprovacao(qc, v.internacaoId),
   })
 }

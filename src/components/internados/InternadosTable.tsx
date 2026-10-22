@@ -211,7 +211,7 @@ export default function InternadosTable({
                     {/* Em prorrogação (01/10/2026, pedido do usuário): a tag no
                         lugar da contagem de dias, que não diz nada enquanto a
                         prorrogação cobre o paciente. Terminada, a contagem volta.
-                        Mesma regra do chip "Em prorrogação": a pausada conta
+                        Mesma regra do chip "Prorrogados": a pausada conta
                         mesmo depois da data final, como na coluna de Tarefas. */}
                     {!alta && p.prorrogacao_ate && etiquetaProrrogacao(p.prorrogacao_ate, p.prorrogacao_pausada) ? (
                       <span className="badge info" title={`Prorrogado até ${dataBR(p.prorrogacao_ate)}${p.prorrogacao_pausada ? ' (pausada)' : ''}`}>

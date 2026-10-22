@@ -43,6 +43,7 @@ export const estilosRelatorio = `
 .rr-grupo-nota{font-size:var(--t-xs);font-weight:500;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:1px 9px}
 .rr-grupo-resumo{font-size:var(--t-sm);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rr-grupo-corpo{padding:2px 2px 24px}
+.rr-grupo-erro{margin:0 0 16px;padding:8px 12px;border-radius:var(--r-sm);background:var(--danger-bg);color:var(--danger-2);font-size:var(--t-sm)}
 .rr-grupo-ok{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:20px}
 .rr-grupo-prox{font-size:var(--t-sm);color:var(--muted)}
 .rr-grupo-okbtn{min-width:76px;justify-content:center}
@@ -56,6 +57,13 @@ export const estilosRelatorio = `
 .rr-pilha{display:grid;gap:18px}
 .rr-campo{min-width:0;display:block}
 .rr-campo .bm-input{width:100%;min-width:0}
+/* Saída vazia = "Atual" (CampoSaida): tem a cara do campo, e o clique abre a data. */
+.rr-saida-atual{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;text-align:left;color:var(--ink-2)}
+.rr-saida-atual:hover{border-color:var(--ink-3)}
+.rr-saida{position:relative}
+.rr-saida .bm-input{padding-right:30px}
+.rr-saida-limpar{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);font-size:18px;line-height:1;padding:2px 4px;cursor:pointer}
+.rr-saida-limpar:hover{color:var(--ink)}
 .rr-nota{font-size:var(--t-sm);color:var(--muted);margin-top:8px}
 .rr-seg{display:flex;height:38px;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;width:max-content}
 .rr-seg-op{position:relative;display:inline-flex;align-items:center;padding:0 18px;font-size:var(--t-base);color:var(--ink-2);cursor:pointer;background:var(--surface)}

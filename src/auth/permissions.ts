@@ -40,12 +40,13 @@ const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
   // Diretoria e Gestor (decisão do produto), Upload e Configurações — telas cujo
   // conteúdo É a escrita que ele não pode executar (subir censo, regras da operadora).
   analista: ['diretoria', 'gestor', 'upload', 'configuracoes'],
-  // Coordenadores: a Operacional (contexto), o Envio de censos e a Volumetria (allowlist abaixo).
-  // Fora tudo que é operação/gestão. A única escrita deles (vincular pessoa a
-  // hospital) vive dentro da Volumetria — ver ROLES_ATRIBUIR_VOLUMETRIA no backend.
+  // Coordenadores: a Operacional, o Envio de censos, a Volumetria (allowlist
+  // abaixo) e, desde 21/10/2026, as Tarefas: também são da equipe do grupo
+  // ("ela também faz parte da minha equipe e preciso poder gerar uma tarefa
+  // para ela"), com as ações do técnico ou do administrativo (ACOES).
   // Envio de censos liberado em 02/10/2026 (ROLES_ENVIO_CENSO no backend).
-  coordenador_administrativo: ['diretoria', 'gestor', 'equipe', 'configuracoes', 'kanban', 'logs'],
-  coordenador_tecnico: ['diretoria', 'gestor', 'equipe', 'configuracoes', 'kanban', 'logs'],
+  coordenador_administrativo: ['diretoria', 'gestor', 'equipe', 'configuracoes', 'logs'],
+  coordenador_tecnico: ['diretoria', 'gestor', 'equipe', 'configuracoes', 'logs'],
 }
 
 // Telas EXCLUSIVAS de papéis específicos (allowlist). Mais forte que a lista de
@@ -58,7 +59,8 @@ const EXCLUSIVAS: Partial<Record<Screen, readonly UserRole[]>> = {
   // ROLES_TELA_DIRETORIA/GESTOR no backend.
   diretoria: ['diretor', 'admin'],
   gestor: ['gestor', 'diretor', 'admin'],
-  kanban: ['administrativo', 'tecnico', 'admin', 'analista', 'gestor'],
+  kanban: ['administrativo', 'tecnico', 'coordenador_administrativo', 'coordenador_tecnico',
+           'admin', 'analista', 'gestor'],
   // Operações (ex-Equipe): administrador e analista interno. Nem o diretor entra
   // — allowlist, para o papel novo não herdar a tela por omissão.
   equipe: ['admin', 'analista'],
@@ -77,10 +79,9 @@ const EXCLUSIVAS: Partial<Record<Screen, readonly UserRole[]>> = {
 
 // Papéis SOMENTE LEITURA: veem as telas, mas nenhuma ação que altera dados.
 // Espelha ROLES_SOMENTE_LEITURA do backend, que é quem de fato barra (403) —
-// aqui só escondemos os controles para não oferecer o que vai falhar.
-const SOMENTE_LEITURA: ReadonlySet<UserRole> = new Set<UserRole>([
-  'analista', 'coordenador_administrativo', 'coordenador_tecnico',
-])
+// aqui só escondemos os controles para não oferecer o que vai falhar. Os
+// coordenadores saíram em 21/10/2026: trabalham como o grupo deles.
+const SOMENTE_LEITURA: ReadonlySet<UserRole> = new Set<UserRole>(['analista'])
 
 // Papéis dos PROFISSIONAIS da equipe assistencial (médico, enfermeiro). Não veem
 // nenhuma tela interna: o RequireAuth os leva ao portal do profissional, fora do
@@ -143,13 +144,16 @@ const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
   // (`precisaAprovacao`).
   // O gestor entrou em 02/10/2026 com as MESMAS ações do técnico (relatório que
   // vale na hora, aprovar, CID, agendar, alta, vincular pessoa, homecare).
-  registrarRelatorio: ['tecnico', 'administrativo', 'gestor', 'admin'],
-  // Aprovar ou devolver o relatório do administrativo, na aba "Aprovação de
-  // paciente" do quadro. Espelha ROLES_APROVAR_RELATORIO no backend.
-  aprovarRelatorio: ['tecnico', 'gestor', 'admin'],
+  // Os coordenadores entraram em 21/10/2026, cada um com as ações do grupo dele
+  // (o coordenador técnico as do técnico; o administrativo as do administrativo).
+  registrarRelatorio: ['tecnico', 'administrativo', 'coordenador_tecnico', 'coordenador_administrativo',
+                       'gestor', 'admin'],
+  // Aprovar ou editar o relatório do administrativo (a devolução saiu em
+  // 21/10/2026). Espelha ROLES_APROVAR_RELATORIO no backend.
+  aprovarRelatorio: ['tecnico', 'coordenador_tecnico', 'gestor', 'admin'],
   // Pausar e retomar a prorrogação na tabela de Prorrogações (Tarefas): quem
   // administra. Espelha ROLES_CONTROLE_PRORROGACAO no backend.
-  controlarProrrogacao: ['admin', 'administrativo'],
+  controlarProrrogacao: ['admin', 'administrativo', 'coordenador_administrativo'],
   // Cadastrar convênio na modal de edição do paciente. É cadastro, não operação:
   // o nome passa a existir para TODAS as telas e leva junto a operadora que o
   // cobre. Espelha `requer_diretor` na rota POST /api/convenios — os papéis
@@ -159,25 +163,31 @@ const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
   // pertence a quem vai fazer a visita. Mesmo par de `registrarRelatorio`, mas em
   // constante própria — as duas podem divergir (ex.: liberar o agendamento ao
   // administrativo) sem reabrir quem registra relatório.
-  agendarVisita: ['tecnico', 'gestor', 'admin'],
+  agendarVisita: ['tecnico', 'coordenador_tecnico', 'gestor', 'admin'],
   // Adicionar e remover CIDs do paciente, na ficha ("Detalhes"): trabalho do
   // técnico (admin supervisiona). Os demais papéis VEEM os CIDs na ficha, só não
   // os alteram. Espelha ROLES_ATRIBUIR_CID no backend, que recusa com 403.
-  atribuirCid: ['tecnico', 'gestor', 'admin'],
+  atribuirCid: ['tecnico', 'coordenador_tecnico', 'gestor', 'admin'],
   // Dar alta à mão (e desfazer a alta que não veio do hospital): quem acompanha
   // o paciente no dia a dia. Espelha ROLES_DAR_ALTA no backend.
-  darAlta: ['tecnico', 'administrativo', 'gestor', 'admin'],
+  darAlta: ['tecnico', 'administrativo', 'coordenador_tecnico', 'coordenador_administrativo', 'gestor', 'admin'],
   // Ligar e desligar internações da mesma pessoa na ficha do paciente: os
   // mesmos papéis da alta. Espelha ROLES_VINCULAR_PESSOA no backend.
-  vincularPessoa: ['tecnico', 'administrativo', 'gestor', 'admin'],
+  vincularPessoa: ['tecnico', 'administrativo', 'coordenador_tecnico', 'coordenador_administrativo',
+                   'gestor', 'admin'],
   // Pôr ou tirar o paciente do homecare (tipo de leito na ficha). Em homecare o
   // censo não mexe mais nele e só a alta manual o encerra. Espelha
   // ROLES_LEITO_HOMECARE no backend.
-  leitoHomecare: ['tecnico', 'gestor', 'admin'],
+  leitoHomecare: ['tecnico', 'coordenador_tecnico', 'gestor', 'admin'],
+  // Pedir pendência avulsa a alguém da equipe (21/10/2026): o gestor e os
+  // coordenadores. Quem cada um alcança, o backend decide. Espelha
+  // ROLES_CRIAR_PENDENCIA no backend.
+  criarPendencia: ['gestor', 'coordenador_tecnico', 'coordenador_administrativo', 'admin'],
 }
 
 export type AcaoProtegida = 'registrarRelatorio' | 'criarConvenio' | 'agendarVisita' | 'atribuirCid'
   | 'darAlta' | 'aprovarRelatorio' | 'controlarProrrogacao' | 'leitoHomecare' | 'vincularPessoa'
+  | 'criarPendencia'
 
 /** True se o papel pode executar a ação. `role` null/desconhecido NÃO libera:
  *  ação sensível exige papel resolvido (diferente de `podeVer`, que é permissivo). */

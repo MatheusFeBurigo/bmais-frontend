@@ -36,8 +36,8 @@ export const ROLE_DESC: Record<UserRole, string> = {
   administrativo: 'Painel Operacional, Upload e Kanban. Não vê Diretoria, Gestor nem Operações.',
   tecnico: 'Análise técnica dos relatórios do auditor externo. Emite o parecer interno.',
   analista: 'Consulta o Painel Operacional, o Kanban e as Movimentações (trilha de auditoria) e mantém hospitais e operadoras em Operações. Não registra relatórios nem altera dados de paciente. Não vê Diretoria nem Gestor.',
-  coordenador_administrativo: 'Distribuição de tarefas: vê a carga de cobranças de censo de cada operacional em horas (rede inteira), define quais hospitais cada um cobre e calibra capacidade e parâmetros de carga. Envia censos. Não altera pacientes nem cadastros.',
-  coordenador_tecnico: 'Distribuição de tarefas: vê a carga de pacientes de cada técnico em horas de análise (rede inteira), define quais hospitais cada um cobre e calibra capacidade e parâmetros de carga. Envia censos. Não altera pacientes nem cadastros.',
+  coordenador_administrativo: 'Distribuição de tarefas: vê a carga de cobranças de censo de cada operacional em horas, define quais hospitais cada um cobre e calibra capacidade e parâmetros de carga. Também é da equipe: tem Tarefas e as ações do operacional. Não altera cadastros.',
+  coordenador_tecnico: 'Distribuição de tarefas: vê a carga de pacientes de cada técnico em horas de análise, define quais hospitais cada um cobre e calibra capacidade e parâmetros de carga. Também é da equipe: tem Tarefas e as ações do técnico, e aprova e edita o relatório do operacional. Não altera cadastros.',
   // Não aparecem na escolha de papel (ROLES_ORDEM): a conta nasce na ficha do
   // profissional e o papel sai do tipo dele.
   medico: 'Médico da equipe assistencial. Entra no portal do profissional; não vê dados internos.',
@@ -53,9 +53,10 @@ export const ROLES_ORDEM: readonly UserRole[] = [
 // Papéis operacionais que têm recorte de dados (escopo). O técnico analisa por
 // HOSPITAL (todas as operadoras dele); o operacional atende OPERADORAS inteiras,
 // em todos os hospitais delas (0053). Os demais (gestor/diretor/admin) veem tudo.
-// O analista interno e os dois coordenadores também ficam de fora: são perfis de
-// observação, criados como conta simples (sem área) e enxergando toda a
-// operação — os coordenadores de propósito (supervisionam a rede inteira).
+// O analista interno e os dois coordenadores também ficam de fora: nascem como
+// conta simples (sem área) e enxergam toda a operação. Os coordenadores, que
+// desde 21/10/2026 também trabalham no grupo, recebem hospitais pela
+// Distribuição de tarefas, como qualquer pessoa da equipe.
 const COM_ESCOPO_HOSPITAL: ReadonlySet<UserRole> = new Set(['tecnico'])
 const COM_ESCOPO_OPERADORA: ReadonlySet<UserRole> = new Set(['administrativo'])
 export function temEscopoHospital(role: UserRole): boolean {
@@ -63,4 +64,10 @@ export function temEscopoHospital(role: UserRole): boolean {
 }
 export function temEscopoOperadora(role: UserRole): boolean {
   return COM_ESCOPO_OPERADORA.has(role)
+}
+// Os coordenadores recebem hospitais pela Distribuição de tarefas (21/10/2026):
+// a área existe, mas não é editada na conta.
+const AREA_NA_DISTRIBUICAO: ReadonlySet<UserRole> = new Set(['coordenador_tecnico', 'coordenador_administrativo'])
+export function temAreaNaDistribuicao(role: UserRole): boolean {
+  return AREA_NA_DISTRIBUICAO.has(role)
 }

@@ -3,13 +3,13 @@
 //
 // Só o que tria o card (13/10/2026): quem é o paciente, onde está, quando foi a
 // visita, quem enviou e se o relatório pede prorrogação. Ler o relatório e
-// decidir (aprovar, devolver, corrigir) acontece na ficha do paciente, para onde
-// o clique leva com o relatório aberto (`onAbrir`). O quadro não aprova.
+// decidir (aprovar ou editar) acontece na ficha do paciente, para onde o clique
+// leva com o relatório aberto (`onAbrir`). O quadro não aprova.
 import { memo } from 'react'
 import type { KanbanTarefa } from '../../types/api'
 import { OpAvatar } from '../ui'
 import { nomeDePessoa, nomeProprio } from '../../lib/texto'
-import { dataBR, diasNoPeriodo } from '../../lib/datas'
+import { dataBR, diariasNoPeriodo } from '../../lib/datas'
 import { etiquetaProrrogacao } from '../../lib/prorrogacao'
 
 export const AprovacaoCard = memo(function AprovacaoCard({ tarefa: t, onAbrir, onPrefetch }: {
@@ -19,13 +19,12 @@ export const AprovacaoCard = memo(function AprovacaoCard({ tarefa: t, onAbrir, o
   onPrefetch: (id: number) => void
 }) {
   const rel = t.relatorio!
-  const devolvido = rel.aprovacao === 'devolvido'
   const nome = nomeProprio(t.titulo) || t.titulo
   // O paciente já está prorrogado (pedido aprovado antes deste relatório).
   const prorrogado = etiquetaProrrogacao(t.prorrogacao_ate, t.prorrogacao_pausada)
   // O que ESTE relatório pede, no total dos períodos.
-  const diasPedidos = rel.prorrogacao?.periodos
-    .reduce((s, x) => s + diasNoPeriodo(x.data_inicio, x.data_fim), 0) ?? 0
+  const diariasPedidas = rel.prorrogacao?.periodos
+    .reduce((s, x) => s + diariasNoPeriodo(x.data_inicio, x.data_fim), 0) ?? 0
   const prefetch = t.internacao_id != null
     ? () => onPrefetch(t.internacao_id as number)
     : undefined
@@ -46,7 +45,7 @@ export const AprovacaoCard = memo(function AprovacaoCard({ tarefa: t, onAbrir, o
         <div className="kb-tags">
           {rel.prorrogacao && (
             <span className="kb-tag" style={{ color: 'var(--info)', background: 'var(--info-bg)' }}>
-              Prorrogação {diasPedidos} {diasPedidos === 1 ? 'dia' : 'dias'}
+              Prorrogação {diariasPedidas} {diariasPedidas === 1 ? 'diária' : 'diárias'}
             </span>
           )}
           {prorrogado && (
@@ -63,9 +62,6 @@ export const AprovacaoCard = memo(function AprovacaoCard({ tarefa: t, onAbrir, o
             </span>
           )}
         </div>
-      )}
-      {devolvido && rel.devolucao_motivo && (
-        <div className="ap-motivo"><span>Motivo: {rel.devolucao_motivo}</span></div>
       )}
     </article>
   )

@@ -1,4 +1,6 @@
-// Seção "Aplicar folha rosa" do formulário de relatório, só na ficha "Detalhes".
+// Seção "Negociações" do formulário de relatório, só na ficha "Detalhes". Até
+// 21/10/2026 se chamava "Folha rosa" (pedido do usuário: "mudar esse termo
+// Folha Rosa para Negociações"); no código o nome continua folha rosa.
 //
 // A folha rosa é o acordo com o hospital que gera custo evitado: o paciente
 // segue numa acomodação (De) e o hospital aceita cobrar outra (Para) por um
@@ -45,7 +47,7 @@ export function SecaoFolhaRosa({ form }: { form: FormRelatorio }) {
   )
 
   return (
-    <BlocoOpcional titulo="Folha rosa" tom="rosa" marcado={fr.ativa}
+    <BlocoOpcional titulo="Negociações" tom="rosa" marcado={fr.ativa}
                    onMarcar={(ligar) => fr.alternar(ligar, sugerida)}
                    extra={fr.ativa && v.diarias ? `${v.diarias} ${v.diarias === '1' ? 'diária' : 'diárias'}` : ''}>
       <style>{`
@@ -117,7 +119,7 @@ export function ResumoFolhaRosa({ f }: { f: FolhaRosa }) {
       fontSize: 'var(--t-sm)', color: 'var(--ink-2)', display: 'grid', gap: 2, overflowWrap: 'anywhere',
     }}>
       <b style={{ color: 'var(--rosa)' }}>
-        Folha rosa: {f.diarias} {f.diarias === 1 ? 'diária' : 'diárias'}
+        Negociação: {f.diarias} {f.diarias === 1 ? 'diária' : 'diárias'}
       </b>
       <span>{f.de} para {f.para}{periodo ? `, ${periodo}` : ''}</span>
       <span>Aceite do hospital: {ACEITES_FOLHA_ROSA[f.aceite] ?? f.aceite}</span>

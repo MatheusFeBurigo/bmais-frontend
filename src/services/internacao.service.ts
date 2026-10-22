@@ -199,13 +199,14 @@ export function registrarRelatorioComAnexo(id: number, rel: RelatorioRapido, arq
   })
 }
 
-/** Quem aprova corrige o relatório pendente e o aprova no mesmo passo. O
- *  conteúdo inteiro vai, como no registro; `arquivo` troca o anexo e
- *  `remover_anexo` o tira. */
-export function editarEAprovarRelatorio(
-  relatorioId: number, rel: RelatorioRapido & { remover_anexo?: boolean }, arquivo?: File | null,
+/** Quem aprova corrige o relatório pendente: com `aprovar`, aprova no mesmo
+ *  passo; sem, só salva e ele segue pendente (21/10/2026). O conteúdo inteiro
+ *  vai, como no registro; `arquivo` troca o anexo e `remover_anexo` o tira. */
+export function editarRelatorio(
+  relatorioId: number, rel: RelatorioRapido & { remover_anexo?: boolean }, arquivo: File | null | undefined,
+  aprovar: boolean,
 ): Promise<unknown> {
-  return apiFetch(`/relatorio/${relatorioId}/editar-aprovar`, {
+  return apiFetch(`/relatorio/${relatorioId}/${aprovar ? 'editar-aprovar' : 'editar'}`, {
     method: 'POST',
     body: formComAnexo(rel, arquivo),
   })
@@ -229,18 +230,6 @@ export function pausarProrrogacao(internacaoId: number, pausada: boolean): Promi
 /** O técnico aprova o relatório pendente: ele passa a valer como visita. */
 export function aprovarRelatorio(relatorioId: number): Promise<unknown> {
   return apiFetch(`/relatorio/${relatorioId}/aprovar`, { method: 'POST' })
-}
-
-/** O técnico devolve o relatório pendente ao autor, dizendo o que corrigir. */
-export function devolverRelatorio(relatorioId: number, motivo: string): Promise<unknown> {
-  return apiFetch(`/relatorio/${relatorioId}/devolver`, { method: 'POST', body: { motivo } })
-}
-
-/** O autor corrige o relatório devolvido e o manda de novo ao técnico. */
-export function reenviarRelatorio(
-  relatorioId: number, rel: { data_visita: string; medico: string; descricao: string },
-): Promise<unknown> {
-  return apiFetch(`/relatorio/${relatorioId}/reenviar`, { method: 'PUT', body: rel })
 }
 
 /**

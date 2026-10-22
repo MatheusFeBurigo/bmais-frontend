@@ -163,8 +163,4 @@ export const localStyles = `
 .kb-btn-atualizar:not(:disabled):hover{background:var(--success);color:#fff;border-color:var(--success)}
 .kb-empty{padding:22px 12px;text-align:center;color:var(--muted-2);font-size:var(--t-sm);line-height:1.5}
 .kb-dias{font-family:var(--font-mono);font-weight:600}
-/* ── Colunas de aprovação (quadro de pacientes) ── */
-.ap-motivo{margin-top:8px;padding:6px 10px;border-radius:8px;background:var(--danger-bg);color:var(--danger);font-size:var(--t-sm);word-break:break-word}
-/* Até 2 linhas: o corte fica no texto, não na caixa (com o padding, a 3ª linha aparecia pela metade). */
-.ap-motivo>span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 `

@@ -8,9 +8,15 @@
 // Os dados vêm da lista de relatórios da internação (o mesmo cache do card
 // Relatórios). O evento novo traz o id do relatório; o antigo, sem id, é achado
 // pela data da visita e pelo autor.
+//
+// "Imprimir" (21/10/2026) leva à folha do relatório (pages/ImprimirRelatorio),
+// que reusa `ConteudoRelatorio` com a identificação do paciente no topo.
 import { useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../../auth/AuthContext'
+import { podeVerFichaPaciente } from '../../../auth/permissions'
 import { useInternacaoRelatorios } from '../../../hooks/useInternacao'
-import { dataBR, dataHora, diasNoPeriodo } from '../../../lib/datas'
+import { dataBR, dataHora, diariasNoPeriodo } from '../../../lib/datas'
 import { CARATER, TIPOS_ALTO_CUSTO, TIPOS_INTERNACAO, rotulo } from '../../../lib/relatorioDetalhes'
 import { baixarAnexoRelatorio } from '../../../services/internacao.service'
 import type { RelatorioItem } from '../../../types/api'
@@ -46,6 +52,11 @@ const estilos = `
 .fx-vazio{font-size:var(--t-sm);color:var(--muted)}
 .fx-anexo{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2)}
 .fx-anexo-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--t-sm);color:var(--ink)}
+@media print{
+  .fx-nao-imprime{display:none!important}
+  .fx-sec-tit,.fx-sub{break-after:avoid}
+  .fx-tab tr,.fx-dl>div{break-inside:avoid}
+}
 `
 
 function acharRelatorio(lista: RelatorioItem[], alvo: AlvoRelatorio): RelatorioItem | undefined {
@@ -116,7 +127,7 @@ function Anexo({ r }: { r: RelatorioItem }) {
       <div className="fx-sub">Documento anexado</div>
       <div className="fx-anexo">
         <span className="fx-anexo-nome" title={nome}>{nome}</span>
-        <button type="button" className="btn btn-outline btn-sm" disabled={baixando} onClick={baixar}>
+        <button type="button" className="btn btn-outline btn-sm fx-nao-imprime" disabled={baixando} onClick={baixar}>
           {baixando && <Spinner size={12} />}
           Baixar
         </button>
@@ -126,7 +137,9 @@ function Anexo({ r }: { r: RelatorioItem }) {
   )
 }
 
-function Conteudo({ r }: { r: RelatorioItem }) {
+/** As seções preenchidas do relatório, na ordem da modal de registro. Leva os
+ *  estilos junto: a folha de impressão também a usa. */
+export function ConteudoRelatorio({ r }: { r: RelatorioItem }) {
   const det = r.detalhes ?? {}
   const prr = r.prorrogacao
   const fr = r.folha_rosa
@@ -142,6 +155,7 @@ function Conteudo({ r }: { r: RelatorioItem }) {
 
   return (
     <>
+      <style>{estilos}</style>
       <Secao titulo="Relatório de visita">
         <Dados itens={[
           ['Data da visita', d(r.data_visita)],
@@ -202,8 +216,8 @@ function Conteudo({ r }: { r: RelatorioItem }) {
 
       {prr && (
         <Secao titulo="Prorrogação">
-          <Tabela colunas={['Acomodação', 'Início', 'Fim', 'Dias']} linhas={prr.periodos.map((p) => [
-            p.acomodacao, d(p.data_inicio), d(p.data_fim), diasNoPeriodo(p.data_inicio, p.data_fim),
+          <Tabela colunas={['Acomodação', 'Início', 'Fim', 'Diárias']} linhas={prr.periodos.map((p) => [
+            p.acomodacao, d(p.data_inicio), d(p.data_fim), diariasNoPeriodo(p.data_inicio, p.data_fim),
           ])} />
           <div style={{ marginTop: 10 }}>
             <Dados itens={[
@@ -227,7 +241,7 @@ function Conteudo({ r }: { r: RelatorioItem }) {
         <Secao titulo="Negociação com o hospital">
           {fr && (
             <>
-              <div className="fx-sub">Folha rosa</div>
+              <div className="fx-sub">Negociações</div>
               <Dados itens={[
                 ['De', fr.de],
                 ['Para', fr.para],
@@ -267,8 +281,8 @@ export function FichaRelatorio({ internacaoId, alvo, onFechar, sobreposta, acoes
   onFechar: () => void
   /** Aberta sobre o painel lateral: sobe o z-index. */
   sobreposta?: boolean
-  /** Só na ficha do paciente (13/10/2026): o rodapé ganha Aprovar, Editar e
-   *  Devolver (pendente) ou Corrigir e reenviar (devolvido). Sem isto, só leitura. */
+  /** Só na ficha do paciente (13/10/2026): no pendente, o rodapé ganha Editar e
+   *  Aprovar. Sem isto, só leitura. */
   acoes?: {
     nomePaciente: string
     onDecidido: (aviso: string) => void
@@ -277,14 +291,25 @@ export function FichaRelatorio({ internacaoId, alvo, onFechar, sobreposta, acoes
   }
 }) {
   const relatorios = useInternacaoRelatorios(internacaoId)
+  const navigate = useNavigate()
+  const { role } = useAuth()
   const r = relatorios.data ? acharRelatorio(relatorios.data.relatorios, alvo) : undefined
   const titulo = r?.data_visita ? `Relatório de ${dataBR(r.data_visita)}` : 'Relatório'
+  // A folha fica na rota da ficha do paciente, com o mesmo acesso dela.
+  const imprimivel = Boolean(r) && podeVerFichaPaciente(role)
   return (
     <Modal title={titulo} onClose={onFechar} largura={780} sobreposta={sobreposta}
            footer={
              <>
                <button className="btn btn-outline" onClick={onFechar}
-                       style={acoes ? { marginRight: 'auto' } : undefined}>Fechar</button>
+                       style={acoes && !imprimivel ? { marginRight: 'auto' } : undefined}>Fechar</button>
+               {imprimivel && r && (
+                 <button className="btn btn-outline" style={acoes ? { marginRight: 'auto' } : undefined}
+                         title="Abrir a folha do relatório para imprimir ou salvar em PDF"
+                         onClick={() => navigate(`/paciente/${internacaoId}/relatorio/${r.id}`)}>
+                   Imprimir ou PDF
+                 </button>
+               )}
                {acoes && r && (
                  <RodapeAprovacao relatorio={r} internacaoId={internacaoId}
                                   nomePaciente={acoes.nomePaciente} onDecidido={acoes.onDecidido}
@@ -302,12 +327,8 @@ export function FichaRelatorio({ internacaoId, alvo, onFechar, sobreposta, acoes
             {r.autor && <AutorChip role={r.autor_role} autor={r.autor} nome={r.autor_nome} />}
             {r.criado_em && <span>Registrado em {dataHora(r.criado_em)}</span>}
             {r.aprovacao === 'pendente' && <span className="badge info">Aguardando aprovação</span>}
-            {r.aprovacao === 'devolvido' && <span className="badge danger">Devolvido</span>}
           </div>
-          {r.aprovacao === 'devolvido' && r.devolucao_motivo && (
-            <div className="fx-vazio" style={{ color: 'var(--danger)', marginTop: 6 }}>Motivo: {r.devolucao_motivo}</div>
-          )}
-          <Conteudo r={r} />
+          <ConteudoRelatorio r={r} />
         </>
       )}
     </Modal>

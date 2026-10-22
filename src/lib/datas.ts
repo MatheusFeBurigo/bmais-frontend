@@ -7,18 +7,24 @@ export function hojeISO(): string {
   return new Date(d.getTime() - off).toISOString().slice(0, 10)
 }
 
-/** Soma `n` dias a uma data ISO `YYYY-MM-DD` (calendário, sem fuso). */
-export function somarDias(iso: string, n: number): string {
-  const [a, m, d] = iso.slice(0, 10).split('-').map(Number)
-  const r = new Date(Date.UTC(a, m - 1, d + n))
-  return r.toISOString().slice(0, 10)
-}
-
-/** Dias de um período, contando os dois extremos (0 se faltar data). */
+/** Dias de um período, contando os dois extremos (0 se faltar data). É a conta
+ *  da medicação, que se dá dia a dia; diária de acomodação é `diariasNoPeriodo`. */
 export function diasNoPeriodo(de: string, ate: string): number {
   if (!de || !ate) return 0
   const n = (Date.parse(`${ate.slice(0, 10)}T00:00:00Z`) - Date.parse(`${de.slice(0, 10)}T00:00:00Z`)) / 864e5
   return n >= 0 ? n + 1 : 0
+}
+
+/** Diárias de acomodação num período, como a auditoria conta (21/10/2026): a
+ *  data inicial entra e a final não (01/10 a 05/10 = 4 diárias). O último dia,
+ *  quando cobrado, é a acomodação "Alta tardia". Início e fim no mesmo dia
+ *  contam 1 (Day Clinic). 0 se faltar data ou o fim vier antes do início.
+ *  Espelha domain/prorrogacao.dias no backend. */
+export function diariasNoPeriodo(de: string, ate: string): number {
+  if (!de || !ate) return 0
+  const n = (Date.parse(`${ate.slice(0, 10)}T00:00:00Z`) - Date.parse(`${de.slice(0, 10)}T00:00:00Z`)) / 864e5
+  if (n < 0) return 0
+  return Math.max(n, 1)
 }
 
 /** `true` se a data ISO informada é o dia atual (local). */

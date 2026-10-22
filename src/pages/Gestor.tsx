@@ -28,13 +28,19 @@ export default function Gestor() {
     <>
       <style>{localStyles}</style>
 
-      {/* Barra de filtro no topo — operadora como pills (filtro GLOBAL: refaz a
-          busca, afetando todo o painel; hospital/região vêm dos cliques nos gráficos). */}
+      {/* Barra de filtro no topo — operadora como pills e hospital num seletor
+          (filtros GLOBAIS: refazem a busca, afetando todo o painel). O hospital
+          também vem do clique no gráfico; a região, só do gráfico. */}
       {m && filtros && (
         <OperadoraPills
           operadoras={filtros.operadoras}
           ativa={v.fOperadora}
           onSelecionar={(key) => v.setFiltro({ operadora: key, hospital: '' })}
+          hospital={{
+            opcoes: filtros.hospitais,
+            ativo: v.fHospital,
+            onSelecionar: (key) => v.setFiltro({ hospital: key }),
+          }}
         />
       )}
 

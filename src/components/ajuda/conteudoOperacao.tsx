@@ -46,7 +46,7 @@ export function ModuloOperacional({ irPara }: Props) {
       <ComoFazer
         titulo="Encontrar um paciente específico"
         passos={[
-          { n: 1, titulo: "Digite no campo de busca", corpo: <>Vale o nome do segurado, o número de atendimento ou a senha de autorização. Não precisa digitar o nome inteiro.</> },
+          { n: 1, titulo: "Clique na lupa e digite", corpo: <>A lupa fica no fim dos filtros rápidos e abre o campo de busca. Vale o nome do segurado, o número de atendimento ou a senha de autorização. Não precisa digitar o nome inteiro.</> },
           { n: 2, titulo: "Quem já saiu aparece junto", corpo: <>A partir de duas letras, a busca procura também entre as altas: quem já saiu entra no fim da lista, com o selo <strong>Alta</strong> e a data da alta. Com um card de status do topo escolhido, a busca fica só nos internados.</> },
           { n: 3, titulo: "Clique na linha para abrir a ficha", corpo: <>Se nem assim aparecer, confira se a operadora e o hospital escolhidos no topo são os dele.</> },
         ]}
@@ -101,10 +101,10 @@ export function ModuloOperacional({ irPara }: Props) {
         <tr><Key>Operadora</Key><td>Recorta tudo para uma operadora, ou consolida todas.</td></tr>
         <tr><Key>Hospital</Key><td>Restringe a uma unidade. Cada opção já mostra quantos internados e quantos alertas ela tem. Na visão consolidada, os hospitais aparecem agrupados por operadora.</td></tr>
         <tr><Key>Período</Key><td><strong>Internação de</strong> e <strong>até</strong>: recorta a lista pela data de internação. Na lista de altas vira <strong>Alta de</strong> e recorta pela data da alta. Digite a data ou escolha no calendário; <strong>Limpar datas</strong> tira o recorte.</td></tr>
-        <tr><Key>Busca</Key><td>Procura por nome do segurado, número de atendimento e senha de autorização, entre os internados e também entre as altas (sem precisar ligar o filtro <strong>Altas</strong>).</td></tr>
+        <tr><Key>Busca</Key><td>A lupa, no fim dos filtros rápidos, abre o campo de busca. Procura por nome do segurado, número de atendimento e senha de autorização, entre os internados e também entre as altas (sem precisar ligar o filtro <strong>Altas</strong>). Esc limpa e fecha.</td></tr>
         <tr><Key>UTI e CTI</Key><td>Mantém apenas leitos de terapia intensiva.</td></tr>
         <tr><Key>Longa permanência</Key><td>Escolha a partir de quantos dias de internação: 3, 7, 10, 15 ou 30. O chip fica marcado com o corte escolhido. Clique nele para trocar, ou no x para tirar o filtro. Na lista de altas, conta os dias até a alta.</td></tr>
-        <tr><Key>Em prorrogação</Key><td>Mantém apenas os internados com prorrogação aprovada em andamento, inclusive as pausadas. Não aparece na lista de altas.</td></tr>
+        <tr><Key>Prorrogados</Key><td>Mantém apenas os internados com prorrogação aprovada que ainda não terminou, inclusive as pausadas. Quem teve a prorrogação encerrada sai do filtro. Não aparece na lista de altas.</td></tr>
         <tr><Key>Pendentes de aprovação</Key><td>Mantém apenas os pacientes com relatório aguardando aprovação, internados ou com alta.</td></tr>
         <tr><Key>Altas</Key><td>Troca a base da lista para os pacientes que já saíram, em vez dos internados.</td></tr>
         <tr><Key>Ordenação</Key><td>Padrão, mais dias sem relatório, ou mais dias internado. Na primeira opção, quem nunca teve relatório vai ao topo.</td></tr>
@@ -200,10 +200,10 @@ export function ModuloPaciente({ irPara }: Props) {
       </ComoFazer>
 
       <ComoFazer
-        titulo="Pedir prorrogação com o documento da operadora"
+        titulo="Prorrogar com o documento da operadora"
         passos={[
-          { n: 1, titulo: "Marque Pedir prorrogação", corpo: <>Na seção <strong>Prorrogação</strong> da janela do relatório. O primeiro período já vem começando no dia seguinte ao fim da prorrogação atual, se houver.</> },
-          { n: 2, titulo: "Adicione os períodos", corpo: <>Acomodação, início e fim, e <strong>Adicionar</strong>. O período seguinte já vem começando no dia depois do anterior.</> },
+          { n: 1, titulo: "Marque Prorrogar", corpo: <>Na seção <strong>Prorrogação</strong> da janela do relatório. O primeiro período já vem começando na data final da prorrogação atual, se houver.</> },
+          { n: 2, titulo: "Adicione os períodos", corpo: <>Acomodação, início e fim, e <strong>Adicionar</strong>. As diárias contam a data inicial e não a final: de 01/10 a 05/10 são 4 diárias. Para cobrar o último dia, use a acomodação <strong>Alta tardia</strong>. O período seguinte já vem começando na data final do anterior.</> },
           { n: 3, titulo: "Escolha a justificativa", corpo: <>Obrigatória, entre os motivos clínicos da lista. O complemento é livre.</> },
           { n: 4, titulo: "Anexe o documento, se a operadora pedir", corpo: <>Como o formulário de prorrogação da Porto Seguro: PDF ou foto, até 25 MB. <strong>Trocar</strong> e <strong>Tirar</strong> mudam o arquivo antes de registrar. O documento fica no relatório: o card mostra o nome dele, e a ficha do relatório tem o botão <strong>Baixar</strong>.</> },
         ]}
@@ -218,28 +218,28 @@ export function ModuloPaciente({ irPara }: Props) {
       <ComoFazer
         titulo="Corrigir e aprovar o relatório do operacional"
         passos={[
-          { n: 1, titulo: "Abra o relatório e clique em Editar", corpo: <>Pelo card em <strong>Tarefas</strong>, coluna <strong>Aguardando aprovação</strong>, ou pela ficha do paciente. Só técnico e gestor veem o botão.</> },
-          { n: 2, titulo: "Corrija o que precisar", corpo: <>É a janela do registro, já com tudo o que o operacional preencheu: texto, diagnósticos, acomodações, prorrogação e documento. Uma palavra errada se corrige aqui, sem devolver.</> },
-          { n: 3, titulo: "Clique em Salvar e aprovar", corpo: <>A correção é gravada e o relatório já vale. Ele segue com o nome de quem escreveu; quem corrigiu fica na aprovação e na trilha de{' '} <button type="button" className="aj-link" onClick={() => irPara('movimentacoes')}>Movimentações</button>, com o que mudou.</> },
+          { n: 1, titulo: "Abra o relatório e clique em Editar", corpo: <>Pelo card em <strong>Tarefas</strong>, coluna <strong>Aguardando aprovação</strong>, ou pela ficha do paciente. Só técnico, coordenador técnico e gestor veem o botão.</> },
+          { n: 2, titulo: "Corrija o que precisar", corpo: <>É a janela do registro, já com tudo o que o operacional preencheu: texto, diagnósticos, acomodações, prorrogação e documento.</> },
+          { n: 3, titulo: "Salvar, ou Salvar e aprovar", corpo: <><strong>Salvar</strong> grava a correção e o relatório segue em <strong>Aguardando aprovação</strong>, para editar de novo depois. <strong>Salvar e aprovar</strong> grava e libera: o relatório já vale. Ele segue com o nome de quem escreveu; quem corrigiu fica na trilha de{' '} <button type="button" className="aj-link" onClick={() => irPara('movimentacoes')}>Movimentações</button>, com o que mudou.</> },
         ]}
       >
         <>
           <Tela nome="Ficha do relatório" largura={760}
-            descricao="Relatório do operacional esperando aprovação. Editar fica entre Devolver e Aprovar.">
+            descricao="Relatório do operacional esperando aprovação. Editar fica ao lado de Aprovar.">
             <ReplicaFichaRelatorioPendente marcas={{ editar: 1 }} />
           </Tela>
           <Tela nome="Corrigir relatório" largura={900}
             descricao="A mesma janela do registro, aberta por cima da ficha do relatório e já preenchida.">
-            <ReplicaModalRelatorio corrigindo marcas={{ texto: 2, registrar: 3 }} />
+            <ReplicaModalRelatorio corrigindo marcas={{ texto: 2, salvar: 3, registrar: 3 }} />
           </Tela>
         </>
       </ComoFazer>
-      <Callout tipo="info" titulo="Técnico ou gestor aprova o relatório do operacional">
+      <Callout tipo="info" titulo="Quem aprova libera o relatório do operacional">
         O relatório do operacional vai para a coluna <strong>Aguardando aprovação</strong>, em
         Tarefas, e só vale depois de aprovado. No rodapé dele: <strong>Aprovar</strong> vale como
-        está, <strong>Editar</strong> corrige e aprova no mesmo passo, e <strong>Devolver</strong>{' '}
-        manda de volta ao autor com o motivo, para ele usar <strong>Corrigir e reenviar</strong>. O
-        relatório do técnico e o do gestor valem na hora.
+        está, e <strong>Editar</strong> abre a correção, que pode só ser salva (o relatório segue
+        aguardando) ou salva e aprovada. O relatório não volta para quem escreveu. Aprovam o
+        técnico, o coordenador técnico e o gestor; o relatório deles vale na hora.
       </Callout>
 
       <ComoFazer
@@ -368,11 +368,14 @@ export function ModuloPaciente({ irPara }: Props) {
           registrar, ela entra na timeline como <strong>Mudança de acomodação</strong>. Sem
           nenhuma acomodação conhecida, preencha a acomodação, a entrada e a saída.</li>
         <li><strong>No período</strong>: procedimentos realizados, medicação de alto custo, evento
-          adverso e folha rosa (a troca de acomodação). Quando o relatório com folha rosa passa a
-          valer, a timeline ganha o evento <strong>Troca de acomodação</strong>.</li>
-        <li><strong>Prorrogação</strong>: marque <strong>Pedir prorrogação</strong>, adicione os
-          períodos (acomodação, início e fim) e escolha a justificativa. O período seguinte já vem
-          começando no dia depois do anterior. Se a operadora pede um documento, como o formulário
+          adverso e negociações (a troca de acomodação, antes chamada de folha rosa). Quando o
+          relatório com negociação passa a valer, a timeline ganha o evento{' '}
+          <strong>Troca de acomodação</strong>.</li>
+        <li><strong>Prorrogação</strong>: marque <strong>Prorrogar</strong>, adicione os
+          períodos (acomodação, início e fim) e escolha a justificativa. As diárias contam a data
+          inicial e não a final (01/10 a 05/10 são 4 diárias); o último dia, quando cobrado, entra
+          como <strong>Alta tardia</strong>. O período seguinte já vem começando na data final do
+          anterior. Se a operadora pede um documento, como o formulário
           de prorrogação da Porto Seguro, use <strong>Anexar documento</strong> (PDF ou foto, até
           25 MB); ele fica no relatório para baixar. Depois que a prorrogação vale, admin e operacional
           pausam e retomam pelo botão <strong>Pausar prorrogação</strong>, no topo da ficha.</li>
@@ -400,11 +403,17 @@ export function ModuloPaciente({ irPara }: Props) {
       <p>
         Cada relatório aparece como um cartão com borda colorida pelo papel de quem o registrou, com
         data e hora, autor, médico responsável, os CIDs informados, um resumo do que foi marcado e,
-        quando há documento anexado, o nome dele. Prorrogação e folha rosa valem quando o
+        quando há documento anexado, o nome dele. Prorrogação e negociação valem quando o
         relatório é aprovado. Clicar num relatório abre a ficha dele, só para leitura, com o que
         foi preenchido em cada seção, na mesma ordem da janela de registro, e o botão{' '}
         <strong>Baixar</strong> do documento. No relatório pendente, o rodapé da ficha traz as
-        ações de quem aprova.
+        ações de quem aprova. <strong>Imprimir ou PDF</strong>, no rodapé, abre a folha do
+        relatório com a identificação do paciente no topo (hospital, atendimento, convênio e
+        internação); o botão <strong>Imprimir ou salvar em PDF</strong> manda só a folha para a
+        impressora, ou para um PDF. Para imprimir a internação inteira, use{' '}
+        <strong>Imprimir / PDF</strong>, no topo da ficha do paciente: saem os dados do paciente e
+        todos os relatórios, ou só o escolhido em <strong>O que imprimir</strong>. Sem relatório
+        ainda, sai a folha com os dados do paciente.
       </p>
 
       <h3>Timeline</h3>
@@ -519,20 +528,29 @@ export function ModuloKanban({ irPara }: Props) {
       <Tabela cabecalho={['Coluna', 'O que reúne', 'O que fazer']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Aguardando aprovação</Key>
           <td>Relatórios enviados pelo operacional: paciente, visita, quem enviou, a prorrogação pedida e se há documento anexado.</td>
-          <td>Técnico ou gestor: clique no card. A ficha do paciente abre com o relatório, e Aprovar, Editar e Devolver ficam no rodapé dele. Editar corrige e aprova no mesmo passo.</td></tr>
-        <tr><Key>Devolvidos</Key>
-          <td>Relatórios que o técnico ou o gestor pediu para corrigir, com o motivo.</td>
-          <td>Quem escreveu: clique no card e use Corrigir e reenviar, no rodapé do relatório.</td></tr>
+          <td>Técnico, coordenador técnico ou gestor: clique no card. A ficha do paciente abre com o relatório, e Editar e Aprovar ficam no rodapé dele. Na edição, Salvar deixa o relatório aqui; Salvar e aprovar libera.</td></tr>
       </Tabela>
+
+      <h3>Pendências</h3>
+      <p>
+        Além das demandas que vêm do censo, o gestor e os coordenadores podem pedir algo a alguém
+        da equipe: um paciente para olhar, um e-mail urgente, uma tarefa específica. O pedido
+        aparece no painel <strong>Pendências</strong>, no topo de Tarefas, com o paciente, os
+        detalhes e o prazo (em vermelho quando venceu). Feito o que foi pedido, use{' '}
+        <strong>Concluir</strong>: a pendência sai da lista. Quem pediu acompanha em{' '}
+        <strong>Que você pediu</strong> e pode excluir um pedido feito por engano. Para pedir, use{' '}
+        <strong>Nova pendência</strong>, no mesmo painel, ou o painel da pessoa na Distribuição de
+        tarefas.
+      </p>
 
       <h3>Pacientes em prorrogação</h3>
       <p>
         A prorrogação é pedida ao registrar o relatório na ficha <strong>Detalhes</strong> do
-        paciente: marque <strong>Pedir prorrogação</strong>, informe os períodos por acomodação e
+        paciente: marque <strong>Prorrogar</strong>, informe os períodos por acomodação e
         escolha a justificativa. Ela vale quando o relatório é aprovado e não muda o prazo do
         próximo relatório. No quadro de pacientes, o card do paciente prorrogado mostra{' '}
         <strong>Prorrogado até</strong> a data final (ou <strong>Prorrogação pausada</strong>).
-        Para ver só quem está em prorrogação, use o filtro <strong>Em prorrogação</strong> do
+        Para ver só quem está em prorrogação, use o filtro <strong>Prorrogados</strong> do
         Painel Operacional. Passada a data final, o paciente volta para{' '}
         <strong>Sem relatório</strong>. Admin e operacional podem{' '}
         <strong>Pausar prorrogação</strong> e <strong>Retomar prorrogação</strong> na ficha do
@@ -617,9 +635,9 @@ export function ModuloKanban({ irPara }: Props) {
             relatório. Quando há visita marcada, traz a data, o horário e o responsável; quando
             atrasada, o card inteiro é destacado, com a indicação de quando era.</td></tr>
         <tr><Key>Aprovação</Key>
-          <td>Paciente, hospital, data da visita e quem enviou. Etiquetas mostram os dias de
-            prorrogação pedidos, se o paciente já está prorrogado e <strong>Com documento</strong>{' '}
-            quando há anexo. No devolvido, o motivo da devolução.</td></tr>
+          <td>Paciente, hospital, data da visita e quem enviou. Etiquetas mostram as diárias de
+            prorrogação pedidas, se o paciente já está prorrogado e <strong>Com documento</strong>{' '}
+            quando há anexo.</td></tr>
         <tr><Key>Cobrança de censo</Key>
           <td>Hospital e operadora, desde quando o censo está pendente, a última atualização
             recebida e, se já houve cobrança, quando e por quem. O selo de dias sem atualizar fica{' '}

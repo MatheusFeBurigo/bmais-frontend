@@ -124,7 +124,8 @@ export function relatorioPadrao(relatorios: RelatorioItem[] | undefined): Relato
 }
 
 /** O texto de "Negociação de códigos e diárias": a justificativa do pedido e o
- *  que foi negociado com o hospital (folha rosa e troca de procedimento). */
+ *  que foi negociado com o hospital (negociação de acomodação e troca de
+ *  procedimento). */
 function textoNegociacao(r: RelatorioItem): string {
   const linhas: string[] = []
   const p = r.prorrogacao
@@ -133,7 +134,7 @@ function textoNegociacao(r: RelatorioItem): string {
   const fr = r.folha_rosa
   if (fr) {
     const quando = periodo(fr.data_inicio, fr.data_fim)
-    linhas.push(`Folha rosa: paciente em ${fr.de}, cobrado como ${fr.para} por ${plural(fr.diarias, 'diária', 'diárias')}`
+    linhas.push(`Negociação: paciente em ${fr.de}, cobrado como ${fr.para} por ${plural(fr.diarias, 'diária', 'diárias')}`
       + (quando ? ` (${quando})` : ''))
   }
   for (const t of r.detalhes?.trocas_procedimento ?? []) {

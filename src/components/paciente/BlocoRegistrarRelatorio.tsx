@@ -20,7 +20,7 @@ export function BlocoRegistrarRelatorio({ form, medicos }: { form: FormRelatorio
       <button
         className="btn btn-success"
         style={{ marginTop: 12 }}
-        onClick={form.salvar}
+        onClick={() => form.salvar()}
         disabled={form.salvando || !form.dataVisita}
       >
         {form.salvando ? 'Enviando…' : form.vaiParaAprovacao ? 'Enviar para aprovação' : 'Registrar relatório'}

@@ -24,25 +24,28 @@
 // Cada seção reduz e expande (`GrupoRecolhivel`, 08/10/2026). A modal abre
 // simples: só o Relatório de visita aberto; as demais fechadas, com o
 // resumo do que já está preenchido. Se o registro esbarra num campo de uma
-// seção fechada, ela abre sozinha.
+// seção fechada, ela abre sozinha. O aviso do campo que faltou fica no alto da
+// seção, em cima dos campos, e a modal rola até ele (22/10/2026); no rodapé só
+// o erro que não é de seção nenhuma (ex.: a rede).
 // A alta não é bloco: é o botão "Alta" do rodapé, ao lado de "Registrar
 // relatório" (o mesmo do topo da ficha), e vale na hora, sem esperar o relatório.
 // As perguntas de home care ficam nela, com o motivo Homecare.
-// Com "Pedir prorrogação" marcado, o rodapé ganha "Pausar prorrogação" (admin e
+// Com "Prorrogar" marcado, o rodapé ganha "Pausar prorrogação" (admin e
 // operacional): a pausa vai no pedido e vale quando o relatório vale.
 //
 // Cada seção termina num "OK" (20/10/2026): confere os campos dela, fecha e abre
 // a seguinte, rolando até ela. Registrar continua valendo de qualquer ponto.
 // A mesma modal corrige o relatório pendente (20/10/2026): quem aprova a abre já
-// preenchida pela ficha do relatório, e o rodapé vira "Salvar e aprovar".
+// preenchida pela ficha do relatório, e o rodapé vira "Salvar" (segue pendente,
+// 21/10/2026) e "Salvar e aprovar".
 //
 // Sem a 0054 no banco, só aparece o que já existia (visita, CID, relatório,
-// prorrogação, folha rosa).
+// prorrogação, negociações).
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { useAuth } from '../../../auth/AuthContext'
 import { podeExecutar } from '../../../auth/permissions'
 import { useCatalogosProrrogacao } from '../../../hooks/useKanban'
-import { dataBR, diasNoPeriodo, paraISO } from '../../../lib/datas'
+import { dataBR, diariasNoPeriodo, paraISO } from '../../../lib/datas'
 import { CARATER, TIPOS_INTERNACAO, rotulo } from '../../../lib/relatorioDetalhes'
 import { NEGOCIACAO_NO_RELATORIO } from '../../../lib/recursos'
 import { identificacaoPaciente } from '../../../lib/texto'
@@ -84,7 +87,9 @@ function grupoDoErro(erro: string | null): Grupo | null {
   if (e.includes('acomodações utilizadas') || e.includes('acomodação utilizada') || e.includes('movimentação')
       || e.includes('caráter') || e.includes('tipo de internação')) return 'internacao'
   if (e.includes('procedimento realizado') || e.includes('alto custo') || e.includes('evento adverso')) return 'periodo'
-  if (e.includes('folha rosa')) return 'periodo'
+  // As mensagens da negociação (folha rosa) dizem "negociação"; a seção "Negociação
+  // com o hospital" responde pelas de glosa e troca, logo abaixo.
+  if (e.includes('negociação') || e.includes('negociações')) return 'periodo'
   if (e.includes('glosa') || e.includes('medicação negada')
       || e.includes('procedimento negado') || e.includes('troca de procedimento')) return 'negociacao'
   return null
@@ -96,12 +101,12 @@ const comQtde = (rot: string, n: number) => (n > 1 ? `${rot} (${n})` : rot)
 function resumos(form: FormRelatorio): Record<Grupo, string> {
   const c = form.completo
   const prr = form.prorrogacao
-  const dias = prr ? prr.periodos.finais().reduce((n, p) => n + diasNoPeriodo(p.data_inicio, p.data_fim), 0) : 0
+  const diarias = prr ? prr.periodos.finais().reduce((n, p) => n + diariasNoPeriodo(p.data_inicio, p.data_fim), 0) : 0
   const atual = c ? [...c.acomodacoesFinais()].reverse().find((a) => !a.data_saida) : undefined
   const marcados = (pares: [boolean, string][]) => pares.filter(([on]) => on).map(([, t]) => t).join(' · ') || 'Nada marcado'
   return {
     prorrogacao: prr?.ativa
-      ? `Pedida${dias ? `: ${dias} ${dias === 1 ? 'dia' : 'dias'}` : ''}`
+      ? `Pedida${diarias ? `: ${diarias} ${diarias === 1 ? 'diária' : 'diárias'}` : ''}`
         + (prr.anexo || (prr.anexoAtual && !prr.removerAnexo) ? ' · com documento' : '')
       : 'Não pedida',
     visita: [dataBR(form.dataVisita) || 'Sem data', form.medico, c?.enfermeiro].filter(Boolean).join(' · '),
@@ -118,7 +123,7 @@ function resumos(form: FormRelatorio): Record<Grupo, string> {
       [Boolean(c?.ligado('procedimentos')), comQtde('Procedimentos', c?.procedimentos.finais().length ?? 0)],
       [Boolean(c?.ligado('altoCusto')), comQtde('Alto custo', c?.altoCusto.finais().length ?? 0)],
       [Boolean(c?.ligado('evento')), 'Evento adverso'],
-      [Boolean(form.folhaRosa?.ativa), 'Folha rosa'],
+      [Boolean(form.folhaRosa?.ativa), 'Negociações'],
     ]),
     negociacao: marcados([
       [Boolean(c?.ligado('glosas')), comQtde('Glosa', c?.glosas.finais().length ?? 0)],
@@ -199,13 +204,9 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
     else novo.add(g)
     return novo
   })
-  // O registro esbarrou num campo de uma seção fechada: ela abre sozinha.
-  useEffect(() => {
-    const g = grupoDoErro(form.erro)
-    if (g) setAbertos((atual) => (atual.has(g) ? atual : new Set(atual).add(g)))
-  }, [form.erro])
 
   const resumo = resumos(form)
+  const grupoErro = grupoDoErro(form.erro)
 
   // As seções à mostra, na ordem de prioridade de preenchimento (etapas.ts: as
   // obrigatórias primeiro). O "OK" abre a seguinte desta lista.
@@ -231,8 +232,23 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
     el?.querySelector<HTMLButtonElement>('.rr-grupo-cab')?.focus({ preventScroll: true })
     setFoco(null)
   }, [foco])
+  // O registro (ou o OK) esbarrou num campo: a seção dele abre e a modal rola
+  // até o aviso, no alto dela. `tentativas` faz rolar de novo quando a mensagem
+  // se repete (o clique seguinte no registrar, já rolado para baixo).
+  const [tentativas, setTentativas] = useState(0)
+  useEffect(() => {
+    if (!grupoErro) return
+    setAbertos((atual) => (atual.has(grupoErro) ? atual : new Set(atual).add(grupoErro)))
+    setFoco(grupoErro)
+  }, [grupoErro, form.erro, tentativas])
+
+  function registrar(aprovar?: boolean) {
+    setTentativas((n) => n + 1)
+    form.salvar(aprovar)
+  }
 
   function concluir(g: Grupo) {
+    setTentativas((n) => n + 1)
     if (!form.concluirSecao(g)) return
     setFinalizadas((atual) => new Set(atual).add(g))
     const seguinte = proxima(g)
@@ -252,6 +268,7 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
     titulo: ETAPA[g].titulo,
     concluida: finalizadas.has(g) && !form.conferirSecao(g),
     aberto: abertos.has(g),
+    erro: grupoErro === g ? form.erro : null,
     onAlternar: () => alternar(g),
     onOk: () => concluir(g),
     proxima: proxima(g) && ETAPA[proxima(g)!].titulo,
@@ -263,8 +280,9 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
 
   const rodape = (
     <>
-      {form.erro && <span className="rr-erro" role="alert">{form.erro}</span>}
-      {form.vaiParaAprovacao && !form.erro && (
+      {/* O erro de um campo fica em cima dele, na seção; aqui, só o resto. */}
+      {form.erro && !grupoErro && <span className="rr-erro" role="alert">{form.erro}</span>}
+      {form.vaiParaAprovacao && !(form.erro && !grupoErro) && (
         <span className="rr-erro" style={{ color: 'var(--muted)' }}>O relatório vai para aprovação do técnico.</span>
       )}
       <button className="btn btn-outline" onClick={fechar} disabled={desab}>Cancelar</button>
@@ -274,7 +292,16 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
       {podeExecutar(role, 'darAlta') && !form.editando && (
         <AcaoAlta d={paciente} sobreposta pequeno={false} onFeito={onAviso} />
       )}
-      <button className="btn btn-primary" onClick={form.salvar} disabled={desab}>
+      {/* Na correção (21/10/2026): "Salvar" grava e o relatório segue
+          aguardando aprovação, para editar de novo depois; "Salvar e aprovar"
+          libera. */}
+      {form.editando && (
+        <button className="btn btn-outline" onClick={() => registrar(false)} disabled={desab}
+                title="Grava a correção; o relatório segue aguardando aprovação">
+          Salvar
+        </button>
+      )}
+      <button className="btn btn-primary" onClick={() => registrar()} disabled={desab}>
         {desab ? 'Enviando…'
           : form.editando ? 'Salvar e aprovar'
           : form.vaiParaAprovacao ? 'Enviar para aprovação' : 'Registrar relatório'}

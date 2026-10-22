@@ -45,6 +45,7 @@ export const ENTIDADE_LABEL: Record<string, string> = {
   usuario: 'Usuário',
   sessao: 'Sessão',
   kanban: 'Tarefa',
+  pendencia: 'Pendência',
   sistema: 'Sistema',
   outro: 'Outro',
 }
@@ -61,6 +62,7 @@ export const ENTIDADE_VARIANT: Record<string, BadgeVariant> = {
   usuario: 'danger',
   sessao: 'muted',
   kanban: 'warning',
+  pendencia: 'warning',
   sistema: 'danger',
   outro: 'muted',
 }

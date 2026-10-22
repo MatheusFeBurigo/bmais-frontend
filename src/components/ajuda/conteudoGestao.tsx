@@ -181,7 +181,7 @@ export function ModuloGestor() {
         titulo="Filtrar por operadora, hospital ou região"
         passos={[
           { n: 1, titulo: 'Escolha a operadora', corpo: <>É o filtro que refaz a consulta do painel inteiro. Trocar de operadora limpa o hospital escolhido, que pode não pertencer à nova.</> },
-          { n: 2, titulo: 'Clique na barra de um hospital', corpo: <>O painel passa a mostrar só aquele hospital, e as outras barras ficam claras. Clicar de novo na mesma barra desfaz.</> },
+          { n: 2, titulo: 'Escolha o hospital', corpo: <>Digite o nome no campo <strong>Hospital</strong>, ao lado das operadoras, e escolha na lista, ou clique na barra dele no gráfico. O painel inteiro passa a mostrar só aquele hospital, e as outras barras ficam claras. Com uma operadora escolhida, a lista traz só os hospitais dela. O <strong>×</strong> do campo, ou clicar de novo na mesma barra, volta para todos.</> },
           { n: 3, titulo: 'Ou na barra de uma região', corpo: <>Funciona igual. O gráfico só aparece quando os hospitais estão em mais de uma região.</> },
           { n: 4, titulo: 'Confira os filtros ativos', corpo: <>Cada filtro em vigor vira uma etiqueta; clicar nela remove só aquele filtro.</> },
           { n: 5, titulo: 'Limpar tudo', corpo: <>Tira todos os filtros de uma vez e volta ao painel completo.</> },
@@ -404,7 +404,7 @@ export function ModuloVolumetria() {
         passos={[
           { n: 1, titulo: 'Compare abertas e concluídas por pessoa', corpo: <>Azul é o que está aberto agora; verde, o que a pessoa concluiu nos últimos 30 dias. Quem concluiu mais aparece primeiro. Clicar numa pessoa abre o painel dela.</> },
           { n: 2, titulo: 'Veja o ritmo dia a dia', corpo: <>As entregas do grupo por dia. Passe o mouse sobre a linha para ver o número de cada dia.</> },
-          { n: 3, titulo: 'Repare no que foi feito por fora', corpo: <>Entregas feitas por quem não é da equipe, como o coordenador, não entram na conta de ninguém e aparecem nesta nota.</> },
+          { n: 3, titulo: 'Repare no que foi feito por fora', corpo: <>Entregas feitas por quem não é da equipe, como o gestor, não entram na conta de ninguém e aparecem nesta nota. O coordenador é da equipe: as entregas dele contam para ele.</> },
         ]}
       >
         <Tela nome="Distribuição de tarefas" largura={960}
@@ -681,12 +681,23 @@ export function ModuloVolumetria() {
         individuais</strong> definidas pessoa a pessoa. Por isso a ação pede confirmação.
       </Callout>
 
-      <Callout tipo="info" titulo="Única tela em que o coordenador escreve">
-        Os perfis de coordenação observam as demais telas sem alterá-las. Definir a área de cada
-        pessoa, dividir a carga por um período, calibrar os parâmetros e aprovar ou recusar os
-        pedidos para desfazer a atualização de um censo, aqui, são as únicas
-        alterações que eles executam no sistema, e ficam registradas em Movimentações. Cada coordenador atua apenas sobre o próprio
-        grupo, e a restrição vale também fora da tela.
+      <h3>Pendências</h3>
+      <p>
+        O painel de cada pessoa tem a seção <strong>Pendências</strong>: o que o gestor ou o
+        coordenador pediu a ela fora do censo, como um paciente para olhar ou um e-mail urgente,
+        com o prazo de cada uma. <strong>Nova pendência</strong> pede algo a essa pessoa; ela vê o
+        pedido no topo das Tarefas dela e o conclui quando terminar. O cartão da pessoa mostra
+        quantas pendências estão abertas. Elas não entram nas horas estimadas: a carga continua
+        sendo a fila do censo.
+      </p>
+
+      <Callout tipo="info" titulo="O coordenador também é da equipe">
+        O coordenador aparece no grupo dele, marcado como coordenador, e recebe hospitais como
+        qualquer pessoa: o gestor (ou ele mesmo) define a área dele aqui, e as demandas desses
+        hospitais passam a contar na carga dele e a aparecer nas Tarefas dele. Definir a área de
+        cada pessoa, dividir a carga por um período, calibrar os parâmetros e aprovar ou recusar
+        os pedidos para desfazer a atualização de um censo ficam registrados em Movimentações.
+        Cada coordenador atua apenas sobre o próprio grupo, e a restrição vale também fora da tela.
       </Callout>
     </>
   )

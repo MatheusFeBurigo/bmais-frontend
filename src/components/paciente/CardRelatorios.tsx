@@ -20,7 +20,6 @@ import { useFormRelatorio, type ContextoFolhaRosa, type ContextoProrrogacao } fr
 // Situação na aprovação do técnico. Aprovado não leva etiqueta: é o normal.
 function EtiquetaAprovacao({ r }: { r: RelatorioItem }) {
   if (r.aprovacao === 'pendente') return <span className="badge info">Aguardando aprovação</span>
-  if (r.aprovacao === 'devolvido') return <span className="badge danger">Devolvido</span>
   return null
 }
 
@@ -65,11 +64,6 @@ function RelatorioCard({ r, onAbrir }: { r: RelatorioItem; onAbrir?: () => void 
         {r.autor && <AutorChip role={r.autor_role} autor={r.autor} nome={r.autor_nome} />}
         <EtiquetaAprovacao r={r} />
       </div>
-      {r.aprovacao === 'devolvido' && r.devolucao_motivo && (
-        <div style={{ fontSize: 'var(--t-sm)', color: 'var(--danger)', marginTop: 4 }}>
-          Motivo: {r.devolucao_motivo}
-        </div>
-      )}
       {r.data_visita && (
         <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)', marginTop: 2 }}>
           Visita: {dataBR(r.data_visita)}{r.medico ? ` · ${r.medico}` : ''}

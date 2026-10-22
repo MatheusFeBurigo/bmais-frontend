@@ -56,7 +56,6 @@ function rotuloRelatorio(r: RelatorioItem): string {
   if (quem) partes.push(quem)
   if (r.prorrogacao?.periodos.length) partes.push('com prorrogação')
   if (r.aprovacao === 'pendente') partes.push('aguardando aprovação')
-  if (r.aprovacao === 'devolvido') partes.push('devolvido')
   return partes.join(' · ')
 }
 

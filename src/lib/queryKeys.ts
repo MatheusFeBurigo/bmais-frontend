@@ -72,6 +72,12 @@ export const queryKeys = {
   /** Carga de trabalho por hospital (tela Volumetria, coordenadores). */
   volumetria: () => ['volumetria'] as const,
 
+  /** Pendências avulsas: as do usuário (topo de Tarefas), as de uma pessoa
+   *  (Distribuição) e quem pode recebê-las. */
+  pendencias: () => ['pendencias', 'minhas'] as const,
+  pendenciasDaPessoa: (userId: string) => ['pendencias', 'pessoa', userId] as const,
+  pendenciasEquipe: () => ['pendencias', 'equipe'] as const,
+
   /** Chamados ao suporte: a lista, uma conversa e a contagem do aviso no menu. */
   chamados: () => ['chamados', 'lista'] as const,
   chamado: (id: number) => ['chamados', 'conversa', id] as const,
@@ -96,6 +102,7 @@ export const queryRoots = {
   auditoriaResumo: ['auditoria-resumo'] as const,
   progresso: ['progresso'] as const,
   volumetria: ['volumetria'] as const,
+  pendencias: ['pendencias'] as const,
   chamados: ['chamados'] as const,
 } as const
 

@@ -10,6 +10,7 @@ import {
 } from '../../hooks/useVolumetria'
 import { useTravarScroll } from '../../lib/travarScroll'
 import { HospitalCombobox } from '../HospitalCombobox'
+import { PendenciasDaPessoa } from '../pendencias/PendenciasDaPessoa'
 import { Badge, OpAvatar } from '../ui'
 import QuebraDemandas from './QuebraDemandas'
 import TempoPorTarefa from './TempoPorTarefa'
@@ -90,7 +91,7 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
               {pessoa.nome}
             </div>
             <div className="card-sub" style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span>{rotulo.singular} · {pessoa.hospitais_n} {pessoa.hospitais_n === 1 ? 'hospital' : 'hospitais'}</span>
+              <span>{pessoa.coordenador ? rotulo.coordenador : rotulo.singular} · {pessoa.hospitais_n} {pessoa.hospitais_n === 1 ? 'hospital' : 'hospitais'}</span>
               {!pessoa.sem_vinculo && <Badge variant={NIVEL_BADGE[nivel]} dot>{NIVEL_LABEL[nivel]}</Badge>}
               {pessoa.sem_nome && (
                 <span title="O perfil não tem nome cadastrado: este veio do e-mail. Preencha o nome em Operações.">
@@ -137,6 +138,10 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
               />
             </div>
           )}
+
+          {/* Pendências avulsas (21/10/2026): o que o gestor ou o coordenador
+              pediu a esta pessoa, fora da carga em horas. */}
+          <PendenciasDaPessoa pessoa={pessoa} onAviso={onErro} />
 
           {/* Capacidade: a referência dos "dias de fila". Própria da pessoa ou a do grupo. */}
           <div className="vol-cap">

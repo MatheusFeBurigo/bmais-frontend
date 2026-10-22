@@ -1,4 +1,6 @@
-// Seção "Pedir prorrogação" da modal "Registrar relatório" (ficha "Detalhes").
+// Seção "Prorrogar" da modal "Registrar relatório" (ficha "Detalhes"). Até
+// 21/10/2026 se chamava "Pedir prorrogação" (pedido do usuário: "Fazer
+// prorrogação ou Prorrogar").
 //
 // Vem no topo da modal: pedir prorrogação é o motivo de ser da maioria dos
 // relatórios (65% no Márcia), e o resto da modal é o que sustenta o pedido.
@@ -17,7 +19,7 @@
 // pede o formulário de prorrogação dela). Vai como anexo do relatório.
 import { useRef, useState } from 'react'
 import { useCatalogosProrrogacao } from '../../hooks/useKanban'
-import { dataBR, diasNoPeriodo } from '../../lib/datas'
+import { dataBR, diariasNoPeriodo } from '../../lib/datas'
 import { EXTENSOES_ANEXO, MAX_BYTES_ANEXO } from '../../services/internacao.service'
 import type { PedidoProrrogacao } from '../../types/api'
 import { BlocoOpcional } from './relatorio/BlocoOpcional'
@@ -30,12 +32,12 @@ export function SecaoProrrogacao({ form }: { form: FormRelatorio }) {
   // Sem a migration os catálogos vêm vazios: a seção não aparece.
   if (!prr || !catalogos.data?.acomodacoes.length) return null
   const { acomodacoes, justificativas } = catalogos.data
-  const total = prr.periodos.finais().reduce((n, p) => n + diasNoPeriodo(p.data_inicio, p.data_fim), 0)
+  const total = prr.periodos.finais().reduce((n, p) => n + diariasNoPeriodo(p.data_inicio, p.data_fim), 0)
 
   return (
-    <BlocoOpcional titulo="Pedir prorrogação" marcado={prr.ativa} onMarcar={prr.alternar}
+    <BlocoOpcional titulo="Prorrogar" marcado={prr.ativa} onMarcar={prr.alternar}
                    desabilitado={form.salvando}
-                   extra={total > 0 ? `${total} ${total === 1 ? 'dia' : 'dias'}` : ''}>
+                   extra={total > 0 ? `${total} ${total === 1 ? 'diária' : 'diárias'}` : ''}>
       <div className="rr-pilha">
         <SecaoPeriodos lista={prr.periodos} acomodacoes={acomodacoes} desabilitado={form.salvando} />
         <label className="rr-campo">
@@ -122,14 +124,14 @@ function CampoAnexo({ prr, desabilitado }: { prr: Prorrogacao; desabilitado: boo
 
 /** O pedido de prorrogação gravado num relatório: períodos e justificativa. */
 export function ResumoProrrogacao({ p, compacto = false }: { p: PedidoProrrogacao; compacto?: boolean }) {
-  const total = p.periodos.reduce((s, x) => s + diasNoPeriodo(x.data_inicio, x.data_fim), 0)
+  const total = p.periodos.reduce((s, x) => s + diariasNoPeriodo(x.data_inicio, x.data_fim), 0)
   return (
     <div style={{
       marginTop: 6, padding: '6px 10px', borderRadius: 8, background: 'var(--info-bg)',
       fontSize: 'var(--t-sm)', color: 'var(--ink-2)', display: 'grid', gap: 2,
     }}>
       <b style={{ color: 'var(--info)' }}>
-        Prorrogação: {total} {total === 1 ? 'dia' : 'dias'}{p.pausada ? ' (pausada)' : ''}
+        Prorrogação: {total} {total === 1 ? 'diária' : 'diárias'}{p.pausada ? ' (pausada)' : ''}
       </b>
       {p.periodos.map((x, i) => (
         <span key={i}>{x.acomodacao}: {dataBR(x.data_inicio)} a {dataBR(x.data_fim)}</span>

@@ -15,7 +15,7 @@ import SenhaProvisoriaModal from './components/SenhaProvisoriaModal'
 import {
   importDashboard, importDiretoria, importGestor,
   importEquipe, importConfiguracoes, importUpload,
-  importKanban, importPaciente, importFormularioPorto, importUsuarioForm, importLogs, importAjuda,
+  importKanban, importPaciente, importFormularioPorto, importImprimirRelatorio, importUsuarioForm, importLogs, importAjuda,
   importProgresso, importVolumetria, importRelatorio, importPortalProfissional,
   importChamados,
 } from './routes'
@@ -32,6 +32,7 @@ const Upload = lazy(importUpload)
 const Kanban = lazy(importKanban)
 const Paciente = lazy(importPaciente)
 const FormularioPorto = lazy(importFormularioPorto)
+const ImprimirRelatorio = lazy(importImprimirRelatorio)
 const UsuarioForm = lazy(importUsuarioForm)
 const Logs = lazy(importLogs)
 const Ajuda = lazy(importAjuda)
@@ -202,6 +203,12 @@ function ProtectedRoutes() {
         {/* Formulário de prorrogação da Porto: sai dos dados da ficha, então tem o
             mesmo acesso dela. */}
         <Route path="/paciente/:id/porto" element={<RequireFichaPaciente><FormularioPorto /></RequireFichaPaciente>} />
+        {/* Folha para imprimir ou salvar em PDF: a internação (todos os
+            relatórios) ou um relatório. Mesmo acesso da ficha. */}
+        <Route path="/paciente/:id/imprimir"
+               element={<RequireFichaPaciente><ImprimirRelatorio /></RequireFichaPaciente>} />
+        <Route path="/paciente/:id/relatorio/:relatorioId"
+               element={<RequireFichaPaciente><ImprimirRelatorio /></RequireFichaPaciente>} />
         {/* Ajuda (documentação das telas): sem GatedRoute — todo papel acessa.
             O recorte é POR MÓDULO dentro da tela, pela mesma hierarquia das
             demais (components/ajuda/catalogo.tsx). */}

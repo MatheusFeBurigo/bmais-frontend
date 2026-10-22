@@ -17,6 +17,7 @@ import {
 import { usePrefetchInternacao } from '../hooks/useInternacao'
 import { localStyles } from '../components/kanban/kanban.styles'
 import { KanbanCard } from '../components/kanban/KanbanCard'
+import { PainelPendencias } from '../components/pendencias/PainelPendencias'
 import { KanbanFiltros } from '../components/kanban/KanbanFiltros'
 import { ColunaInfo } from '../components/kanban/ColunaInfo'
 import CensoDrawer from '../components/kanban/CensoDrawer'
@@ -63,7 +64,6 @@ const VAZIO: Record<string, string> = {
   aguardando_censo: 'Nenhum hospital aguardando o censo de hoje.',
   censos_processados: 'Nenhum censo atualizado hoje ainda.',
   aguardando_aprovacao: 'Nenhum relatório aguardando aprovação.',
-  relatorios_devolvidos: 'Nenhum relatório devolvido.',
 }
 
 
@@ -103,7 +103,7 @@ export default function Kanban() {
   const somenteLeitura = ehSomenteLeitura(role)
   const prefetch = usePrefetchInternacao()
   const [drawerId, setDrawerId] = useState<number | null>(null)
-  // Quem aprovou ou devolveu na ficha do paciente volta para cá com o aviso
+  // Quem aprovou na ficha do paciente volta para cá com o aviso
   // (`state.aviso`, ver pages/Paciente).
   const location = useLocation()
   const avisoDaVolta = (location.state as { aviso?: string } | null)?.aviso
@@ -209,7 +209,7 @@ export default function Kanban() {
   }, [prefetch])
 
   // Card de aprovação (13/10/2026): a análise é na ficha do paciente, com o
-  // relatório aberto e Aprovar/Devolver no rodapé dele. Quem não abre a ficha
+  // relatório aberto e Editar/Aprovar no rodapé dele. Quem não abre a ficha
   // (analista) vê o painel lateral, só leitura.
   const abrirAprovacao = useCallback((t: KanbanTarefa) => {
     if (!t.internacao_id || !t.relatorio) return
@@ -292,6 +292,10 @@ export default function Kanban() {
           Recarregue em instantes.
         </div>
       )}
+
+      {/* Pendências avulsas (21/10/2026): o que o gestor ou o coordenador pediu.
+          Fora das colunas, que são as demandas do censo. */}
+      {data && <PainelPendencias onAviso={setToast} />}
 
       {tarefasRaw && quadros.length > 1 && (
         <div style={{ marginBottom: 12 }}>

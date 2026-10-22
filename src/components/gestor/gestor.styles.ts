@@ -30,6 +30,13 @@ export const localStyles = `
 .gestor-topbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:16px}
 .topbar-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;color:var(--muted);flex-shrink:0}
 .op-pills{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+/* Seletor de hospital: à direita das pills; em tela estreita, linha inteira */
+.topbar-hosp{display:flex;align-items:center;gap:10px;flex:0 1 340px;min-width:220px}
+.topbar-hosp-campo{position:relative;flex:1;min-width:0}
+.topbar-hosp-campo .bm-input{padding-right:30px}
+.topbar-hosp-limpar{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);font-size:18px;line-height:1;padding:2px 6px;cursor:pointer}
+.topbar-hosp-limpar:hover{color:var(--ink)}
+@media (max-width:640px){.topbar-hosp{flex-basis:100%}}
 .pill-op{display:inline-flex;align-items:center;gap:7px;padding:5px 14px;border-radius:99px;font-size:var(--t-base);font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--ink-2);transition:background .12s,border-color .12s,color .12s;white-space:nowrap}
 .pill-op:hover{border-color:var(--border-strong);color:var(--ink)}
 /* Ponto colorido da operadora (sempre visível nas pills de operadora) */

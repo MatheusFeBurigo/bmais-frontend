@@ -1,15 +1,30 @@
-// Barra de filtros do Gestor (apresentação pura): pills de operadora no topo +
-// chips de filtros ativos removíveis. Extraída de pages/Gestor.tsx.
+// Barra de filtros do Gestor (apresentação pura): pills de operadora e seletor
+// de hospital no topo + chips de filtros ativos removíveis. Extraída de
+// pages/Gestor.tsx.
 // A página deriva os dados (operadoras, chips) e passa prontos.
+import { HospitalCombobox } from '../HospitalCombobox'
 import { opCor } from '../ui'
 
 export interface ChipFiltro { tipo: string; label: string; onRemove: () => void }
 
 // Pills de operadora (filtro GLOBAL — refaz a busca). "Todas" = neutro escuro.
-export function OperadoraPills({ operadoras, ativa, onSelecionar }: {
+//
+// Ao lado, o hospital (21/10/2026: "filtrar, além da Operadora, também 1
+// hospital individualmente"). O recorte já existia pelo clique na barra do
+// gráfico "Internados por hospital"; o seletor deixa ele à vista. Com operadora
+// escolhida, lista só os hospitais dela (a operadora de cada internação no
+// painel é a do hospital, ver carregar_para_gestor). Desde 22/10/2026 é um
+// campo de busca só com o nome do hospital ("não precisa exibir a operadora
+// (...) permita a pesquisa"). Opcional: a réplica da Ajuda mostra só as pills.
+export function OperadoraPills({ operadoras, ativa, onSelecionar, hospital }: {
   operadoras: Array<{ key: string; nome: string }>
   ativa: string
   onSelecionar: (key: string) => void
+  hospital?: {
+    opcoes: Array<{ key: string; nome: string; operadora_key?: string }>
+    ativo: string
+    onSelecionar: (key: string) => void
+  }
 }) {
   if (operadoras.length === 0) return null
   return (
@@ -27,6 +42,39 @@ export function OperadoraPills({ operadoras, ativa, onSelecionar }: {
             {o.nome}
           </button>
         ))}
+      </div>
+      {hospital && <HospitalSelect {...hospital} operadora={ativa} />}
+    </div>
+  )
+}
+
+function HospitalSelect({ opcoes, ativo, onSelecionar, operadora }: {
+  opcoes: Array<{ key: string; nome: string; operadora_key?: string }>
+  ativo: string
+  onSelecionar: (key: string) => void
+  operadora: string
+}) {
+  const daOperadora = operadora ? opcoes.filter((h) => h.operadora_key === operadora) : opcoes
+  return (
+    <div className="topbar-hosp">
+      <span className="topbar-lbl">Hospital</span>
+      <div className="topbar-hosp-campo">
+        <HospitalCombobox
+          hospitais={daOperadora}
+          value={ativo}
+          // Digitar limpa a escolha a cada tecla; só muda o filtro (e refaz a
+          // busca do painel) quando o hospital de fato muda.
+          onChange={(key) => { if (key !== ativo) onSelecionar(key) }}
+          disabled={daOperadora.length === 0}
+          placeholder="Todos os hospitais · digite para buscar"
+          sugerirCadastro={false}
+        />
+        {ativo && (
+          <button type="button" className="topbar-hosp-limpar" onClick={() => onSelecionar('')}
+                  title="Ver todos os hospitais" aria-label="Ver todos os hospitais">
+            ×
+          </button>
+        )}
       </div>
     </div>
   )

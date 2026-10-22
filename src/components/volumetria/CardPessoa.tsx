@@ -104,10 +104,17 @@ export default function CardPessoa({ pessoa, grupo, maxDemandas, onAbrir, onDivi
             {/* O e-mail fica só no tooltip: a identidade na tela é o NOME. */}
             <div className="vol-card-nome" title={pessoa.email}>{pessoa.nome}</div>
             <div className="vol-card-sub">
-              <span>{rotulo.singular} · {pessoa.hospitais_n} {pessoa.hospitais_n === 1 ? 'hospital' : 'hospitais'}</span>
+              <span>{pessoa.coordenador ? rotulo.coordenador : rotulo.singular} · {pessoa.hospitais_n} {pessoa.hospitais_n === 1 ? 'hospital' : 'hospitais'}</span>
               {pessoa.sem_nome && (
                 <span title="O perfil não tem nome cadastrado: este veio do e-mail. Preencha o nome em Operações.">
                   <Badge variant="warning">sem nome</Badge>
+                </span>
+              )}
+              {(pessoa.pendencias_abertas ?? 0) > 0 && (
+                <span title="Pendências pedidas pelo gestor ou pelo coordenador, abertas">
+                  <Badge variant="info">
+                    {pessoa.pendencias_abertas} {pessoa.pendencias_abertas === 1 ? 'pendência' : 'pendências'}
+                  </Badge>
                 </span>
               )}
             </div>

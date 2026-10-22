@@ -166,15 +166,21 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
             <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>Filtros rápidos:</span>
             <span className={`qf-chip${uti ? ' active' : ''}`}>UTI / CTI</span>
             <span className="qf-chip">Longa permanência</span>
-            <span className="qf-chip">Em prorrogação</span>
+            <span className="qf-chip">Prorrogados</span>
             <span className="qf-chip">Pendentes de aprovação</span>
             <span className="qf-chip">Altas</span>
           </span>
         ))}
         <div style={{ flex: 1 }} />
+        {/* A busca real abre de uma lupa (BuscaExpansivel); aqui, já aberta. */}
         {marcar(marcas.busca, (
-          <input type="text" className="bm-input" style={{ width: 220 }} readOnly
-            placeholder="Buscar segurado, atendimento (e altas)…" />
+          <span className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <span style={{ width: 40, height: 40, borderRadius: 99, border: '1px solid var(--border-strong)', display: 'grid', placeItems: 'center', color: 'var(--ink)' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7.5" /><path d="m21 21-4.6-4.6" /></svg>
+            </span>
+            <input type="text" className="bm-input" style={{ width: 220 }} readOnly
+              placeholder="Buscar segurado, atendimento (e altas)…" />
+          </span>
         ))}
       </div>
 
@@ -545,7 +551,7 @@ function PacienteDoRelatorio() {
  *  `corrigindo`, é a mesma janela aberta por quem aprova ("Corrigir relatório").
  *  O OK do Quadro clínico se marca por `destaques` ('.rr-grupo.aberto .rr-grupo-okbtn'). */
 export function ReplicaModalRelatorio({ marcas = {}, corrigindo }: {
-  marcas?: Partial<Record<'visita' | 'texto' | 'opcionais' | 'registrar', number>>
+  marcas?: Partial<Record<'visita' | 'texto' | 'opcionais' | 'salvar' | 'registrar', number>>
   corrigindo?: boolean
 }) {
   return (
@@ -560,6 +566,7 @@ export function ReplicaModalRelatorio({ marcas = {}, corrigindo }: {
               {IcoAlta}Alta
             </span>
           )}
+          {corrigindo && marcar(marcas.salvar, <span className="btn btn-outline">Salvar</span>)}
           {marcar(marcas.registrar, (
             <span className="btn btn-primary">{corrigindo ? 'Salvar e aprovar' : 'Registrar relatório'}</span>
           ))}
@@ -601,7 +608,7 @@ export function ReplicaModalRelatorio({ marcas = {}, corrigindo }: {
                 resumo="Urgência · Clínica geral · Apartamento (atual)">{null}</GrupoRecolhivel>
               <GrupoRecolhivel titulo="No período" resumo="Nada marcado">{null}</GrupoRecolhivel>
               <GrupoRecolhivel titulo="Prorrogação"
-                resumo={corrigindo ? 'Pedida: 5 dias · com documento' : 'Não pedida'}>{null}</GrupoRecolhivel>
+                resumo={corrigindo ? 'Pedida: 4 diárias · com documento' : 'Não pedida'}>{null}</GrupoRecolhivel>
             </div>
           ), true)}
         </div>
@@ -610,8 +617,8 @@ export function ReplicaModalRelatorio({ marcas = {}, corrigindo }: {
   )
 }
 
-/** A seção Prorrogação aberta, com "Pedir prorrogação" marcado, dois períodos,
- *  a justificativa e o documento da operadora anexado. O "Pedir prorrogação" se
+/** A seção Prorrogação aberta, com "Prorrogar" marcado, dois períodos,
+ *  a justificativa e o documento da operadora anexado. O "Prorrogar" se
  *  marca por `destaques` ('.rr-bloco-tg'). */
 export function ReplicaProrrogacaoRelatorio({ marcas = {} }: {
   marcas?: Partial<Record<'periodos' | 'justificativa' | 'anexo', number>>
@@ -627,12 +634,12 @@ export function ReplicaProrrogacaoRelatorio({ marcas = {} }: {
       <style>{estilosRelatorio}</style>
       <div className="rr-raiz">
         <GrupoRecolhivel titulo="Prorrogação" aberto onOk={nada}>
-          <BlocoOpcional titulo="Pedir prorrogação" marcado onMarcar={nada} extra="5 dias">
+          <BlocoOpcional titulo="Prorrogar" marcado onMarcar={nada} extra="4 diárias">
             <div className="rr-pilha">
               {marcar(marcas.periodos, (
                 <div className="rr-lista">
-                  {periodo('UTI', '21/10/2026', '23/10/2026', '3 dias')}
-                  {periodo('Apartamento', '24/10/2026', '25/10/2026', '2 dias')}
+                  {periodo('UTI', '21/10/2026', '23/10/2026', '2 diárias')}
+                  {periodo('Apartamento', '23/10/2026', '25/10/2026', '2 diárias')}
                 </div>
               ), true)}
               {marcar(marcas.justificativa, (
@@ -667,7 +674,7 @@ export function ReplicaProrrogacaoRelatorio({ marcas = {} }: {
  *  de Tarefas: o rodapé de quem aprova. Redesenhada: a real (FichaRelatorio) lê
  *  a lista de relatórios da internação. */
 export function ReplicaFichaRelatorioPendente({ marcas = {} }: {
-  marcas?: Partial<Record<'editar' | 'aprovar' | 'devolver', number>>
+  marcas?: Partial<Record<'editar' | 'aprovar', number>>
 }) {
   const secao = (titulo: string, corpo: ReactNode) => (
     <div style={{ marginTop: 18 }}>
@@ -682,7 +689,6 @@ export function ReplicaFichaRelatorioPendente({ marcas = {} }: {
       rodape={
         <>
           <span className="btn btn-outline" style={{ marginRight: 'auto' }}>Fechar</span>
-          {marcar(marcas.devolver, <span className="btn btn-outline">Devolver</span>)}
           {marcar(marcas.editar, <span className="btn btn-outline">Editar</span>)}
           {marcar(marcas.aprovar, <span className="btn btn-success">Aprovar</span>)}
         </>

@@ -162,7 +162,7 @@ const PAPEIS_MATRIZ = [
 const TELAS_MATRIZ: { tela: string; acesso: string; gestao?: boolean }[] = [
   { tela: 'Painel Operacional', acesso: 'SSSSSS' },
   { tela: 'Ficha do Paciente', acesso: 'SSSSNS' },
-  { tela: 'Tarefas', acesso: 'SSSNSN' },
+  { tela: 'Tarefas', acesso: 'SSSNSS' },
   { tela: 'Envio de Censos', acesso: 'SSSSNS' },
   { tela: 'Dashboard da Diretoria', acesso: 'NNNSNN', gestao: true },
   { tela: 'Painel do Gestor', acesso: 'NNSSNN', gestao: true },
@@ -237,8 +237,8 @@ export function ModuloNavegacao() {
             <td>Painel do Gestor, Configurações e Distribuição de tarefas, além do Painel
               Operacional, das Tarefas e do Envio de Censos, para acompanhar quem ele gerencia.
               Tem as ações do técnico: o
-              relatório dele vale na hora, e ele aprova, corrige e aprova, ou devolve o do
-              operacional. Não acessa a Diretoria.</td>
+              relatório dele vale na hora, e ele aprova o do operacional, ou o corrige e
+              salva para depois ou já aprova. Não acessa a Diretoria.</td>
           </tr>
           <tr>
             <Key>Diretor</Key>
@@ -256,12 +256,14 @@ export function ModuloNavegacao() {
         <tr>
           <Key>Coordenador técnico</Key>
           <td>Acompanha a carga de trabalho dos técnicos na Distribuição de tarefas e define quais hospitais
-            cada um cobre. Enxerga o Painel Operacional como contexto, sem alterar nada nele, e envia censos.</td>
+            cada um cobre. Também é da equipe: tem Tarefas e as ações do técnico, inclusive aprovar e
+            editar o relatório do operacional, e envia censos.</td>
         </tr>
         <tr>
           <Key>Coordenador operacional</Key>
-          <td>O mesmo papel, do lado operacional: acompanha a carga de cobrança de censo e
-            distribui os hospitais entre os operacionais.</td>
+          <td>O mesmo papel, do lado operacional: acompanha a carga de cobrança de censo,
+            distribui os hospitais entre os operacionais e trabalha com eles, com as ações do
+            operacional.</td>
         </tr>
       </Tabela>
 
@@ -283,13 +285,19 @@ export function ModuloNavegacao() {
         </Callout>
       </SoGestao>
 
-      <h3>Perfis de observação</h3>
+      <h3>Perfil de observação</h3>
       <ul>
-        <li>Analista e coordenadores <strong>não alteram pacientes nem relatórios</strong>.
-          Veem essas telas, mas sem os botões de edição.</li>
-        <li>Os coordenadores enviam censos; o analista, não.</li>
+        <li>O analista <strong>não altera pacientes nem relatórios</strong>. Vê essas telas, mas
+          sem os botões de edição, e não envia censos.</li>
         <li>O analista mantém os cadastros da tela Operações.</li>
-        <li>Os coordenadores definem os hospitais de cada pessoa na Distribuição de tarefas.</li>
+      </ul>
+
+      <h3>Coordenadores</h3>
+      <ul>
+        <li>Definem os hospitais de cada pessoa na Distribuição de tarefas, incluindo a si mesmos.</li>
+        <li>Também trabalham no grupo: têm Tarefas e as ações do técnico ou do operacional.</li>
+        <li>Enquanto não têm hospital vinculado, veem a rede inteira; com hospitais vinculados,
+          veem os deles, como qualquer pessoa da equipe.</li>
       </ul>
 
       <h3>Escopo por hospital</h3>

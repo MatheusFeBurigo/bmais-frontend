@@ -40,16 +40,9 @@ export const COLUNAS: ColunaKanban[] = [
   {
     key: 'aguardando_aprovacao',
     titulo: 'Aguardando aprovação',
-    descricao: 'Relatórios enviados pelo operacional. O técnico confere e aprova ou devolve',
+    descricao: 'Relatórios enviados pelo operacional. Quem aprova confere, edita se precisar e libera',
     cor: 'var(--info)',
     corBg: 'var(--info-bg)',
-  },
-  {
-    key: 'relatorios_devolvidos',
-    titulo: 'Devolvidos',
-    descricao: 'O técnico pediu correção. Quem escreveu corrige e reenvia',
-    cor: 'var(--danger)',
-    corBg: 'var(--danger-bg)',
   },
   // ── Fluxo de censos: um card por hospital, e o card anda sozinho ──────────
   // A coluna vem da data do último censo recebido. Manuais: "Marcar como
