@@ -11,6 +11,10 @@
 //
 // "Imprimir" (21/10/2026) leva à folha do relatório (pages/ImprimirRelatorio),
 // que reusa `ConteudoRelatorio` com a identificação do paciente no topo.
+//
+// Na Prorrogação, "Gerar relatório" (22/10/2026) gera os relatórios que saem do
+// pedido; hoje, o "Relatório para Porto Seguro" (porto/GerarRelatorioProrrogacao).
+// Mesmo acesso da folha de impressão: o da ficha do paciente.
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../auth/AuthContext'
@@ -20,6 +24,7 @@ import { dataBR, dataHora, diariasNoPeriodo } from '../../../lib/datas'
 import { CARATER, TIPOS_ALTO_CUSTO, TIPOS_INTERNACAO, rotulo } from '../../../lib/relatorioDetalhes'
 import { baixarAnexoRelatorio } from '../../../services/internacao.service'
 import type { RelatorioItem } from '../../../types/api'
+import { GerarRelatorioProrrogacao } from '../../porto/GerarRelatorioProrrogacao'
 import { AutorChip } from '../../StatusBadge'
 import { LoadingState, Modal, Spinner } from '../../ui'
 import { RodapeAprovacao } from './AcoesAprovacao'
@@ -38,7 +43,9 @@ const estilos = `
 .fx-sec{margin-top:20px}
 /* Título da seção acima dos rótulos (10,5px, caixa alta), como na modal. */
 .fx-sec-tit{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:var(--t-lg);font-weight:600;letter-spacing:-.01em;color:var(--ink)}
-.fx-sec-tit::after{content:"";flex:1;height:1px;background:var(--border)}
+.fx-sec-tit::after{content:"";flex:1;height:1px;background:var(--border);order:1}
+/* Ação da seção (ex.: "Gerar relatório" na prorrogação), depois da linha. */
+.fx-sec-acao{order:2;display:flex}
 .fx-dl{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px 16px}
 .fx-dl dt{font-size:var(--t-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
 .fx-dl dd{margin:2px 0 0;font-size:var(--t-sm);color:var(--ink);overflow-wrap:anywhere}
@@ -66,10 +73,13 @@ function acharRelatorio(lista: RelatorioItem[], alvo: AlvoRelatorio): RelatorioI
   return doDia.find((r) => r.autor === alvo.autor) ?? doDia[0]
 }
 
-function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
+function Secao({ titulo, acao, children }: { titulo: string; acao?: ReactNode; children: ReactNode }) {
   return (
     <section className="fx-sec">
-      <div className="fx-sec-tit">{titulo}</div>
+      <div className="fx-sec-tit">
+        {titulo}
+        {acao && <span className="fx-sec-acao fx-nao-imprime">{acao}</span>}
+      </div>
       {children}
     </section>
   )
@@ -138,8 +148,12 @@ function Anexo({ r }: { r: RelatorioItem }) {
 }
 
 /** As seções preenchidas do relatório, na ordem da modal de registro. Leva os
- *  estilos junto: a folha de impressão também a usa. */
-export function ConteudoRelatorio({ r }: { r: RelatorioItem }) {
+ *  estilos junto: a folha de impressão também a usa (sem as ações). */
+export function ConteudoRelatorio({ r, acaoProrrogacao }: {
+  r: RelatorioItem
+  /** Ao lado do título da Prorrogação: o "Gerar relatório" da ficha. */
+  acaoProrrogacao?: ReactNode
+}) {
   const det = r.detalhes ?? {}
   const prr = r.prorrogacao
   const fr = r.folha_rosa
@@ -215,7 +229,7 @@ export function ConteudoRelatorio({ r }: { r: RelatorioItem }) {
       )}
 
       {prr && (
-        <Secao titulo="Prorrogação">
+        <Secao titulo="Prorrogação" acao={acaoProrrogacao}>
           <Tabela colunas={['Acomodação', 'Início', 'Fim', 'Diárias']} linhas={prr.periodos.map((p) => [
             p.acomodacao, d(p.data_inicio), d(p.data_fim), diariasNoPeriodo(p.data_inicio, p.data_fim),
           ])} />
@@ -328,7 +342,9 @@ export function FichaRelatorio({ internacaoId, alvo, onFechar, sobreposta, acoes
             {r.criado_em && <span>Registrado em {dataHora(r.criado_em)}</span>}
             {r.aprovacao === 'pendente' && <span className="badge info">Aguardando aprovação</span>}
           </div>
-          <ConteudoRelatorio r={r} />
+          <ConteudoRelatorio r={r} acaoProrrogacao={imprimivel
+            ? <GerarRelatorioProrrogacao internacaoId={internacaoId} relatorio={r} />
+            : undefined} />
         </>
       )}
     </Modal>

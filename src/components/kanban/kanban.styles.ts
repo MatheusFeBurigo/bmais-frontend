@@ -138,6 +138,30 @@ export const localStyles = `
 /* Etiquetas de prioridade: os mesmos sinais dos chips da barra de filtro. */
 .kb-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
 .kb-tag{font-size:var(--t-xs);font-weight:600;border-radius:99px;padding:2px 8px;line-height:1.5;white-space:nowrap}
+/* Responsáveis pelo card: bolinhas sobrepostas com as iniciais, na cor do
+   grupo (técnico azul, operacional verde); o clique abre o balão. */
+.kb-resp{display:flex;align-items:center;margin-top:7px}
+.kb-resp-btn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;cursor:pointer;border-radius:99px;padding:1px}
+.kb-resp-btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.kb-resp-av{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;border:2px solid var(--surface);background:var(--surface-3);color:var(--ink-2);font-size:9.5px;font-weight:700;letter-spacing:.02em;transition:transform .12s}
+.kb-resp-btn .kb-resp-av+.kb-resp-av{margin-left:-7px}
+.kb-resp-btn:hover .kb-resp-av{transform:translateY(-1px)}
+.kb-resp-av.tec{background:var(--info-bg);color:var(--info)}
+.kb-resp-av.op{background:var(--success-bg);color:var(--success)}
+.kb-resp-av.mais{background:var(--surface-3);color:var(--muted)}
+.kb-resp-vazio{font-size:var(--t-xs);color:var(--muted-2);font-style:italic}
+.kb-card-rodape-dir{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+/* O balão mora no <body> (portal): estas regras valem lá também. */
+.kb-resp-pop{position:fixed;z-index:1000;width:260px;max-width:calc(100vw - 16px);max-height:min(360px,calc(100vh - 16px));overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 12px 32px rgba(6,46,92,.16);padding:10px 12px;cursor:default}
+.kb-resp-pop-tit{font-size:var(--t-xs);font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.kb-resp-pop-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.kb-resp-pop-item{display:flex;align-items:flex-start;gap:9px}
+.kb-resp-pop-item .kb-resp-av{width:30px;height:30px;font-size:11px;border:0}
+.kb-resp-pop-txt{display:flex;flex-direction:column;min-width:0;line-height:1.35}
+.kb-resp-pop-nome{font-size:var(--t-base);font-weight:600;color:var(--ink-2)}
+.kb-resp-pop-cargo{font-size:var(--t-sm);color:var(--muted)}
+.kb-resp-pop-email{font-size:var(--t-sm);color:var(--accent);text-decoration:none;overflow-wrap:anywhere}
+.kb-resp-pop-email:hover{text-decoration:underline}
 /* Rodapé do card: "Mais detalhes" à esquerda, seta de "abrir" à direita. */
 .kb-card-rodape{margin-top:7px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 /* "Mais detalhes": discreto por padrão, para não competir com o nome do paciente. */

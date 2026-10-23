@@ -11,6 +11,7 @@ import { OpAvatar } from '../ui'
 import { nomeDePessoa, nomeProprio } from '../../lib/texto'
 import { dataBR, diariasNoPeriodo } from '../../lib/datas'
 import { etiquetaProrrogacao } from '../../lib/prorrogacao'
+import { ResponsaveisCard } from './ResponsaveisCard'
 
 export const AprovacaoCard = memo(function AprovacaoCard({ tarefa: t, onAbrir, onPrefetch }: {
   tarefa: KanbanTarefa
@@ -63,6 +64,7 @@ export const AprovacaoCard = memo(function AprovacaoCard({ tarefa: t, onAbrir, o
           )}
         </div>
       )}
+      {t.responsaveis && <div className="kb-resp"><ResponsaveisCard pessoas={t.responsaveis} /></div>}
     </article>
   )
 })

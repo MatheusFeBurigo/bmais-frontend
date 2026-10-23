@@ -97,10 +97,10 @@ export const estilosRelatorio = `
 .rr-bloco-dica{font-size:var(--t-sm);color:var(--muted);margin:-4px 0 14px}
 .rr-bloco-corpo{padding:2px 16px 18px}
 
-/* Documento anexado ao pedido de prorrogação. */
-.rr-anexo-dica{margin:0 0 8px}
-.rr-anexo{display:flex;align-items:center;gap:8px;height:38px;padding:0 4px 0 12px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--muted)}
-.rr-anexo-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--t-md);color:var(--ink)}
+/* Formulário da Porto, baixado da seção de prorrogação. */
+.rr-porto-dica{margin:0 0 8px}
+.rr-porto-acao{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rr-porto-nota{font-size:var(--t-sm);color:var(--muted)}
 
 /* Listas: linha de entrada, respiro, e os itens nas mesmas colunas. */
 .rr-lista-wrap{display:grid;gap:14px}

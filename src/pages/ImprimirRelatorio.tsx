@@ -11,7 +11,11 @@
 //
 // Cada relatório sai com as mesmas seções da ficha (`ConteudoRelatorio`), numa
 // folha A4 retrato com a identificação do paciente no topo. Na impressão sai só
-// a folha, como no Formulário Porto. Nada aqui é editável.
+// a folha. Nada aqui é editável.
+//
+// No topo, ao lado de "Imprimir ou salvar em PDF", fica "Gerar relatório"
+// (porto/GerarRelatorioProrrogacao): o "Relatório para Porto Seguro" sai do
+// relatório escolhido ou, com todos, do último que pediu prorrogação.
 //
 // Identidade visual da BMais (22/10/2026: "quero que tenha a identificação da
 // BMais, só não precisa deixar tudo azul"): o topo leva a marca "B+" e o nome do
@@ -22,6 +26,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { usePageHeader } from '../components/PageHeader'
 import { ConteudoRelatorio } from '../components/paciente/relatorio/FichaRelatorio'
+import { relatorioPadrao } from '../components/porto/folhaPorto.model'
+import { GerarRelatorioProrrogacao } from '../components/porto/GerarRelatorioProrrogacao'
 import { LoadingState } from '../components/ui'
 import { useInternacaoDados, useInternacaoRelatorios } from '../hooks/useInternacao'
 import { dataBR, dataHora } from '../lib/datas'
@@ -187,13 +193,17 @@ export default function ImprimirRelatorio() {
           <IconVoltar />
           Voltar
         </button>
+        {/* Ao lado do imprimir (22/10/2026): os relatórios que saem do pedido
+            de prorrogação. Com "Todos os relatórios", o pedido é o do último
+            relatório que pediu prorrogação. */}
+        {pronto && <GerarRelatorioProrrogacao internacaoId={internacaoId} relatorio={umSo ?? relatorioPadrao(lista)} />}
         <button className="btn btn-primary btn-sm" onClick={() => window.print()} disabled={!pronto}>
           <IconImprimir />
           Imprimir ou salvar em PDF
         </button>
       </div>
     ),
-  }), [d, pronto, internacaoId, location.key, navigate]))
+  }), [d, pronto, umSo, lista, internacaoId, location.key, navigate]))
 
   if (idInvalido) return <div className="empty-state">Endereço inválido.</div>
   if (isLoading || relatorios.isLoading) return <LoadingState />

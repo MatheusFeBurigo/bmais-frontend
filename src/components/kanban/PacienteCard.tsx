@@ -16,6 +16,7 @@ import { nomeProprio } from '../../lib/texto'
 import { dataBR, hojeISO } from '../../lib/datas'
 import { etiquetaProrrogacao } from '../../lib/prorrogacao'
 import { ehLonga, nuncaVisitado } from './prioridade'
+import { ResponsaveisCard } from './ResponsaveisCard'
 
 /** Etiqueta curta de prioridade, exibida sob o nome. */
 function Etiqueta({ texto, cor, bg, titulo }: { texto: string; cor: string; bg: string; titulo: string }) {
@@ -194,11 +195,15 @@ export const PacienteCard = memo(function PacienteCard({ tarefa: t, onAbrir, onP
           </span>
           {aberto ? 'Menos detalhes' : 'Mais detalhes'}
         </button>
-        {clicavel && (
-          <span className="kb-card-abrir" aria-hidden>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M7 7h10v10" /></svg>
-          </span>
-        )}
+        {/* Os responsáveis (bolinhas) ocupam a direita livre, antes da seta. */}
+        <span className="kb-card-rodape-dir">
+          <ResponsaveisCard pessoas={t.responsaveis} />
+          {clicavel && (
+            <span className="kb-card-abrir" aria-hidden>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M7 7h10v10" /></svg>
+            </span>
+          )}
+        </span>
       </div>
 
       {aberto && (

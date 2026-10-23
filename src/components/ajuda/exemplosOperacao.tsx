@@ -520,10 +520,11 @@ export function ReplicaModalAlta({ marcas = {} }: {
 // modal (relatorio.styles). O miolo de cada seção é redesenhado: o real lê o
 // formulário e os catálogos.
 
-const IcoClipe = (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+const IcoPdf = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
+    <path d="M12 18v-6" /><path d="m9 15 3 3 3-3" />
   </svg>
 )
 
@@ -621,7 +622,7 @@ export function ReplicaModalRelatorio({ marcas = {}, corrigindo }: {
  *  a justificativa e o documento da operadora anexado. O "Prorrogar" se
  *  marca por `destaques` ('.rr-bloco-tg'). */
 export function ReplicaProrrogacaoRelatorio({ marcas = {} }: {
-  marcas?: Partial<Record<'periodos' | 'justificativa' | 'anexo', number>>
+  marcas?: Partial<Record<'periodos' | 'justificativa' | 'porto', number>>
 }) {
   const periodo = (aco: string, de: string, ate: string, dias: string) => (
     <div className="rr-lista-linha" style={{ gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) 80px' }}>
@@ -648,17 +649,15 @@ export function ReplicaProrrogacaoRelatorio({ marcas = {} }: {
                   <input className="bm-input bm-select" readOnly value="Antibioticoterapia intravenosa" />
                 </label>
               ), true)}
-              {marcar(marcas.anexo, (
+              {marcar(marcas.porto, (
                 <div className="rr-campo">
-                  <span className="form-lbl">Documento da operadora</span>
-                  <p className="rr-bloco-dica rr-anexo-dica">
-                    Opcional. Por exemplo, o formulário de prorrogação da Porto Seguro. PDF ou foto, até 25 MB.
+                  <span className="form-lbl">Formulário de prorrogação da Porto</span>
+                  <p className="rr-bloco-dica rr-porto-dica">
+                    Gera o PDF no modelo da Porto, preenchido com o paciente e com o que está nesta janela.
+                    Envie junto do pedido de prorrogação.
                   </p>
-                  <div className="rr-anexo">
-                    {IcoClipe}
-                    <span className="rr-anexo-nome">Prorrogação Porto Seguro.pdf</span>
-                    <span className="btn btn-ghost btn-sm">Trocar</span>
-                    <span className="btn btn-ghost btn-sm">Tirar</span>
+                  <div className="rr-porto-acao">
+                    <span className="btn btn-outline btn-sm" style={{ gap: 6 }}>{IcoPdf}Gerar PDF</span>
                   </div>
                 </div>
               ), true)}

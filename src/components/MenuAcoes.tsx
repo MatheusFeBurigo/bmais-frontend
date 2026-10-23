@@ -1,4 +1,6 @@
 // Menu "⋮" de ações de uma linha (tabelas de Auditores e Usuários de acesso).
+// Com `gatilho`, o "⋮" dá lugar a um botão com texto (ex.: "Gerar relatório"
+// na prorrogação da ficha do relatório).
 //
 // A lista abre em `position: fixed`, calculada a partir do botão: as tabelas
 // rolam por dentro (overflow:auto), e um menu absoluto seria cortado nas
@@ -20,7 +22,12 @@ const IconPontos = (
   </svg>
 )
 
-export default function MenuAcoes({ itens, rotulo }: { itens: ItemMenu[]; rotulo: string }) {
+export default function MenuAcoes({ itens, rotulo, gatilho }: {
+  itens: ItemMenu[]
+  rotulo: string
+  /** Botão com texto no lugar do "⋮": o conteúdo e a classe dele. */
+  gatilho?: { conteudo: ReactNode; classe: string; desabilitado?: boolean }
+}) {
   const [aberto, setAberto] = useState(false)
   const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
   const botao = useRef<HTMLButtonElement>(null)
@@ -63,15 +70,17 @@ export default function MenuAcoes({ itens, rotulo }: { itens: ItemMenu[]; rotulo
       <button
         ref={botao}
         type="button"
-        className={`menu-acoes-btn${aberto ? ' aberto' : ''}`}
+        className={gatilho ? gatilho.classe : `menu-acoes-btn${aberto ? ' aberto' : ''}`}
         aria-haspopup="menu"
         aria-expanded={aberto}
-        aria-label={rotulo}
-        title="Mais ações"
+        // Com texto à mostra, o nome do botão é o texto.
+        aria-label={gatilho ? undefined : rotulo}
+        title={gatilho ? rotulo : 'Mais ações'}
+        disabled={gatilho?.desabilitado}
         // A linha da tabela abre a ficha no clique: sem parar, o menu abriria junto.
         onClick={(e) => { e.stopPropagation(); setAberto((v) => !v) }}
       >
-        {IconPontos}
+        {gatilho ? gatilho.conteudo : IconPontos}
       </button>
       {aberto && pos && (
         <div ref={lista} className="menu-acoes-lista" role="menu" style={pos} onClick={(e) => e.stopPropagation()}>

@@ -15,18 +15,19 @@
 // prorrogação vale (`AcaoPausarProrrogacao`), e no card da coluna "Em
 // prorrogação" de Tarefas. Admin e operacional.
 //
-// O pedido leva um documento da operadora, opcional (20/10/2026: a Porto Seguro
-// pede o formulário de prorrogação dela). Vai como anexo do relatório.
-import { useRef, useState } from 'react'
+// A Porto Seguro pede o formulário de prorrogação dela junto do pedido
+// (20/10/2026). Ele SAI daqui (22/10/2026): para paciente da Porto, o fim da
+// seção baixa o PDF no modelo dela, já preenchido (porto/ExportarFormularioPorto).
+// Antes era um documento anexado ao relatório.
 import { useCatalogosProrrogacao } from '../../hooks/useKanban'
 import { dataBR, diariasNoPeriodo } from '../../lib/datas'
-import { EXTENSOES_ANEXO, MAX_BYTES_ANEXO } from '../../services/internacao.service'
-import type { PedidoProrrogacao } from '../../types/api'
+import type { InternacaoDados, PedidoProrrogacao } from '../../types/api'
+import { ExportarFormularioPorto } from '../porto/ExportarFormularioPorto'
 import { BlocoOpcional } from './relatorio/BlocoOpcional'
 import { SecaoPeriodos } from './relatorio/SecoesListas'
 import type { FormRelatorio } from './useFormRelatorio'
 
-export function SecaoProrrogacao({ form }: { form: FormRelatorio }) {
+export function SecaoProrrogacao({ form, paciente }: { form: FormRelatorio; paciente: InternacaoDados }) {
   const prr = form.prorrogacao
   const catalogos = useCatalogosProrrogacao(Boolean(prr))
   // Sem a migration os catálogos vêm vazios: a seção não aparece.
@@ -53,72 +54,10 @@ export function SecaoProrrogacao({ form }: { form: FormRelatorio }) {
           <input className="bm-input" maxLength={1000} value={prr.complemento}
                  onChange={(e) => prr.setComplemento(e.target.value)} />
         </label>
-        <CampoAnexo prr={prr} desabilitado={form.salvando} />
+        <ExportarFormularioPorto form={form} paciente={paciente}
+          justificativaDesc={justificativas.find((j) => j.codigo === prr.justificativa)?.descricao ?? ''} />
       </div>
     </BlocoOpcional>
-  )
-}
-
-type Prorrogacao = NonNullable<FormRelatorio['prorrogacao']>
-
-/** O documento do pedido: escolher, trocar e tirar. Na correção, começa com o
- *  que o relatório já tem (`anexoAtual`). Estilos `rr-anexo*` em ModalRelatorio. */
-function CampoAnexo({ prr, desabilitado }: { prr: Prorrogacao; desabilitado: boolean }) {
-  const entrada = useRef<HTMLInputElement>(null)
-  const [erro, setErro] = useState<string | null>(null)
-  const nome = prr.anexo?.name ?? (prr.anexoAtual && !prr.removerAnexo ? prr.anexoAtual : null)
-
-  // O backend confere de novo; aqui é para avisar antes de enviar o relatório.
-  function escolher(f: File | undefined) {
-    if (!f) return
-    const ext = f.name.includes('.') ? f.name.slice(f.name.lastIndexOf('.')).toLowerCase() : ''
-    if (!EXTENSOES_ANEXO.includes(ext)) {
-      setErro('Envie um PDF ou uma foto (JPG, PNG, WEBP ou HEIC).')
-      return
-    }
-    if (f.size > MAX_BYTES_ANEXO) {
-      setErro(`O arquivo passa de ${MAX_BYTES_ANEXO / (1024 * 1024)} MB.`)
-      return
-    }
-    setErro(null)
-    prr.setAnexo(f)
-  }
-
-  function remover() {
-    setErro(null)
-    prr.setAnexo(null)
-    if (prr.anexoAtual) prr.setRemoverAnexo(true)
-  }
-
-  return (
-    <div className="rr-campo">
-      <span className="form-lbl">Documento da operadora</span>
-      <p className="rr-bloco-dica rr-anexo-dica">
-        Opcional. Por exemplo, o formulário de prorrogação da Porto Seguro. PDF ou foto, até{' '}
-        {MAX_BYTES_ANEXO / (1024 * 1024)} MB.
-      </p>
-      {nome ? (
-        <div className="rr-anexo">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-               strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-          </svg>
-          <span className="rr-anexo-nome" title={nome}>{nome}</span>
-          <button type="button" className="btn btn-ghost btn-sm" disabled={desabilitado}
-                  onClick={() => entrada.current?.click()}>Trocar</button>
-          <button type="button" className="btn btn-ghost btn-sm" disabled={desabilitado}
-                  onClick={remover}>Tirar</button>
-        </div>
-      ) : (
-        <button type="button" className="btn btn-outline btn-sm" disabled={desabilitado}
-                onClick={() => entrada.current?.click()}>
-          Anexar documento
-        </button>
-      )}
-      <input ref={entrada} type="file" hidden accept={EXTENSOES_ANEXO.join(',')}
-             onChange={(e) => { escolher(e.target.files?.[0]); e.target.value = '' }} />
-      {erro && <div className="t-danger" role="alert" style={{ fontSize: 'var(--t-sm)', marginTop: 6 }}>{erro}</div>}
-    </div>
   )
 }
 

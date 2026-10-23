@@ -4,7 +4,7 @@
 // `preencherFolha` (./folhaPorto.model).
 //
 // Componente controlado: quem monta guarda os valores. A página
-// (pages/FormularioPorto) cuida da impressão.
+// (pages/FormularioPorto) baixa o PDF com eles.
 import type { ReactNode } from 'react'
 import type { FolhaPortoValores, ListaFolha, SimNao } from './folhaPorto.model'
 import './folhaPorto.css'

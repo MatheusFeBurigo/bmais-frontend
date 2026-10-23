@@ -200,18 +200,18 @@ export function ModuloPaciente({ irPara }: Props) {
       </ComoFazer>
 
       <ComoFazer
-        titulo="Prorrogar com o documento da operadora"
+        titulo="Prorrogar e baixar o formulário da Porto"
         passos={[
           { n: 1, titulo: "Marque Prorrogar", corpo: <>Na seção <strong>Prorrogação</strong> da janela do relatório. O primeiro período já vem começando na data final da prorrogação atual, se houver.</> },
           { n: 2, titulo: "Adicione os períodos", corpo: <>Acomodação, início e fim, e <strong>Adicionar</strong>. As diárias contam a data inicial e não a final: de 01/10 a 05/10 são 4 diárias. Para cobrar o último dia, use a acomodação <strong>Alta tardia</strong>. O período seguinte já vem começando na data final do anterior.</> },
           { n: 3, titulo: "Escolha a justificativa", corpo: <>Obrigatória, entre os motivos clínicos da lista. O complemento é livre.</> },
-          { n: 4, titulo: "Anexe o documento, se a operadora pedir", corpo: <>Como o formulário de prorrogação da Porto Seguro: PDF ou foto, até 25 MB. <strong>Trocar</strong> e <strong>Tirar</strong> mudam o arquivo antes de registrar. O documento fica no relatório: o card mostra o nome dele, e a ficha do relatório tem o botão <strong>Baixar</strong>.</> },
+          { n: 4, titulo: "Paciente da Porto: gere o formulário", corpo: <><strong>Gerar PDF</strong> gera o formulário de prorrogação no modelo da Porto, já preenchido com o paciente e com o que está na janela: períodos, justificativa, negociação, procedimentos, alto custo e CIDs. Isolamento, diária da madrugada e alta tardia saem marcados pela acomodação pedida. Envie o PDF à Porto junto do pedido. Para ajustar algum campo antes, use <strong>Formulário Porto</strong>, no topo da ficha.</> },
         ]}
       >
         <Tela nome="Registrar relatório" largura={760}
           destaques={{ '.rr-bloco-tg': 1 }}
-          descricao="Seção Prorrogação com dois períodos, a justificativa e o formulário da operadora anexado.">
-          <ReplicaProrrogacaoRelatorio marcas={{ periodos: 2, justificativa: 3, anexo: 4 }} />
+          descricao="Seção Prorrogação com dois períodos, a justificativa e o botão que baixa o formulário da Porto.">
+          <ReplicaProrrogacaoRelatorio marcas={{ periodos: 2, justificativa: 3, porto: 4 }} />
         </Tela>
       </ComoFazer>
 
@@ -375,9 +375,9 @@ export function ModuloPaciente({ irPara }: Props) {
           períodos (acomodação, início e fim) e escolha a justificativa. As diárias contam a data
           inicial e não a final (01/10 a 05/10 são 4 diárias); o último dia, quando cobrado, entra
           como <strong>Alta tardia</strong>. O período seguinte já vem começando na data final do
-          anterior. Se a operadora pede um documento, como o formulário
-          de prorrogação da Porto Seguro, use <strong>Anexar documento</strong> (PDF ou foto, até
-          25 MB); ele fica no relatório para baixar. Depois que a prorrogação vale, admin e operacional
+          anterior. Para paciente da Porto, <strong>Gerar PDF</strong>, no fim da seção, gera o
+          formulário de prorrogação dela em PDF, já preenchido, para enviar junto do pedido. Depois
+          que a prorrogação vale, admin e operacional
           pausam e retomam pelo botão <strong>Pausar prorrogação</strong>, no topo da ficha.</li>
 {NEGOCIACAO_NO_RELATORIO && (
         <li><strong>Negociação com o hospital</strong>: glosa de diárias, medicação negada,
@@ -406,11 +406,15 @@ export function ModuloPaciente({ irPara }: Props) {
         quando há documento anexado, o nome dele. Prorrogação e negociação valem quando o
         relatório é aprovado. Clicar num relatório abre a ficha dele, só para leitura, com o que
         foi preenchido em cada seção, na mesma ordem da janela de registro, e o botão{' '}
-        <strong>Baixar</strong> do documento. No relatório pendente, o rodapé da ficha traz as
+        <strong>Baixar</strong> do documento. Quando o relatório pede prorrogação, a seção{' '}
+        <strong>Prorrogação</strong> traz <strong>Gerar relatório</strong>: a opção{' '}
+        <strong>Relatório para Porto Seguro</strong> baixa o formulário de prorrogação da Porto em
+        PDF, no modelo dela, já preenchido com o paciente e com esse relatório. No relatório pendente, o rodapé da ficha traz as
         ações de quem aprova. <strong>Imprimir ou PDF</strong>, no rodapé, abre a folha do
         relatório com a identificação do paciente no topo (hospital, atendimento, convênio e
         internação); o botão <strong>Imprimir ou salvar em PDF</strong> manda só a folha para a
-        impressora, ou para um PDF. Para imprimir a internação inteira, use{' '}
+        impressora, ou para um PDF. Ao lado dele fica o mesmo <strong>Gerar relatório</strong>, que
+        usa o relatório escolhido ou, com todos, o último que pediu prorrogação. Para imprimir a internação inteira, use{' '}
         <strong>Imprimir / PDF</strong>, no topo da ficha do paciente: saem os dados do paciente e
         todos os relatórios, ou só o escolhido em <strong>O que imprimir</strong>. Sem relatório
         ainda, sai a folha com os dados do paciente.

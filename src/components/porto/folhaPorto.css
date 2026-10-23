@@ -1,9 +1,10 @@
-/* Réplica do formulário "Solicitação de prorrogação" da Porto Saúde.
+/* Réplica do formulário "Solicitação de prorrogação" da Porto Saúde, para
+ * editar na tela antes de baixar o PDF (que sai do modelo da Porto, no backend).
  *
  * É papel: branco e preto, Arial, sem os tokens do design-system. A largura é a
- * área útil de uma A4 paisagem com 5mm de margem (287mm ≈ 1077px), então a
- * folha sai na impressão do mesmo tamanho que aparece na tela. As larguras das
- * colunas ficam no componente (proporções medidas na folha original). */
+ * área útil de uma A4 paisagem com 5mm de margem (287mm ≈ 1077px), a mesma
+ * proporção do PDF. As larguras das colunas ficam no componente (proporções
+ * medidas na folha original). */
 .fp-folha{
   --fp-linha:#4a4a4a;--fp-cinza:#d9d9d9;--fp-l:14px;
   width:1077px;margin:0 auto;background:#fff;color:#000;border:1.5px solid #000;

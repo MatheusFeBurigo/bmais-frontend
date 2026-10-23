@@ -6,9 +6,13 @@
 // períodos da prorrogação, a justificativa e as negociações, os procedimentos
 // TUSS e a medicação de alto custo do relatório escolhido. O da direita
 // ("Validação do auditor da Porto") é de quem valida na operadora e sai em
-// branco. Tudo continua editável na tela antes de imprimir.
+// branco. Tudo continua editável na tela antes de exportar.
+//
+// Estes valores vão como estão para o PDF (POST /api/formulario-porto), que os
+// escreve sobre o modelo da Porto (backend: infrastructure/formulario_porto.py).
 import { dataBR, diasNoPeriodo } from '../../lib/datas'
 import { TIPOS_ALTO_CUSTO, rotulo } from '../../lib/relatorioDetalhes'
+import { identificacaoPaciente } from '../../lib/texto'
 import type { InternacaoDados, RelatorioItem } from '../../types/api'
 
 /** Chave da operadora no cadastro (migration 0002). */
@@ -16,6 +20,11 @@ export const OPERADORA_PORTO = 'porto'
 
 export function ehPorto(d: Pick<InternacaoDados, 'operadora_key'> | null | undefined): boolean {
   return d?.operadora_key === OPERADORA_PORTO
+}
+
+/** Nome do PDF baixado. */
+export function nomeArquivoPorto(d: Parameters<typeof identificacaoPaciente>[0]): string {
+  return `Prorrogação Porto - ${identificacaoPaciente(d)}.pdf`
 }
 
 /** "( ) SIM ( ) NÃO": nenhum marcado até alguém escolher. */
@@ -115,6 +124,14 @@ const periodo = (ini?: string | null, fim?: string | null) =>
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
 
+// As acomodações do catálogo da prorrogação (migration 0047) que a folha marca
+// à parte: "UTI Isolamento" é ISOLAMENTO SIM na linha do período; "Diária da
+// Madrugada" e "Alta tardia" marcam o SIM do alto da folha.
+const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+const ehIsolamento = (acomodacao: string) => semAcento(acomodacao).includes('isolamento')
+const ehMadrugada = (acomodacao: string) => semAcento(acomodacao).includes('madrugada')
+const ehAltaTardia = (acomodacao: string) => semAcento(acomodacao).includes('alta tardia')
+
 /** O relatório que a folha usa ao abrir: o mais recente com pedido de
  *  prorrogação, que é o motivo de a Porto pedir o formulário; sem nenhum, o
  *  mais recente. `relatorios` vem do mais recente para o mais antigo. */
@@ -154,11 +171,13 @@ function textoObservacoes(d: InternacaoDados, r: RelatorioItem | null): string {
 
 /** A folha como ela abre: o paciente e, havendo, o relatório escolhido. */
 export function preencherFolha(d: InternacaoDados, r: RelatorioItem | null): FolhaPortoValores {
-  const periodos: PeriodoSolicitado[] = (r?.prorrogacao?.periodos ?? []).map((x) => ({
+  const pedidos = r?.prorrogacao?.periodos ?? []
+  const periodos: PeriodoSolicitado[] = pedidos.map((x) => ({
     ...periodoVazio(),
     de: dataBR(x.data_inicio),
     ate: dataBR(x.data_fim),
     leito: x.acomodacao.toUpperCase(),
+    isolamento: ehIsolamento(x.acomodacao) ? 'sim' : 'nao',
   }))
   const tuss: TussSolicitado[] = (r?.detalhes?.procedimentos ?? []).map((x) => ({
     ...tussVazio(),
@@ -189,9 +208,10 @@ export function preencherFolha(d: InternacaoDados, r: RelatorioItem | null): Fol
     horaInternacao: (d.hora_entrada ?? '').slice(0, 5),
     dataAlta: dataBR(d.data_alta),
     horaAlta: (d.hora_alta ?? '').slice(0, 5),
-    madrugada: null,
+    // Sem o pedido delas, ficam em branco: quem decide é a negociação.
+    madrugada: pedidos.some((x) => ehMadrugada(x.acomodacao)) ? 'sim' : null,
     madrugadaJustificativa: '',
-    altaTardia: null,
+    altaTardia: pedidos.some((x) => ehAltaTardia(x.acomodacao)) ? 'sim' : null,
     altaTardiaJustificativa: '',
     periodosSolicitados: ate(periodos, nPeriodos, periodoVazio),
     periodosValidados: ate([], nPeriodos, validadoVazio),

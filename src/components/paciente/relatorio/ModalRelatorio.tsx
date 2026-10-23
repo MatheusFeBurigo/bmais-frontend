@@ -107,7 +107,6 @@ function resumos(form: FormRelatorio): Record<Grupo, string> {
   return {
     prorrogacao: prr?.ativa
       ? `Pedida${diarias ? `: ${diarias} ${diarias === 1 ? 'diária' : 'diárias'}` : ''}`
-        + (prr.anexo || (prr.anexoAtual && !prr.removerAnexo) ? ' · com documento' : '')
       : 'Não pedida',
     visita: [dataBR(form.dataVisita) || 'Sem data', form.medico, c?.enfermeiro].filter(Boolean).join(' · '),
     internacao: c
@@ -361,7 +360,7 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
     ),
     prorrogacao: (
       <GrupoRecolhivel {...grupo('prorrogacao')} resumo={resumo.prorrogacao}>
-        <SecaoProrrogacao form={form} />
+        <SecaoProrrogacao form={form} paciente={paciente} />
       </GrupoRecolhivel>
     ),
     negociacao: c && (

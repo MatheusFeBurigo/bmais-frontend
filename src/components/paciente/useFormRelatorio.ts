@@ -129,11 +129,6 @@ export function useFormRelatorio(internacaoId: number, {
   const [complemento, setComplemento] = useState('')
   // A pausa que o pedido corrigido já trazia (a modal não pausa; ver a ficha).
   const [prrPausada, setPrrPausada] = useState(false)
-  // Documento do pedido (20/10/2026: a Porto Seguro pede o formulário dela).
-  // `anexoAtual` é o nome do que o relatório em correção já tem.
-  const [anexo, setAnexo] = useState<File | null>(null)
-  const [anexoAtual, setAnexoAtual] = useState<string | null>(null)
-  const [removerAnexo, setRemoverAnexo] = useState(false)
   // Folha rosa (custo evitado negociado com o hospital): fechada até ser marcada.
   const [frAtiva, setFrAtiva] = useState(false)
   const [folha, setFolha] = useState<RascunhoFolhaRosa>(folhaVazia)
@@ -204,9 +199,6 @@ export function useFormRelatorio(internacaoId: number, {
     setJustificativa('')
     setComplemento('')
     setPrrPausada(false)
-    setAnexo(null)
-    setAnexoAtual(null)
-    setRemoverAnexo(false)
     setFrAtiva(false)
     setFolha(folhaVazia())
     det.iniciar(ctxCompleto?.ultimo ?? null, ctxCompleto?.dataEntrada, ctxCompleto?.censo)
@@ -232,9 +224,6 @@ export function useFormRelatorio(internacaoId: number, {
     setJustificativa(prr?.justificativa ?? '')
     setComplemento(prr?.complemento ?? '')
     setPrrPausada(Boolean(prr?.pausada))
-    setAnexo(null)
-    setAnexoAtual(rel.tem_anexo ? (rel.anexo_nome || 'Documento anexado') : null)
-    setRemoverAnexo(false)
     const fr = rel.folha_rosa
     setFrAtiva(Boolean(fr))
     setFolha(fr
@@ -322,22 +311,16 @@ export function useFormRelatorio(internacaoId: number, {
         ? { detalhes: { ...det.pedido(), cid_principal: vaiParaAprovacao ? '' : (cidPrincipal?.codigo ?? '') } }
         : {}),
     }
-    // O documento é do pedido de prorrogação: sem ele marcado, não vai.
-    const arquivo = pedeProrrogacao ? anexo : null
     try {
       if (editandoId != null) {
-        await editar.mutateAsync({
-          relatorioId: editandoId, internacaoId, arquivo, aprovar,
-          rel: { ...pedido, remover_anexo: removerAnexo && !arquivo },
-        })
+        await editar.mutateAsync({ relatorioId: editandoId, internacaoId, aprovar, rel: pedido })
       } else {
-        await registrar.mutateAsync({ ...pedido, arquivo })
+        await registrar.mutateAsync(pedido)
       }
       // Um CID novo passou a ser do paciente: o card de CIDs da ficha relê.
       if (todosCids.length) qc.invalidateQueries({ queryKey: queryKeys.internacaoCids(internacaoId) })
       setCids([])
       setCidPrincipal(null)
-      setAnexo(null)
       onRegistrado(editandoId != null ? !aprovar : vaiParaAprovacao)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao registrar')
@@ -354,7 +337,6 @@ export function useFormRelatorio(internacaoId: number, {
       ativa: prrAtiva, alternar: alternarProrrogacao,
       periodos,
       justificativa, setJustificativa, complemento, setComplemento,
-      anexo, setAnexo, anexoAtual, removerAnexo, setRemoverAnexo,
     } : null,
     folhaRosa: ctxFolhaRosa ? {
       ativa: frAtiva, alternar: alternarFolhaRosa, valores: folha, mudar: mudarFolha,

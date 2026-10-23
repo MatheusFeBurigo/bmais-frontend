@@ -26,6 +26,7 @@ import type { KanbanTarefa } from '../../types/api'
 import { Badge, OpAvatar } from '../ui'
 import { dataHora, diaRelativo, labelCurto } from '../../lib/datas'
 import { nomeProprio } from '../../lib/texto'
+import { ResponsaveisCard } from './ResponsaveisCard'
 
 const ROTULO = { color: 'var(--muted-2)' }
 
@@ -123,6 +124,10 @@ export function CensoCard({
           </span>
         )}
       </div>
+
+      {tarefa.responsaveis && (
+        <div className="kb-resp"><ResponsaveisCard pessoas={tarefa.responsaveis} /></div>
+      )}
 
       {!somenteLeitura && atrasado && (
         <div className="kb-card-actions">

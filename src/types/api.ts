@@ -1213,6 +1213,17 @@ export interface KanbanTarefa {
   // ── Prorrogação: etiqueta "Prorrogado até" / "Prorrogação terminou" ───────
   prorrogacao_ate?: string | null
   prorrogacao_pausada?: boolean
+  /** Quem da equipe responde pelo card (23/10/2026): quem o tem no próprio
+   *  quadro, pela área da Distribuição de tarefas. Vazio = ninguém cobre;
+   *  ausente = o backend não conseguiu montar a equipe. */
+  responsaveis?: ResponsavelCard[]
+}
+
+export interface ResponsavelCard {
+  user_id: string
+  nome: string
+  papel: UserRole
+  email?: string | null
 }
 
 /** Colunas de tarefas. O board do técnico traz só `analise_tecnica`; o do

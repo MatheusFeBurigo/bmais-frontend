@@ -7,12 +7,12 @@ import {
   criarConvenio,
   desvincularPessoa,
   editarInternacao,
+  exportarFormularioPorto,
   fetchInternacaoDados,
   listarConvenios,
   fetchInternacaoRelatorios,
   fetchInternacaoTimeline,
   fetchSugestoesPessoa,
-  registrarRelatorioComAnexo,
   registrarRelatorioRapido,
   responderSugestaoPessoa,
   type InternacaoEdicao,
@@ -107,15 +107,22 @@ export function useEditarInternacao(id: number) {
 export function useRegistrarRelatorio(id: number) {
   const qc = useQueryClient()
   return useMutation({
-    // Com documento anexado, o mesmo corpo vai pela rota multipart.
-    mutationFn: ({ arquivo, ...rel }: RelatorioRapido & { arquivo?: File | null }) =>
-      (arquivo ? registrarRelatorioComAnexo(id, rel, arquivo) : registrarRelatorioRapido(id, rel)),
+    mutationFn: (rel: RelatorioRapido) => registrarRelatorioRapido(id, rel),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.internacaoRelatorios(id) })
       qc.invalidateQueries({ queryKey: queryKeys.internacaoTimeline(id) })
       qc.invalidateQueries({ queryKey: queryKeys.internacaoDados(id) })
       invalidarPorEvento(qc, 'relatorioAdicionado')
     },
+  })
+}
+
+/** Baixa o formulário de prorrogação da Porto em PDF. Não grava nada: nenhuma
+ *  consulta precisa ser relida. */
+export function useExportarFormularioPorto() {
+  return useMutation({
+    mutationFn: (v: { folha: Parameters<typeof exportarFormularioPorto>[0]; nomeArquivo: string }) =>
+      exportarFormularioPorto(v.folha, v.nomeArquivo),
   })
 }
 

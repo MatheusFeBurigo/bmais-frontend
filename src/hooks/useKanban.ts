@@ -172,10 +172,8 @@ export function useAprovarRelatorio() {
 export function useEditarRelatorio() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (v: {
-      relatorioId: number; internacaoId?: number | null; aprovar: boolean
-      rel: RelatorioRapido & { remover_anexo?: boolean }; arquivo?: File | null
-    }) => editarRelatorio(v.relatorioId, v.rel, v.arquivo, v.aprovar),
+    mutationFn: (v: { relatorioId: number; internacaoId?: number | null; aprovar: boolean; rel: RelatorioRapido }) =>
+      editarRelatorio(v.relatorioId, v.rel, v.aprovar),
     onSuccess: (_r, v) => aoMudarAprovacao(qc, v.internacaoId),
   })
 }
