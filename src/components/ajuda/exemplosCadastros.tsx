@@ -48,6 +48,10 @@ const IconEscudo = (s = 16) => svg(<><path d="M12 3 4 6v6c0 4.6 3.4 8.3 8 9 4.6-
 const IconContato = svg(<><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2" /><path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2M15 10h3M15 13h3" /></>, 18)
 const IconFone = svg(<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />)
 const IconEmail = svg(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></>)
+const IconDoc = svg(<><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></>)
+const IconCep = svg(<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />)
+const IconCasa = svg(<><path d="m3 11 9-7 9 7" /><path d="M5 10v10h14V10" /></>)
+const IconNota = svg(<><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" /><path d="m13.5 6.5 4 4" /></>)
 const IconCog = svg(<><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></>, 14)
 const IconLixeira = svg(<><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /><path d="M10 11v5M14 11v5" /></>, 13)
 
@@ -230,36 +234,42 @@ export function ReplicaAdicionarProfissional({ marcas = {} }: {
 }
 
 /** A ficha (Editar) de quem ainda não tem conta: o e-mail de acesso se
- *  informa ali, e a senha inicial aparece junto. */
+ *  informa ali, e a senha inicial aparece junto. Na tela o Salvar fica dentro
+ *  do bloco dos dados, sem rodapé; a escala vem logo abaixo. */
 export function ReplicaCriarAcesso({ marcas = {} }: {
   marcas?: Partial<Record<'dados' | 'salvar', number>>
 }) {
   return (
-    <ModalReplica
-      titulo="Detalhes do auditor"
-      rodape={
-        <>
-          <span className="btn btn-outline">Cancelar</span>
-          <Marcado n={marcas.salvar}><span className="btn btn-primary">Salvar</span></Marcado>
-        </>
-      }
-    >
-      <Marcado n={marcas.dados} bloco>
-        <div style={{ display: 'grid', gap: 12 }}>
-          <div>
-            <label className="uppercase t-muted" style={rotulo}>Nome completo</label>
-            <input className="bm-input" readOnly value="Paulo Mendes" />
+    <ModalReplica titulo="Detalhes do auditor">
+      <div style={{ display: 'grid', gap: 12 }}>
+        <Marcado n={marcas.dados} bloco>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div>
+              <label className="uppercase t-muted" style={rotulo}>Nome completo</label>
+              <input className="bm-input" readOnly value="Paulo Mendes" />
+            </div>
+            <div>
+              <label className="uppercase t-muted" style={rotulo}>Cargo / Tipo</label>
+              <select className="bm-input bm-select" value="M" onChange={nada}>
+                <option value="M">Médico(a) Auditor(a)</option>
+              </select>
+            </div>
+            <div>
+              <label className="uppercase t-muted" style={rotulo}>E-mail de acesso</label>
+              <input className="bm-input" readOnly value="paulo.mendes@exemplo.com" />
+            </div>
+            <div>
+              <label className="uppercase t-muted" style={rotulo}>Senha inicial</label>
+              <input className="bm-input" type="password" readOnly value="senha123" />
+            </div>
           </div>
-          <div>
-            <label className="uppercase t-muted" style={rotulo}>E-mail de acesso</label>
-            <input className="bm-input" readOnly value="paulo.mendes@exemplo.com" />
-          </div>
-          <div>
-            <label className="uppercase t-muted" style={rotulo}>Senha inicial</label>
-            <input className="bm-input" type="password" readOnly value="senha123" />
-          </div>
+        </Marcado>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Marcado n={marcas.salvar}>
+            <span className="btn btn-primary btn-sm" style={{ gap: 6 }}>{IconOk}Salvar</span>
+          </Marcado>
         </div>
-      </Marcado>
+      </div>
     </ModalReplica>
   )
 }
@@ -646,12 +656,31 @@ export function ReplicaNovoHospital({ marcas = {}, opFixa }: {
             </header>
             <div className="nh-grade">
               <div className="nh-campo c3">
+                <label>CNPJ</label>
+                <div className="nh-input">{IconDoc}<input className="bm-input" readOnly placeholder="00.000.000/0000-00" /></div>
+              </div>
+              <div className="nh-campo c3">
                 <label>Telefone</label>
                 <div className="nh-input">{IconFone}<input className="bm-input" readOnly value="(11) 3000-0000" /></div>
               </div>
-              <div className="nh-campo c3">
+              <div className="nh-campo c4">
                 <label>E-mail</label>
                 <div className="nh-input">{IconEmail}<input className="bm-input" readOnly value="censo@hospitaljardins.com.br" /></div>
+              </div>
+              <div className="nh-campo c2">
+                <label>CEP</label>
+                <div className="nh-input">{IconCep}<input className="bm-input" readOnly placeholder="00000-000" /></div>
+              </div>
+              <div className="nh-campo c6">
+                <label>Endereço</label>
+                <div className="nh-input">{IconCasa}<input className="bm-input" readOnly placeholder="Rua, número, bairro" /></div>
+              </div>
+              <div className="nh-campo c6">
+                <label>Observações</label>
+                <div className="nh-input nh-input-area">
+                  {IconNota}
+                  <textarea className="bm-input" rows={2} readOnly placeholder="Contato do faturamento, particularidades do censo…" />
+                </div>
               </div>
             </div>
           </section>

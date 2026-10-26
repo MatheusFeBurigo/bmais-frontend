@@ -1,7 +1,7 @@
 // Blocos de apresentação da Ajuda: as formas que o texto da documentação assume
 // (pastilha de status, destaque, tabela descritiva, cartão de indicador, passo).
 //
-// Existem para que os 14 módulos sejam escritos como conteúdo, e não como
+// Existem para que os módulos sejam escritos como conteúdo, e não como
 // markup: um módulo novo compõe estes blocos em vez de repetir <div className>.
 import type { ReactNode } from 'react'
 import { useVeGestao } from './acessoAjuda'

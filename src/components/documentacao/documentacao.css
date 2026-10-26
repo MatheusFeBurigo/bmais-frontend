@@ -65,7 +65,7 @@
 .doc-tec .ep .det{display:block;margin-top:4px;font-size:var(--t-sm);color:var(--muted)}
 .doc-tec .ep .det b{font-weight:600;color:var(--ink-3)}
 .doc-tec .ep .acesso{font-size:var(--t-sm);font-weight:600;color:var(--ink-2);white-space:nowrap}
-.doc-tec .ep .acesso small{display:block;font-weight:400;color:var(--muted);white-space:normal;margin-top:2px}
+.doc-tec .ep .acesso small{display:block;font-weight:400;color:var(--muted);white-space:normal;overflow-wrap:anywhere;margin-top:2px}
 
 /* Ressalva da regra, sob o rótulo na tabela de guards. */
 .doc-tec .nota{display:block;margin-top:2px;font-size:var(--t-sm);color:var(--muted)}

@@ -6,8 +6,8 @@
 // não precisa saber o que o Dashboard da Diretoria mostra, pela mesma razão que
 // não o encontra no menu (decisão do usuário, 25/09/2026).
 //
-// O admin é o único sem exceção: vê a Ajuda inteira, inclusive os módulos de
-// telas que ele próprio não acessa (Diretoria e Gestor).
+// O admin é o único sem exceção: vê a Ajuda inteira, como vê todas as telas
+// (Diretoria e Gestor voltaram a ele em 27/09/2026, ver auth/permissions.ts).
 //
 // O analista interno lê além do próprio menu: recebe os módulos de TODAS as
 // telas, inclusive as que não abre (Envio de Censos, Configurações,

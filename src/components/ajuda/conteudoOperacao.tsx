@@ -1,7 +1,7 @@
 // Conteúdo dos módulos da área de Operação: o trabalho do dia a dia.
 // Cada módulo declara no catálogo a tela que documenta, e só chega a quem
 // acessa essa tela.
-import { Callout, Chip, Key, Metric, Metrics, Passo, Passos, Tabela } from './blocos'
+import { Callout, Chip, Key, Metric, Metrics, Passo, Passos, SoGestao, Tabela } from './blocos'
 import { ComoFazer, Tela } from './replica'
 import { ACOES_NO_PAINEL, NEGOCIACAO_NO_RELATORIO } from '../../lib/recursos'
 import {
@@ -24,12 +24,17 @@ export function ModuloOperacional({ irPara }: Props) {
         paciente, registra relatórios, cadastra pacientes manualmente e exporta a planilha de
         controle.
       </p>
+      <p>
+        No menu, a tela aparece como <strong>Visão Geral</strong>. A seta ao lado do item abre a
+        lista de operadoras: clicar numa delas abre o painel já recortado para ela, e o número ao
+        lado do nome é o de pacientes dela em <strong>Sem relatório</strong>.
+      </p>
 
       <h3>Passo a passo</h3>
       <ComoFazer
         titulo="Descobrir quem precisa de visita hoje"
         passos={[
-          { n: 1, titulo: "Escolha a operadora, ou deixe todas", corpo: <>A tela abre com todas as operadoras juntas. Troque aqui para ver só uma delas.</> },
+          { n: 1, titulo: "Escolha a operadora, ou deixe todas", corpo: <>A tela abre com todas as operadoras juntas. Troque aqui para ver só uma delas, ou clique nela na lista sob <strong>Visão Geral</strong>, no menu.</> },
           { n: 2, titulo: "Clique no cartão da situação que quer atacar", corpo: <><strong>Sem Relatório</strong> e <strong>Atrasado</strong> são os mais urgentes. O cartão clicado ganha um contorno e a lista passa a mostrar só aqueles pacientes. Clique de novo para voltar a ver todos.</> },
           { n: 3, titulo: "Afine com os filtros rápidos, se precisar", corpo: <>Por exemplo, <strong>UTI / CTI</strong> para começar pelos leitos de terapia intensiva, ou{' '} <strong>Longa permanência</strong> e depois a partir de quantos dias (3, 7, 10, 15 ou 30) para ver quem está internado há mais tempo.</> },
           { n: 4, titulo: "Clique na linha do paciente", corpo: ACOES_NO_PAINEL
@@ -37,8 +42,8 @@ export function ModuloOperacional({ irPara }: Props) {
             : <>Abre a ficha rápida ao lado, sem sair da lista. Para registrar o relatório, clique em <strong>Detalhes</strong>: a ficha completa tem o botão <strong>Registrar</strong> (veja{' '} <button type="button" className="aj-link" onClick={() => irPara('ficha-do-paciente')}>Ficha do Paciente</button>).</> },
         ]}
       >
-        <Tela nome="Painel Operacional" largura={960}
-          descricao="Cartão Sem Relatório clicado: a lista mostra só os pacientes que nunca receberam visita.">
+        <Tela nome="Painel Operacional" largura={1120}
+          descricao="Cartão Sem Relatório clicado: a lista mostra só os pacientes que já passaram do gatilho e nunca receberam visita.">
           <ReplicaPainel kpiAtivo="sem_relatorio" marcas={{ operadora: 1, kpi: 2, filtros: 3, linha: 4 }} />
         </Tela>
       </ComoFazer>
@@ -48,12 +53,12 @@ export function ModuloOperacional({ irPara }: Props) {
         passos={[
           { n: 1, titulo: "Clique na lupa e digite", corpo: <>A lupa fica no fim dos filtros rápidos e abre o campo de busca. Vale o nome do segurado, o número de atendimento ou a senha de autorização. Não precisa digitar o nome inteiro.</> },
           { n: 2, titulo: "Quem já saiu aparece junto", corpo: <>A partir de duas letras, a busca procura também entre as altas: quem já saiu entra no fim da lista, com o selo <strong>Alta</strong> e a data da alta. Com um card de status do topo escolhido, a busca fica só nos internados.</> },
-          { n: 3, titulo: "Clique na linha para abrir a ficha", corpo: <>Se nem assim aparecer, confira se a operadora e o hospital escolhidos no topo são os dele.</> },
+          { n: 3, titulo: "Clique na linha para abrir a ficha", corpo: <>Se nem assim aparecer, confira se a operadora e o hospital escolhidos no topo são os dele, e se não ficou ligado um período ou um filtro rápido: a busca procura só dentro da lista já recortada.</> },
         ]}
       >
-        <Tela nome="Painel Operacional" largura={960}
-          descricao="A busca procura por nome, número de atendimento e senha de autorização.">
-          <ReplicaPainel marcas={{ busca: 1, filtros: 2, linha: 3 }} />
+        <Tela nome="Painel Operacional" largura={1120}
+          descricao="Busca por “hel”: a internada vem primeiro e, no fim da lista, quem já teve alta, com o selo Alta e a data da alta.">
+          <ReplicaPainel busca="hel" marcas={{ busca: 1, alta: 2, linha: 3 }} />
         </Tela>
       </ComoFazer>
 
@@ -68,7 +73,7 @@ export function ModuloOperacional({ irPara }: Props) {
           { n: 6, titulo: "Clique em Adicionar", corpo: <>Se o atendimento já existir naquele hospital, o sistema avisa e não cria um paciente repetido.</> },
         ]}
       >
-        <Tela nome="Painel Operacional" largura={960}
+        <Tela nome="Painel Operacional" largura={1120}
           descricao="O botão Adicionar paciente fica no topo da lista de internados.">
           <ReplicaPainel marcas={{ adicionar: 1 }} />
         </Tela>
@@ -81,11 +86,11 @@ export function ModuloOperacional({ irPara }: Props) {
       <h3>Os cinco indicadores</h3>
       <Metrics>
         <Metric tom="critical" label="Sem relatório" valor="Nunca registrado"
-          nota="Pacientes que nunca receberam visita" />
+          nota="Já no gatilho, sem nenhuma visita" />
         <Metric tom="warn" label="Atrasado" valor="Passou da janela"
           nota="Último relatório mais antigo que o prazo" />
-        <Metric tom="attention" label="Próximo a vencer" valor="Vence em 1 a 3 dias"
-          nota="Alerta antecipado configurável" />
+        <Metric tom="attention" label="Próx. vencer" valor="Vence em breve"
+          nota="Dentro do alerta antecipado da operadora" />
         <Metric tom="positive" label="Em dia" valor="Sem relatório devido"
           nota="Em conformidade com a regra" />
         <Metric tom="neutral" label="Total ativos" valor="Todos os internados"
@@ -98,44 +103,46 @@ export function ModuloOperacional({ irPara }: Props) {
 
       <h3>Filtros disponíveis</h3>
       <Tabela cabecalho={['Filtro', 'O que faz']} larguras={['185px']}>
-        <tr><Key>Operadora</Key><td>Recorta tudo para uma operadora, ou consolida todas.</td></tr>
-        <tr><Key>Hospital</Key><td>Restringe a uma unidade. Cada opção já mostra quantos internados e quantos alertas ela tem. Na visão consolidada, os hospitais aparecem agrupados por operadora.</td></tr>
+        <tr><Key>Operadora</Key><td>Recorta tudo para uma operadora, ou consolida todas. Também se escolhe pela lista sob <strong>Visão Geral</strong>, no menu. Com uma aberta, <strong>Ver todas as operadoras</strong> volta ao consolidado.</td></tr>
+        <tr><Key>Hospital</Key><td>Restringe a uma unidade. Cada opção já mostra quantos internados e quantos alertas ela tem. Na visão consolidada, os hospitais aparecem agrupados por operadora. <strong>Limpar filtro</strong> volta a todos.</td></tr>
         <tr><Key>Período</Key><td><strong>Internação de</strong> e <strong>até</strong>: recorta a lista pela data de internação. Na lista de altas vira <strong>Alta de</strong> e recorta pela data da alta. Digite a data ou escolha no calendário; <strong>Limpar datas</strong> tira o recorte.</td></tr>
         <tr><Key>Busca</Key><td>A lupa, no fim dos filtros rápidos, abre o campo de busca. Procura por nome do segurado, número de atendimento e senha de autorização, entre os internados e também entre as altas (sem precisar ligar o filtro <strong>Altas</strong>). Esc limpa e fecha.</td></tr>
-        <tr><Key>UTI e CTI</Key><td>Mantém apenas leitos de terapia intensiva.</td></tr>
+        <tr><Key>UTI / CTI</Key><td>Mantém apenas leitos de terapia intensiva.</td></tr>
         <tr><Key>Longa permanência</Key><td>Escolha a partir de quantos dias de internação: 3, 7, 10, 15 ou 30. O chip fica marcado com o corte escolhido. Clique nele para trocar, ou no x para tirar o filtro. Na lista de altas, conta os dias até a alta.</td></tr>
         <tr><Key>Prorrogados</Key><td>Mantém apenas os internados com prorrogação aprovada que ainda não terminou, inclusive as pausadas. Quem teve a prorrogação encerrada sai do filtro. Não aparece na lista de altas.</td></tr>
-        <tr><Key>Pendentes de aprovação</Key><td>Mantém apenas os pacientes com relatório aguardando aprovação, internados ou com alta.</td></tr>
-        <tr><Key>Altas</Key><td>Troca a base da lista para os pacientes que já saíram, em vez dos internados.</td></tr>
+        <tr><Key>Pendentes de aprovação</Key><td>Mantém apenas os pacientes da lista com relatório aguardando aprovação. Na lista de internados, quem já saiu só aparece pela busca: para ver também as altas com relatório pendente, ligue <strong>Altas</strong>.</td></tr>
+        <tr><Key>Altas</Key><td>Troca a base da lista para os pacientes que já saíram, em vez dos internados. A tabela vira <strong>Pacientes com Alta</strong> e ganha a coluna <strong>Alta</strong>, com a data e o motivo da alta; <strong>Dias internado</strong> vira <strong>Dias</strong>, contados até a alta.</td></tr>
         <tr><Key>Ordenação</Key><td>Padrão, mais dias sem relatório, ou mais dias internado. Na primeira opção, quem nunca teve relatório vai ao topo.</td></tr>
+        <tr><Key>Limpar</Key><td>Aparece com algum filtro rápido ligado ou outra ordenação escolhida, e desfaz tudo isso de uma vez, inclusive <strong>Altas</strong>. A busca, o período e o hospital ficam como estão.</td></tr>
       </Tabela>
 
       <h3>Colunas da tabela</h3>
       <Tabela cabecalho={['Coluna', 'Conteúdo']} larguras={['150px']}>
         <tr><Key>Relatório</Key><td>Pastilha colorida de status, detalhada no{' '}
           <button type="button" className="aj-link" onClick={() => irPara('calculo-do-status')}>anexo de regras</button>.
-          A linha inteira recebe uma faixa da mesma cor. Paciente com relatório esperando aprovação
-          mostra <strong>Aguardando aprovação</strong>. Na busca, quem já teve alta aparece com o selo{' '}
-          <strong>Alta</strong> e a data da alta embaixo.</td></tr>
+          A linha do internado recebe uma faixa da mesma cor; a de quem já teve alta, não. Paciente
+          com relatório esperando aprovação mostra <strong>Aguardando aprovação</strong>, mas até a
+          aprovação segue contado no status de antes, e a faixa fica com a cor dele. Na busca, quem já
+          teve alta aparece com o selo <strong>Alta</strong> e a data da alta embaixo.</td></tr>
         <tr><Key>Operadora</Key><td>Só na visão consolidada. Identifica a operadora do paciente.</td></tr>
         <tr><Key>Hospital</Key><td>Clicável, abre a ficha de contato do hospital sem sair da tela.</td></tr>
         <tr><Key>Segurado</Key><td>Nome do paciente. Quando o censo não traz nome, identifica por senha de autorização; na falta desta, pelo número de atendimento.</td></tr>
-        <tr><Key>Atendimento</Key><td>Número do atendimento.</td></tr>
-        <tr><Key>Leito</Key><td>UTI, apartamento ou enfermaria.</td></tr>
+        <tr><Key>Atend.</Key><td>Número do atendimento.</td></tr>
+        <tr><Key>Leito</Key><td>UTI, apartamento, enfermaria ou home care, abreviados como UTI, APT, ENF e HOME.</td></tr>
         <tr><Key>Internação</Key><td>Data de entrada.</td></tr>
-        <tr><Key>Última visita</Key><td>Data do último relatório registrado.</td></tr>
-        <tr><Key>Sem relatório</Key><td>Fração de dias decorridos sobre a janela permitida. Fica vermelho quando não há relatório e laranja quando venceu.</td></tr>
+        <tr><Key>Última visita</Key><td>Data da visita do último relatório aprovado. Relatório aguardando aprovação ainda não conta.</td></tr>
+        <tr><Key>Sem relatório</Key><td>Fração de dias decorridos sobre a janela permitida. Fica vermelho quando não há relatório e laranja quando venceu. Com prorrogação aprovada em curso, a contagem dá lugar à tag <strong>Prorrogado</strong>, ou <strong>Prorrogação pausada</strong>; terminada a prorrogação, a contagem volta.</td></tr>
         <tr><Key>Dias internado</Key><td>Fração de dias sobre o gatilho de alerta.</td></tr>
         <tr><Key>Permanência</Key><td>Marcador de longa permanência com o limite real da operadora.</td></tr>
       </Tabela>
 
       <h3>Ações disponíveis</h3>
       <Tabela cabecalho={['Ação', 'Efeito']} larguras={['185px']}>
-        <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação{ACOES_NO_PAINEL ? ' e, para técnico, gestor e operacional, o formulário de registrar relatório' : ''}. Técnico, gestor e operacional têm ainda o botão <strong>Alta</strong>, no rodapé.</td></tr>
-        <tr><Key>Clicar no hospital</Key><td>Abre a ficha do hospital, com indicadores, operadoras atendidas, dados cadastrais e histórico de censos sob demanda.</td></tr>
+        <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação{ACOES_NO_PAINEL ? ' e, para técnico, gestor e operacional, o formulário de registrar relatório' : ''}. O nome do hospital abre a ficha dele, e um relatório da timeline abre o relatório. No topo ficam <strong>Detalhes</strong>, que leva à ficha completa, e, em paciente da Porto, <strong>Formulário Porto</strong>; o analista não vê os dois nem abre os relatórios. Técnico, gestor e operacional têm ainda o botão <strong>Alta</strong>, no rodapé; em quem saiu por alta dada à mão ou automática, ele vira <strong>Desfazer alta</strong>.</td></tr>
+        <tr><Key>Clicar no hospital</Key><td>Abre a ficha do hospital, com indicadores, operadoras atendidas, dados cadastrais e histórico de censos sob demanda.<SoGestao> Gestor e diretor têm ainda <strong>Abrir cadastro</strong>, que leva ao cadastro do hospital em Configurações.</SoGestao></td></tr>
         <tr><Key>Adicionar paciente</Key><td>Cadastro manual: operadora, hospital, nome, atendimento, situação (internado ou alta), data de entrada, data de alta quando for o caso e, opcionalmente, leito, especialidade e médico. Não duplica: se o atendimento já existir no hospital, avisa que o paciente não foi duplicado.</td></tr>
-        <tr><Key>Exportar</Key><td>Gera a planilha de controle de auditoria, da operadora aberta ou de todas num único arquivo, com uma aba por hospital.</td></tr>
-        <tr><Key>Atualizar</Key><td>Recarrega lista, indicadores e contagens da barra lateral.</td></tr>
+        <tr><Key>Exportar</Key><td>Gera a planilha de controle de auditoria. Com algum filtro ligado (card de status, hospital, busca, filtro rápido ou período), a primeira opção já vem marcada: <strong>Com os filtros do painel</strong>, só com os pacientes que a lista mostra, de todas as páginas. As outras dão a planilha inteira, sem os filtros da tela: da operadora aberta, ou de todas num único arquivo, com uma aba por hospital.</td></tr>
+        <tr><Key>Atualizar</Key><td>Recarrega lista, indicadores e contagens da barra lateral. A tela também se atualiza sozinha enquanto está à vista e ao voltar para ela; ao lado do botão, <strong>Atualizado</strong> mostra a hora dos dados na tela.</td></tr>
       </Tabela>
     </>
   )

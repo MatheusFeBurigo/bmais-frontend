@@ -51,7 +51,7 @@ function passosDaConta(papel: UserRole): PassoAjuda[] {
             : escopo
               ? <>Este papel <strong>tem escopo por hospital</strong>: a etapa de cidades e hospitais abre em seguida.</>
               : naDistribuicao
-                ? <>Este papel <strong>tem os hospitais definidos na Distribuição de tarefas</strong>, e não aqui: a etapa de hospitais não aparece. Enquanto não tiver nenhum hospital lá, enxerga a operação inteira; com hospitais, vê só os pacientes, censos e tarefas deles.</>
+                ? <>Este papel <strong>recebe os hospitais na Distribuição de tarefas</strong>, e não aqui: a etapa de hospitais não aparece. Enquanto não tiver nenhum, enxerga a operação inteira; com hospitais, vê só os pacientes, censos e tarefas deles.</>
                 : <>Este papel <strong>não tem escopo</strong>: enxerga a operação inteira, e a etapa de hospitais ou operadoras não aparece.</>}
         </>
       ),
@@ -73,7 +73,7 @@ function passosDaConta(papel: UserRole): PassoAjuda[] {
   passos.push({
     n: passos.length + 1,
     titulo: 'Clique em Criar usuário',
-    corpo: <>A conta já pode entrar. Ao entrar, a pessoa vê <strong>Crie sua senha</strong>, para trocar a senha que você definiu por uma só dela; <strong>Agora não</strong> adia o convite para o próximo acesso. {porOperadora ? 'O papel e as operadoras podem ser mudados' : escopo ? 'O papel e os hospitais podem ser mudados' : 'O papel pode ser mudado'} depois pelo botão <strong>Editar</strong> da lista{naDistribuicao ? '; os hospitais, na Distribuição de tarefas' : ''}.</>,
+    corpo: <>A conta já pode entrar. No primeiro acesso, a pessoa vê <strong>Crie sua senha</strong>, para trocar a senha que você definiu por uma só dela; <strong>Agora não</strong> deixa o convite para o acesso seguinte. {porOperadora ? 'O papel e as operadoras podem ser mudados' : escopo ? 'O papel e os hospitais podem ser mudados' : 'O papel pode ser mudado'} depois pelo botão <strong>Editar</strong> da lista{naDistribuicao ? '; os hospitais, na Distribuição de tarefas' : ''}.</>,
   })
   return passos
 }
@@ -111,7 +111,7 @@ function CadastroDeConta() {
           descricao={escopo
             ? `Dados de acesso concluídos. ${ROLE_LABEL[papel]} tem escopo de ${porOperadora ? 'operadoras' : 'cidades e hospitais'}.`
             : naDistribuicao
-              ? `Dados de acesso concluídos. Os hospitais de ${ROLE_LABEL[papel]} são definidos na Distribuição de tarefas, não aqui.`
+              ? `Dados de acesso concluídos. ${ROLE_LABEL[papel]} não tem etapa de escopo: os hospitais vêm da Distribuição de tarefas.`
               : `Dados de acesso concluídos. ${ROLE_LABEL[papel]} não tem escopo: enxerga a operação inteira.`}>
           <ReplicaNovoUsuario papel={papel} aberta="nivel"
             marcas={escopo ? { papel: 3 } : { papel: 3, criar: 4 }} />
@@ -490,8 +490,9 @@ export function ModuloMovimentacoes() {
         detalhes completos do registro, e há um atalho para filtrar tudo daquele usuário.
       </p>
       <p>
-        O horário aparece em linguagem natural, como agora, há 5 minutos ou há 3 horas, e passa à
-        data completa quando o evento é de outro dia. Cada tipo de registro tem cor própria.
+        O horário aparece em linguagem natural, como agora, há 5 min ou há 3 h, com a data e a hora
+        completas logo abaixo; passadas 24 horas, fica só a data completa. Cada tipo de registro tem
+        cor própria.
       </p>
 
       <h3>Aba de usuários</h3>
@@ -502,8 +503,8 @@ export function ModuloMovimentacoes() {
         <Chip tom="neutral">Removido</Chip>.
       </p>
       <p>
-        <strong>Ver atividade</strong> leva à aba de movimentações já filtrada por aquele usuário. A
-        aba é de consulta: as contas não são alteradas por aqui.
+        Clicar no nome do usuário leva à aba de movimentações já filtrada por ele. A aba é de
+        consulta: as contas não são alteradas por aqui.
       </p>
     </>
   )
@@ -514,36 +515,55 @@ export function ModuloRegras() {
     <>
       <p>
         Para cada internação, o sistema compara três coisas: há quanto tempo o paciente está
-        internado, qual o gatilho do tipo de leito dele e quando foi o último relatório. Dessa
-        comparação saem os oito status abaixo.
+        internado, qual o gatilho do tipo de leito dele e a data da visita do último relatório
+        aprovado. Os prazos seguem as regras da operadora, ou as do hospital quando ele tem regra
+        própria nela. Dessa comparação saem os status abaixo, com o rótulo que a pastilha mostra
+        na tela.
       </p>
 
       <h3>Pacientes internados</h3>
       <Tabela cabecalho={['Status', 'Quando se aplica']} larguras={['205px']}>
-        <tr><td><Chip tom="positive">Em dia</Chip></td>
+        <tr><td><Chip tom="positive">Em Dia</Chip></td>
           <td>Duas situações: o paciente ainda não atingiu o gatilho correspondente ao seu leito,
             não havendo relatório devido; ou já foi visitado dentro da janela, sem vencimento
             próximo.</td></tr>
-        <tr><td><Chip tom="critical">Sem relatório</Chip></td>
-          <td>Já passou do gatilho e nunca recebeu relatório.</td></tr>
+        <tr><td><Chip tom="critical">Sem Rel.</Chip></td>
+          <td>Sem relatório: já atingiu o gatilho e nunca recebeu relatório.</td></tr>
         <tr><td><Chip tom="warn">Vencido</Chip></td>
           <td>O último relatório é mais antigo que a janela entre relatórios.</td></tr>
-        <tr><td><Chip tom="attention">Próximo a vencer</Chip></td>
-          <td>O vencimento está dentro do prazo de alerta antecipado da operadora.</td></tr>
+        <tr><td><Chip tom="attention">Próx. Vencer</Chip></td>
+          <td>Próximo a vencer: o vencimento está dentro do prazo de alerta antecipado.</td></tr>
       </Tabela>
+
+      <Callout tipo="info" titulo="Relatório aguardando aprovação">
+        O relatório registrado pelo operacional ou pelo coordenador operacional só conta depois de
+        aprovado: até lá, o prazo segue o último relatório aprovado. Enquanto ele espera, a
+        pastilha do paciente internado mostra <strong>Aguardando aprovação</strong> no lugar do
+        status, no Painel Operacional e na ficha do paciente.
+      </Callout>
 
       <h3>Pacientes com alta</h3>
       <Tabela cabecalho={['Status', 'Quando se aplica']} larguras={['205px']}>
-        <tr><td><Chip tom="positive">Alta em conformidade</Chip></td>
-          <td>Teve alta com o relatório em dia.</td></tr>
-        <tr><td><Chip tom="critical">Alta sem relatório</Chip></td>
-          <td>Teve alta sem nunca ter recebido relatório.</td></tr>
-        <tr><td><Chip tom="warn">Alta com relatório vencido</Chip></td>
-          <td>Teve alta com o relatório já fora da janela.</td></tr>
-        <tr><td><Chip tom="neutral">Alta automática</Chip></td>
-          <td>Alta inferida pelo sistema, porque o paciente deixou de aparecer nos censos. Não foi
-            confirmada pelo hospital e merece verificação.</td></tr>
+        <tr><td><Chip tom="positive">Alta OK</Chip></td>
+          <td>Teve alta com o último relatório dentro da janela.</td></tr>
+        <tr><td><Chip tom="critical">Alta s/Rel</Chip></td>
+          <td>Teve alta sem nunca ter recebido relatório, mesmo que tenha saído antes de atingir
+            o gatilho.</td></tr>
+        <tr><td><Chip tom="warn">Alta Venc.</Chip></td>
+          <td>Teve alta com o último relatório já fora da janela.</td></tr>
       </Tabela>
+      <p>
+        Na lista do Painel Operacional, quem já saiu aparece só com a pastilha{' '}
+        <strong>Alta</strong>; o status da alta fica na ficha rápida e na ficha do paciente.
+      </p>
+      <p>
+        Quando o paciente deixa de aparecer nos censos, o sistema registra a alta sozinho, com a
+        data do último dia em que ele constou. Essa alta recebe um dos três status acima, como
+        qualquer outra, e fica marcada na timeline da internação pelo evento{' '}
+        <strong>Alta automática</strong>. Como não foi confirmada pelo hospital, merece
+        verificação: se o paciente continua internado, <strong>Desfazer alta</strong>, no topo da
+        ficha, o devolve à lista de internados.
+      </p>
 
       <Callout tipo="rule" titulo="Não existe status de espera">
         Um paciente que ainda não atingiu o gatilho aparece como em dia, e não com um status próprio
@@ -554,16 +574,20 @@ export function ModuloRegras() {
       <h3>Permanência prolongada</h3>
       <p>
         Independente do relatório, o sistema marca internações longas em dois níveis configuráveis
-        por operadora, prolongada e avançada. Esses marcadores aparecem na coluna de permanência do
-        Painel Operacional<SoGestao>, nos indicadores da Diretoria</SoGestao> e nos filtros
-        rápidos. São calculados
-        apenas para pacientes ainda internados.
+        por operadora (ou pelo hospital, quando ele tem regra própria), prolongada e avançada.
+        Esses marcadores aparecem na coluna de permanência do Painel
+        Operacional<SoGestao>, nos indicadores da Diretoria</SoGestao> e na etiqueta{' '}
+        <strong>Longa permanência</strong> dos cards de Tarefas. São calculados apenas para
+        pacientes ainda internados. O filtro rápido <strong>Longa permanência</strong>, do Painel
+        Operacional, é outro corte: um mínimo de dias escolhido na hora (3, 7, 10, 15 ou 30), igual
+        para todas as operadoras.
       </p>
 
       <h3>Data de referência</h3>
       <p>
-        Todos os cálculos usam uma data de referência do sistema, exibida no subtítulo das telas. É
-        ela que garante que todas as telas concordem entre si sobre quantos dias se passaram.
+        Os prazos de relatório usam uma data de referência do sistema, em geral o dia de
+        hoje<SoGestao>, exibida no subtítulo do Dashboard da Diretoria</SoGestao>. É ela que
+        garante que todas as telas concordem entre si sobre quantos dias se passaram.
       </p>
     </>
   )
@@ -613,7 +637,9 @@ export function ModuloProgresso() {
 
       <p>
         No alto da tela, <strong>Relatório da auditoria</strong> abre o documento de onde os
-        módulos saíram: o porquê da ordem e o que cada bloco entrega.
+        módulos saíram: o porquê da ordem e o que cada bloco entrega. Lá,{' '}
+        <strong>Imprimir ou salvar em PDF</strong> gera a cópia do documento e{' '}
+        <strong>Voltar</strong> retorna ao quadro.
       </p>
 
       <h3>As seis etapas de cada módulo</h3>
@@ -652,8 +678,8 @@ export function ModuloProgresso() {
 
       <h3>Resumo detalhado das atividades</h3>
       <p>
-        Cada módulo tem, no rodapé, o botão <strong>Resumo detalhado das atividades</strong>, com o
-        número de atividades registradas ao lado. Ele abre a lista do que foi feito naquele
+        Os módulos com atividades registradas têm, no rodapé, o botão{' '}
+        <strong>Resumo detalhado das atividades</strong>, com o número delas ao lado. Ele abre a lista do que foi feito naquele
         módulo, agrupada por semana e, dentro dela, por dia. A semana e o dia mais recentes abrem
         aberto, e os anteriores ficam recolhidos.
       </p>

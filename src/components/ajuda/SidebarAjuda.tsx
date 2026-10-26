@@ -2,8 +2,8 @@
 // módulos da documentação em vez das telas.
 //
 // Por que trocar o conteúdo da barra em vez de pôr um índice dentro da página:
-// a documentação tem 14 módulos, e uma segunda coluna de navegação ao lado do
-// menu daria duas barras competindo na mesma tela. Aqui o usuário navega no
+// a documentação tem mais de uma dúzia de módulos, e uma segunda coluna de
+// navegação ao lado do menu daria duas barras competindo na mesma tela. Aqui o usuário navega no
 // lugar em que já navega, com as classes `sb-*` do design-system — a Ajuda não
 // inventa um menu próprio, ela ocupa o existente enquanto está aberta.
 //

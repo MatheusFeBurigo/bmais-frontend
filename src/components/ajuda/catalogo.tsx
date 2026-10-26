@@ -16,7 +16,7 @@ import {
 import type { ModuloAjuda } from './tipos'
 import { leSobre } from './acessoAjuda'
 // Os CORPOS entram por lazy(): a Sidebar consome este catálogo em toda tela (é
-// ela que vira o índice na Ajuda), e importar o texto dos 16 módulos aqui
+// ela que vira o índice na Ajuda), e importar o texto de todos os módulos aqui
 // colocaria a documentação inteira no bundle inicial do app. Assim a barra
 // carrega só títulos, ícones e o gating; o texto baixa ao abrir a Ajuda.
 const lazyCorpo = (
@@ -60,8 +60,10 @@ export const MODULOS: readonly ModuloAjuda[] = [
   },
   {
     // A ficha do paciente é alcançada a partir da Visão Geral e do Kanban, e a
-    // rota não é gated por papel. Fica presa a 'operacional' porque é ali que
-    // ela começa: quem não vê a lista não chega à ficha por navegação.
+    // rota tem guarda própria (RequireFichaPaciente: todos menos o analista, que
+    // lê o módulo pela leitura ampla de acessoAjuda.ts). Fica presa a
+    // 'operacional' porque é ali que ela começa: quem não vê a lista não chega à
+    // ficha por navegação.
     id: 'ficha-do-paciente',
     titulo: 'Ficha do Paciente',
     subtitulo: 'Ficha completa e editável de uma internação',

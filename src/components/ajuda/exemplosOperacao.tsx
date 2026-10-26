@@ -13,7 +13,9 @@ import type {
 } from '../../types/api'
 import { StatusBadge, LeitoTag, rowFlagClass, MedicoChip, AutorChip } from '../StatusBadge'
 import { OpAvatar } from '../ui'
-import { DiasRatio } from '../internados/cells'
+import { DiasRatio, Permanencia } from '../internados/cells'
+import StatusAtualizacao from '../dashboard/StatusAtualizacao'
+import { AUTO_REFRESH_MS } from '../../lib/autoRefresh'
 import { KanbanCard } from '../kanban/KanbanCard'
 import { KanbanFiltros } from '../kanban/KanbanFiltros'
 import { localStyles as kanbanStyles } from '../kanban/kanban.styles'
@@ -71,6 +73,8 @@ interface LinhaPainel {
   atend: string
   leito: string
   entrada: string
+  /** Data da alta: só nas linhas de quem já saiu. */
+  alta?: string
   ultima: string | null
   semRel: number
   janela: number
@@ -95,16 +99,28 @@ const LINHAS_PAINEL: LinhaPainel[] = [
     semRel: 1, janela: 7, dias: 4, gatilho: 10 },
 ]
 
+// Quem já saiu só entra na lista de internados pela busca (prop `busca`).
+const ALTAS_PAINEL: LinhaPainel[] = [
+  { id: 5, sr: 'ALTA_OK', op: 'careplus', opNome: 'CarePlus', hospital: 'Hospital Santa Clara',
+    nome: 'Helena Prado Ribeiro', atend: '770951', leito: 'APARTAMENTO', entrada: '02/09/2026', alta: '11/09/2026',
+    ultima: '08/09/2026', semRel: 17, janela: 7, dias: 9, gatilho: 5 },
+]
+
+// Hora fictícia do indicador "Atualizado" do topo.
+const ATUALIZADO_EM = new Date(2026, 8, 25, 9, 41, 12).getTime()
+
 type MarcaPainel = 'operadora' | 'kpi' | 'hospital' | 'filtros' | 'busca' | 'linha' | 'hospitalLink'
-  | 'exportar' | 'adicionar'
+  | 'exportar' | 'adicionar' | 'alta'
 
 /** O Painel Operacional como ele abre: operadora, cartões, filtros e a lista. */
-export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
+export function ReplicaPainel({ marcas = {}, kpiAtivo, uti, busca }: {
   marcas?: Partial<Record<MarcaPainel, number>>
   /** Cartão já clicado (filtro ligado). */
   kpiAtivo?: 'sem_relatorio' | 'vencido' | 'proximo' | 'em_dia'
   /** Chip "UTI / CTI" ligado. */
   uti?: boolean
+  /** Texto digitado na busca: recorta pelo nome e traz as altas no fim. */
+  busca?: string
 }) {
   const kpis: Array<[string, number, string, string, string]> = [
     ['sem_relatorio', 12, 'danger', 'Sem Relatório', 'nunca registrado'],
@@ -117,9 +133,15 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
     : kpiAtivo === 'vencido' ? 'VENCIDO'
       : kpiAtivo === 'proximo' ? 'PROXIMO_VENCER'
         : kpiAtivo === 'em_dia' ? 'EM_DIA' : null
-  const linhas = LINHAS_PAINEL
-    .filter((l) => !filtroKpi || l.sr === filtroKpi)
+  const q = (busca ?? '').toLowerCase()
+  const casa = (l: LinhaPainel) => !q || l.nome.toLowerCase().includes(q)
+  const linhas = [
+    ...LINHAS_PAINEL.filter((l) => !filtroKpi || l.sr === filtroKpi),
+    ...(q.length >= 2 && !filtroKpi ? ALTAS_PAINEL : []),
+  ]
     .filter((l) => !uti || l.leito === 'UTI')
+    .filter(casa)
+  const marcaAlta = linhas.find((l) => l.alta)?.id
 
   const gradeKpis = (
     <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(5,1fr)' }}>
@@ -137,7 +159,12 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
   return (
     <>
       <Topo titulo="Painel Operacional"
-        acoes={<button className="btn btn-outline btn-sm">Atualizar</button>} />
+        acoes={(
+          <div className="row" style={{ gap: 12 }}>
+            <StatusAtualizacao atualizadoEm={ATUALIZADO_EM} sincronizando={false} intervaloMs={AUTO_REFRESH_MS} />
+            <button className="btn btn-outline btn-sm">Atualizar</button>
+          </div>
+        )} />
 
       {marcar(marcas.operadora, (
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
@@ -154,11 +181,19 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
       {marcar(marcas.kpi, gradeKpis, true)}
 
       <div className="section-label" style={{ marginTop: 18 }}>Hospital: 14 unidades cadastradas em 3 operadoras</div>
-      {marcar(marcas.hospital, (
-        <select className="bm-input bm-select" style={{ width: 380 }} value="" onChange={nada}>
-          <option value="">Todos os hospitais (86 internados)</option>
-        </select>
-      ))}
+      <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+        {marcar(marcas.hospital, (
+          <select className="bm-input bm-select" style={{ width: 380 }} value="" onChange={nada}>
+            <option value="">Todos os hospitais (86 internados)</option>
+          </select>
+        ))}
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>Internação de</span>
+          <input type="date" className="bm-input" style={{ width: 'auto' }} readOnly value="" />
+          <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>até</span>
+          <input type="date" className="bm-input" style={{ width: 'auto' }} readOnly value="" />
+        </div>
+      </div>
 
       <div className="quick-filters" style={{ marginTop: 14 }}>
         {marcar(marcas.filtros, (
@@ -171,6 +206,9 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
             <span className="qf-chip">Altas</span>
           </span>
         ))}
+        <select className="bm-input bm-select" style={{ width: 'auto', minWidth: 180 }} value="" onChange={nada}>
+          <option value="">Ordenar: padrão</option>
+        </select>
         <div style={{ flex: 1 }} />
         {/* A busca real abre de uma lupa (BuscaExpansivel); aqui, já aberta. */}
         {marcar(marcas.busca, (
@@ -178,7 +216,7 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
             <span style={{ width: 40, height: 40, borderRadius: 99, border: '1px solid var(--border-strong)', display: 'grid', placeItems: 'center', color: 'var(--ink)' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7.5" /><path d="m21 21-4.6-4.6" /></svg>
             </span>
-            <input type="text" className="bm-input" style={{ width: 220 }} readOnly
+            <input type="text" className="bm-input" style={{ width: 220 }} readOnly value={busca ?? ''}
               placeholder="Buscar segurado, atendimento (e altas)…" />
           </span>
         ))}
@@ -190,7 +228,8 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
             <div className="card-title">Todos os Internados</div>
             <div className="card-sub">
               <span className="mono fw-6">{linhas.length}</span> de <span className="mono fw-6">86</span>
-              <span className="dot-sep" />Clique na linha para detalhes
+              <span className="dot-sep" />
+              {marcaAlta != null ? <span className="filtro-tag">Busca inclui altas</span> : 'Clique na linha para detalhes'}
             </div>
           </div>
           <div className="row" style={{ gap: 12 }}>
@@ -207,19 +246,29 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
               <th style={{ width: 118 }}>Operadora</th>
               <th>Hospital</th>
               <th>Segurado</th>
-              <th style={{ width: 56 }}>Leito</th>
+              <th style={{ width: 86 }}>Atend.</th>
+              <th style={{ width: 60 }}>Leito</th>
+              <th style={{ width: 96 }}>Internação</th>
               <th>Última Visita</th>
-              <th className="t-right" style={{ width: 92 }}>Sem relatório</th>
-              <th className="t-right" style={{ width: 84 }}>Dias internado</th>
+              <th className="t-right" style={{ width: 96 }}>Sem relatório</th>
+              <th className="t-right" style={{ width: 88 }}>Dias internado</th>
+              <th className="t-right" style={{ width: 78 }}>Permanência</th>
             </tr>
           </thead>
           <tbody>
             {linhas.map((l, i) => {
               const primeira = i === 0
+              const alta = Boolean(l.alta)
               const tomSemRel = l.sr === 'SEM_RELATORIO' ? 'danger' : l.sr === 'VENCIDO' ? 'warning' : 'neutral'
               return (
-                <tr key={l.id} className={rowFlagClass(l.sr)}>
-                  <td>{marcar(primeira ? marcas.linha : undefined, <StatusBadge sr={l.sr} />)}</td>
+                <tr key={l.id} className={rowFlagClass(l.sr, alta)}>
+                  <td>
+                    {marcar(primeira ? marcas.linha : l.id === marcaAlta ? marcas.alta : undefined,
+                      <StatusBadge sr={l.sr} resumido={alta} />)}
+                    {l.alta && (
+                      <div className="mono" style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)', marginTop: 2 }}>{l.alta}</div>
+                    )}
+                  </td>
                   <td>
                     <span className="row" style={{ gap: 6 }}>
                       <OpAvatar opKey={l.op} size={18} />
@@ -232,11 +281,16 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti }: {
                     ))}
                   </td>
                   <td><div className="fw-5" style={{ whiteSpace: 'nowrap' }}>{l.nome}</div></td>
+                  <td><span className="mono t-muted" style={{ fontSize: 'var(--t-sm)' }}>{l.atend}</span></td>
                   <td><LeitoTag tipo={l.leito} /></td>
+                  <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{l.entrada}</span></td>
                   <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{l.ultima || '—'}</span></td>
-                  <td className="t-right"><DiasRatio value={l.semRel} limit={l.janela} tone={tomSemRel} /></td>
+                  <td className="t-right"><DiasRatio value={l.semRel} limit={l.janela} tone={alta ? 'neutral' : tomSemRel} /></td>
                   <td className="t-right">
                     <DiasRatio value={l.dias} limit={l.gatilho} tone={l.longa30 ? 'danger' : l.longa10 ? 'warning' : 'neutral'} />
+                  </td>
+                  <td className="t-right">
+                    <Permanencia longa10={l.longa10} longa30={l.longa30} limiteLonga={10} limiteAvancada={30} />
                   </td>
                 </tr>
               )
@@ -331,24 +385,26 @@ export function ReplicaFichaRapida({ marcas = {}, agendada, atrasada, preenchido
           {marcar(marcas.timeline, (
             <div className="tl">
               {agendada && !atrasada && visitaNaTimeline}
-              <div className="tl-item">
-                <div className="tl-dot neutral" />
+              <div className="tl-item tl-card tp-pendente">
+                <div className="tl-dot tp-pendente" />
                 <div className="tl-date">Hoje</div>
-                <div className="tl-label">16 dias internado, sem relatório</div>
+                <div className="tl-label" style={{ color: 'var(--danger)' }}>Pendente</div>
+                <div className="tl-desc">16d sem relatório</div>
               </div>
               {atrasada && visitaNaTimeline}
-              <div className="tl-item tl-card tp-edit">
-                <div className="tl-dot tp-edit" />
+              <div className="tl-item tl-card tp-troca-hospital">
+                <div className="tl-dot tp-troca-hospital" />
                 <div className="tl-date">11/09/2026</div>
-                <div className="tl-label">Leito corrigido
+                <div className="tl-label">Mudança de leito
                   <span style={{ marginLeft: 8 }}><AutorChip role="administrativo" autor="marina" /></span>
                 </div>
+                <div className="tl-desc">Passou a ocupar o leito UTI-04.</div>
               </div>
               <div className="tl-item tl-card tp-admissao">
                 <div className="tl-dot tp-admissao" />
                 <div className="tl-date">09/09/2026</div>
                 <div className="tl-label">Admissão</div>
-                <div className="tl-desc">Entrou pelo censo do Hospital Santa Clara</div>
+                <div className="tl-desc">Hospital: Hospital Santa Clara</div>
               </div>
             </div>
           ), true)}
@@ -471,7 +527,7 @@ const IcoAlta = (
 /** A janela "Alta", aberta pelo botão do rodapé da ficha rápida (ou do topo da
  *  ficha completa). Redesenhada: a real (AcaoAlta) é um Modal com portal. */
 export function ReplicaModalAlta({ marcas = {} }: {
-  marcas?: Partial<Record<'data' | 'hora' | 'confirmar', number>>
+  marcas?: Partial<Record<'motivo' | 'data' | 'hora' | 'confirmar', number>>
 }) {
   return (
     <ModalReplica
@@ -492,6 +548,12 @@ export function ReplicaModalAlta({ marcas = {} }: {
             <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', marginTop: 2 }}>Internado desde 12/09/2026 · 13d</div>
           </div>
         </div>
+        {marcar(marcas.motivo, (
+          <div style={{ width: '100%' }}>
+            <div className="aj-campo-lbl">Motivo da alta *</div>
+            <input className="bm-input bm-select" readOnly value="Alta médica" />
+          </div>
+        ), true)}
         <div style={{ display: 'flex', gap: 10 }}>
           <div style={{ flex: 1 }}>
             {marcar(marcas.data, (
@@ -531,6 +593,16 @@ const IcoPdf = (
 const TEXTO_RELATORIO = 'Paciente internado por pneumonia comunitária, em antibioticoterapia intravenosa '
   + 'desde a admissão. Evolui afebril há 48 horas, com melhora da saturação. Plano: manter o '
   + 'antibiótico até completar 7 dias e reavaliar a alta.'
+
+/** O roteiro que a modal mostra acima do texto (SecoesPrincipais). */
+const ROTEIRO = [
+  'Motivo da internação', 'Antecedentes e comorbidades relevantes', 'Procedimentos realizados',
+  'Evolução atual', 'Plano terapêutico',
+]
+
+const OPCIONAL = (
+  <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--muted)' }}>(opcional)</span>
+)
 
 /** O alto da modal: o paciente, só leitura. */
 function PacienteDoRelatorio() {
@@ -586,13 +658,17 @@ export function ReplicaModalRelatorio({ marcas = {}, corrigindo }: {
             <div className="rr-pilha">
               <div className="rr-g2 rr-g-topo">
                 <div className="rr-campo">
-                  <span className="form-lbl">Diagnóstico principal</span>
+                  <span className="form-lbl">Diagnóstico principal {OPCIONAL}</span>
                   <input className="bm-input" readOnly value="J18.9 Pneumonia não especificada" />
                 </div>
                 <div className="rr-campo">
-                  <span className="form-lbl">Diagnóstico secundário</span>
-                  <input className="bm-input" readOnly placeholder="Digite o código ou o nome…" />
+                  <span className="form-lbl">Diagnóstico secundário {OPCIONAL}</span>
+                  <input className="bm-input bm-select" readOnly placeholder="Código (ex.: J18.9) ou nome da doença" />
                 </div>
+              </div>
+              <div className="rr-roteiro">
+                <span className="rr-roteiro-tit">O relatório deve trazer</span>
+                <ol>{ROTEIRO.map((t) => <li key={t}>{t}</li>)}</ol>
               </div>
               {marcar(marcas.texto, (
                 <label className="rr-campo">
@@ -609,7 +685,7 @@ export function ReplicaModalRelatorio({ marcas = {}, corrigindo }: {
                 resumo="Urgência · Clínica geral · Apartamento (atual)">{null}</GrupoRecolhivel>
               <GrupoRecolhivel titulo="No período" resumo="Nada marcado">{null}</GrupoRecolhivel>
               <GrupoRecolhivel titulo="Prorrogação"
-                resumo={corrigindo ? 'Pedida: 4 diárias · com documento' : 'Não pedida'}>{null}</GrupoRecolhivel>
+                resumo={corrigindo ? 'Pedida: 4 diárias' : 'Não pedida'}>{null}</GrupoRecolhivel>
             </div>
           ), true)}
         </div>
@@ -618,16 +694,24 @@ export function ReplicaModalRelatorio({ marcas = {}, corrigindo }: {
   )
 }
 
-/** A seção Prorrogação aberta, com "Prorrogar" marcado, dois períodos,
- *  a justificativa e o documento da operadora anexado. O "Prorrogar" se
- *  marca por `destaques` ('.rr-bloco-tg'). */
+/** A seção Prorrogação aberta, com "Prorrogar" marcado, dois períodos, o
+ *  seguinte já sugerido na linha de entrada, a justificativa e o botão que gera
+ *  o formulário da Porto. O "Prorrogar" se marca por `destaques` ('.rr-bloco-tg'). */
 export function ReplicaProrrogacaoRelatorio({ marcas = {} }: {
   marcas?: Partial<Record<'periodos' | 'justificativa' | 'porto', number>>
 }) {
+  // Mesmas colunas da lista real (SecoesListas): acomodação, início, fim e botão.
+  const grade = { gridTemplateColumns: 'minmax(0,1fr) 150px 150px 96px' }
   const periodo = (aco: string, de: string, ate: string, dias: string) => (
-    <div className="rr-lista-linha" style={{ gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) 80px' }}>
-      <span className="rr-cel">{aco}</span><span className="rr-cel">{de}</span>
-      <span className="rr-cel">{ate}</span><span className="rr-cel rr-cel-nota">{dias}</span>
+    <div className="rr-lista-linha" style={grade}>
+      <span className="rr-cel">{aco} <span className="rr-cel-nota">{dias}</span></span>
+      <span className="rr-cel">{de}</span><span className="rr-cel">{ate}</span>
+      <span className="rr-acoes">
+        <span className="rr-x" title="Editar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+        </span>
+        <span className="rr-x" title="Remover">✕</span>
+      </span>
     </div>
   )
   return (
@@ -638,9 +722,26 @@ export function ReplicaProrrogacaoRelatorio({ marcas = {} }: {
           <BlocoOpcional titulo="Prorrogar" marcado onMarcar={nada} extra="4 diárias">
             <div className="rr-pilha">
               {marcar(marcas.periodos, (
-                <div className="rr-lista">
-                  {periodo('UTI', '21/10/2026', '23/10/2026', '2 diárias')}
-                  {periodo('Apartamento', '23/10/2026', '25/10/2026', '2 diárias')}
+                <div className="rr-lista-wrap">
+                  <div className="rr-lista-entrada" style={grade}>
+                    <label className="rr-campo">
+                      <span className="form-lbl">Acomodação<span className="req">*</span></span>
+                      <input className="bm-input bm-select" readOnly value="Apartamento" />
+                    </label>
+                    <label className="rr-campo">
+                      <span className="form-lbl">Início<span className="req">*</span></span>
+                      <input className="bm-input" readOnly value="25/10/2026" />
+                    </label>
+                    <label className="rr-campo">
+                      <span className="form-lbl">Fim<span className="req">*</span></span>
+                      <input className="bm-input" readOnly placeholder="dd/mm/aaaa" />
+                    </label>
+                    <span className="btn btn-outline btn-sm rr-lista-add">Adicionar</span>
+                  </div>
+                  <div className="rr-lista">
+                    {periodo('UTI', '21/10/2026', '23/10/2026', '2 diárias')}
+                    {periodo('Apartamento', '23/10/2026', '25/10/2026', '2 diárias')}
+                  </div>
                 </div>
               ), true)}
               {marcar(marcas.justificativa, (
@@ -649,6 +750,10 @@ export function ReplicaProrrogacaoRelatorio({ marcas = {} }: {
                   <input className="bm-input bm-select" readOnly value="Antibioticoterapia intravenosa" />
                 </label>
               ), true)}
+              <label className="rr-campo">
+                <span className="form-lbl">Complemento</span>
+                <input className="bm-input" readOnly value="" />
+              </label>
               {marcar(marcas.porto, (
                 <div className="rr-campo">
                   <span className="form-lbl">Formulário de prorrogação da Porto</span>

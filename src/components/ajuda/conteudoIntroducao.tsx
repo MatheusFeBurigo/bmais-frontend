@@ -51,12 +51,11 @@ export function ModuloVisao({ irPara }: Props) {
 
       <h3>Como o sistema é organizado</h3>
       <p>
-        As telas distribuem-se nas áreas abaixo, as mesmas seções do índice desta documentação. O
-        menu lateral as agrupa de outro modo, em <strong>Painel</strong> e <strong>Sistema</strong>,
-        e algumas aparecem nele com outro nome, indicado entre parênteses. Cada pessoa enxerga
-        apenas as telas compatíveis com o seu perfil de acesso, de modo que a lista abaixo pode
-        incluir telas que não estão no seu menu; as que não têm módulo no seu índice aparecem sem
-        link.
+        As telas distribuem-se nas áreas abaixo. O menu lateral as reúne de outro modo, em{' '}
+        <strong>Painel</strong> e <strong>Sistema</strong>, e algumas aparecem nele com outro
+        nome, indicado entre parênteses. Cada pessoa enxerga apenas as telas compatíveis com o seu
+        perfil de acesso, de modo que a lista abaixo pode incluir telas que não estão no seu menu;
+        as que não têm módulo no seu índice aparecem sem link.
       </p>
       <Tabela cabecalho={['Área', 'Telas', 'A que serve']} larguras={['150px', '210px']}>
         <tr>
@@ -104,7 +103,7 @@ export function ModuloVisao({ irPara }: Props) {
         </tr>
         <tr>
           <Key>Acesso</Key>
-          <td><Link para="perfis-de-acesso">Perfis e permissões</Link></td>
+          <td><Link para="perfis-de-acesso">Perfis de acesso e permissões</Link></td>
           <td>Quem entra na plataforma e o que cada perfil pode ver e fazer.</td>
         </tr>
       </Tabela>
@@ -157,8 +156,16 @@ export function ModuloVisao({ irPara }: Props) {
           <tr><Key>Nível de serviço</Key><td>Percentual de pacientes com o relatório em conformidade, exibido como SLA.</td></tr>
         </SoGestao>
         <tr><Key>Censo</Key><td>O arquivo que o hospital envia com os pacientes do dia. É a fonte de todos os dados de internação.</td></tr>
-        <tr><Key>Escopo de dados</Key><td>Recorte por hospital aplicado a cada usuário. Quem tem hospitais vinculados só enxerga esses; sem vínculo, enxerga tudo.</td></tr>
+        <tr><Key>Escopo de dados</Key><td>Recorte aplicado a cada usuário: por hospital para o técnico e os coordenadores, por operadora para o operacional. Quem tem vínculo só enxerga o que está nele; sem vínculo, enxerga tudo.</td></tr>
       </Tabela>
+
+      <h3>Dúvidas e suporte</h3>
+      <p>
+        O que esta documentação não responder vai ao suporte por um chamado: use{' '}
+        <strong>Abrir chamado</strong>, no fim de cada módulo, ou o balão no rodapé da barra
+        lateral, que ocupa o lugar da interrogação enquanto a Ajuda está aberta. A resposta chega
+        no próprio chamado, e um ponto no ícone avisa quando há mensagem nova.
+      </p>
     </>
   )
 }
@@ -170,7 +177,7 @@ const PAPEIS_MATRIZ = [
   { nome: 'Operacional' },
   { nome: 'Gestor', gestao: true },
   { nome: 'Diretor', gestao: true },
-  { nome: 'Analista' },
+  { nome: 'Analista interno' },
   { nome: 'Coordenador' },
 ] as const
 
@@ -217,8 +224,9 @@ export function ModuloNavegacao() {
     <>
       <p>
         Cada conta recebe um <strong>papel</strong>, e é ele que determina quais telas a pessoa vê e
-        o que ela pode fazer em cada uma. Algumas contas têm ainda um segundo recorte, o de
-        <strong> hospitais</strong>, que limita quais pacientes aparecem para elas.
+        o que ela pode fazer em cada uma. Algumas contas têm ainda um segundo recorte, por
+        <strong> hospital</strong> ou por <strong>operadora</strong>, que limita quais pacientes
+        aparecem para elas.
       </p>
       {alemDoMenu ? (
         <p>
@@ -236,16 +244,18 @@ export function ModuloNavegacao() {
       <Tabela cabecalho={['Papel', 'Descrição funcional']} larguras={['220px']}>
         <tr>
           <Key>Técnico</Key>
-          <td>Faz as visitas de auditoria: registra os relatórios, agenda as visitas, informa os
-            CIDs do paciente e dá alta a quem já saiu. Aprova o relatório do operacional, ou o
-            corrige e aprova no mesmo passo. Trabalha no Painel Operacional, nas Tarefas e no Envio
-            de Censos.</td>
+          <td>Faz as visitas de auditoria: registra os
+            relatórios,{ACOES_NO_PAINEL ? ' agenda as visitas,' : ''} informa os CIDs do paciente
+            e dá alta a quem já saiu. Aprova o relatório do operacional, ou o corrige e salva para
+            depois ou já aprova. Trabalha no Painel Operacional, nas Tarefas e no Envio de
+            Censos.</td>
         </tr>
         <tr>
           <Key>Operacional</Key>
-          <td>Operação do dia a dia: envia os censos, cobra os hospitais que atrasam e dá alta a
-            quem já saiu. Registra relatórios, que só valem depois que um técnico ou gestor aprova.
-            Trabalha no Painel Operacional, no Envio de Censos e nas Tarefas.</td>
+          <td>Operação do dia a dia: envia os censos, cobra os hospitais que atrasam, dá alta a
+            quem já saiu e pausa ou retoma a prorrogação do paciente. Registra relatórios, que só
+            valem depois que um técnico, um coordenador técnico ou um gestor aprova. Trabalha no
+            Painel Operacional, no Envio de Censos e nas Tarefas.</td>
         </tr>
         <SoGestao>
           <tr>
@@ -254,7 +264,9 @@ export function ModuloNavegacao() {
               Operacional, das Tarefas e do Envio de Censos, para acompanhar quem ele gerencia.
               Tem as ações do técnico: o
               relatório dele vale na hora, e ele aprova o do operacional, ou o corrige e
-              salva para depois ou já aprova. Não acessa a Diretoria.</td>
+              salva para depois ou já aprova. Pede pendências a quem é da equipe e aprova ou
+              recusa os pedidos para desfazer a atualização de um censo. Não acessa a
+              Diretoria.</td>
           </tr>
           <tr>
             <Key>Diretor</Key>
@@ -263,7 +275,7 @@ export function ModuloNavegacao() {
           </tr>
         </SoGestao>
         <tr>
-          <Key>Analista</Key>
+          <Key>Analista interno</Key>
           <td>Acompanha o Painel Operacional, as Tarefas e as Movimentações sem alterar nada
             nelas, e mantém os cadastros da tela Operações: auditores, contas de acesso,
             hospitais e operadoras. Não registra relatório, não envia censo e não abre a ficha
@@ -277,9 +289,14 @@ export function ModuloNavegacao() {
         </tr>
         <tr>
           <Key>Coordenador operacional</Key>
-          <td>O mesmo papel, do lado operacional: acompanha a carga de cobrança de censo,
-            distribui os hospitais entre os operacionais e trabalha com eles, com as ações do
+          <td>O mesmo papel, do lado operacional: acompanha na Distribuição de tarefas a carga de
+            cobrança de censo dos operacionais e trabalha com eles, com as ações do
             operacional.</td>
+        </tr>
+        <tr>
+          <Key>Médico e enfermeiro</Key>
+          <td>Contas da equipe assistencial, criadas a partir do cadastro do profissional. Não
+            usam as telas internas: entram num portal próprio.</td>
         </tr>
       </Tabela>
 
@@ -310,17 +327,22 @@ export function ModuloNavegacao() {
 
       <h3>Coordenadores</h3>
       <ul>
-        <li>Definem os hospitais de cada pessoa na Distribuição de tarefas, incluindo a si mesmos.</li>
+        <li>Dividem o trabalho do grupo deles na Distribuição de tarefas, incluindo a própria parte.</li>
         <li>Também trabalham no grupo: têm Tarefas e as ações do técnico ou do operacional.</li>
+        <li>Pedem pendências a quem é do grupo deles e aprovam ou recusam os pedidos para desfazer
+          a atualização de um censo.</li>
         <li>Enquanto não têm hospital vinculado, veem a rede inteira; com hospitais vinculados,
-          veem os deles, como qualquer pessoa da equipe.</li>
+          veem os deles.</li>
       </ul>
 
-      <h3>Escopo por hospital</h3>
+      <h3>Escopo de dados</h3>
       <p>
-        Além do papel, uma conta pode ser vinculada a hospitais específicos. Nesse caso, ela enxerga
-        apenas os pacientes, censos e indicadores dessas unidades, em todas as telas. Sem vínculo, a
-        conta enxerga a operação inteira. O vínculo é definido no cadastro da conta.
+        Além do papel, uma conta pode ter um recorte de dados, que vale em todas as telas. O técnico
+        é vinculado a hospitais e enxerga os pacientes, censos e indicadores dessas unidades. O
+        operacional é vinculado a operadoras e enxerga os pacientes e censos delas, em todos os
+        hospitais que as atendem. Os dois vínculos são definidos no cadastro da conta. Os
+        coordenadores enxergam os hospitais que recebem na Distribuição de tarefas. Sem vínculo, a
+        conta enxerga a operação inteira.
       </p>
     </>
   )
