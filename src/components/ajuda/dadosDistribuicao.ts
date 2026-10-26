@@ -5,10 +5,11 @@
 // réplicas carregadas de imediato. Arquivo de componente que também exporta
 // constante quebra o fast refresh, por isso os dados moram aqui.
 //
-// Quatro técnicos, um em cada situação que a tela distingue (sobrecarga,
-// atenção, normal e sem área definida).
+// Quatro pessoas do grupo técnico, uma em cada situação que a tela distingue
+// (sobrecarga, atenção, normal e sem área definida). Marcos é o coordenador,
+// que também trabalha no grupo (21/10/2026).
 import type {
-  VolumetriaDivisao, VolumetriaGrupo, VolumetriaMinutosCategoria, VolumetriaPessoa, VolumetriaQuebra,
+  Pendencia, VolumetriaDivisao, VolumetriaGrupo, VolumetriaMinutosCategoria, VolumetriaPessoa, VolumetriaQuebra,
 } from '../../types/api'
 import { SEM_REGIAO } from '../../lib/regioes'
 
@@ -29,6 +30,8 @@ function pessoa(dados: {
   hospitais: number; pacientes: number; quebra: VolumetriaQuebra
   regioes: Array<[string, number, number]>
   concluidas: number
+  coordenador?: boolean
+  pendencias?: number
 }): VolumetriaPessoa {
   const min = minutos(dados.quebra)
   const total = Object.values(min).reduce((s, v) => s + (v ?? 0), 0)
@@ -36,6 +39,7 @@ function pessoa(dados: {
     + (dados.quebra.visitas_atrasadas ?? 0) + (dados.quebra.vencido ?? 0) + (dados.quebra.proximo_vencer ?? 0)
   return {
     user_id: dados.id, nome: dados.nome, sem_nome: false, email: `${dados.id}@exemplo.com`,
+    coordenador: dados.coordenador ?? false, pendencias_abertas: dados.pendencias ?? 0,
     sem_vinculo: false, total_pendencias: pend, horas: total / 60, dias_fila: dados.dias,
     pressao_pct: dados.pressao, nivel: dados.nivel, capacidade_horas_dia: 6, capacidade_propria: false,
     hospitais: [], hospitais_n: dados.hospitais, quebra: dados.quebra, pacientes: dados.pacientes,
@@ -51,13 +55,13 @@ export const JULIANA = pessoa({
   id: 'juliana', nome: 'Juliana Prado', nivel: 'sobrecarga', dias: 4.6, pressao: 142, hospitais: 4, pacientes: 61,
   quebra: { internados: 61, em_monitoramento: 38, sem_relatorio: 14, aguardando_visita: 6, visitas_atrasadas: 3, vencido: 9, proximo_vencer: 6 },
   regioes: [['Campinas', 3, 48], ['SP - Zona Sul', 1, 13]],
-  concluidas: 31,
+  concluidas: 31, pendencias: 2,
 })
 export const MARCOS = pessoa({
   id: 'marcos', nome: 'Marcos Tavares', nivel: 'atencao', dias: 2.4, pressao: 95, hospitais: 3, pacientes: 34,
   quebra: { internados: 34, em_monitoramento: 22, sem_relatorio: 8, aguardando_visita: 4, visitas_atrasadas: 1, vencido: 3, proximo_vencer: 4 },
   regioes: [['Campinas', 2, 21], [SEM_REGIAO, 1, 13]],
-  concluidas: 44,
+  concluidas: 44, coordenador: true,
 })
 export const BEATRIZ = pessoa({
   id: 'beatriz', nome: 'Beatriz Lemos', nivel: 'normal', dias: 1.0, pressao: 40, hospitais: 2, pacientes: 18,
@@ -73,6 +77,19 @@ export const RAFAEL: VolumetriaPessoa = {
 }
 
 export const PESSOAS = [JULIANA, MARCOS, BEATRIZ, RAFAEL]
+
+/** As pendências abertas de Juliana, vistas por quem as pediu: Marcos, o
+ *  coordenador. Uma já passou do prazo. */
+export const PENDENCIAS_DA_JULIANA: Pendencia[] = [
+  { id: 1, titulo: 'Responder o e-mail urgente da CarePlus sobre a UTI', descricao: null,
+    paciente: null, prazo: '2026-09-25', vencida: true, responsavel: 'juliana',
+    responsavel_nome: 'Juliana Prado', criado_por_nome: 'Marcos Tavares', criado_em: '2026-09-23T10:00:00Z',
+    pode_concluir: true, pode_excluir: true },
+  { id: 2, titulo: 'Olhar a evolução antes da visita de sexta', descricao: null,
+    paciente: 'Helena Duarte', prazo: '2026-09-29', vencida: false, responsavel: 'juliana',
+    responsavel_nome: 'Juliana Prado', criado_por_nome: 'Marcos Tavares', criado_em: '2026-09-25T15:30:00Z',
+    pode_concluir: true, pode_excluir: true },
+]
 
 /** Entregas dos últimos 30 dias até 26/09/2026: dia útil entre 3 e 9, fim de
  *  semana 0 ou 1. O total fecha com a soma das pessoas, como na tela real. */

@@ -23,9 +23,10 @@ import PorRegiao from '../volumetria/PorRegiao'
 import QuebraDemandas from '../volumetria/QuebraDemandas'
 import TempoPorTarefa from '../volumetria/TempoPorTarefa'
 import { dividirStyles, localStyles as volumetriaStyles } from '../volumetria/volumetria.styles'
-import { NIVEL_VAR, fmtDias, fmtHoras, iniciais, linhasQuebra } from '../volumetria/volumetria.model'
+import { NIVEL_VAR, fmtDiaMes, fmtDias, fmtHoras, iniciais, linhasQuebra } from '../volumetria/volumetria.model'
+import { estilosPendencias } from '../pendencias/pendencias.styles'
 import {
-  BEATRIZ, GRUPO, GRUPO_DIVIDIDO, HOSPITAIS_DA_JULIANA, JULIANA, MARCOS, PESSOAS,
+  BEATRIZ, GRUPO, GRUPO_DIVIDIDO, HOSPITAIS_DA_JULIANA, JULIANA, MARCOS, PENDENCIAS_DA_JULIANA, PESSOAS,
 } from './dadosDistribuicao'
 import { Marcado, ModalReplica } from './replica'
 import { Topo } from './exemplosOperacao'
@@ -105,7 +106,7 @@ export function ReplicaDividirCarga({ marcas = {} }: {
   ]
   const previa = [
     { nome: JULIANA.nome, hospitais: 2, antes: 4.6, depois: 2.6 },
-    { nome: BEATRIZ.nome, hospitais: 4, antes: 1.0, depois: 3.0 },
+    { nome: BEATRIZ.nome, hospitais: 2, antes: 1.0, depois: 3.0 },
   ]
   return (
     <ModalReplica
@@ -196,7 +197,8 @@ export function ReplicaPorRegiao() {
 }
 
 /** O painel lateral de uma pessoa (Juliana, em sobrecarga): indicadores,
- *  quebra, tempo, capacidade, adicionar hospital e a lista dos hospitais dela. */
+ *  quebra, tempo, pendências, capacidade, adicionar hospital e a lista dos
+ *  hospitais dela. */
 export function ReplicaPainelPessoa({ marcas = {} }: {
   marcas?: Partial<Record<'indicadores' | 'capacidade' | 'adicionar' | 'remover', number>>
 }) {
@@ -234,6 +236,35 @@ export function ReplicaPainelPessoa({ marcas = {} }: {
               </div>
               <TempoPorTarefa role="tecnico" minutosCategoria={p.minutos_categoria} titulo="Onde o tempo está indo" />
             </Marcado>
+
+            {/* Pendências: a seção do painel real (PendenciasDaPessoa), redesenhada
+                com as mesmas classes para os botões não gravarem nada. */}
+            <div style={{ marginTop: 16 }}>
+              <style>{estilosPendencias}</style>
+              <div className="pd-cab">
+                <span className="pd-cab-tit">Pendências</span>
+                <span className="pd-cab-n">{PENDENCIAS_DA_JULIANA.length} abertas</span>
+                <span className="btn btn-outline btn-sm">Nova pendência</span>
+              </div>
+              <div className="pd-lista" style={{ marginTop: 8 }}>
+                {PENDENCIAS_DA_JULIANA.map((pd) => (
+                  <article key={pd.id} className={`pd-card${pd.vencida ? ' pd-vencida' : ''}`}>
+                    <div className="pd-titulo">{pd.titulo}</div>
+                    {pd.paciente && <div className="pd-meta"><span>Paciente: {pd.paciente}</span></div>}
+                    <div className="pd-meta">
+                      <span>Pedida por {pd.criado_por_nome}</span>
+                      {pd.prazo && (pd.vencida
+                        ? <span className="pd-tag pd-tag-vencida">Venceu {fmtDiaMes(pd.prazo)}</span>
+                        : <span className="pd-tag pd-tag-prazo">Prazo {fmtDiaMes(pd.prazo)}</span>)}
+                    </div>
+                    <div className="pd-acoes">
+                      <span className="btn btn-ghost btn-sm">Excluir</span>
+                      <span className="btn btn-outline btn-sm pd-concluir">Concluir</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
 
             <div style={{ marginTop: 16 }}>
               <Marcado n={marcas.capacidade} bloco>

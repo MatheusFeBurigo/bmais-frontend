@@ -1,7 +1,7 @@
 // Réplicas do Painel do Gestor, usadas nos "como fazer" do módulo.
 //
 // Tudo aqui é o componente REAL da tela, alimentado com um período fictício:
-// os indicadores (KpiCard), as pastilhas de operadora e de filtros ativos, o
+// os indicadores (KpiCard), as pastilhas de operadora, o campo Hospital, os filtros ativos, o
 // cartão de fluxo com os dois gráficos, as médias da janela, os gráficos de
 // permanência, hospital e região, e a tabela de pacientes. Se a tela mudar, a
 // réplica muda junto.
@@ -91,6 +91,17 @@ const OPERADORAS = [
   { key: 'sulamerica', nome: 'SulAmérica' },
 ]
 
+// As opções do campo Hospital, com a operadora de cada um: com uma operadora
+// escolhida, o campo lista só os hospitais dela, como na tela.
+const OPCOES_HOSPITAL = [
+  { key: 'santa_clara', nome: 'Hospital Santa Clara', operadora_key: 'careplus' },
+  { key: 'sao_lucas', nome: 'Hospital São Lucas', operadora_key: 'porto' },
+  { key: 'vila_nova', nome: 'Hospital Vila Nova', operadora_key: 'sulamerica' },
+  { key: 'bela_vista', nome: 'Hospital Bela Vista', operadora_key: 'careplus' },
+  { key: 'santa_rita', nome: 'Hospital Santa Rita', operadora_key: 'porto' },
+  { key: 'modelo', nome: 'Hospital Modelo', operadora_key: 'careplus' },
+]
+
 function Cabecalho() {
   return <Topo titulo="Painel do Gestor" sub="Todas as operadoras · 25/09/2026" />
 }
@@ -126,7 +137,8 @@ export function ReplicaMovimento({ marcas = {} }: {
     <>
       <style>{gestorStyles}</style>
       <Cabecalho />
-      <OperadoraPills operadoras={OPERADORAS} ativa="" onSelecionar={nada} />
+      <OperadoraPills operadoras={OPERADORAS} ativa="" onSelecionar={nada}
+        hospital={{ opcoes: OPCOES_HOSPITAL, ativo: '', onSelecionar: nada }} />
       <Indicadores marcas={marcas} />
       <Marcado n={marcas.medias} bloco>
         <MediasJanelaCard media={M.media_janela} janelaTitulo="últimos 30 dias" />
@@ -165,7 +177,8 @@ export function ReplicaFiltros() {
     <>
       <style>{gestorStyles}</style>
       <Cabecalho />
-      <OperadoraPills operadoras={OPERADORAS} ativa="careplus" onSelecionar={nada} />
+      <OperadoraPills operadoras={OPERADORAS} ativa="careplus" onSelecionar={nada}
+        hospital={{ opcoes: OPCOES_HOSPITAL, ativo: 'santa_clara', onSelecionar: nada }} />
       <ChipsAtivos
         chips={[
           { tipo: 'Operadora', label: 'CarePlus', onRemove: nada },

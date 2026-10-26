@@ -9,7 +9,7 @@
 // Os nomes são inventados: nenhum dado real de paciente entra na documentação.
 import { Fragment, useMemo, type ReactNode } from 'react'
 import type {
-  Hospital, KanbanTarefa, Operadora, PacienteGravado, UploadCensoResult,
+  Hospital, KanbanTarefa, Operadora, PacienteGravado, ResponsavelCard, UploadCensoResult,
 } from '../../types/api'
 import { StatusBadge, LeitoTag, rowFlagClass, MedicoChip, AutorChip } from '../StatusBadge'
 import { OpAvatar } from '../ui'
@@ -27,6 +27,7 @@ import { ListaPacientes } from '../upload/ListaPacientes'
 import { Alerta, alertaStyles } from '../Alerta'
 import { estilosCids } from '../paciente/CardCids'
 import { ColunaInfo } from '../kanban/ColunaInfo'
+import Tabs from '../Tabs'
 import { BlocoOpcional } from '../paciente/relatorio/BlocoOpcional'
 import { GrupoRecolhivel } from '../paciente/relatorio/GrupoRecolhivel'
 import { estilosRelatorio } from '../paciente/relatorio/relatorio.styles'
@@ -792,7 +793,8 @@ export function ReplicaFichaRelatorioPendente({ marcas = {} }: {
       largura={720}
       rodape={
         <>
-          <span className="btn btn-outline" style={{ marginRight: 'auto' }}>Fechar</span>
+          <span className="btn btn-outline">Fechar</span>
+          <span className="btn btn-outline" style={{ marginRight: 'auto' }}>Imprimir ou PDF</span>
           {marcar(marcas.editar, <span className="btn btn-outline">Editar</span>)}
           {marcar(marcas.aprovar, <span className="btn btn-success">Aprovar</span>)}
         </>
@@ -914,7 +916,7 @@ export function ReplicaDadosPaciente({ marcas = {}, editando }: {
       <style>{alertaStyles}</style>
       {!editando && marcar(marcas.aviso, (
         <div style={{ marginBottom: 14 }}>
-          <Alerta nivel="atencao"><b>Leito / código</b> não veio no censo. Sem ele, a visita não sabe onde encontrar o paciente.</Alerta>
+          <Alerta nivel="atencao"><b>Leito / código</b> não veio no censo. É como a equipe localiza o paciente na visita ao hospital.</Alerta>
         </div>
       ), true)}
       <div className="card" style={{ overflow: 'visible' }}>
@@ -971,19 +973,38 @@ const TAREFAS: KanbanTarefa[] = [
     visita_agendada_em: '2026-09-24', visita_agendada_hora: '10:30', visita_agendada_medico: 'Dra. Renata Alves' },
 ]
 
-// Um hospital por coluna do fluxo de censos, com "hoje" em 25/09.
-const TAREFAS_CENSO: KanbanTarefa[] = [
-  { id: 'c1', coluna: 'censos_atrasados', estado_censo: 'censos_atrasados', titulo: 'HOSPITAL SÃO LUCAS',
-    hospital_key: 'sao_lucas', operadora_key: 'porto', operadora_nome: 'Porto Seguro', data_ref: '2026-09-22', ultimo_censo: '2026-09-21',
-    dias_sem_censo: 4 },
-  { id: 'c2', coluna: 'aguardando_retorno', estado_censo: 'aguardando_retorno', titulo: 'HOSPITAL VILA NOVA',
-    hospital_key: 'vila_nova', operadora_key: 'careplus', operadora_nome: 'CarePlus', data_ref: '2026-09-24', ultimo_censo: '2026-09-23',
-    dias_sem_censo: 2, cobrado_em: '2026-09-25T09:40:00', cobrado_por: 'Marina Souza' },
-  { id: 'c3', coluna: 'aguardando_censo', estado_censo: 'aguardando_censo', titulo: 'HOSPITAL SANTA CLARA',
-    hospital_key: 'santa_clara', operadora_key: 'careplus', operadora_nome: 'CarePlus', ultimo_censo: '2026-09-24', dias_sem_censo: 1 },
-  { id: 'c4', coluna: 'censos_processados', estado_censo: 'censos_processados', titulo: 'HOSPITAL BOA VISTA',
-    hospital_key: 'boa_vista', operadora_key: 'porto', operadora_nome: 'Porto Seguro', ultimo_censo: '2026-09-25', dias_sem_censo: 0 },
-]
+/** Dia local a `delta` dias de hoje, em ISO. O card de censo diz "Hoje" e
+ *  "Ontem" pela data de quem lê, então a réplica conta a partir dela. */
+function diaISO(delta: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + delta)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Quem responde pelos cards de censo: o operacional da operadora e a
+// coordenadora do grupo. O último card fica sem ninguém ("Sem responsável").
+const MARINA: ResponsavelCard = { user_id: 'r1', nome: 'Marina Souza', papel: 'administrativo' }
+const RAFAEL: ResponsavelCard = { user_id: 'r2', nome: 'Rafael Costa', papel: 'administrativo' }
+const LUCIA: ResponsavelCard = { user_id: 'r3', nome: 'Lúcia Prado', papel: 'coordenador_administrativo' }
+
+// Um hospital por coluna do fluxo de censos, com as datas contadas a partir de hoje.
+function tarefasCenso(): KanbanTarefa[] {
+  return [
+    { id: 'c1', coluna: 'censos_atrasados', estado_censo: 'censos_atrasados', titulo: 'HOSPITAL SÃO LUCAS',
+      hospital_key: 'sao_lucas', operadora_key: 'porto', operadora_nome: 'Porto Seguro', data_ref: diaISO(-3),
+      ultimo_censo: diaISO(-4), dias_sem_censo: 4, responsaveis: [RAFAEL, LUCIA] },
+    { id: 'c2', coluna: 'aguardando_retorno', estado_censo: 'aguardando_retorno', titulo: 'HOSPITAL VILA NOVA',
+      hospital_key: 'vila_nova', operadora_key: 'careplus', operadora_nome: 'CarePlus', data_ref: diaISO(-1),
+      ultimo_censo: diaISO(-2), dias_sem_censo: 2, cobrado_em: `${diaISO(0)}T09:40:00`, cobrado_por: 'Marina Souza',
+      responsaveis: [MARINA, LUCIA] },
+    { id: 'c3', coluna: 'aguardando_censo', estado_censo: 'aguardando_censo', titulo: 'HOSPITAL SANTA CLARA',
+      hospital_key: 'santa_clara', operadora_key: 'careplus', operadora_nome: 'CarePlus', ultimo_censo: diaISO(-1),
+      dias_sem_censo: 1, responsaveis: [MARINA, LUCIA] },
+    { id: 'c4', coluna: 'censos_processados', estado_censo: 'censos_processados', titulo: 'HOSPITAL BOA VISTA',
+      hospital_key: 'boa_vista', operadora_key: 'porto', operadora_nome: 'Porto Seguro', ultimo_censo: diaISO(0),
+      dias_sem_censo: 0, responsaveis: [] },
+  ]
+}
 
 const HOSPITAIS_FILTRO = [
   { key: 'santa_clara', nome: 'Hospital Santa Clara' },
@@ -1047,16 +1068,24 @@ export function ReplicaQuadro({ marcas = {}, chipsAtivos = [] }: {
   )
 }
 
-/** O quadro de censos do perfil administrativo, um hospital por coluna.
- *  `marcas.card` marca o card atrasado (com o botão); `retorno`, a coluna
- *  para onde ele vai depois de cobrado. */
+/** O quadro de censos do perfil operacional, com as abas do topo e um hospital
+ *  por coluna. `marcas.card` marca o card atrasado (com o botão); `retorno`, a
+ *  coluna para onde ele vai depois de cobrado. */
 export function ReplicaCobranca({ marcas = {} }: { marcas?: Partial<Record<'card' | 'retorno', number>> }) {
+  const tarefas = useMemo(tarefasCenso, [])
+  // As abas contam só o que é tarefa: atrasados e aguardando retorno.
+  const pendentes = tarefas.filter((t) => t.coluna === 'censos_atrasados' || t.coluna === 'aguardando_retorno').length
   return (
     <>
       <style>{kanbanStyles}</style>
+      <Topo titulo="Tarefas" sub={`${pendentes} tarefas pendentes`} />
+      <div style={{ marginBottom: 12 }}>
+        <Tabs tabs={[{ key: 'censos', label: 'Censos', count: pendentes }, { key: 'pacientes', label: 'Pacientes', count: 3 }]}
+          active="censos" onChange={nada} />
+      </div>
       <div className="kb-board" style={{ gridTemplateColumns: `repeat(${COLUNAS_CENSO.length}, minmax(220px, 1fr))`, overflow: 'visible' }}>
         {COLUNAS_CENSO.map((col) => {
-          const itens = TAREFAS_CENSO.filter((t) => t.coluna === col.key)
+          const itens = tarefas.filter((t) => t.coluna === col.key)
           const coluna = (
             <section className="kb-col" style={{ ['--kb-cor' as string]: col.cor }}>
               <header className="kb-col-head">
@@ -1070,7 +1099,7 @@ export function ReplicaCobranca({ marcas = {} }: { marcas?: Partial<Record<'card
                 {itens.map((t) => {
                   const card = (
                     <KanbanCard tarefa={t} corBg={col.corBg} onAbrir={nada} onPrefetch={nada}
-                      onCobrar={nada} onDesfazer={nada} cobrando={false} />
+                      onCobrar={nada} onDesfazer={nada} onAtualizar={nada} cobrando={false} />
                   )
                   return <div key={t.id}>{col.key === 'censos_atrasados' ? marcar(marcas.card, card, true) : card}</div>
                 })}
@@ -1115,7 +1144,7 @@ export function ReplicaFormularioEnvio({ etapa = 3 }: {
   return (
     <>
       <style>{formularioStyles}</style>
-      <Topo titulo="Envio de Censos" sub="Envie os censos que os hospitais mandaram" />
+      <Topo titulo="Envio de Censos" sub="Escolha o hospital e envie os arquivos do censo (PDF, CSV ou Excel)." />
       <FormularioEnvio
         operadoras={OPERADORAS}
         hospitaisDaOperadora={HOSPITAIS_ENVIO}
@@ -1167,7 +1196,8 @@ const RESULTADOS: UploadCensoResult[] = [
 
 /** O resultado de um envio: placar do lote, faixa de pendências, um cartão por
  *  arquivo e o desfazer. É o componente real, com os cartões fechados — como a
- *  tela aparece logo depois de processar. */
+ *  tela fica depois de processar, com o assistente já fechado (é aí que surge a
+ *  faixa "Completar agora"). */
 export function ReplicaResultadoEnvio() {
   return (
     <>
@@ -1190,13 +1220,14 @@ export function ReplicaResultadoEnvio() {
 }
 
 /** A lista de conferência de um arquivo aberto: seções de internações e altas,
- *  com o alerta na linha e os botões de remover e editar. */
+ *  com o alerta na linha e o lápis de editar. A lixeira fica de fora: é só do
+ *  administrador, e a Ajuda não o descreve. */
 export function ReplicaConferencia() {
   return (
     <>
       <style>{estilosResultado}</style>
       <div className="up-resultado" style={{ animation: 'none' }}>
-        <ListaPacientes emLeito={EM_LEITO} comAlta={COM_ALTA} onEditar={nada} onRemover={nada} />
+        <ListaPacientes emLeito={EM_LEITO} comAlta={COM_ALTA} onEditar={nada} />
       </div>
     </>
   )

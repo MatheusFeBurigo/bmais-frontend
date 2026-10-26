@@ -138,7 +138,7 @@ export function ModuloOperacional({ irPara }: Props) {
 
       <h3>Ações disponíveis</h3>
       <Tabela cabecalho={['Ação', 'Efeito']} larguras={['185px']}>
-        <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação{ACOES_NO_PAINEL ? ' e, para técnico, gestor e operacional, o formulário de registrar relatório' : ''}. O nome do hospital abre a ficha dele, e um relatório da timeline abre o relatório. No topo ficam <strong>Detalhes</strong>, que leva à ficha completa, e, em paciente da Porto, <strong>Formulário Porto</strong>; o analista não vê os dois nem abre os relatórios. Técnico, gestor e operacional têm ainda o botão <strong>Alta</strong>, no rodapé; em quem saiu por alta dada à mão ou automática, ele vira <strong>Desfazer alta</strong>.</td></tr>
+        <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação{ACOES_NO_PAINEL ? ' e, para técnico, gestor e operacional, o formulário de registrar relatório' : ''}. O nome do hospital abre a ficha dele, e um relatório da timeline abre o relatório. No topo ficam <strong>Detalhes</strong>, que leva à ficha completa, e, em paciente da Porto, <strong>Formulário Porto</strong>; o analista não vê os dois nem abre os relatórios. Técnico, coordenador técnico, gestor, operacional e coordenador operacional têm ainda o botão <strong>Alta</strong>, no rodapé; em quem saiu por alta dada à mão ou automática, ele vira <strong>Desfazer alta</strong>.</td></tr>
         <tr><Key>Clicar no hospital</Key><td>Abre a ficha do hospital, com indicadores, operadoras atendidas, dados cadastrais e histórico de censos sob demanda.<SoGestao> Gestor e diretor têm ainda <strong>Abrir cadastro</strong>, que leva ao cadastro do hospital em Configurações.</SoGestao></td></tr>
         <tr><Key>Adicionar paciente</Key><td>Cadastro manual: operadora, hospital, nome, atendimento, situação (internado ou alta), data de entrada, data de alta quando for o caso e, opcionalmente, leito, especialidade e médico. Não duplica: se o atendimento já existir no hospital, avisa que o paciente não foi duplicado.</td></tr>
         <tr><Key>Exportar</Key><td>Gera a planilha de controle de auditoria. Com algum filtro ligado (card de status, hospital, busca, filtro rápido ou período), a primeira opção já vem marcada: <strong>Com os filtros do painel</strong>, só com os pacientes que a lista mostra, de todas as páginas. As outras dão a planilha inteira, sem os filtros da tela: da operadora aberta, ou de todas num único arquivo, com uma aba por hospital.</td></tr>
@@ -162,8 +162,10 @@ export function ModuloPaciente({ irPara }: Props) {
       <p>
         Pelo botão <strong>Detalhes</strong> da ficha rápida do Painel Operacional, ou por link
         direto. O perfil analista vê a ficha rápida, mas não abre a completa.{' '}
-        <strong>Técnico, gestor e operacional registram relatório</strong>; o do operacional só vale
-        depois que um técnico ou gestor aprova. <strong>Mexer nos CIDs é do técnico e do gestor</strong>, e
+        <strong>Técnico, coordenador técnico, gestor, operacional e coordenador operacional
+        registram relatório</strong>; o do operacional e o do coordenador operacional só valem
+        depois que um técnico, um coordenador técnico ou um gestor aprova.{' '}
+        <strong>Mexer nos CIDs é do técnico, do coordenador técnico e do gestor</strong>, e
         cada pessoa continua vendo apenas os pacientes dos hospitais do seu escopo.
       </p>
 
@@ -194,9 +196,9 @@ export function ModuloPaciente({ irPara }: Props) {
         passos={[
           { n: 1, titulo: "Preencha o Relatório de visita e clique em OK", corpo: <>A data já vem com a de hoje. Informe quem fez a visita: o médico auditor, o enfermeiro auditor ou os dois. Um deles é obrigatório. O <strong>OK</strong> confere a seção, fecha com a marca verde <strong>Concluída</strong> e abre a seguinte.</> },
           { n: 2, titulo: "Escreva o relatório no Quadro clínico", corpo: <>O texto é obrigatório: motivo da internação, antecedentes, procedimentos, evolução e plano. Os diagnósticos são opcionais, e o CID que o paciente ainda não tem passa a constar na ficha dele. No perfil operacional os diagnósticos não aparecem: o CID fica com quem aprova.</> },
-          { n: 3, titulo: "Clique em OK", corpo: <>Faltou algo? O aviso aparece no rodapé e a seção continua aberta. Corrija e clique de novo.</> },
+          { n: 3, titulo: "Clique em OK", corpo: <>Faltou algo? O aviso aparece no alto da seção, em cima dos campos, e ela continua aberta. Corrija e clique de novo.</> },
           { n: 4, titulo: "Abra as seções opcionais que se aplicam", corpo: <>Quadro de internação, No período e Prorrogação não são obrigatórias. Abra cada uma pela seta ao lado do título.</> },
-          { n: 5, titulo: "Clique em Registrar relatório", corpo: <>Vale de qualquer ponto: se faltar algo, o aviso aparece e a seção do campo abre sozinha. No perfil operacional o botão é <strong>Enviar para aprovação</strong>, e o paciente fica como <strong>Aguardando aprovação</strong> até um técnico ou gestor aprovar.</> },
+          { n: 5, titulo: "Clique em Registrar relatório", corpo: <>Vale de qualquer ponto: se faltar algo, o aviso aparece e a seção do campo abre sozinha. No perfil operacional o botão é <strong>Enviar para aprovação</strong>, e o paciente fica como <strong>Aguardando aprovação</strong> até um técnico, coordenador técnico ou gestor aprovar.</> },
         ]}
       >
         <Tela nome="Registrar relatório" largura={900}
@@ -221,12 +223,20 @@ export function ModuloPaciente({ irPara }: Props) {
           <ReplicaProrrogacaoRelatorio marcas={{ periodos: 2, justificativa: 3, porto: 4 }} />
         </Tela>
       </ComoFazer>
+      <p>
+        <strong>Formulário Porto</strong>, no topo da ficha do paciente da Porto, abre o mesmo
+        formulário já preenchido com o paciente e com um relatório: por padrão, o último que pediu
+        prorrogação. Para usar outro, ou só os dados do paciente, troque em{' '}
+        <strong>Preencher com o relatório</strong>. Clique em qualquer campo da folha para ajustar
+        e use <strong>Baixar PDF</strong>. O que se ajusta na folha não fica gravado no sistema:
+        trocar o relatório ou clicar em <strong>Desfazer alterações</strong> preenche a folha de novo.
+      </p>
 
       <ComoFazer
         titulo="Corrigir e aprovar o relatório do operacional"
         passos={[
           { n: 1, titulo: "Abra o relatório e clique em Editar", corpo: <>Pelo card em <strong>Tarefas</strong>, coluna <strong>Aguardando aprovação</strong>, ou pela ficha do paciente. Só técnico, coordenador técnico e gestor veem o botão.</> },
-          { n: 2, titulo: "Corrija o que precisar", corpo: <>É a janela do registro, já com tudo o que o operacional preencheu: texto, diagnósticos, acomodações, prorrogação e documento.</> },
+          { n: 2, titulo: "Corrija o que precisar", corpo: <>É a janela do registro, já com tudo o que o operacional preencheu: texto, acomodações, No período e prorrogação. Os diagnósticos o operacional não informa: quem corrige os escolhe aqui.</> },
           { n: 3, titulo: "Salvar, ou Salvar e aprovar", corpo: <><strong>Salvar</strong> grava a correção e o relatório segue em <strong>Aguardando aprovação</strong>, para editar de novo depois. <strong>Salvar e aprovar</strong> grava e libera: o relatório já vale. Ele segue com o nome de quem escreveu; quem corrigiu fica na trilha de{' '} <button type="button" className="aj-link" onClick={() => irPara('movimentacoes')}>Movimentações</button>, com o que mudou.</> },
         ]}
       >
@@ -255,7 +265,7 @@ export function ModuloPaciente({ irPara }: Props) {
           { n: 1, titulo: "Veja o que falta", corpo: <>O aviso amarelo diz quais campos importantes o censo não trouxe. Eles também ficam destacados na grade.</> },
           { n: 2, titulo: "Clique em Editar", corpo: <>Chega-se à ficha completa pelo botão <strong>Detalhes</strong> da ficha rápida.</> },
           { n: 3, titulo: "Corrija ou complete os campos", corpo: <>O destaque amarelo some assim que o campo é preenchido.</> },
-          { n: 4, titulo: "Clique em Salvar", corpo: <>A alteração fica registrada na timeline, com o seu nome. <strong>Cancelar</strong> descarta tudo o que foi digitado.</> },
+          { n: 4, titulo: "Clique em Salvar", corpo: <>Trocar o tipo de leito ou o leito gera na timeline o card <strong>Mudança de acomodação</strong> ou <strong>Mudança de leito</strong>, com o seu nome. As demais alterações não entram na timeline: ficam na trilha de{' '} <button type="button" className="aj-link" onClick={() => irPara('movimentacoes')}>Movimentações</button>. <strong>Cancelar</strong> descarta tudo o que foi digitado.</> },
         ]}
       >
         <>
@@ -273,21 +283,23 @@ export function ModuloPaciente({ irPara }: Props) {
         titulo="Dar alta a um paciente que já saiu"
         passos={[
           { n: 1, titulo: "Clique em Alta", corpo: <>No rodapé da ficha rápida ou no topo da ficha completa. Serve para quando o hospital demora a mandar o censo e já se sabe que o paciente saiu: sem censo, ninguém sai da lista sozinho.</> },
-          { n: 2, titulo: "Informe a data da alta", corpo: <>Obrigatória. Vai da data de internação até hoje.</> },
-          { n: 3, titulo: "Informe o horário, se souber", corpo: <>Opcional.</> },
-          { n: 4, titulo: "Clique em Confirmar alta", corpo: <>O paciente sai da lista de internados e passa a constar nas altas. Se havia visita agendada, ela é cancelada. A alta fica registrada na timeline, com o seu nome.</> },
+          { n: 2, titulo: "Escolha o motivo da alta", corpo: <>Obrigatório: alta médica, homecare, transferência, óbito, a pedido, evasão, administrativa ou outro. Com o motivo <strong>Homecare</strong>, a janela pede também as perguntas de home care, descritas em Relatórios, mais abaixo.</> },
+          { n: 3, titulo: "Informe a data da alta", corpo: <>Obrigatória. Vai da data de internação até hoje.</> },
+          { n: 4, titulo: "Informe o horário, se souber", corpo: <>Opcional.</> },
+          { n: 5, titulo: "Clique em Confirmar alta", corpo: <>O botão só libera com o motivo e a data. O paciente sai da lista de internados e passa a constar nas altas. Se havia visita agendada, ela é cancelada. A alta fica registrada na timeline, com o seu nome e o motivo.</> },
         ]}
       >
         <Tela nome="Ficha rápida do paciente" largura={640}
           descricao="O botão Alta fica no rodapé, longe das ações de relatório.">
           <ReplicaFichaRapida esconderRelatorio esconderAgenda marcas={{ alta: 1 }} />
         </Tela>
-        <Tela nome="Alta" largura={520} descricao="A janela de alta, com a data e o horário preenchidos.">
-          <ReplicaModalAlta marcas={{ data: 2, hora: 3, confirmar: 4 }} />
+        <Tela nome="Alta" largura={520} descricao="A janela de alta, com o motivo, a data e o horário preenchidos.">
+          <ReplicaModalAlta marcas={{ motivo: 2, data: 3, hora: 4, confirmar: 5 }} />
         </Tela>
       </ComoFazer>
       <Callout tipo="info" titulo="Quem dá alta, e como desfazer">
-        Técnico, gestor e operacional. Deu alta por engano? No mesmo lugar aparece{' '}
+        Técnico, coordenador técnico, gestor, operacional e coordenador operacional. Deu alta por
+        engano? No mesmo lugar aparece{' '}
         <strong>Desfazer alta</strong>, e o paciente volta para a lista de internados. Vale para a
         alta dada à mão e para a alta automática; a alta que veio no censo do hospital não se desfaz.
       </Callout>
@@ -306,16 +318,20 @@ export function ModuloPaciente({ irPara }: Props) {
           <ReplicaCidsPaciente marcas={{ campo: 1, opcao: 2, lista: 3, remover: 4 }} />
         </Tela>
       </ComoFazer>
-      <Callout tipo="info" titulo="Só técnico e gestor adicionam e removem CID">
+      <Callout tipo="info" titulo="Só técnico, coordenador técnico e gestor adicionam e removem CID">
         Os demais perfis veem o card quando o paciente tem algum CID. Ao registrar um relatório, ou
-        ao corrigir e aprovar o do operacional, técnico e gestor também podem informar um CID novo,
-        que entra junto na lista do paciente.
+        ao corrigir e aprovar o do operacional, eles também podem informar um CID novo, que entra
+        junto na lista do paciente.
       </Callout>
 
+      {/* Agendar visita está oculto (lib/recursos): sem ele, não há passo a
+          passo de visita futura em Tarefas. */}
+      {ACOES_NO_PAINEL && (
       <p>
         Para marcar uma visita futura, veja o passo a passo em{' '}
         <button type="button" className="aj-link" onClick={() => irPara('tarefas')}>Tarefas</button>.
       </p>
+      )}
 
       <h3>Os quatro indicadores</h3>
       <Metrics>
@@ -339,12 +355,16 @@ export function ModuloPaciente({ irPara }: Props) {
         <tr><Key>Senha de autorização</Key><td><Chip tom="positive" plain>Sim</Chip></td><td>É como o paciente é identificado quando o censo do hospital não traz o nome dele.</td></tr>
         <tr><Key>Carteirinha</Key><td><Chip tom="positive" plain>Sim</Chip></td><td>Número do beneficiário na operadora, quando o censo o informa.</td></tr>
         <tr><Key>Status</Key><td><Chip tom="positive" plain>Sim</Chip></td><td>Internado, alta, óbito ou transferido.</td></tr>
-        <tr><Key>Recém-nascido</Key><td><Chip tom="neutral" plain>Não</Chip></td><td>O sistema marca quando o nome traz RN (como "RN de Maria"), quando a idade é de até 28 dias ou quando a data de nascimento é de até 28 dias antes da internação.</td></tr>
+        <tr><Key>RN</Key><td><Chip tom="neutral" plain>Não</Chip></td><td>Recém-nascido. O sistema marca quando o nome traz RN (como "RN de Maria"), quando a idade é de até 28 dias ou quando a data de nascimento é de até 28 dias antes da internação.</td></tr>
+        <tr><Key>Data de nascimento</Key><td><Chip tom="neutral" plain>Não</Chip></td><td>Quando o censo a informa.</td></tr>
         <tr><Key>Atendimento</Key><td><Chip tom="positive" plain>Sim</Chip></td><td>Número do atendimento no hospital.</td></tr>
+        <tr><Key>Operadora / convênio</Key><td><Chip tom="neutral" plain>Não</Chip></td><td>O convênio como o censo trouxe, que diz a modalidade do plano. A correção é feita na conferência do envio.</td></tr>
         <tr><Key>Tipo de leito</Key><td><Chip tom="positive" plain>Sim</Chip></td><td>Define o gatilho aplicado ao paciente.</td></tr>
         <tr><Key>Leito e código</Key><td><Chip tom="positive" plain>Sim</Chip></td><td></td></tr>
         <tr><Key>Data de internação</Key><td><Chip tom="positive" plain>Sim</Chip></td><td>Base de todo o cálculo de dias.</td></tr>
+        <tr><Key>Hora de internação</Key><td><Chip tom="neutral" plain>Não</Chip></td><td>Quando o censo a informa.</td></tr>
         <tr><Key>Data de alta</Key><td><Chip tom="neutral" plain>Não</Chip></td><td>Indica que o paciente permanece enquanto a internação está ativa.</td></tr>
+        <tr><Key>Motivo da alta</Key><td><Chip tom="neutral" plain>Não</Chip></td><td>O escolhido na alta dada à mão. A alta que veio no censo e a automática ficam sem motivo.</td></tr>
         <tr><Key>Médico e especialidade</Key><td><Chip tom="positive" plain>Sim</Chip></td><td></td></tr>
         <tr><Key>Diagnóstico e observações</Key><td><Chip tom="positive" plain>Sim</Chip></td><td>Ocupam a linha inteira.</td></tr>
       </Tabela>
@@ -371,9 +391,10 @@ export function ModuloPaciente({ irPara }: Props) {
           internação e as acomodações utilizadas, com entrada e saída. Elas vêm do censo e das
           trocas já registradas, e a janela mostra onde o paciente está. Para cada troca que
           faltar, como a ida para a UTI e a volta para o quarto, use{' '}
-          <strong>Adicionar movimentação</strong> e escolha a nova acomodação e a data: ao
-          registrar, ela entra na timeline como <strong>Mudança de acomodação</strong>. Sem
-          nenhuma acomodação conhecida, preencha a acomodação, a entrada e a saída.</li>
+          <strong>Adicionar movimentação</strong> e escolha a nova acomodação e a data: quando o
+          relatório passa a valer, ela entra na timeline como <strong>Mudança de acomodação</strong>.
+          Sem nenhuma acomodação conhecida, preencha a acomodação e a entrada; a saída em branco
+          fica como <strong>Atual</strong>, a acomodação em que o paciente está.</li>
         <li><strong>No período</strong>: procedimentos realizados, medicação de alto custo, evento
           adverso e negociações (a troca de acomodação, antes chamada de folha rosa). Quando o
           relatório com negociação passa a valer, a timeline ganha o evento{' '}
@@ -384,8 +405,12 @@ export function ModuloPaciente({ irPara }: Props) {
           como <strong>Alta tardia</strong>. O período seguinte já vem começando na data final do
           anterior. Para paciente da Porto, <strong>Gerar PDF</strong>, no fim da seção, gera o
           formulário de prorrogação dela em PDF, já preenchido, para enviar junto do pedido. Depois
-          que a prorrogação vale, admin e operacional
-          pausam e retomam pelo botão <strong>Pausar prorrogação</strong>, no topo da ficha.</li>
+          que a prorrogação vale, o operacional e o coordenador operacional pausam e retomam pelo
+          botão <strong>Pausar prorrogação</strong> (pausada, ele vira{' '}
+          <strong>Retomar prorrogação</strong>), no topo da ficha. Enquanto ela vale, o subtítulo
+          da ficha mostra <strong>Prorrogado até</strong> e a data final, com{' '}
+          <strong>(pausada)</strong> quando for o caso; passada a data, mostra{' '}
+          <strong>Prorrogação terminou em</strong>.</li>
 {NEGOCIACAO_NO_RELATORIO && (
         <li><strong>Negociação com o hospital</strong>: glosa de diárias, medicação negada,
           procedimento negado e troca de procedimento.</li>
@@ -394,7 +419,8 @@ export function ModuloPaciente({ irPara }: Props) {
       <p>
         Ao terminar uma seção, clique em <strong>OK</strong>, no fim dela: os campos daquela seção são
         conferidos, ela fecha com a marca verde <strong>Concluída</strong> ao lado do título, e a
-        seguinte abre. Se faltar algo, o aviso aparece no rodapé e a seção continua aberta.{' '}
+        seguinte abre. Se faltar algo, o aviso aparece no alto da seção, em cima dos campos, e ela
+        continua aberta.{' '}
         <strong>Registrar relatório</strong> continua valendo
         de qualquer ponto. A prorrogação e os blocos de <strong>No período</strong>
         {NEGOCIACAO_NO_RELATORIO && <> e <strong>Negociação com o hospital</strong></>} abrem quando
@@ -412,7 +438,8 @@ export function ModuloPaciente({ irPara }: Props) {
         data e hora, autor, médico responsável, os CIDs informados, um resumo do que foi marcado e,
         quando há documento anexado, o nome dele. Prorrogação e negociação valem quando o
         relatório é aprovado. Clicar num relatório abre a ficha dele, só para leitura, com o que
-        foi preenchido em cada seção, na mesma ordem da janela de registro, e o botão{' '}
+        foi preenchido em cada seção, na mesma ordem da janela de registro (as negociações saem
+        numa seção própria, <strong>Negociação com o hospital</strong>, no fim), e o botão{' '}
         <strong>Baixar</strong> do documento. Quando o relatório pede prorrogação, a seção{' '}
         <strong>Prorrogação</strong> traz <strong>Gerar relatório</strong>: a opção{' '}
         <strong>Relatório para Porto Seguro</strong> baixa o formulário de prorrogação da Porto em
@@ -431,13 +458,34 @@ export function ModuloPaciente({ irPara }: Props) {
       <p>
         Histórico completo da internação, do mais recente para o mais antigo, com o marco de hoje no
         topo. Registra admissão, relatórios externos, pareceres internos, mudanças de status, altas
-        automáticas, altas dadas à mão e desfeitas, edições manuais e pendências. Relatórios internos exibem o autor; os externos,
+        automáticas, altas dadas à mão e desfeitas, visitas agendadas e canceladas e pendências.
+        As edições da ficha não entram, salvo a troca de acomodação ou de leito, logo abaixo: elas
+        ficam na trilha de Movimentações. Relatórios internos exibem o autor; os externos,
         o médico responsável. Clicar num relatório (ou numa troca de acomodação) abre a ficha do
         relatório. Quando o censo mostra o paciente noutra acomodação, entra o card{' '}
         <strong>Mudança de acomodação</strong>, no dia do censo, dizendo de onde ele saiu e para
         onde foi. Trocar o tipo de leito pelo <strong>Editar</strong> da ficha gera o mesmo card, com
         o nome de quem editou; trocar só o leito gera <strong>Mudança de leito</strong>.
       </p>
+      <p>
+        Quando o paciente teve outra internação, noutro hospital ou no mesmo, ela entra junto na
+        timeline, com o nome do hospital, e o card ganha o selo com o número de internações. Na
+        admissão dela, <strong>Abrir esta internação</strong> leva à ficha de lá; de um hospital
+        fora do seu escopo, aparecem só a entrada e a alta. A timeline marca ainda a{' '}
+        <strong>Troca de hospital</strong>, quando ele passa a ser atendido noutro hospital, e a{' '}
+        <strong>Internação simultânea</strong>, quando uma internação começa com a de outro
+        hospital ainda aberta: confira se houve transferência.
+      </p>
+      <Callout tipo="info" titulo="Internações da mesma pessoa">
+        O sistema junta sozinho as internações quando batem dois destes: carteirinha, nome e
+        nascimento. Quando só o nome bate, ele pergunta: o aviso <strong>Possível mesmo paciente</strong>, no
+        topo da ficha, traz <strong>É o mesmo</strong>, que junta as duas, e{' '}
+        <strong>Não é</strong>, que descarta a sugestão. Juntou errado? <strong>Não é este
+        paciente</strong>, na admissão da outra internação, tira-a da timeline sem apagar nada. Se
+        a pessoa tem uma internação mais nova, o aviso do topo diz onde, com{' '}
+        <strong>Abrir</strong>. Respondem e desfazem técnico, coordenador técnico, gestor,
+        operacional e coordenador operacional.
+      </Callout>
     </>
   )
 }
@@ -448,8 +496,9 @@ export function ModuloKanban({ irPara }: Props) {
       <h3>Objetivo</h3>
       <p>
         Reunir as pendências da equipe em um quadro único, separadas por tipo: pacientes que
-        precisam de relatório, visitas já marcadas, visitas cujo horário passou e hospitais que não
-        enviaram o censo.
+        precisam de relatório, visitas já marcadas, visitas cujo horário passou, relatórios
+        aguardando aprovação e hospitais que não enviaram o censo. No topo ficam ainda as
+        pendências que o gestor ou um coordenador pediu a alguém da equipe.
       </p>
 
       <h3>Passo a passo</h3>
@@ -502,7 +551,7 @@ export function ModuloKanban({ irPara }: Props) {
         ]}
       >
         <Tela nome="Tarefas" largura={960}
-          descricao="Quadro de censos do perfil operacional. O card é por hospital, não por paciente.">
+          descricao="Quadro de censos do perfil operacional. O card é por hospital e operadora, não por paciente.">
           <ReplicaCobranca marcas={{ card: 1, retorno: 2 }} />
         </Tela>
       </ComoFazer>
@@ -511,47 +560,54 @@ export function ModuloKanban({ irPara }: Props) {
       <p>
         O quadro é dividido em colunas, e <strong>cada coluna reúne um tipo de pendência</strong>.
         Uma tarefa permanece na sua coluna até ser resolvida, e então deixa o quadro. As colunas não
-        são fases de um mesmo item: indicam o tipo de providência necessária. A exceção é o
-        agendamento, que de fato move o card, conforme descrito adiante.
+        são fases de um mesmo item: indicam o tipo de providência necessária.
+        {ACOES_NO_PAINEL ? ' A exceção é o agendamento, que de fato move o card, conforme descrito adiante.' : ''}
       </p>
 
       <h3>As colunas de pacientes</h3>
       <Tabela cabecalho={['Coluna', 'O que reúne', 'Como a tarefa é resolvida']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Sem relatório</Key>
-          <td>Internados sem relatório, ou com o relatório vencido, e sem visita marcada.</td>
-          <td>Marcando a visita ou registrando o relatório.</td></tr>
+          <td>Internados sem relatório, com o relatório vencido ou com a prorrogação terminada, e sem visita marcada.</td>
+          <td>{ACOES_NO_PAINEL ? 'Marcando a visita ou registrando o relatório.' : 'Registrando o relatório.'}</td></tr>
         <tr><Key>Aguardando visita</Key>
           <td>Pacientes com visita marcada, ainda dentro do prazo.</td>
           <td>Registrando o relatório depois da visita.</td></tr>
         <tr><Key>Visitas atrasadas</Key>
           <td>Visitas cujo horário combinado já passou sem que o relatório fosse registrado.</td>
-          <td>Cobrando o auditor responsável, e registrando o relatório ou remarcando a visita.</td></tr>
+          <td>{ACOES_NO_PAINEL
+            ? 'Cobrando o auditor responsável, e registrando o relatório ou remarcando a visita.'
+            : 'Cobrando o auditor responsável e registrando o relatório.'}</td></tr>
       </Tabela>
 
-      <h3>As colunas de aprovação</h3>
+      <h3>A coluna de aprovação</h3>
       <p>
-        No mesmo quadro de pacientes, à direita da fila. O relatório que o operacional registra
-        chega aqui para o técnico ou o gestor conferir. Enquanto
+        No mesmo quadro de pacientes, à direita da fila. O relatório que o operacional ou o
+        coordenador operacional registra chega aqui para o técnico, o coordenador técnico ou o
+        gestor conferir. Enquanto
         espera, o paciente aparece como <strong>Aguardando aprovação</strong> e não conta como
         visitado. Aprovado, o paciente sai do quadro e volta para <strong>Sem relatório</strong>{' '}
         quando o relatório vencer.
       </p>
       <Tabela cabecalho={['Coluna', 'O que reúne', 'O que fazer']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Aguardando aprovação</Key>
-          <td>Relatórios enviados pelo operacional: paciente, visita, quem enviou, a prorrogação pedida e se há documento anexado.</td>
+          <td>Relatórios enviados pelo operacional e pelo coordenador operacional: paciente, visita, quem enviou, a prorrogação pedida e se há documento anexado.</td>
           <td>Técnico, coordenador técnico ou gestor: clique no card. A ficha do paciente abre com o relatório, e Editar e Aprovar ficam no rodapé dele. Na edição, Salvar deixa o relatório aqui; Salvar e aprovar libera.</td></tr>
       </Tabela>
 
       <h3>Pendências</h3>
       <p>
         Além das demandas que vêm do censo, o gestor e os coordenadores podem pedir algo a alguém
-        da equipe: um paciente para olhar, um e-mail urgente, uma tarefa específica. O pedido
+        da equipe: um paciente para olhar, um e-mail urgente, uma tarefa específica. O coordenador
+        pede a quem é do grupo dele, inclusive a si mesmo. O pedido
         aparece no painel <strong>Pendências</strong>, no topo de Tarefas, com o paciente, os
         detalhes e o prazo (em vermelho quando venceu). Feito o que foi pedido, use{' '}
         <strong>Concluir</strong>: a pendência sai da lista. Quem pediu acompanha em{' '}
-        <strong>Que você pediu</strong> e pode excluir um pedido feito por engano. Para pedir, use{' '}
+        <strong>Que você pediu</strong>, onde também pode concluir o pedido ou excluí-lo, se foi
+        feito por engano. Para pedir, use{' '}
         <strong>Nova pendência</strong>, no mesmo painel, ou o painel da pessoa na Distribuição de
         tarefas.
+        <SoGestao> O gestor conclui e exclui a pendência de qualquer pessoa, pelo painel dela na
+        Distribuição de tarefas.</SoGestao>
       </p>
 
       <h3>Pacientes em prorrogação</h3>
@@ -560,25 +616,33 @@ export function ModuloKanban({ irPara }: Props) {
         paciente: marque <strong>Prorrogar</strong>, informe os períodos por acomodação e
         escolha a justificativa. Ela vale quando o relatório é aprovado e não muda o prazo do
         próximo relatório. No quadro de pacientes, o card do paciente prorrogado mostra{' '}
-        <strong>Prorrogado até</strong> a data final (ou <strong>Prorrogação pausada</strong>).
+        <strong>Prorrogado até</strong> a data final, <strong>Prorrogação termina hoje</strong> no
+        último dia ou <strong>Prorrogação pausada</strong>.
         Para ver só quem está em prorrogação, use o filtro <strong>Prorrogados</strong> do
         Painel Operacional. Passada a data final, o paciente volta para{' '}
-        <strong>Sem relatório</strong>. Admin e operacional podem{' '}
+        <strong>Sem relatório</strong>, com a etiqueta <strong>Prorrogação terminou em</strong> e a
+        data. O operacional e o coordenador operacional podem{' '}
         <strong>Pausar prorrogação</strong> e <strong>Retomar prorrogação</strong> na ficha do
         paciente.
       </p>
 
       <h3>As colunas de censos</h3>
       <p>
-        Cada hospital aparece uma vez por operadora com paciente internado, pela data do último
-        censo daquela operadora. O censo da Porto chegar não conta para a Bradesco do mesmo
-        hospital. O operacional recebe os censos de todas as operadoras dos hospitais dele, e os
+        Cada hospital aparece uma vez por operadora que atende, pela data do último censo daquela
+        operadora: as operadoras do cadastro dele, mesmo sem paciente internado, e a de qualquer
+        paciente internado ali. A operadora dispensada de censo naquele hospital não aparece. O
+        censo da Porto chegar não conta para a Bradesco do mesmo hospital. O operacional recebe os censos de todas as operadoras dos hospitais dele, e os
         da operadora dele ficam no topo de cada coluna. O de outra operadora sai do quadro dele
         quando fica atualizado. O card muda de coluna sozinho quando o
         censo chega, e o filtro de operadora mostra só os censos de uma delas. Clicar no card abre a timeline dos últimos 15 dias,
-        com as anotações e os censos recebidos, e o contato do hospital. Toda mudança de coluna
-        feita à mão pede uma anotação do que aconteceu, menos desfazer a atualização: esse pedido
-        vai para aprovação do Gestor ou de um Coordenador.
+        com as anotações e os censos recebidos, e o contato do hospital. Ali,{' '}
+        <strong>Nova anotação</strong> registra uma conversa sem mover o card (ligou e ninguém
+        atendeu, por exemplo), e <strong>Ficha do hospital</strong> mostra os dados dele. Toda mudança
+        de coluna feita à mão pede uma anotação do que aconteceu, menos desfazer a atualização, que
+        não pede: para o operacional, vira um pedido que um coordenador ou o gestor aprova ou recusa
+        na Distribuição de tarefas, e até a decisão o card mostra{' '}
+        <strong>Desfazer aguardando aprovação</strong>. Os coordenadores<SoGestao> e o
+        gestor</SoGestao> desfazem na hora, sem pedido.
       </p>
       <Tabela cabecalho={['Coluna', 'Quando o hospital está aqui', 'O que fazer']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Censos atrasados</Key>
@@ -592,7 +656,7 @@ export function ModuloKanban({ irPara }: Props) {
           <td>Nada por enquanto.</td></tr>
         <tr><Key>Censos atualizados</Key>
           <td>O censo de hoje já chegou, ou o hospital confirmou que não há censo novo.</td>
-          <td>Nada. O hospital está em dia. Marcou como atualizado por engano? Desfazer, que espera a aprovação do Gestor ou de um Coordenador.</td></tr>
+          <td>Nada. O hospital está em dia. Marcou como atualizado por engano? Desfazer, que espera a aprovação de um coordenador ou do gestor (quem aprova desfaz na hora).</td></tr>
       </Tabela>
 
       <h3>O que cada perfil vê</h3>
@@ -602,10 +666,13 @@ export function ModuloKanban({ irPara }: Props) {
       </p>
       <ul>
         <li>O perfil <strong>técnico</strong> vê as colunas de pacientes, que são a agenda de
-          visitas dele, e as de aprovação, sem a cobrança de censo.</li>
+          visitas dele, e a de aprovação, sem a cobrança de censo.</li>
         <li>O perfil <strong>operacional</strong> vê as colunas de censos, que são a
           providência dele junto aos hospitais. Na aba <strong>Pacientes</strong>, vê a coluna{' '}
-          <strong>Sem relatório</strong> e as de aprovação.</li>
+          <strong>Sem relatório</strong> e a de aprovação.</li>
+        <li>Os coordenadores também trabalham no quadro: o <strong>coordenador técnico</strong>{' '}
+          recebe as colunas do técnico, e o <strong>coordenador operacional</strong>, as do
+          operacional, com as mesmas abas.</li>
         <li>Quem acompanha as duas equipes alterna entre os quadros pelas abas{' '}
           <strong>Pacientes</strong> e <strong>Censos</strong>.</li>
         <li>O perfil <strong>analista</strong> acompanha o quadro sem executar as tarefas, por ser
@@ -642,9 +709,11 @@ export function ModuloKanban({ irPara }: Props) {
       <h3>O que o card mostra</h3>
       <Tabela cabecalho={['Tipo de tarefa', 'O que apresenta']} larguras={['175px']}>
         <tr><Key>Paciente</Key>
-          <td>Operadora, nome do paciente, hospital e número de atendimento, além dos dias sem
+          <td>Operadora, nome do paciente, hospital, tipo e código do leito, além dos dias sem
             relatório. Quando há visita marcada, traz a data, o horário e o responsável; quando
-            atrasada, o card inteiro é destacado, com a indicação de quando era.</td></tr>
+            atrasada, o card inteiro é destacado, com a indicação de quando era. Atendimento, tempo
+            internado, médico, convênio e os demais dados ficam em <strong>Mais detalhes</strong>,
+            que abre dentro do próprio card.</td></tr>
         <tr><Key>Aprovação</Key>
           <td>Paciente, hospital, data da visita e quem enviou. Etiquetas mostram as diárias de
             prorrogação pedidas, se o paciente já está prorrogado e <strong>Com documento</strong>{' '}
@@ -656,8 +725,16 @@ export function ModuloKanban({ irPara }: Props) {
       </Tabela>
       <p>
         Os cards de paciente trazem ainda etiquetas que explicam por que aquele caso merece atenção:
-        longa permanência e nunca visitado. O leito de UTI aparece no tipo do leito, ao lado do
-        código.
+        longa permanência, nunca visitado e a situação da prorrogação. O leito de UTI aparece no
+        tipo do leito, ao lado do código.
+      </p>
+      <p>
+        Todo card mostra, em bolinhas com as iniciais, <strong>quem responde por ele</strong>: as
+        pessoas da equipe que têm aquele hospital na área definida na Distribuição de tarefas (no
+        operacional, a operadora dele naquele hospital). Azul é o grupo técnico, verde o
+        operacional, e clicar nas bolinhas mostra o nome, o cargo e o e-mail de cada um. Em Sem
+        relatório entram os dois grupos; nas visitas e na aprovação, o técnico; nos censos, o
+        operacional. <strong>Sem responsável</strong> indica um hospital que ninguém cobre.
       </p>
 
       <h3>Priorizar o quadro</h3>
@@ -676,11 +753,13 @@ export function ModuloKanban({ irPara }: Props) {
             recortes de <strong>Mostrar só</strong>: <strong>Urgentes</strong> (relatório vencido, ou
             em monitoramento sem nenhuma visita), <strong>UTI</strong>, <strong>Longa
             permanência</strong> e <strong>Nunca visitados</strong>, combináveis. Cada recorte mostra
-            quantos casos alcança antes de ser marcado. No quadro de censos, o painel traz a{' '}
-            <strong>operadora</strong> no lugar dos recortes.</td></tr>
+            quantos casos alcança antes de ser marcado. No quadro de censos, o painel traz, no lugar
+            dos recortes, a <strong>operadora</strong> e <strong>Sem atualizar há</strong> (de em dia
+            a mais de 30 dias, ou nunca enviou), uma opção de cada, também com a contagem.</td></tr>
         <tr><Key>Ordenar</Key>
-          <td>Só no quadro de pacientes: prioridade, mais dias sem relatório, mais dias internado,
-            nome do paciente ou hospital.</td></tr>
+          <td>No quadro de pacientes: prioridade, mais dias sem relatório, mais dias internado,
+            nome do paciente ou hospital. No de censos: mais urgentes, atualização mais recente,
+            atualização mais antiga ou hospital.</td></tr>
       </Tabela>
       <p>
         Os filtros ligados ficam à vista abaixo da barra, cada um com um <strong>X</strong> para
@@ -706,9 +785,9 @@ export function ModuloUpload() {
       <ComoFazer
         titulo="Enviar os censos do dia"
         passos={[
-          { n: 1, titulo: "Escolha a operadora", corpo: <>A lista de hospitais do passo seguinte passa a mostrar só os daquela operadora.</> },
+          { n: 1, titulo: "Escolha a operadora", corpo: <>A lista de hospitais do passo seguinte passa a mostrar só os daquela operadora. Ela também define qual censo do hospital é dado como recebido em Tarefas.</> },
           { n: 2, titulo: "Escolha o hospital", corpo: <>Digite parte do nome. Vale para todos os arquivos do envio: censos de hospitais diferentes vão em envios separados.</> },
-          { n: 3, titulo: "Arraste os arquivos para a caixa", corpo: <>Ou clique nela para escolher. PDF, CSV e Excel, vários de uma vez. Confira a lista que aparece embaixo; o <strong>X</strong> tira um arquivo que veio errado.</> },
+          { n: 3, titulo: "Arraste os arquivos para a caixa", corpo: <>Ou clique nela para escolher. PDF, CSV e Excel, vários de uma vez, até 25 MB cada. Confira a lista que aparece embaixo; o <strong>X</strong> tira um arquivo que veio errado, e <strong>Limpar arquivos</strong> tira todos.</> },
           { n: 4, titulo: "Clique em Processar censos", corpo: <>O andamento aparece dentro da própria caixa. Não feche a página até terminar.</> },
         ]}
       >
@@ -728,9 +807,9 @@ export function ModuloUpload() {
         titulo="Conferir o resultado do envio"
         passos={[
           { n: 1, titulo: "Leia o resumo do lote", corpo: <>Hospital, quantos pacientes entraram, de que dia é o censo e, à direita, as etiquetas do que precisa de atenção.</> },
-          { n: 2, titulo: "Resolva as pendências", corpo: <><strong>Completar agora</strong> abre o assistente com os pacientes que vieram com dado faltando. Cada um precisa ser gravado ou descartado: o que ficar sem decisão não entra no sistema.</> },
-          { n: 3, titulo: "Abra os arquivos marcados", corpo: <>Os arquivos que pedem atenção vêm primeiro. <strong>Detalhes</strong> abre os avisos e a lista de pacientes daquele arquivo.</> },
-          { n: 4, titulo: "Foi o hospital errado? Desfaça", corpo: <><strong>Desfazer envio</strong> apaga os pacientes que este envio criou. Quem já existia antes permanece, e a frase ao lado diz quantos são.</> },
+          { n: 2, titulo: "Resolva as pendências", corpo: <>O assistente abre sozinho quando há pacientes que vieram com dado faltando; fechado, <strong>Completar agora</strong> o reabre. Cada um precisa ser gravado ou descartado: o que ficar sem decisão não entra no sistema.</> },
+          { n: 3, titulo: "Abra os arquivos marcados", corpo: <>Os arquivos que pedem atenção vêm primeiro. <strong>Detalhes</strong> abre os avisos e a lista de pacientes daquele arquivo. Cada aviso pode ser dispensado no <strong>X</strong> depois de lido.</> },
+          { n: 4, titulo: "Foi o hospital errado? Desfaça", corpo: <><strong>Desfazer envio</strong> apaga os pacientes que este envio criou. Quem já existia antes permanece, e a frase ao lado diz quantos são. O botão só aparece quando o envio criou algum paciente.</> },
         ]}
       >
         <Tela nome="Envio de Censos" largura={760}
@@ -740,24 +819,33 @@ export function ModuloUpload() {
             '.up-faixa.atencao + .up-arquivo .up-detalhes': 3,
             '.up-faixa:not(.atencao) .btn': 4,
           }}
-          descricao="Resultado logo depois de processar: um arquivo pede atenção e o outro foi lido sem pendências.">
+          descricao="Resultado com o assistente já fechado: um arquivo pede atenção e o outro foi lido sem pendências.">
           <ReplicaResultadoEnvio />
         </Tela>
       </ComoFazer>
 
+      <Callout tipo="caution" titulo="Sinais de que o censo foi para o hospital errado">
+        <strong>Paciente que já existia em outro hospital.</strong> Quando o envio cria pacientes
+        que o sistema já tinha em outro hospital, o arquivo traz um aviso crítico com o nome desse
+        hospital e dos pacientes, e o botão <strong>Desfazer este arquivo</strong>. Se o arquivo
+        não é do hospital escolhido, desfaça e envie de novo no hospital certo.
+        <br />
+        <strong>A tela lembra o último envio.</strong> Operadora e hospital continuam escolhidos
+        depois de processar e mesmo ao recarregar a página. Antes de soltar o arquivo seguinte,
+        confira se o passo 2 é o hospital dele.
+      </Callout>
+
       <ComoFazer
         titulo="Corrigir um paciente na lista de conferência"
         passos={[
-          { n: 1, titulo: "Clique no alerta para saber o problema", corpo: <>O ícone antes do nome explica o que há de errado: convênio fora do cadastro, paciente de outra operadora ou sem convênio.</> },
-          { n: 2, titulo: "Use o lápis para corrigir", corpo: <>Nome, atendimento, leito, convênio, operadora e datas. A correção vale para a ficha do paciente, e o alerta da linha some quando o problema é resolvido.</> },
-          { n: 3, titulo: "Use a lixeira para tirar quem não deveria estar ali", corpo: <>Tira o paciente deste censo. A ficha só é apagada se ele nasceu deste envio e não consta em nenhum outro, e um aviso permite desfazer por alguns segundos.</> },
+          { n: 1, titulo: "Clique no alerta para saber o problema", corpo: <>O ícone antes do nome explica o que há de errado: convênio fora do cadastro ou paciente sem convênio.</> },
+          { n: 2, titulo: "Use o lápis para corrigir", corpo: <>Nome, atendimento, carteirinha, leito, convênio, operadora e datas. A correção vale para a ficha do paciente, e o alerta da linha some quando o problema é resolvido.</> },
         ]}
       >
         <Tela nome="Envio de Censos" largura={820}
           destaques={{
             '.up-pac-ico-alerta': 1,
             '.up-pac-sec:first-child tbody tr:first-child .up-pac-lapis': 2,
-            '.up-pac-sec:first-child tbody tr:nth-child(3) .up-pac-lixeira': 3,
           }}
           descricao="Lista de um arquivo aberto. Linhas com problema sobem para o topo da sua seção.">
           <ReplicaConferencia />
@@ -773,7 +861,9 @@ export function ModuloUpload() {
         <Passo titulo="De qual operadora é o censo">
           Escolhe-se a operadora primeiro. O motivo é prático: o cadastro tem uma linha por hospital
           e operadora, e uma lista única repetiria o mesmo nome de hospital várias vezes sem nada
-          que os diferenciasse.
+          que os diferenciasse. A escolha também vale como dado: o censo conta como recebido para
+          essa operadora no quadro de Tarefas, mesmo sem nenhum paciente dela, e quem vier com
+          convênio não reconhecido entra nela. Os demais entram na operadora do próprio convênio.
         </Passo>
         <Passo titulo="De qual hospital são estes censos">
           Campo com busca, já filtrado pela operadora escolhida. O hospital vale para todo o lote.
@@ -781,8 +871,9 @@ export function ModuloUpload() {
           vez de adivinhar a origem e perguntar depois.
         </Passo>
         <Passo titulo="Envie os arquivos">
-          Área de arrastar e soltar, aceitando PDF, CSV e planilhas, vários de uma vez. Os arquivos
-          ficam listados para conferência antes do envio e podem ser retirados um a um.
+          Área de arrastar e soltar, aceitando PDF, CSV e planilhas, vários de uma vez, até 25 MB
+          cada. Os arquivos ficam listados para conferência antes do envio e podem ser retirados um
+          a um.
         </Passo>
         <Passo titulo="Processar os censos">
           O sistema lê cada arquivo e grava os pacientes. Durante o processo, a tela pede que a
@@ -793,25 +884,33 @@ export function ModuloUpload() {
           pacientes e a data a que o censo se refere.
         </Passo>
         <Passo titulo="Corrigir e completar">
-          Editar um paciente, remover quem não deveria estar ali, corrigir a operadora, ou completar
-          pelo assistente os pacientes que ficaram incompletos.
+          Editar um paciente, corrigir a operadora, ou completar pelo assistente os pacientes que
+          ficaram incompletos.
         </Passo>
         <Passo titulo="Desfazer, se foi engano">
           O envio inteiro, ou apenas um arquivo do lote, pode ser revertido.
         </Passo>
       </Passos>
 
+      <Callout tipo="rule" titulo="Alta automática">
+        Um censo de internados que cobre a maior parte dos pacientes do hospital também dá alta a
+        quem deixou de constar nele, com a data do último dia em que o paciente constou. Não
+        acontece com arquivo só de altas, sem data ou que cobre um período. <strong>Desfazer
+        envio</strong> não reverte essa alta: ela se desfaz sozinha se o paciente reaparecer num
+        censo seguinte, ou pelo <strong>Desfazer alta</strong> da ficha.
+      </Callout>
+
       <h3>Avisos do leitor</h3>
       <Tabela cabecalho={['Nível', 'Significado', 'Exemplos']} larguras={['135px']}>
         <tr><td><Chip tom="critical">Crítico</Chip></td>
           <td>Falta dado no sistema, ou o censo pode estar no hospital errado.</td>
-          <td>Divergência de hospital; pacientes que o leitor não conseguiu extrair.</td></tr>
+          <td>Paciente que já existia em outro hospital; pacientes que o leitor não conseguiu extrair.</td></tr>
         <tr><td><Chip tom="attention">Atenção</Chip></td>
-          <td>O paciente entrou, mas de forma incompleta.</td>
-          <td>Sem convênio, sem número de atendimento, sem data de alta.</td></tr>
+          <td>O paciente entrou, mas de forma incompleta, ou há algo a conferir.</td>
+          <td>Sem convênio, sem número de atendimento, sem data de alta; hospital indicado no arquivo diferente do escolhido, que muitas vezes é só a razão social do hospital.</td></tr>
         <tr><td><Chip tom="neutral">Nota</Chip></td>
           <td>Confirmação, e não alerta.</td>
-          <td>Dia sem internados; linhas repetidas desconsideradas.</td></tr>
+          <td>Dia sem internados; linhas repetidas desconsideradas; paciente que já tinha alta e continua como estava.</td></tr>
       </Tabela>
 
       <h3>Situações possíveis de um arquivo</h3>
@@ -824,14 +923,28 @@ export function ModuloUpload() {
 
       <h3>Lista de pacientes para conferência</h3>
       <p>
-        A lista é dividida em internações e altas, com as colunas de paciente, atendimento, leito,
-        convênio e data. Quando o arquivo não traz o nome dos pacientes, eles são identificados pela
-        senha de autorização.
+        A lista é dividida em internações e altas, com as colunas de paciente, atendimento,
+        carteirinha, senha, leito, convênio e data. Quando o arquivo não traz o nome dos pacientes,
+        eles são identificados pela senha de autorização.
+      </p>
+      <p>
+        Clicar na linha abre a ficha do censo daquele paciente, com tudo o que o arquivo trouxe:
+        nome, operadora, senha, carteirinha, data de nascimento, internação e alta com o horário,
+        acomodação, leito, médico assistente e diagnóstico. O que o hospital não informou aparece
+        como <strong>Não veio no censo</strong>, porque saber que o dado faltou também é conferir.
       </p>
       <p>
         Linhas com problema recebem um sinal de alerta que, ao ser acionado, informa o motivo:
-        convênio fora do cadastro, paciente registrado em outra operadora ou paciente sem convênio.
-        A lista dispõe de busca e de um filtro que exibe somente as linhas com alerta em aberto.
+        convênio fora do cadastro ou paciente sem convênio. A lupa no cabeçalho do arquivo busca por
+        nome, atendimento, carteirinha ou senha. Os links dos avisos (<strong>ver na lista</strong>,{' '}
+        <strong>ver quem são</strong>) recortam a lista em quem tem alerta em aberto, e{' '}
+        <strong>Ver todos</strong> volta à lista inteira.
+      </p>
+      <p>
+        <strong>Censo misto.</strong> Quando o arquivo traz pacientes de mais de uma operadora, a
+        lista ganha abas: <strong>Todos</strong> e uma por operadora, cada uma com a sua contagem, e
+        um anel marca a operadora escolhida no envio. Cada paciente entra na operadora do próprio
+        convênio, que é o certo; as abas servem para conferir cada grupo contra o PDF.
       </p>
 
       <h3>Assistente de complemento</h3>
@@ -859,12 +972,12 @@ export function ModuloUpload() {
 
       <h3>Conferência e correções</h3>
       <Tabela cabecalho={['Ação', 'Efeito']} larguras={['185px']}>
-        <tr><Key>Editar paciente</Key><td>Corrige nome, atendimento, leito, convênio, operadora, data de internação e data de alta. A alteração vale para a ficha do paciente, não só para esta tela. Escolher um convênio conhecido já traz a operadora dele junto, e só o que mudou é enviado.</td></tr>
-        <tr><Key>Remover do censo</Key><td>Tira o paciente daquele censo. Só apaga a ficha de quem nasceu desse envio e não consta em nenhum outro. Confirmada a exclusão da ficha, um aviso com contagem regressiva permite desfazer a operação.</td></tr>
-        <tr><Key>Corrigir a operadora</Key><td>Quando o convênio do paciente diverge da operadora escolhida, a linha é marcada e a correção é feita ali. O resumo do envio desconta a correção de imediato, e o arquivo fica sinalizado como resolvido quando não resta pendência.</td></tr>
+        <tr><Key>Editar paciente</Key><td>Corrige nome, atendimento, carteirinha, leito, convênio, operadora, data de internação e data de alta. A alteração vale para a ficha do paciente, não só para esta tela. Escolher um convênio conhecido já traz a operadora dele junto, e só o que mudou é enviado. Aberto numa linha marcada, o modal traz <strong>Salvar e próximo</strong>, que segue para o próximo paciente com alerta sem voltar à lista.<SoGestao> O diretor pode ainda cadastrar ali um convênio novo, que passa a valer para todos.</SoGestao></td></tr>
+        <tr><Key>Tirar do censo</Key><td>Quem não deveria estar no censo é retirado pelo suporte. Peça por um chamado, em <strong>Abrir chamado</strong>, no fim deste módulo.</td></tr>
+        <tr><Key>Corrigir a operadora</Key><td>Pelo lápis, no campo Operadora: no censo misto, o paciente muda de aba na hora. Corrigir um convênio não reconhecido baixa o aviso do resumo do envio, e o arquivo fica sinalizado como resolvido quando não resta pendência. Quem já existe em outra operadora continua nela, porque nenhum censo troca a seguradora de quem já está no sistema; o aviso do arquivo lista esses casos, e a troca, se for o certo, também é feita pelo lápis.</td></tr>
         <tr><Key>Completar pendências</Key><td>Abre o assistente para os pacientes que o leitor entendeu parcialmente. Também é possível descartar a pendência, para o registro que não deve entrar.</td></tr>
         <tr><Key>Ignorar arquivo</Key><td>Retira um arquivo ilegível da lista e do resumo do envio. Nada é gravado, porque não há o que gravar.</td></tr>
-        <tr><Key>Desfazer envio</Key><td>Reverte o lote inteiro ou apenas um arquivo dele. Apaga os pacientes que aquele envio criou; quem já existia e foi apenas atualizado permanece, e a tela avisa sobre isso. Exige confirmação, com o hospital e a quantidade no texto.</td></tr>
+        <tr><Key>Desfazer envio</Key><td>Reverte o lote inteiro ou apenas um arquivo dele. Apaga os pacientes que aquele envio criou; quem já existia e foi apenas atualizado permanece, com os dados que este censo trouxe, e a tela avisa sobre isso. A alta automática dada pelo envio também fica. Só aparece quando o envio criou algum paciente, e exige confirmação, com o hospital e a quantidade no texto.</td></tr>
       </Tabela>
     </>
   )

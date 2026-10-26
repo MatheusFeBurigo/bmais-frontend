@@ -24,7 +24,7 @@ const PARA_QUEM: Partial<Record<UserRole, string>> = {
   tecnico: 'Para quem faz as visitas de auditoria e registra os relatórios.',
   administrativo: 'Para quem envia os censos e cobra os hospitais que atrasam.',
   coordenador_tecnico: 'Para quem distribui os hospitais entre os técnicos, na Distribuição de tarefas, e também trabalha como técnico.',
-  coordenador_administrativo: 'Para quem distribui os hospitais entre os operacionais, na Distribuição de tarefas, e também trabalha como operacional.',
+  coordenador_administrativo: 'Para quem distribui as operadoras entre os operacionais, na Distribuição de tarefas, e também trabalha como operacional.',
   analista: 'Para quem acompanha a operação sem alterar pacientes e mantém os cadastros desta tela.',
   // Gestor e diretor sem descrição de função: o que a gestão vê e faz só é
   // contado a quem tem essa competência (acessoAjuda.ts), e quem lê este
@@ -639,7 +639,9 @@ export function ModuloProgresso() {
         No alto da tela, <strong>Relatório da auditoria</strong> abre o documento de onde os
         módulos saíram: o porquê da ordem e o que cada bloco entrega. Lá,{' '}
         <strong>Imprimir ou salvar em PDF</strong> gera a cópia do documento e{' '}
-        <strong>Voltar</strong> retorna ao quadro.
+        <strong>Voltar</strong> retorna ao quadro. Ao lado, <strong>Documentação técnica</strong>{' '}
+        abre a descrição de como o sistema é montado: arquitetura, acesso e segurança, as APIs que
+        ele expõe e os pontos que pedem atenção.
       </p>
 
       <h3>As seis etapas de cada módulo</h3>

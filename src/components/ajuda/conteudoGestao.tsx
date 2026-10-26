@@ -9,7 +9,7 @@
 // O analista interno lê a Distribuição de tarefas, mas não os outros dois
 // (acessoAjuda.ts).
 import { lazy, Suspense, type ReactNode } from 'react'
-import { Callout, Chip, Key, Metric, Metrics, Tabela } from './blocos'
+import { Callout, Chip, Key, Metric, Metrics, SoGestao, Tabela } from './blocos'
 import { ComoFazer, Tela } from './replica'
 import {
   ReplicaDemandaXDistribuicao, ReplicaDividirCarga, ReplicaEquipe, ReplicaPainelPessoa,
@@ -68,7 +68,8 @@ export function ModuloDiretoria() {
           lado dos <strong>relatórios registrados por semana</strong>, que mostram a produção no
           tempo.</li>
         <li><strong>Resumo por operadora</strong>, a tabela central da tela.</li>
-        <li><strong>Rede por operadora</strong>, com quantos hospitais cada uma movimenta.</li>
+        <li><strong>Rede por operadora</strong>, com quantos hospitais estão vinculados a cada uma e
+          quantos deles têm pacientes agora.</li>
         <li><strong>Alertas por operadora</strong>, <strong>top hospitais</strong> por internados
           ativos e <strong>inteligência de dados</strong>.</li>
       </ol>
@@ -81,9 +82,10 @@ export function ModuloDiretoria() {
         <tr><td><Chip tom="warn">Vencido</Chip></td><td>Passaram da janela entre relatórios.</td></tr>
         <tr><td><Chip tom="attention">Próximo</Chip></td><td>Vencem nos próximos dias.</td></tr>
         <tr><td><Chip tom="positive">Em dia</Chip></td><td>Em conformidade.</td></tr>
-        <tr><Key>Nível de serviço</Key><td>Percentual de conformidade, com barra de progresso.</td></tr>
-        <tr><Key>Longa permanência</Key><td>Pacientes nos dois marcos, prolongado e avançado.</td></tr>
-        <tr><Key>Altas</Key><td>Altas do período.</td></tr>
+        <tr><Key>SLA</Key><td>Nível de serviço: percentual de conformidade, com barra de progresso.</td></tr>
+        <tr><Key>L.10</Key><td>Longa permanência: internados que passaram do primeiro limite da operadora, 10 dias por padrão.</td></tr>
+        <tr><Key>L.30</Key><td>Longa permanência avançada: internados que passaram do segundo limite, 30 dias por padrão.</td></tr>
+        <tr><Key>Altas</Key><td>Total de altas registradas na operadora, e não só as recentes.</td></tr>
         <tr><Key>Responsável</Key><td>Quem responde pela operadora, definido em Configurações.</td></tr>
       </Tabela>
       <p>A tabela fecha com uma linha de total geral, consolidando todas as operadoras.</p>
@@ -103,8 +105,6 @@ export function ModuloDiretoria() {
           seletor ao lado do botão. Sem escolha, a tela pede a seleção em vez de baixar algo
           arbitrário.</li>
         <li><strong>Atualizar</strong>: recarrega todos os indicadores.</li>
-        <li><strong>Dados de demonstração</strong>: insere pacientes e relatórios fictícios para
-          apresentar a plataforma.</li>
       </ul>
       <p>
         A tela não tem filtros, pois é sempre o consolidado global. Os quatro indicadores do topo
@@ -127,8 +127,8 @@ export function ModuloGestor() {
 
       <h3>Quem acessa</h3>
       <p>
-        <strong>Gestão e diretoria</strong>. É a tela inicial do gestor, que acompanha o movimento
-        sem trabalhar a lista de pacientes um a um. Os perfis de operação não entram.
+        <strong>Gestão e diretoria</strong>. É a tela em que o gestor acompanha o movimento sem
+        trabalhar a lista de pacientes um a um. Os perfis de operação não entram.
       </p>
 
       <h3>Passo a passo</h3>
@@ -150,9 +150,9 @@ export function ModuloGestor() {
       <ComoFazer
         titulo="Analisar um dia ou um período no gráfico de fluxo"
         passos={[
-          { n: 1, titulo: 'Escolha a janela', corpo: <>30 dias, 90 dias, 6 meses ou 1 ano. Nas janelas longas as colunas agrupam semana ou mês.</> },
+          { n: 1, titulo: 'Escolha a janela', corpo: <>30 dias, 90 dias, 6 meses ou 1 ano. Em 30 dias cada coluna é um dia; nas outras janelas, um mês.</> },
           { n: 2, titulo: 'Ocupação', corpo: <>Quantos pacientes estavam internados em cada dia. Mostra o nível, não o movimento.</> },
-          { n: 3, titulo: 'Fluxo diário: clique numa coluna', corpo: <>Entradas e altas lado a lado, com a linha do saldo, que fica vermelha quando saem mais do que entram. <strong>Clicar numa coluna</strong> leva o painel inteiro para aquele dia, ou para aquela semana ou mês.</> },
+          { n: 3, titulo: 'Fluxo diário: clique numa coluna', corpo: <>Entradas e altas lado a lado, com a linha do saldo, que fica vermelha quando saem mais do que entram. <strong>Clicar numa coluna</strong> leva o painel inteiro para aquele dia, ou para aquele mês.</> },
           { n: 4, titulo: 'Ou escolha a data no calendário', corpo: <>Para ir direto a um dia, sem procurar a coluna.</> },
           { n: 5, titulo: 'Recolher', corpo: <>Fecha o gráfico e devolve o espaço aos números. Ao escolher um período ele se recolhe sozinho.</> },
           { n: 6, titulo: 'O período em análise', corpo: <>Com um período escolhido, indicadores, gráficos e lista passam a falar dele, e esta etiqueta diz qual é. O <strong>×</strong> dela desfaz a escolha.</> },
@@ -190,12 +190,13 @@ export function ModuloGestor() {
         <Tela nome="Painel do Gestor" largura={960}
           destaques={{
             '.op-pills': 1,
+            '.topbar-hosp': 2,
             '.aj-graficos > .chart-card:first-child > div:last-child': 2,
             '.aj-graficos > .chart-card:last-child > div:last-child': 3,
             '.filtros-ativos .filtro-chip': 4,
             '.filtros-limpar': 5,
           }}
-          descricao="CarePlus escolhida no topo e o Hospital Santa Clara selecionado no gráfico.">
+          descricao="CarePlus escolhida no topo e o Hospital Santa Clara selecionado no campo Hospital.">
           <Carregando altura={420}><ReplicaFiltros /></Carregando>
         </Tela>
       </ComoFazer>
@@ -203,8 +204,8 @@ export function ModuloGestor() {
       <ComoFazer
         titulo="Listar os pacientes de uma faixa de permanência"
         passos={[
-          { n: 1, titulo: 'Clique numa faixa do gráfico', corpo: <>A lista ao lado passa a mostrar só os internados daquela faixa. O mesmo vale para os cartões de faixa do topo.</> },
-          { n: 2, titulo: 'Ou use as pastilhas da lista', corpo: <>São a mesma escolha, e ficam sincronizadas com o gráfico e com os cartões. <strong>Altas</strong> lista quem saiu no período.</> },
+          { n: 1, titulo: 'Clique numa faixa do gráfico', corpo: <>A lista de pacientes, abaixo dos gráficos, passa a mostrar só os internados daquela faixa. O mesmo vale para os cartões de faixa do topo.</> },
+          { n: 2, titulo: 'Ou use as pastilhas da lista', corpo: <>São a mesma escolha, e ficam sincronizadas com o gráfico e com os cartões. <strong>Altas</strong> lista quem saiu no período, com a contagem por motivo da alta logo acima da lista.</> },
           { n: 3, titulo: 'Clique no paciente', corpo: <>Abre a ficha rápida dele, sem sair do painel.</> },
         ]}
       >
@@ -234,19 +235,20 @@ export function ModuloGestor() {
       <h3>Gráficos</h3>
       <Tabela cabecalho={['Gráfico', 'O que mostra e como se usa']} larguras={['210px']}>
         <tr><Key>Ocupação por dia</Key><td>Linha preenchida mostrando o nível de ocupação ao longo do tempo, ou seja, quantos pacientes estavam internados em cada dia.</td></tr>
-        <tr><Key>Fluxo diário</Key><td>Barras de entradas e altas, mais a linha de saldo entre elas, que muda de cor quando fica negativa. As barras ficam lado a lado, e não empilhadas, porque têm efeitos opostos sobre a ocupação. Clicar numa coluna abre aquele dia, ou aquele intervalo quando as barras agrupam semana ou mês.</td></tr>
+        <tr><Key>Fluxo diário</Key><td>Barras de entradas e altas, mais a linha de saldo entre elas, que muda de cor quando fica negativa. As barras ficam lado a lado, e não empilhadas, porque têm efeitos opostos sobre a ocupação. Clicar numa coluna abre aquele dia, ou aquele mês quando as barras agrupam por mês.</td></tr>
         <tr><Key>Permanência por período</Key><td>Distribuição dos internados nas faixas de permanência. Clicar numa faixa lista os pacientes dela abaixo.</td></tr>
         <tr><Key>Internados por hospital</Key><td>Ranking das unidades. Clicar numa barra filtra o painel por aquele hospital; clicar de novo desfaz.</td></tr>
         <tr><Key>Internados por região</Key><td>Concentração geográfica. Só aparece quando há mais de uma região.</td></tr>
-        <tr><Key>Hospitais por operadora</Key><td>Unidades distintas com movimento no período. Só aparece com mais de uma operadora, porque um ranking de um item não compara nada.</td></tr>
+        <tr><Key>Hospitais por operadora</Key><td>Unidades distintas com movimento no período. Clicar numa barra filtra o painel por aquela operadora. Só aparece com mais de uma operadora, porque um ranking de um item não compara nada.</td></tr>
       </Tabela>
 
       <h3>Filtros</h3>
       <ul>
         <li><strong>Operadora</strong>, em botões no topo. É um filtro global que refaz a consulta
           inteira, e trocar de operadora limpa o hospital, que pode não pertencer à nova.</li>
-        <li><strong>Hospital e região</strong> vêm dos cliques nos gráficos. Clicar de novo na mesma
-          barra desfaz.</li>
+        <li><strong>Hospital</strong>, no campo de busca ao lado das operadoras ou pelo clique na
+          barra do gráfico, e <strong>região</strong>, só pelo gráfico. Clicar de novo na mesma barra
+          desfaz.</li>
         <li><strong>Janela</strong> de 30 dias, 90 dias, 6 meses ou 1 ano, que define o alcance e o
           agrupamento do gráfico de fluxo.</li>
         <li><strong>Período</strong>, um dia específico pelo calendário ou pelo gráfico, ou um
@@ -293,8 +295,10 @@ export function ModuloVolumetria() {
 
       <h3>Passo a passo</h3>
       <p>
-        Os exemplos mostram o grupo de técnicos. No grupo de operacionais a tela é a mesma, e a
-        demanda de cada pessoa são os hospitais sem censo que ela precisa cobrar.
+        Os exemplos mostram o grupo de técnicos. No grupo de operacionais a tela é a mesma, com uma
+        diferença: a área do operacional são <strong>operadoras</strong>, e não hospitais, e a
+        demanda de cada pessoa são os hospitais dessas operadoras com censo atrasado. O que se
+        atribui a ele, no painel e na lista de sem cobertura, é a operadora.
       </p>
 
       <ComoFazer
@@ -312,7 +316,7 @@ export function ModuloVolumetria() {
             '.vol-toolbar select': 3,
             '.vol-card.sem-area': 4,
           }}
-          descricao="Grupo de técnicos com uma pessoa em cada situação: sobrecarga, atenção, normal e sem área definida.">
+          descricao="Grupo de técnicos com uma pessoa em cada situação: sobrecarga, atenção, dentro da capacidade e sem área definida. Marcos Tavares é o coordenador do grupo.">
           <ReplicaEquipe marcas={{ equipe: 1 }} />
         </Tela>
       </ComoFazer>
@@ -323,7 +327,7 @@ export function ModuloVolumetria() {
           { n: 1, titulo: 'Clique no cartão da pessoa', corpo: <>Abre o painel dela ao lado, sem sair da tela.</> },
           { n: 2, titulo: 'Veja onde a carga se concentra', corpo: <>Os números do topo repetem o cartão, com o percentual do <strong>prazo</strong>: quanto da capacidade dos próximos dias os casos que vencem nesse período consomem. Na lista, o hospital com mais horas aparece em vermelho.</> },
           { n: 3, titulo: 'Remova o hospital que vai sair dela', corpo: <>O <strong>×</strong> desfaz o vínculo e a carga dele sai da conta dela na hora. Se ninguém mais cobrir o hospital, ele passa para <strong>Hospitais sem cobertura</strong>. Cuidado: tirar o último hospital de alguém faz a pessoa voltar a ver a rede inteira.</> },
-          { n: 4, titulo: 'Adicione o hospital a quem tem folga', corpo: <>Abra o cartão de quem está em nível <strong>Normal</strong> e escolha o hospital neste campo. Outra forma é atribuí-lo pela lista de hospitais sem cobertura, logo depois de removê-lo.</> },
+          { n: 4, titulo: 'Adicione o hospital a quem tem folga', corpo: <>Abra o cartão de quem está <strong>Dentro da capacidade</strong> e escolha o hospital neste campo. Outra forma é atribuí-lo pela lista de hospitais sem cobertura, logo depois de removê-lo.</> },
           { n: 5, titulo: 'Ajuste a capacidade, se for o caso', corpo: <>São as horas de análise por dia da pessoa, a referência dos dias de fila. Quem trabalha meio período, por exemplo, precisa de uma capacidade menor que a do grupo, senão a fila dela parece mais curta do que é.</> },
         ]}
       >
@@ -333,7 +337,7 @@ export function ModuloVolumetria() {
           <ReplicaEquipe />
         </Tela>
         <Tela nome="Distribuição de tarefas" largura={640}
-          descricao="Painel da pessoa: a carga, a capacidade e os hospitais sob responsabilidade dela.">
+          descricao="Painel da pessoa: a carga, as pendências abertas, a capacidade e os hospitais sob responsabilidade dela.">
           <ReplicaPainelPessoa marcas={{ indicadores: 2, remover: 3, adicionar: 4, capacidade: 5 }} />
         </Tela>
       </ComoFazer>
@@ -357,8 +361,8 @@ export function ModuloVolumetria() {
         passos={[
           { n: 1, titulo: 'Clique no ⋮ do cartão e em Dividir a carga', corpo: <>Serve para cobrir férias, folga ou um pico de trabalho. A opção só libera para quem tem ao menos dois hospitais e quando há colega com área definida para receber.</> },
           { n: 2, titulo: 'Marque com quem dividir', corpo: <>A lista traz os colegas do grupo com área definida, com os dias de fila de cada um. Marcar um colega divide em duas partes; marcar dois, em três.</> },
-          { n: 3, titulo: 'Escolha o período', corpo: <><strong>Só hoje</strong>, <strong>Hoje e amanhã</strong>, <strong>7 dias</strong> ou <strong>Outro</strong>, para escolher as datas. O período não pode começar no passado.</> },
-          { n: 4, titulo: 'Confira como fica', corpo: <>Mostra, para cada participante, quantos hospitais terá e a fila antes e depois da divisão. A sugestão manda o hospital mais pesado para quem está recebendo menos.</> },
+          { n: 3, titulo: 'Escolha o período', corpo: <><strong>Só hoje</strong>, <strong>Hoje e amanhã</strong>, <strong>7 dias</strong> ou <strong>Outro</strong>, para escolher as datas. O período não pode começar no passado nem passar de 31 dias.</> },
+          { n: 4, titulo: 'Confira como fica', corpo: <>Mostra, para cada participante, com quantos dos hospitais divididos ele fica (quem recebe, os que vai receber) e a fila antes e depois da divisão. A partilha é automática: quem cede fica com o hospital mais pesado, e cada um dos seguintes vai para quem está recebendo menos horas.</> },
           { n: 5, titulo: 'Clique em Dividir', corpo: <>O botão diz em quantas partes a carga será dividida. A janela fecha e os cartões já mostram as demandas de cada um com a divisão. O quadro de Tarefas de cada pessoa também passa a mostrar os hospitais do período.</> },
           { n: 6, titulo: 'Acompanhe pelos cartões', corpo: <>Quem cedeu mostra <strong>Carga dividida até</strong> a data final; quem recebeu, <strong>Ajudando com</strong> o número de hospitais. No fim do período tudo volta sozinho.</> },
         ]}
@@ -440,7 +444,7 @@ export function ModuloVolumetria() {
           { n: 1, titulo: 'Clique em Ajustar', corpo: <>O bloco fica recolhido no fim da tela. Aberto, o botão vira <strong>Recolher</strong>.</> },
           { n: 2, titulo: 'Minutos por tipo de leito', corpo: <>Quanto tempo, em média, um caso leva conforme o leito. UTI costuma levar mais.</> },
           { n: 3, titulo: 'Multiplicadores', corpo: <>Aumentam o tempo de quem está internado há muito tempo e diminuem o de quem já tem relatório anterior (reanálise).</> },
-          { n: 4, titulo: 'Capacidade e limiares', corpo: <>A capacidade padrão vale para quem não tem uma própria. Os limiares separam Normal, Atenção e Sobrecarga, em dias de fila e em percentual do prazo. São absolutos: se a equipe inteira estiver sobrecarregada, todos aparecem assim.</> },
+          { n: 4, titulo: 'Capacidade e limiares', corpo: <>A capacidade padrão vale para quem não tem uma própria. Os limiares separam Dentro da capacidade, Atenção e Sobrecarga, em dias de fila e em percentual do prazo. São absolutos: se a equipe inteira estiver sobrecarregada, todos aparecem assim.</> },
           { n: 5, titulo: 'Clique em Salvar parâmetros', corpo: <>Os cartões são recalculados com os valores novos. O bloco passa a dizer quem calibrou e quando, e a mudança fica em Movimentações.</> },
           { n: 6, titulo: 'Restaurar padrão, se precisar recomeçar', corpo: <>Volta tudo aos valores de fábrica, <strong>inclusive as capacidades próprias</strong> das pessoas. Pede confirmação antes.</> },
         ]}
@@ -510,6 +514,8 @@ export function ModuloVolumetria() {
 
       <h3>Os blocos da tela</h3>
       <ol>
+        <li><strong>Pedidos para desfazer atualização</strong>, no topo, que só aparece quando há
+          algum pedido esperando decisão, descrito adiante.</li>
         <li><strong>Resumo</strong>, com os indicadores acima.</li>
         <li><strong>Equipe</strong>: um cartão por pessoa, com o nível de carga, o número de
           demandas e a quebra delas pelos mesmos nomes das colunas de Tarefas. A lista pode ser
@@ -519,6 +525,10 @@ export function ModuloVolumetria() {
           hospitais de cada pessoa, lado a lado.</li>
         <li><strong>Produtividade</strong>: abertas e concluídas por pessoa, e as entregas do grupo
           por dia, nos últimos 30 dias.</li>
+        <SoGestao>
+          <li><strong>Entre as equipes</strong>, para o gestor, que vê os dois grupos: as demandas
+            abertas e as concluídas de técnicos e de operacionais, lado a lado.</li>
+        </SoGestao>
         <li><strong>Onde o tempo está indo</strong>: o tempo estimado da fila repartido por tipo
           de tarefa, numa barra única. A quebra dos cartões conta casos; esta conta horas.</li>
         <li><strong>Por região</strong>: uma linha por região, com quem responde por ela e o que
@@ -575,7 +585,8 @@ export function ModuloVolumetria() {
         <tr><Key>Cancelar antes do fim</Key>
           <td>Abra de novo <strong>Dividir a carga</strong> na pessoa que cedeu: as divisões dela
             aparecem no topo, em andamento ou agendadas, cada uma com <strong>Cancelar
-            divisão</strong>.</td></tr>
+            divisão</strong>. Se a divisão deixou essa pessoa com um hospital só, o ⋮ não libera a
+            opção, e a divisão segue até o fim do período.</td></tr>
         <tr><Key>No painel de quem recebeu</Key>
           <td>O hospital emprestado diz de quem veio e até quando, e não tem o <strong>×</strong> de
             remover: ele sai sozinho.</td></tr>
@@ -583,7 +594,9 @@ export function ModuloVolumetria() {
       <Callout tipo="caution" titulo="Regras da divisão">
         Só recebe quem já tem área definida. Quem cede fica sempre com ao menos um hospital, e um
         hospital recebido não pode ser repassado de novo. O mesmo hospital não entra em duas
-        divisões com períodos que se sobrepõem.
+        divisões com períodos que se sobrepõem. No grupo de operacionais, o operacional e o
+        coordenador não dividem carga entre si: a área de um é por operadora, e a do outro, por
+        hospital.
       </Callout>
 
       <h3>Onde o tempo está indo</h3>
@@ -595,9 +608,9 @@ export function ModuloVolumetria() {
         <em>em que</em> o tempo está sendo gasto.
       </p>
       <p>
-        A barra aparece três vezes, sempre sobre a fila atual: no bloco da equipe inteira, dentro
-        de cada cartão em versão reduzida, para comparar pessoas de relance, e no painel da pessoa,
-        com os valores em horas. Só as tarefas que geram trabalho pendente entram: quem está em dia
+        A barra aparece duas vezes, sempre sobre a fila atual: no bloco da equipe inteira e no
+        painel da pessoa, com os valores em horas. O cartão fica só com a quebra em casos. Só as
+        tarefas que geram trabalho pendente entram: quem está em dia
         conta como paciente sob responsabilidade, mas não consome tempo de fila.
       </p>
 
@@ -637,10 +650,11 @@ export function ModuloVolumetria() {
         mais horas fica destacada, indicando onde a carga daquela pessoa se acumula.
       </p>
 
-      <Callout tipo="caution" titulo="Vincular hospital muda o que a pessoa enxerga">
-        A lista de hospitais desta tela é a mesma do cadastro da conta: ao receber hospitais, a
-        pessoa deixa de ver a rede inteira e passa a ver apenas essas unidades, em todas as telas.
-        Pelo mesmo motivo, <strong>remover o último hospital de alguém faz essa pessoa voltar a
+      <Callout tipo="caution" titulo="Vincular hospital ou operadora muda o que a pessoa enxerga">
+        A lista de hospitais desta tela é a mesma do cadastro da conta, e a de operadoras do
+        operacional também: ao receber hospitais (ou operadoras), a pessoa deixa de ver a rede
+        inteira e passa a ver apenas essas unidades, em todas as telas. Pelo mesmo motivo,{' '}
+        <strong>remover o último hospital (ou a última operadora) de alguém faz essa pessoa voltar a
         enxergar a rede inteira</strong>, e não a ficar sem nada.
       </Callout>
 
@@ -669,7 +683,7 @@ export function ModuloVolumetria() {
       <p>
         No grupo operacional a lista é de <strong>operadoras</strong>: cada linha traz a operadora
         com censo atrasado e os hospitais dela que ninguém cobra. Atribuir a operadora a um
-        operacional cobre todos esses hospitais de uma vez. No cartão do operacional, as
+        operacional cobre todos esses hospitais de uma vez. No painel do operacional, as
         operadoras também são o que se adiciona e remove; os hospitais aparecem só para consulta.
       </p>
 
@@ -697,9 +711,20 @@ export function ModuloVolumetria() {
         O painel de cada pessoa tem a seção <strong>Pendências</strong>: o que o gestor ou o
         coordenador pediu a ela fora do censo, como um paciente para olhar ou um e-mail urgente,
         com o prazo de cada uma. <strong>Nova pendência</strong> pede algo a essa pessoa; ela vê o
-        pedido no topo das Tarefas dela e o conclui quando terminar. O cartão da pessoa mostra
-        quantas pendências estão abertas. Elas não entram nas horas estimadas: a carga continua
-        sendo a fila do censo.
+        pedido no topo das Tarefas dela e o conclui quando terminar. Só o que fazer é obrigatório;
+        paciente, prazo e detalhes são opcionais. Pelo painel, quem pediu também conclui a
+        pendência, ou a exclui se pediu errado.<SoGestao> O gestor conclui e exclui a de qualquer
+        pessoa.</SoGestao> O cartão da pessoa mostra quantas pendências estão abertas. Elas não
+        entram nas horas estimadas: a carga continua sendo a fila do censo.
+      </p>
+
+      <h3>Pedidos para desfazer atualização</h3>
+      <p>
+        Quando alguém da equipe pede para desfazer o <strong>Marcar como atualizado</strong> de um
+        censo, o pedido aparece num bloco no topo da tela, acima do seletor de grupo, com o
+        hospital, a operadora, quem pediu e quando. <strong>Aprovar</strong> desfaz a atualização e
+        o censo volta a ficar pendente em Tarefas; <strong>Recusar</strong> deixa como está. A
+        decisão vai para o histórico do card, e o bloco some quando não há mais pedidos.
       </p>
 
       <Callout tipo="info" titulo="O coordenador também é da equipe">

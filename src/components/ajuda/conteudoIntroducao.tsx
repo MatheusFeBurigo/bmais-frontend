@@ -289,9 +289,9 @@ export function ModuloNavegacao() {
         </tr>
         <tr>
           <Key>Coordenador operacional</Key>
-          <td>O mesmo papel, do lado operacional: acompanha na Distribuição de tarefas a carga de
-            cobrança de censo dos operacionais e trabalha com eles, com as ações do
-            operacional.</td>
+          <td>O mesmo papel, do lado operacional: acompanha a carga de cobrança de censo,
+            distribui as operadoras entre os operacionais na Distribuição de tarefas e trabalha
+            com eles, com as ações do operacional.</td>
         </tr>
         <tr>
           <Key>Médico e enfermeiro</Key>
@@ -340,7 +340,8 @@ export function ModuloNavegacao() {
         Além do papel, uma conta pode ter um recorte de dados, que vale em todas as telas. O técnico
         é vinculado a hospitais e enxerga os pacientes, censos e indicadores dessas unidades. O
         operacional é vinculado a operadoras e enxerga os pacientes e censos delas, em todos os
-        hospitais que as atendem. Os dois vínculos são definidos no cadastro da conta. Os
+        hospitais que as atendem. Os dois vínculos são definidos no cadastro da conta, e os
+        coordenadores também os ajustam na Distribuição de tarefas. Os
         coordenadores enxergam os hospitais que recebem na Distribuição de tarefas. Sem vínculo, a
         conta enxerga a operação inteira.
       </p>
