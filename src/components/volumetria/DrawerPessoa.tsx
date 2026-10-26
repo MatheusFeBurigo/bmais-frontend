@@ -1,12 +1,15 @@
 // Drawer da pessoa: quem é, quanto carrega (indicadores), a capacidade dela
 // (editável), quais hospitais cobre — cada um com a própria quebra de demandas
 // — e as ações: adicionar hospital (combobox com busca) e remover (×).
+// O operacional responde por OPERADORA (08/10/2026): no lugar dos hospitais
+// edita as operadoras dele, e os hospitais ficam só para leitura (vêm delas).
 // Mesma casca de PacienteDrawer; fecha no backdrop, no × e no Esc.
 import { useEffect, useMemo, useState } from 'react'
 import type { VolumetriaGrupo, VolumetriaPessoa } from '../../types/api'
 import { useTodosHospitais } from '../../hooks/useEquipe'
 import {
-  useDesvincularVolumetria, useSalvarParametrosVolumetria, useVincularVolumetria,
+  useDesvincularOperadoraVolumetria, useDesvincularVolumetria, useSalvarParametrosVolumetria,
+  useVincularOperadoraVolumetria, useVincularVolumetria,
 } from '../../hooks/useVolumetria'
 import { useTravarScroll } from '../../lib/travarScroll'
 import { HospitalCombobox } from '../HospitalCombobox'
@@ -16,7 +19,7 @@ import QuebraDemandas from './QuebraDemandas'
 import TempoPorTarefa from './TempoPorTarefa'
 import {
   NIVEL_BADGE, NIVEL_LABEL, NIVEL_VAR, fmt1, fmtDiaMes, fmtDias, fmtHoras, hospitaisPorRegiao, iniciais,
-  linhasQuebra, rotuloGrupo,
+  linhasQuebra, nomeOperadora, operadorasDaPessoa, rotuloGrupo,
 } from './volumetria.model'
 
 export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
@@ -28,11 +31,16 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
   useTravarScroll(true)
   const rotulo = rotuloGrupo(grupo.papel)
   const tecnico = grupo.role_operacional === 'tecnico'
-  const todos = useTodosHospitais(true)
+  const porOperadora = !!pessoa.por_operadora
+  // O cadastro de hospitais só serve a quem é por hospital.
+  const todos = useTodosHospitais(!porOperadora)
   const vincular = useVincularVolumetria()
   const desvincular = useDesvincularVolumetria()
+  const vincularOp = useVincularOperadoraVolumetria()
+  const desvincularOp = useDesvincularOperadoraVolumetria()
   const salvarParams = useSalvarParametrosVolumetria()
   const [novo, setNovo] = useState('')
+  const [novaOp, setNovaOp] = useState('')
   const [cap, setCap] = useState(String(pessoa.capacidade_horas_dia))
 
   useEffect(() => {
@@ -45,6 +53,7 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
   // pendente no combobox e o rascunho de capacidade eram da anterior.
   useEffect(() => {
     setNovo('')
+    setNovaOp('')
     setCap(String(pessoa.capacidade_horas_dia))
   }, [pessoa.user_id, pessoa.capacidade_horas_dia])
 
@@ -53,7 +62,13 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
     return (todos.data ?? []).filter((h) => !ja.has(h.key))
   }, [todos.data, pessoa.hospitais])
 
+  const opsDisponiveis = useMemo(() => {
+    const ja = new Set(pessoa.operadoras ?? [])
+    return (grupo.operadoras ?? []).filter((o) => !ja.has(o.operadora_key))
+  }, [grupo.operadoras, pessoa.operadoras])
+
   const ocupado = vincular.isPending || desvincular.isPending || salvarParams.isPending
+    || vincularOp.isPending || desvincularOp.isPending
   const nivel = pessoa.nivel ?? 'normal'
   const maxHorasHosp = Math.max(0, ...pessoa.hospitais.map((h) => h.horas))
   const grupos = useMemo(() => hospitaisPorRegiao(pessoa), [pessoa])
@@ -70,6 +85,20 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
   function remover(hospitalKey: string) {
     desvincular.mutate({ hospitalKey, userId: pessoa.user_id }, {
       onError: () => onErro('Não foi possível remover o hospital. Tente de novo.'),
+    })
+  }
+
+  function adicionarOperadora() {
+    if (!novaOp) return
+    vincularOp.mutate({ operadoraKey: novaOp, userId: pessoa.user_id }, {
+      onSuccess: () => setNovaOp(''),
+      onError: () => onErro('Não foi possível adicionar a operadora. Tente de novo.'),
+    })
+  }
+
+  function removerOperadora(operadoraKey: string) {
+    desvincularOp.mutate({ operadoraKey, userId: pessoa.user_id }, {
+      onError: () => onErro('Não foi possível remover a operadora. Tente de novo.'),
     })
   }
 
@@ -91,7 +120,11 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
               {pessoa.nome}
             </div>
             <div className="card-sub" style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span>{pessoa.coordenador ? rotulo.coordenador : rotulo.singular} · {pessoa.hospitais_n} {pessoa.hospitais_n === 1 ? 'hospital' : 'hospitais'}</span>
+              <span>
+                {pessoa.coordenador ? rotulo.coordenador : rotulo.singular}
+                {porOperadora && <> · {operadorasDaPessoa(grupo, pessoa) || 'sem operadora'}</>}
+                {' '}· {pessoa.hospitais_n} {pessoa.hospitais_n === 1 ? 'hospital' : 'hospitais'}
+              </span>
               {!pessoa.sem_vinculo && <Badge variant={NIVEL_BADGE[nivel]} dot>{NIVEL_LABEL[nivel]}</Badge>}
               {pessoa.sem_nome && (
                 <span title="O perfil não tem nome cadastrado: este veio do e-mail. Preencha o nome em Operações.">
@@ -106,8 +139,18 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
         <div className="vol-drawer-body">
           {pessoa.sem_vinculo ? (
             <div className="vol-nota">
-              Esta pessoa não tem hospitais definidos e por isso vê <b>toda a rede</b>.
-              Adicione hospitais para definir a área dela — a carga passa a ser contada a partir daí.
+              {porOperadora ? (
+                <>
+                  Esta pessoa não tem operadoras definidas e por isso vê <b>toda a rede</b>.
+                  Adicione operadoras para definir a área dela — ela passa a cobrar os censos dos
+                  hospitais dessas operadoras, e a carga é contada a partir daí.
+                </>
+              ) : (
+                <>
+                  Esta pessoa não tem hospitais definidos e por isso vê <b>toda a rede</b>.
+                  Adicione hospitais para definir a área dela — a carga passa a ser contada a partir daí.
+                </>
+              )}
             </div>
           ) : (
             <div className="vol-ind">
@@ -174,19 +217,81 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
             )}
           </div>
 
-          <div className="vol-add">
-            <HospitalCombobox
-              hospitais={disponiveis}
-              value={novo}
-              onChange={setNovo}
-              disabled={ocupado || todos.isLoading}
-              placeholder={todos.isLoading ? 'Carregando hospitais…' : 'Adicionar hospital…'}
-              mostrarOperadora
-            />
-            <button type="button" className="btn btn-primary btn-sm" disabled={!novo || ocupado} onClick={adicionar}>
-              {vincular.isPending ? 'Adicionando…' : 'Adicionar'}
-            </button>
-          </div>
+          {porOperadora ? (
+            <>
+              {/* A área do operacional: operadoras inteiras. Cada uma traz os
+                  censos de todos os hospitais dela para o quadro da pessoa. */}
+              <div className="vol-sub" style={{ marginTop: 16 }}>Operadoras</div>
+              {(pessoa.operadoras ?? []).map((k) => {
+                const outros = (grupo.operadoras ?? [])
+                  .find((o) => o.operadora_key === k)?.responsaveis
+                  .filter((r) => r.user_id !== pessoa.user_id) ?? []
+                return (
+                  <div className="vol-hosp" key={k}>
+                    <OpAvatar opKey={k} size={28} />
+                    <span style={{ minWidth: 0 }}>
+                      <div className="vol-hosp-nome">{nomeOperadora(grupo, k)}</div>
+                      <div className="vol-hosp-sub">
+                        {outros.length > 0
+                          ? `também com ${outros.map((r) => r.nome).join(', ')}`
+                          : `só com ${pessoa.nome}`}
+                      </div>
+                    </span>
+                    <span />
+                    <button
+                      type="button"
+                      className="vol-x"
+                      disabled={ocupado}
+                      onClick={() => removerOperadora(k)}
+                      title={`Remover ${nomeOperadora(grupo, k)} de ${pessoa.nome}`}
+                      aria-label={`Remover ${nomeOperadora(grupo, k)}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )
+              })}
+              <div className="vol-add">
+                <select
+                  className="bm-input bm-select"
+                  style={{ flex: 1, minWidth: 0 }}
+                  value={novaOp}
+                  disabled={ocupado || opsDisponiveis.length === 0}
+                  onChange={(e) => setNovaOp(e.target.value)}
+                  aria-label="Adicionar operadora"
+                >
+                  <option value="">
+                    {opsDisponiveis.length === 0 ? 'Já tem todas as operadoras' : 'Adicionar operadora…'}
+                  </option>
+                  {opsDisponiveis.map((o) => (
+                    <option key={o.operadora_key} value={o.operadora_key}>{o.operadora_nome}</option>
+                  ))}
+                </select>
+                <button type="button" className="btn btn-primary btn-sm" disabled={!novaOp || ocupado} onClick={adicionarOperadora}>
+                  {vincularOp.isPending ? 'Adicionando…' : 'Adicionar'}
+                </button>
+              </div>
+              {pessoa.hospitais.length > 0 && (
+                <div className="vol-sub" style={{ marginTop: 16, marginBottom: 0 }}>
+                  Hospitais das operadoras dela
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="vol-add">
+              <HospitalCombobox
+                hospitais={disponiveis}
+                value={novo}
+                onChange={setNovo}
+                disabled={ocupado || todos.isLoading}
+                placeholder={todos.isLoading ? 'Carregando hospitais…' : 'Adicionar hospital…'}
+                mostrarOperadora
+              />
+              <button type="button" className="btn btn-primary btn-sm" disabled={!novo || ocupado} onClick={adicionar}>
+                {vincular.isPending ? 'Adicionando…' : 'Adicionar'}
+              </button>
+            </div>
+          )}
 
           {/* Hospitais agrupados pela REGIÃO do cadastro, com o subtotal de
               cada uma: é como o coordenador pensa a área da pessoa. Uma
@@ -226,8 +331,9 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
                   </span>
                   {/* Recebido por divisão temporária: sai sozinho ao fim do período
                       (ou ao cancelar a divisão). Remover aqui não teria efeito,
-                      porque o hospital não está na área definida da pessoa. */}
-                  {h.temporario ? <span /> : <button
+                      porque o hospital não está na área definida da pessoa. Do
+                      operacional, o hospital vem da operadora: muda-se a operadora. */}
+                  {h.temporario || porOperadora ? <span /> : <button
                     type="button"
                     className="vol-x"
                     disabled={ocupado}

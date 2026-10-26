@@ -8,7 +8,8 @@
 // porque a pastilha que ele explica aparece em praticamente toda tela.
 import { useState } from 'react'
 import type { UserRole } from '../../types/api'
-import { ROLE_LABEL, temEscopoHospital, temEscopoOperadora } from '../../lib/usuarioRoles'
+import { ROLE_LABEL, temAreaNaDistribuicao, temEscopoHospital, temEscopoOperadora } from '../../lib/usuarioRoles'
+import { ACOES_NO_PAINEL } from '../../lib/recursos'
 import { Callout, Chip, Key, Metric, Metrics, SoGestao, Tabela } from './blocos'
 import { ComoFazer, Tela, type PassoAjuda } from './replica'
 import { PAPEIS_CADASTRO } from './acessoAjuda'
@@ -35,9 +36,10 @@ const PARA_QUEM: Partial<Record<UserRole, string>> = {
 function passosDaConta(papel: UserRole): PassoAjuda[] {
   const porOperadora = temEscopoOperadora(papel)
   const escopo = temEscopoHospital(papel) || porOperadora
+  const naDistribuicao = temAreaNaDistribuicao(papel)
   const passos: PassoAjuda[] = [
     { n: 1, titulo: 'Clique em Novo usuário', corpo: <>Na aba <strong>Usuários de acesso</strong> da tela Operações. Abre a página de cadastro da conta.</> },
-    { n: 2, titulo: 'Preencha os Dados de acesso', corpo: <>Nome, e-mail e senha, de no mínimo 6 caracteres. A pessoa entra com esse e-mail e essa senha. O e-mail não pode ser trocado depois; a senha, sim, pelo botão <strong>Senha</strong> da lista. <strong>Continuar</strong> (ou Enter) fecha a etapa com um ok e abre a próxima.</> },
+    { n: 2, titulo: 'Preencha os Dados de acesso', corpo: <>Nome, e-mail e senha, de no mínimo 6 caracteres. A pessoa entra com esse e-mail e essa senha. O e-mail não pode ser trocado depois; a senha, sim, pelo botão <strong>Senha</strong> da lista ou pelo campo <strong>Redefinir senha</strong> do Editar. <strong>Continuar</strong> (ou Enter) fecha a etapa com um ok e abre a próxima.</> },
     {
       n: 3,
       titulo: `Em Nível de acesso, marque ${ROLE_LABEL[papel]}`,
@@ -48,7 +50,9 @@ function passosDaConta(papel: UserRole): PassoAjuda[] {
             ? <>Este papel <strong>tem escopo por operadora</strong>: a etapa de operadoras abre em seguida.</>
             : escopo
               ? <>Este papel <strong>tem escopo por hospital</strong>: a etapa de cidades e hospitais abre em seguida.</>
-              : <>Este papel <strong>não tem escopo</strong>: enxerga a operação inteira, e a etapa de hospitais ou operadoras não aparece.</>}
+              : naDistribuicao
+                ? <>Este papel <strong>tem os hospitais definidos na Distribuição de tarefas</strong>, e não aqui: a etapa de hospitais não aparece. Enquanto não tiver nenhum hospital lá, enxerga a operação inteira; com hospitais, vê só os pacientes, censos e tarefas deles.</>
+                : <>Este papel <strong>não tem escopo</strong>: enxerga a operação inteira, e a etapa de hospitais ou operadoras não aparece.</>}
         </>
       ),
     },
@@ -69,7 +73,7 @@ function passosDaConta(papel: UserRole): PassoAjuda[] {
   passos.push({
     n: passos.length + 1,
     titulo: 'Clique em Criar usuário',
-    corpo: <>A conta já pode entrar. {porOperadora ? 'O papel e as operadoras' : escopo ? 'O papel e os hospitais' : 'O papel'} podem ser mudados depois pelo botão <strong>Editar</strong> da lista.</>,
+    corpo: <>A conta já pode entrar. Ao entrar, a pessoa vê <strong>Crie sua senha</strong>, para trocar a senha que você definiu por uma só dela; <strong>Agora não</strong> adia o convite para o próximo acesso. {porOperadora ? 'O papel e as operadoras podem ser mudados' : escopo ? 'O papel e os hospitais podem ser mudados' : 'O papel pode ser mudado'} depois pelo botão <strong>Editar</strong> da lista{naDistribuicao ? '; os hospitais, na Distribuição de tarefas' : ''}.</>,
   })
   return passos
 }
@@ -82,6 +86,7 @@ function CadastroDeConta() {
   const passos = passosDaConta(papel)
   const porOperadora = temEscopoOperadora(papel)
   const escopo = temEscopoHospital(papel) || porOperadora
+  const naDistribuicao = temAreaNaDistribuicao(papel)
   return (
     <>
       <ComoFazer titulo={`Criar uma conta de ${ROLE_LABEL[papel]}`} passos={passos}>
@@ -105,7 +110,9 @@ function CadastroDeConta() {
         <Tela nome="Novo usuário de acesso" largura={720}
           descricao={escopo
             ? `Dados de acesso concluídos. ${ROLE_LABEL[papel]} tem escopo de ${porOperadora ? 'operadoras' : 'cidades e hospitais'}.`
-            : `Dados de acesso concluídos. ${ROLE_LABEL[papel]} não tem escopo: enxerga a operação inteira.`}>
+            : naDistribuicao
+              ? `Dados de acesso concluídos. Os hospitais de ${ROLE_LABEL[papel]} são definidos na Distribuição de tarefas, não aqui.`
+              : `Dados de acesso concluídos. ${ROLE_LABEL[papel]} não tem escopo: enxerga a operação inteira.`}>
           <ReplicaNovoUsuario papel={papel} aberta="nivel"
             marcas={escopo ? { papel: 3 } : { papel: 3, criar: 4 }} />
         </Tela>
@@ -134,8 +141,8 @@ export function ModuloOperacoes() {
       <Tabela cabecalho={['Aba', 'O que se cadastra']} larguras={['210px']}>
         <tr><Key>Auditores</Key>
           <td>Os enfermeiros e médicos auditores, os hospitais que cada um cobre e o acesso deles ao
-            portal do profissional. Os médicos ativos são os oferecidos ao registrar um relatório e
-            ao agendar uma visita.</td></tr>
+            portal do profissional. Os médicos ativos são os oferecidos ao registrar um
+            relatório{ACOES_NO_PAINEL && ' e ao agendar uma visita'}.</td></tr>
         <tr><Key>Usuários de acesso</Key>
           <td>As contas da equipe interna e o papel de cada uma, que define o que a pessoa vê e o
             que pode fazer.</td></tr>
@@ -163,8 +170,8 @@ export function ModuloOperacoes() {
         passos={[
           { n: 1, titulo: 'Clique em Adicionar', corpo: <>Na aba <strong>Auditores</strong> da tela Operações.</> },
           { n: 2, titulo: 'Escolha o tipo e informe o nome', corpo: <><strong>Médico(a) Auditor(a)</strong> ou <strong>Enfermeiro(a)</strong>. O tipo decide o portal que a pessoa vai usar. Ao registrar relatório, os médicos ativos aparecem em <strong>Médico auditor</strong> e os enfermeiros ativos em <strong>Enfermeiro auditor</strong>.</> },
-          { n: 3, titulo: 'Informe o e-mail e a senha inicial', corpo: <>São obrigatórios: com eles o profissional entra no portal dele, que não mostra nenhuma informação interna. A senha tem no mínimo 6 caracteres.</> },
-          { n: 4, titulo: 'Marque os hospitais que ele cobre', corpo: <>Escolha a cidade e marque os hospitais dela; vários entram de uma vez. Um hospital que atende mais de uma operadora aparece uma vez só e vale para todas; na ficha dele dá para deixar só algumas. A escala também pode ficar para depois.</> },
+          { n: 3, titulo: 'Informe o e-mail e a senha inicial', corpo: <>São obrigatórios: com eles o profissional entra no portal dele, que não mostra nenhuma informação interna. A senha tem no mínimo 6 caracteres. Ao entrar, ele é convidado a trocá-la por uma só dele.</> },
+          { n: 4, titulo: 'Marque os hospitais que ele cobre', corpo: <>Escolha a cidade e marque os hospitais dela; vários entram de uma vez. Um hospital que atende mais de uma operadora aparece uma vez só e vale para todas; para deixar só algumas, abra a contagem de operadoras ao lado do nome do hospital, aqui mesmo, ou use o botão <strong>Operadoras</strong> da ficha depois. A escala também pode ficar para depois.</> },
           { n: 5, titulo: 'Escolha o serviço', corpo: <>Aparece quando há hospital marcado e vale para todos eles: análise de conta, auditoria concorrente, ambulatório ou pronto socorro. Serviço diferente por hospital se ajusta na ficha.</> },
           { n: 6, titulo: 'Clique em Adicionar', corpo: <>O aviso diz o que entrou. Se o e-mail já estiver em uso, o profissional é gravado sem acesso, e o acesso se cria depois pelo <strong>Editar</strong>.</> },
         ]}
@@ -183,7 +190,7 @@ export function ModuloOperacoes() {
         titulo="Dar acesso a um profissional que ainda não tem"
         passos={[
           { n: 1, titulo: 'Clique em Editar, na linha dele', corpo: <>Quem ainda não tem acesso aparece com <strong>Sem acesso</strong> na coluna de e-mail.</> },
-          { n: 2, titulo: 'Informe o e-mail e a senha inicial', corpo: <>O campo de senha aparece ao digitar o e-mail. A senha tem no mínimo 6 caracteres. O papel (médico ou enfermeiro) sai do tipo do cadastro.</> },
+          { n: 2, titulo: 'Informe o e-mail e a senha inicial', corpo: <>O campo de senha aparece ao digitar o e-mail. A senha tem no mínimo 6 caracteres, e no primeiro acesso o auditor é convidado a trocá-la por uma só dele. O papel (médico ou enfermeiro) sai do tipo do cadastro.</> },
           { n: 3, titulo: 'Clique em Salvar', corpo: <>O auditor já pode entrar no portal. <strong>Desativar acesso</strong>, no menu ⋮ da linha, suspende o acesso, e reativar o devolve.</> },
         ]}
       >
@@ -245,7 +252,7 @@ export function ModuloOperacoes() {
           { n: 1, titulo: 'Abra a operadora', corpo: <>Clique no cartão dela. Os hospitais aparecem agrupados por cidade.</> },
           { n: 2, titulo: 'Clique no nome do hospital para editar', corpo: <>Abre o mesmo cadastro, já preenchido: nome, cidade, operadoras atendidas e contato. Tirar uma operadora desfaz o vínculo com ela.</> },
           { n: 3, titulo: 'Use a lixeira para excluir', corpo: <>Pede um segundo clique em <strong>Excluir</strong>, na própria linha. É recusada, com o motivo, quando há pacientes ou escala ligados ao hospital.</> },
-          { n: 4, titulo: 'A engrenagem cuida da operadora', corpo: <>Renomeia a operadora ou a exclui. Renomear não mexe nos pacientes, hospitais e histórico dela.</> },
+          { n: 4, titulo: 'A engrenagem cuida da operadora', corpo: <>Renomeia a operadora ou a exclui. Renomear não mexe nos pacientes, hospitais e histórico dela. Excluir só passa quando ela não tem mais hospitais nem pacientes.</> },
         ]}
       >
         <Tela nome="Operações" largura={900}
@@ -280,13 +287,20 @@ export function ModuloOperacoes() {
           algum filtro ligado, a lista diz quantos aparecem do total e oferece{' '}
           <strong>Limpar filtros</strong>.</li>
         <li>A coluna <strong>Área</strong> diz se a conta enxerga toda a operação
-          (<strong>Todos</strong>) ou só o que foi vinculado a ela: operadoras, no operacional, e
-          hospitais, no técnico.</li>
+          (<strong>Todos</strong>) ou só o que foi vinculado a ela: operadoras, no operacional;
+          hospitais, no técnico; e, nos coordenadores, os hospitais recebidos na Distribuição de
+          tarefas.</li>
         <li>Os atalhos da linha são <strong>Senha</strong> e <strong>Editar</strong> (nome, papel e
           área, nas mesmas etapas do cadastro), e o menu <strong>⋮</strong> traz{' '}
           <strong>Desativar acesso</strong> e <strong>Excluir usuário</strong>. Desativar é
           reversível; a exclusão não, mas o histórico de ações da pessoa na trilha de auditoria é
           preservado. A própria conta não pode ser desativada nem excluída.</li>
+        <li>O Editar traz também o campo <strong>Redefinir senha</strong>, que em branco mantém a
+          atual. A área dos coordenadores não aparece nele: é definida na Distribuição de
+          tarefas.</li>
+        <li>Toda senha definida por aqui, no cadastro, no <strong>Senha</strong> ou no Editar, é
+          provisória: no acesso seguinte a pessoa vê <strong>Crie sua senha</strong> e pode
+          trocá-la por uma só dela.</li>
       </ul>
 
       <h3>Hospitais e operadoras</h3>
@@ -302,10 +316,12 @@ export function ModuloOperacoes() {
           são opcionais. Editar abre o mesmo cadastro, pelo nome do hospital na lista.</li>
         <li>Renomear uma operadora altera apenas o nome exibido. Os pacientes, hospitais e o
           histórico dela permanecem vinculados.</li>
-        <li>A exclusão de operadora ou hospital exige confirmação e é recusada quando há pacientes
-          ou escala vinculados ao registro, com a indicação do motivo.</li>
+        <li>A exclusão de operadora ou hospital exige confirmação e é recusada, com a indicação do
+          motivo, quando ainda há algo vinculado ao registro: pacientes ou escala, no hospital;
+          hospitais ou pacientes, na operadora.</li>
         <li>A <strong>cidade</strong> é o que agrupa os hospitais nas telas de escolha de escopo e
-          de escala<SoGestao>, e também o recorte geográfico do painel do Gestor</SoGestao>.</li>
+          de escala.<SoGestao> No painel do Gestor, o recorte geográfico é a região, que no
+          hospital cadastrado por aqui nasce igual à cidade.</SoGestao></li>
       </ul>
     </>
   )
@@ -412,7 +428,10 @@ export function ModuloConfiguracoes() {
           <td>Na ficha do hospital, aberta a partir de uma operadora. Permite que aquele hospital
             tenha prazos de relatório e cobrança de censo diferentes da operadora: censo a cada
             quantos dias, dias da semana com censo ou nenhuma cobrança. O que não for alterado segue a
-            operadora. Na lista de hospitais, quem tem regra própria aparece marcado.</td></tr>
+            operadora. <strong>Personalizar</strong> abre os campos, e o cartão passa de{' '}
+            <strong>Segue a operadora</strong> a <strong>Personalizada</strong>;{' '}
+            <strong>Usar regras da operadora</strong> desfaz a exceção. Na lista de hospitais, quem
+            tem regra própria aparece marcado.</td></tr>
         <tr><Key>Adicionar hospital</Key>
           <td>O botão <strong>Adicionar</strong> da lista de hospitais de uma operadora abre o
             cadastro completo (nome, cidade, contato e endereço), com o hospital já naquela
@@ -439,8 +458,10 @@ export function ModuloMovimentacoes() {
       </p>
 
       <Callout tipo="info" titulo="O que a trilha registra">
-        Registra ações sobre os dados: relatórios, pacientes, censos, hospitais, operadoras, equipe,
-        escalas, contas e tarefas. A simples entrada no sistema não entra na trilha, porque a tela é
+        Registra ações sobre os dados: relatórios, pacientes, censos, hospitais, operadoras,
+        convênios, equipe, escalas, contas, tarefas e pendências pedidas à equipe, além da troca da
+        própria senha e dos parâmetros da Distribuição de tarefas. A simples entrada no sistema não
+        entra na trilha, porque a tela é
         sobre o que se fez com os dados, e não sobre quem entrou no sistema.
       </Callout>
 
@@ -455,7 +476,7 @@ export function ModuloMovimentacoes() {
         <Metric tom="brand" label="Movimentações" valor="Total no período" />
         <Metric tom="brand" label="Relatórios" valor="Registros de auditoria" />
         <Metric tom="positive" label="Censos" valor="Envios processados" />
-        <Metric tom="attention" label="Cadastros" valor="Hospitais, operadoras, equipe e escala" />
+        <Metric tom="attention" label="Cadastros" valor="Hospitais, operadoras, convênios, equipe e escala" />
         <Metric tom="critical" label="Falhas e negadas" valor="Tentativas recusadas" />
       </Metrics>
 

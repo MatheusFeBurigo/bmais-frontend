@@ -9,8 +9,8 @@ import type { VolumetriaGrupo, VolumetriaPessoa } from '../../types/api'
 import { Badge, ProgressBar } from '../ui'
 import QuebraDemandas from './QuebraDemandas'
 import {
-  NIVEL_BADGE, NIVEL_LABEL, NIVEL_VAR, divisoesDe, fmtDiaMes, iniciais, linhasQuebra,
-  resumoRegiao, rotuloGrupo,
+  NIVEL_BADGE, NIVEL_LABEL, NIVEL_VAR, colegasParaDividir, divisoesDe, fmtDiaMes, iniciais, linhasQuebra,
+  operadorasDaPessoa, resumoRegiao, rotuloGrupo,
 } from './volumetria.model'
 
 const IconMais = (
@@ -86,9 +86,15 @@ export default function CardPessoa({ pessoa, grupo, maxDemandas, onAbrir, onDivi
   const divisoes = divisoesDe(grupo, pessoa.user_id)
   const vigente = divisoes.find((d) => d.vigente)
   const recebidos = pessoa.hospitais.filter((h) => h.temporario).length
-  const colegas = grupo.pessoas.some((p) => p.user_id !== pessoa.user_id && !p.sem_vinculo)
+  const colegas = colegasParaDividir(grupo, pessoa.user_id).length > 0
   const podeDividir = !pessoa.sem_vinculo && colegas
     && pessoa.hospitais.filter((h) => !h.temporario).length >= 2
+  // Operacional: a área é a lista de operadoras; os hospitais vêm delas.
+  const porOperadora = !!pessoa.por_operadora
+  const operadoras = operadorasDaPessoa(grupo, pessoa)
+  const area = porOperadora
+    ? (operadoras || 'sem operadora')
+    : `${pessoa.hospitais_n} ${pessoa.hospitais_n === 1 ? 'hospital' : 'hospitais'}`
 
   return (
     <div className="vol-card-wrap">
@@ -96,7 +102,7 @@ export default function CardPessoa({ pessoa, grupo, maxDemandas, onAbrir, onDivi
         type="button"
         className={`vol-card${pessoa.sem_vinculo ? ' sem-area' : ''}`}
         onClick={() => onAbrir(pessoa.user_id)}
-        aria-label={`${pessoa.nome}: ${pessoa.sem_vinculo ? 'definir área' : 'ver hospitais'}`}
+        aria-label={`${pessoa.nome}: ${pessoa.sem_vinculo ? 'definir área' : porOperadora ? 'ver operadoras' : 'ver hospitais'}`}
       >
         <header className="vol-card-head">
           <span className="vol-av" aria-hidden="true">{iniciais(pessoa.nome)}</span>
@@ -104,7 +110,7 @@ export default function CardPessoa({ pessoa, grupo, maxDemandas, onAbrir, onDivi
             {/* O e-mail fica só no tooltip: a identidade na tela é o NOME. */}
             <div className="vol-card-nome" title={pessoa.email}>{pessoa.nome}</div>
             <div className="vol-card-sub">
-              <span>{pessoa.coordenador ? rotulo.coordenador : rotulo.singular} · {pessoa.hospitais_n} {pessoa.hospitais_n === 1 ? 'hospital' : 'hospitais'}</span>
+              <span title={porOperadora ? operadoras : undefined}>{pessoa.coordenador ? rotulo.coordenador : rotulo.singular} · {area}</span>
               {pessoa.sem_nome && (
                 <span title="O perfil não tem nome cadastrado: este veio do e-mail. Preencha o nome em Operações.">
                   <Badge variant="warning">sem nome</Badge>
@@ -133,7 +139,9 @@ export default function CardPessoa({ pessoa, grupo, maxDemandas, onAbrir, onDivi
 
         {pessoa.sem_vinculo ? (
           <div className="vol-card-vazio">
-            Sem área definida: vê toda a rede. Defina os hospitais para a carga ser contada.
+            {porOperadora
+              ? 'Sem operadora definida: vê toda a rede. Defina as operadoras para a carga ser contada.'
+              : 'Sem área definida: vê toda a rede. Defina os hospitais para a carga ser contada.'}
           </div>
         ) : (
           <>
@@ -173,7 +181,11 @@ export default function CardPessoa({ pessoa, grupo, maxDemandas, onAbrir, onDivi
                 ? `${pessoa.pacientes ?? 0} ${pessoa.pacientes === 1 ? 'paciente' : 'pacientes'} sob responsabilidade`
                 : `${pessoa.hospitais_n} ${pessoa.hospitais_n === 1 ? 'hospital' : 'hospitais'} sob responsabilidade`}
           </span>
-          <span className="vol-card-cta">{pessoa.sem_vinculo ? 'Definir área →' : 'Ver hospitais →'}</span>
+          <span className="vol-card-cta">
+            {porOperadora
+              ? (pessoa.sem_vinculo ? 'Definir operadoras →' : 'Ver operadoras →')
+              : (pessoa.sem_vinculo ? 'Definir área →' : 'Ver hospitais →')}
+          </span>
         </footer>
       </button>
       <MenuPessoa nome={pessoa.nome} podeDividir={podeDividir} onDividir={() => onDividir(pessoa.user_id)} />

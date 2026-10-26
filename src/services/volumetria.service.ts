@@ -24,6 +24,22 @@ export function desvincularPessoa(hospitalKey: string, userId: string): Promise<
   )
 }
 
+/** Dá uma operadora a um operacional (a área dele é por operadora). */
+export function vincularOperadora(operadoraKey: string, userId: string): Promise<{ ok: boolean }> {
+  return apiFetch(`/volumetria/operadora/${encodeURIComponent(operadoraKey)}/pessoas`, {
+    method: 'POST',
+    body: { user_id: userId },
+  })
+}
+
+/** Tira uma operadora de um operacional. */
+export function desvincularOperadora(operadoraKey: string, userId: string): Promise<{ ok: boolean }> {
+  return apiFetch(
+    `/volumetria/operadora/${encodeURIComponent(operadoraKey)}/pessoas/${encodeURIComponent(userId)}`,
+    { method: 'DELETE' },
+  )
+}
+
 /** Divide a carga de uma pessoa entre colegas do grupo por um período. */
 export function dividirCarga(corpo: VolumetriaDividirCorpo): Promise<{ ok: boolean; lote: string }> {
   return apiFetch('/volumetria/divisoes', { method: 'POST', body: corpo })

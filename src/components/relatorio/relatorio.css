@@ -13,7 +13,11 @@
    não colidam com o resto do sistema.
 
    O TEXTO e a ESTRUTURA de informação seguem os do documento, intocados: o que
-   muda aqui é só a aparência. */
+   muda aqui é só a aparência.
+
+   A Documentação técnica (components/documentacao) veste esta mesma folha, com
+   um complemento próprio em documentacao.css: mudar uma classe daqui muda as
+   duas telas. */
 
 .rel-doc{
   /* Hierarquia tipográfica da tela, derivada da escala do design-system. O

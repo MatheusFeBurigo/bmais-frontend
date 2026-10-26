@@ -173,6 +173,22 @@ export function hospitaisCobertos(g: VolumetriaGrupo): number {
   return keys.size
 }
 
+/** Operadoras com pelo menos um operacional (o grupo operacional responde
+ *  por operadora desde 08/10/2026). */
+export function operadorasCobertas(g: VolumetriaGrupo): number {
+  return (g.operadoras ?? []).filter((o) => o.responsaveis.length > 0).length
+}
+
+/** Nome da operadora pelo cadastro que veio no grupo; a key se não achar. */
+export function nomeOperadora(g: VolumetriaGrupo, key: string): string {
+  return g.operadoras?.find((o) => o.operadora_key === key)?.operadora_nome ?? key
+}
+
+/** "Bradesco, Itaú" — as operadoras da pessoa, para o cartão e o drawer. */
+export function operadorasDaPessoa(g: VolumetriaGrupo, p: VolumetriaPessoa): string {
+  return (p.operadoras ?? []).map((k) => nomeOperadora(g, k)).join(', ')
+}
+
 /** Frase dos limiares, para a legenda dizer o que cada cor significa. */
 export function descreverLimiares(g: VolumetriaGrupo): string {
   const l = g.parametros.limiares
@@ -196,10 +212,16 @@ export function hospitaisDivisiveis(p: VolumetriaPessoa): VolumetriaHospitalDaPe
   return p.hospitais.filter((h) => !h.temporario)
 }
 
-/** Quem pode receber: colegas do grupo COM área definida. Dar um hospital a
- *  quem não tem área a recortaria a ele, em vez de somar trabalho. */
+/** Quem pode receber: colegas do grupo COM área definida e do MESMO tipo de
+ *  área. Dar um hospital a quem não tem área a recortaria a ele, em vez de
+ *  somar trabalho; e entre operacional (por operadora) e coordenador (por
+ *  hospital) o backend recusa, porque o que um cede o outro não passa a ver. */
 export function colegasParaDividir(g: VolumetriaGrupo, origemId: string): VolumetriaPessoa[] {
-  return comVinculo(g).filter((p) => p.user_id !== origemId)
+  const origem = g.pessoas.find((p) => p.user_id === origemId)
+  return comVinculo(g).filter((p) => p.user_id !== origemId
+    && !!p.por_operadora === !!origem?.por_operadora
+    // Operacional só com par recebido não tem operadora própria: o backend recusa.
+    && (!p.por_operadora || (p.operadoras ?? []).length > 0))
 }
 
 /** Repartição sugerida: do hospital mais pesado ao mais leve, cada um vai para

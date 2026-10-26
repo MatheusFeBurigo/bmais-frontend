@@ -26,17 +26,22 @@ import DividirCarga from '../components/volumetria/DividirCarga'
 import DrawerPessoa from '../components/volumetria/DrawerPessoa'
 import GradePessoas from '../components/volumetria/GradePessoas'
 import HospitaisSemCobertura from '../components/volumetria/HospitaisSemCobertura'
+import OperadorasSemCobertura from '../components/volumetria/OperadorasSemCobertura'
 import ParametrosCarga from '../components/volumetria/ParametrosCarga'
 import { ConcluidasPorDia, EntreEquipes, ProdutividadePorPessoa } from '../components/volumetria/ProdutividadeCharts'
 import PedidosDesfazerAtualizacao from '../components/volumetria/PedidosDesfazerAtualizacao'
 import PorRegiao from '../components/volumetria/PorRegiao'
 import TempoPorTarefa from '../components/volumetria/TempoPorTarefa'
 import { localStyles } from '../components/volumetria/volumetria.styles'
-import { comVinculo, hospitaisCobertos, rotuloGrupo } from '../components/volumetria/volumetria.model'
+import {
+  comVinculo, hospitaisCobertos, operadorasCobertas, rotuloGrupo,
+} from '../components/volumetria/volumetria.model'
 
+// Desde 01/10/2026 todo hospital do cadastro deve censo, com ou sem paciente
+// internado: a demanda do operacional é o hospital com censo atrasado.
 const O_QUE_CONTA: Record<string, string> = {
   coordenador_tecnico: 'Sem relatório, aguardando visita, vencidos e a vencer',
-  coordenador_administrativo: 'Hospitais com paciente internado e sem censo',
+  coordenador_administrativo: 'Hospitais com censo atrasado',
 }
 
 export default function Volumetria() {
@@ -79,7 +84,11 @@ export default function Volumetria() {
   }
 
   const tecnico = grupo.role_operacional === 'tecnico'
-  const semCobertura = grupo.sem_cobertura.length
+  // O operacional responde por OPERADORA (08/10/2026): a cobertura e a
+  // responsabilidade do grupo dele se contam em operadoras, não em hospitais.
+  const opsSemCobertura = (grupo.operadoras_sem_cobertura ?? []).filter((o) => o.operadora_key)
+  const semCobertura = tecnico ? grupo.sem_cobertura.length : opsSemCobertura.length
+  const totalOperadoras = grupo.operadoras?.length ?? 0
   const sobrecarregados = pessoasComVinculo.filter((p) => p.nivel === 'sobrecarga').length
   const atencao = pessoasComVinculo.filter((p) => p.nivel === 'atencao').length
 
@@ -127,9 +136,9 @@ export default function Volumetria() {
           />
         ) : (
           <KpiCard
-            label="Hospitais sob responsabilidade"
-            value={hospitaisCobertos(grupo)}
-            meta="Com pelo menos um operacional vinculado"
+            label="Operadoras sob responsabilidade"
+            value={operadorasCobertas(grupo)}
+            meta={`De ${totalOperadoras} · ${hospitaisCobertos(grupo)} hospitais nelas`}
           />
         )}
         <KpiCard
@@ -139,10 +148,14 @@ export default function Volumetria() {
           meta={O_QUE_CONTA[grupo.papel] ?? 'Pendências em aberto'}
         />
         <KpiCard
-          label="Hospitais sem cobertura"
+          label={tecnico ? 'Hospitais sem cobertura' : 'Operadoras sem cobertura'}
           value={semCobertura}
           variant={semCobertura > 0 ? 'danger' : 'success'}
-          meta={semCobertura > 0 ? 'Com demanda e ninguém vinculado · clique para atribuir' : 'Todos com alguém'}
+          meta={semCobertura > 0
+            ? (tecnico
+              ? 'Com demanda e ninguém vinculado · clique para atribuir'
+              : `${grupo.sem_cobertura.length} hospitais com censo atrasado e ninguém · clique para atribuir`)
+            : 'Todos com alguém'}
           onClick={semCobertura > 0
             ? () => document.getElementById('vol-sem-cobertura')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
             : undefined}
@@ -226,8 +239,11 @@ export default function Volumetria() {
       {/* Bloco 4: quem responde por cada região */}
       <PorRegiao grupo={grupo} onAbrir={setSelecionadoId} />
 
-      {/* Bloco 5: hospitais sem cobertura (só quando houver) */}
-      <HospitaisSemCobertura grupo={grupo} onErro={setAviso} />
+      {/* Bloco 5: sem cobertura (só quando houver): hospitais no técnico,
+          operadoras no operacional, que é o que se atribui a ele. */}
+      {tecnico
+        ? <HospitaisSemCobertura grupo={grupo} onErro={setAviso} />
+        : <OperadorasSemCobertura grupo={grupo} onErro={setAviso} />}
 
       {/* Blocos 6 e 7: apoio, recolhidos */}
       <ComparativoCarga grupo={grupo} onAbrir={setSelecionadoId} />

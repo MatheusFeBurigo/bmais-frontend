@@ -306,6 +306,8 @@ export interface VolumetriaHospitalDaPessoa {
   internados?: number | null
   /** Só no grupo administrativo: há quantos dias o hospital está sem censo. */
   dias_sem_censo?: number | null
+  /** Só no grupo administrativo: operadoras com censo atrasado no hospital. */
+  operadoras?: string[]
   quebra: VolumetriaQuebra
   /** Quantas OUTRAS pessoas do grupo também cobrem este hospital. */
   compartilhado_com: number
@@ -382,6 +384,11 @@ export interface VolumetriaPessoa {
    *  definida", não "carrega tudo" — fica fora do gráfico e os indicadores
    *  abaixo vêm null. */
   sem_vinculo: boolean
+  /** Operacional: a área vem das operadoras (0053) e os hospitais são
+   *  derivados delas. Vincula-se operadora, não hospital. */
+  por_operadora?: boolean
+  /** Keys das operadoras do operacional. Vazio para quem é por hospital. */
+  operadoras?: string[]
   /** Casos na fila (contagem). */
   total_pendencias: number | null
   /** Tempo estimado da fila, em horas. */
@@ -421,8 +428,28 @@ export interface VolumetriaHospitalSemCobertura {
   internados?: number | null
   /** Só no grupo administrativo: há quantos dias o hospital está sem censo. */
   dias_sem_censo?: number | null
+  /** Só no grupo administrativo: operadoras com censo atrasado no hospital. */
+  operadoras?: string[]
   quebra: VolumetriaQuebra
   minutos_categoria: VolumetriaMinutosCategoria
+}
+
+/** Uma operadora do cadastro e quem do grupo operacional responde por ela. */
+export interface VolumetriaOperadoraDoGrupo {
+  operadora_key: string
+  operadora_nome: string
+  responsaveis: Array<{ user_id: string; nome: string }>
+}
+
+/** Operadora com censo atrasado em hospital que ninguém do grupo cobre. É o
+ *  que se atribui no grupo operacional. `operadora_key` null = hospitais sem
+ *  operadora conhecida, sem a quem atribuir. */
+export interface VolumetriaOperadoraSemCobertura {
+  operadora_key: string | null
+  operadora_nome: string | null
+  hospitais: Array<{ hospital_key: string; hospital_nome: string; dias_sem_censo: number | null }>
+  pendencias: number
+  horas: number
 }
 
 // Um grupo (técnico OU administrativo). `papel` identifica o grupo
@@ -440,6 +467,10 @@ export interface VolumetriaGrupo {
   pessoas: VolumetriaPessoa[]
   /** Pendência > 0 e nenhum vínculo explícito no grupo. Ordenado por horas desc. */
   sem_cobertura: VolumetriaHospitalSemCobertura[]
+  /** Grupo operacional: cada operadora e quem responde por ela. Vazio no técnico. */
+  operadoras?: VolumetriaOperadoraDoGrupo[]
+  /** Grupo operacional: `sem_cobertura` agrupado pela operadora a atribuir. */
+  operadoras_sem_cobertura?: VolumetriaOperadoraSemCobertura[]
   /** Divisões temporárias de carga do grupo, vigentes e agendadas. */
   divisoes?: VolumetriaDivisao[]
   /** Quem responde por cada região, com o peso da região. */

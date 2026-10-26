@@ -1,0 +1,109 @@
+/* Estilo da Documentação técnica (subrota de Progresso).
+
+   O documento veste a MESMA folha do Relatório da auditoria (relatorio.css,
+   escopada em `.rel-doc`): as duas são leituras de apoio da tela Progresso e
+   devem parecer a mesma coisa — capa, barra de seções, cartões e tabelas. Aqui
+   fica só o que a documentação tem e o relatório não: pastilha de método HTTP,
+   rota em fonte mono, filtro da referência de APIs e blocos de código.
+   Escopado em `.doc-tec`, que convive com `.rel-doc` no mesmo elemento. */
+
+/* ── código ─────────────────────────────────────────────────────────────── */
+.doc-tec code{
+  font-family:var(--font-mono);font-size:.92em;background:var(--surface-3);
+  padding:1px 5px;border-radius:var(--r-xs);color:var(--primary);
+  /* break-word, e não anywhere: `anywhere` reduz a largura mínima da célula e
+     a tabela estreitava a coluna até partir "application" no meio. */
+  overflow-wrap:break-word;
+}
+.doc-tec pre{
+  margin:0;background:var(--surface-3);border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:12px 14px;overflow-x:auto;font-size:var(--t-sm);line-height:1.6;
+}
+.doc-tec pre code{background:none;padding:0;color:var(--ink-2);overflow-wrap:normal}
+
+/* Listas de texto corrido dentro dos cartões. */
+.doc-tec .lista{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:var(--t-md)}
+.doc-tec .lista li::marker{color:var(--muted-2)}
+
+/* ── método HTTP: o badge do sistema, um tom por verbo ──────────────────── */
+.doc-tec .mt{
+  display:inline-block;min-width:54px;text-align:center;
+  font-family:var(--font-mono);font-size:10.5px;font-weight:700;letter-spacing:.04em;
+  padding:2px 6px;border-radius:5px;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+}
+.doc-tec .mt.GET{background:var(--info-bg);color:var(--info)}
+.doc-tec .mt.POST{background:var(--success-bg);color:var(--success-2)}
+.doc-tec .mt.PUT,.doc-tec .mt.PATCH{background:var(--caution-bg);color:var(--caution)}
+.doc-tec .mt.DELETE{background:var(--danger-bg);color:var(--danger-2)}
+
+/* ── referência de APIs ─────────────────────────────────────────────────── */
+.doc-tec .filtro{
+  display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px;
+  position:sticky;top:100px;z-index:5;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:12px 14px;box-shadow:var(--shadow-xs);
+}
+.doc-tec .filtro label{display:grid;gap:4px;min-width:0}
+.doc-tec .filtro .f-busca{flex:1 1 280px}
+.doc-tec .filtro .f-papel{flex:0 1 240px}
+.doc-tec .filtro .f-total{font-size:var(--t-sm);color:var(--muted);padding-bottom:8px;white-space:nowrap}
+
+.doc-tec .grupo{display:flex;flex-direction:column;gap:8px;scroll-margin-top:170px}
+.doc-tec .grupo-cab{display:flex;align-items:baseline;justify-content:space-between;gap:6px 14px;flex-wrap:wrap}
+.doc-tec .grupo-cab h3{font-size:var(--rel-h3)}
+.doc-tec .grupo-cab .arq{font-family:var(--font-mono);font-size:var(--t-xs);color:var(--muted)}
+.doc-tec .grupo>.cap{margin-top:-4px}
+
+.doc-tec .ep td{vertical-align:top}
+/* Larguras no cabeçalho, que é quem dimensiona a coluna: no `td` elas seguiriam
+   valendo no modo cartão do celular e estreitariam a rota. */
+.doc-tec .ep th.c-mt{width:66px}
+.doc-tec .ep th.c-rota{width:34%}
+.doc-tec .ep th.c-acesso{width:150px}
+.doc-tec .ep .rota{font-family:var(--font-mono);font-size:var(--t-sm);color:var(--ink);overflow-wrap:anywhere}
+.doc-tec .ep .det{display:block;margin-top:4px;font-size:var(--t-sm);color:var(--muted)}
+.doc-tec .ep .det b{font-weight:600;color:var(--ink-3)}
+.doc-tec .ep .acesso{font-size:var(--t-sm);font-weight:600;color:var(--ink-2);white-space:nowrap}
+.doc-tec .ep .acesso small{display:block;font-weight:400;color:var(--muted);white-space:normal;margin-top:2px}
+
+/* Ressalva da regra, sob o rótulo na tabela de guards. */
+.doc-tec .nota{display:block;margin-top:2px;font-size:var(--t-sm);color:var(--muted)}
+
+/* Chips dos papéis aceitos por um guard. */
+.doc-tec .papeis{display:flex;flex-wrap:wrap;gap:4px}
+.doc-tec .papel{
+  font-size:var(--t-xs);padding:1px 7px;border-radius:999px;
+  background:var(--surface-3);border:1px solid var(--border);color:var(--ink-3);white-space:nowrap;
+}
+
+/* Severidade dos pontos de atenção: reaproveita as tags do cartão (.card .tag). */
+.doc-tec .card .tag.alta{background:var(--danger-bg);color:var(--danger-2)}
+.doc-tec .card .tag.media{background:var(--warning-bg);color:var(--warning-2)}
+.doc-tec .card .tag.baixa{background:var(--surface-3);color:var(--muted)}
+.doc-tec .card.alta{border-left:3px solid var(--danger)}
+.doc-tec .card.media{border-left:3px solid var(--warning)}
+.doc-tec .card .onde{font-size:var(--t-sm);color:var(--muted)}
+
+.doc-tec .vazio{font-size:var(--t-md);color:var(--muted);padding:6px 2px}
+
+@media (max-width:900px){
+  .doc-tec .filtro{position:static}
+  /* Em tela estreita a tabela vira cartão por linha: quatro colunas de texto
+     longo num telefone só se leriam com rolagem lateral. */
+  .doc-tec .ep thead{display:none}
+  /* Tabela e corpo em bloco: com o `tr` em grid e a tabela ainda em layout de
+     tabela, a largura saía do texto inteiro numa linha e a página transbordava. */
+  .doc-tec .ep,.doc-tec .ep tbody{display:block}
+  .doc-tec .ep tbody tr{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:10px 12px;border-bottom:1px solid var(--border-soft)}
+  .doc-tec .ep tbody tr:last-child{border-bottom:0}
+  .doc-tec .ep tbody td{padding:0;border:0}
+  .doc-tec .ep tbody td.c-desc,.doc-tec .ep tbody td.c-acesso{grid-column:1/-1}
+}
+
+@media print{
+  .doc-tec .filtro{display:none!important}
+  .doc-tec .grupo{break-inside:auto}
+  .doc-tec .ep tr{break-inside:avoid}
+  .doc-tec pre{white-space:pre-wrap}
+}

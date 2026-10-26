@@ -1,15 +1,24 @@
 // Conteúdo dos módulos de introdução: o que é a plataforma e quem acessa o quê.
 // Transversais — valem para todos os papéis.
+import { useAuth } from '../../auth/AuthContext'
+import { ACOES_NO_PAINEL } from '../../lib/recursos'
 import { Callout, Key, Metric, Metrics, Nao, Sim, SoGestao, Tabela } from './blocos'
 import { useLeAlemDoMenu, useVeGestao } from './acessoAjuda'
+import { modulosVisiveis } from './catalogo'
 
 interface Props {
   irPara: (id: string) => void
 }
 
 export function ModuloVisao({ irPara }: Props) {
+  const { role } = useAuth()
+  // Módulo fora do índice do papel vira texto: o link abriria o primeiro módulo
+  // do índice (useAjudaNav), e o clique só voltaria ao topo desta página.
+  const legiveis = new Set(modulosVisiveis(role).map((m) => m.id))
   const Link = ({ para, children }: { para: string; children: string }) => (
-    <button type="button" className="aj-link" onClick={() => irPara(para)}>{children}</button>
+    legiveis.has(para)
+      ? <button type="button" className="aj-link" onClick={() => irPara(para)}>{children}</button>
+      : <>{children}</>
   )
   return (
     <>
@@ -42,15 +51,19 @@ export function ModuloVisao({ irPara }: Props) {
 
       <h3>Como o sistema é organizado</h3>
       <p>
-        As telas distribuem-se em áreas, conforme a organização apresentada no menu lateral. Cada
-        pessoa enxerga apenas as áreas compatíveis com o seu perfil de acesso, de modo que a lista
-        abaixo pode incluir telas que não estão no seu menu.
+        As telas distribuem-se nas áreas abaixo, as mesmas seções do índice desta documentação. O
+        menu lateral as agrupa de outro modo, em <strong>Painel</strong> e <strong>Sistema</strong>,
+        e algumas aparecem nele com outro nome, indicado entre parênteses. Cada pessoa enxerga
+        apenas as telas compatíveis com o seu perfil de acesso, de modo que a lista abaixo pode
+        incluir telas que não estão no seu menu; as que não têm módulo no seu índice aparecem sem
+        link.
       </p>
       <Tabela cabecalho={['Área', 'Telas', 'A que serve']} larguras={['150px', '210px']}>
         <tr>
           <Key>Operação</Key>
           <td>
-            <Link para="painel-operacional">Painel Operacional</Link>,{' '}
+            <Link para="painel-operacional">Painel Operacional</Link> (no menu,{' '}
+            <strong>Visão Geral</strong>),{' '}
             <Link para="ficha-do-paciente">Ficha do Paciente</Link>,{' '}
             <Link para="tarefas">Tarefas</Link>,{' '}
             <Link para="envio-de-censos">Envio de Censos</Link>
@@ -58,21 +71,24 @@ export function ModuloVisao({ irPara }: Props) {
           <td>O trabalho do dia a dia: receber os censos dos hospitais, saber quem precisa de
             visita e registrar o que foi auditado.</td>
         </tr>
-        <SoGestao>
-          <tr>
-            <Key>Gestão</Key>
-            <td>
-              <Link para="dashboard-da-diretoria">Dashboard da Diretoria</Link>,{' '}
-              <Link para="painel-do-gestor">Painel do Gestor</Link>
-            </td>
-            <td>O acompanhamento: nível de serviço por operadora, volume de alertas, fluxo de
-              entradas e altas e concentração da rede.</td>
-          </tr>
-        </SoGestao>
         <tr>
-          <Key>Coordenação</Key>
-          <td><Link para="distribuicao-de-tarefas">Distribuição de tarefas</Link></td>
-          <td>A carga de trabalho de cada pessoa da equipe e os hospitais que cada uma cobre.</td>
+          <Key>Gestão</Key>
+          <td>
+            <SoGestao>
+              <Link para="dashboard-da-diretoria">Dashboard da Diretoria</Link> (no menu,{' '}
+              <strong>Diretoria / KPIs</strong>),{' '}
+              <Link para="painel-do-gestor">Painel do Gestor</Link> (no menu,{' '}
+              <strong>Gestor / Fluxo</strong>),{' '}
+            </SoGestao>
+            <Link para="distribuicao-de-tarefas">Distribuição de tarefas</Link>
+          </td>
+          <td>
+            <SoGestao>
+              O acompanhamento: nível de serviço por operadora, volume de alertas, fluxo de
+              entradas e altas e concentração da rede.{' '}
+            </SoGestao>
+            A carga de trabalho de cada pessoa da equipe e a divisão do trabalho entre elas.
+          </td>
         </tr>
         <tr>
           <Key>Administração</Key>

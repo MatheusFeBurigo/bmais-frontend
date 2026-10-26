@@ -16,7 +16,7 @@ import {
   importDashboard, importDiretoria, importGestor,
   importEquipe, importConfiguracoes, importUpload,
   importKanban, importPaciente, importFormularioPorto, importImprimirRelatorio, importUsuarioForm, importLogs, importAjuda,
-  importProgresso, importVolumetria, importRelatorio, importPortalProfissional,
+  importProgresso, importVolumetria, importRelatorio, importDocumentacao, importPortalProfissional,
   importChamados,
 } from './routes'
 
@@ -40,6 +40,7 @@ const Chamados = lazy(importChamados)
 const Progresso = lazy(importProgresso)
 const Volumetria = lazy(importVolumetria)
 const Relatorio = lazy(importRelatorio)
+const DocumentacaoTecnica = lazy(importDocumentacao)
 const PortalProfissional = lazy(importPortalProfissional)
 
 function PageFallback() {
@@ -190,6 +191,12 @@ function ProtectedRoutes() {
         <Route
           path="/progresso/relatorio"
           element={<GatedRoute screen="progresso"><Relatorio /></GatedRoute>}
+        />
+        {/* Documentação técnica: a outra leitura de apoio de Progresso, ao lado
+            do relatório e sob o mesmo gate. */}
+        <Route
+          path="/progresso/documentacao"
+          element={<GatedRoute screen="progresso"><DocumentacaoTecnica /></GatedRoute>}
         />
         {/* Distribuição de tarefas (carga por pessoa): coordenadores + admin.
             O id técnico continua "volumetria" (screen, API, arquivos). */}

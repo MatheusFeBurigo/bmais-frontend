@@ -5,7 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../lib/queryKeys'
 import type { VolumetriaDividirCorpo, VolumetriaParametrosCorpo, VolumetriaPayload } from '../types/api'
 import {
-  cancelarDivisao, desvincularPessoa, dividirCarga, fetchVolumetria, restaurarParametros, salvarParametros, vincularPessoa,
+  cancelarDivisao, desvincularOperadora, desvincularPessoa, dividirCarga, fetchVolumetria, restaurarParametros,
+  salvarParametros, vincularOperadora, vincularPessoa,
   type GrupoVolumetria,
 } from '../services/volumetria.service'
 import { aplicarDivisao } from '../components/volumetria/volumetria.model'
@@ -73,6 +74,64 @@ export function useDesvincularVolumetria() {
   return useMutation({
     mutationFn: ({ hospitalKey, userId }: { hospitalKey: string; userId: string }) =>
       desvincularPessoa(hospitalKey, userId),
+    onSuccess: invalidar,
+  })
+}
+
+/** Otimista como `atribuirNoCache`: a operadora sai de "sem cobertura" (com os
+ *  hospitais dela) e entra no cartão da pessoa na hora. Os hospitais e a carga
+ *  que ela traz o refetch acerta: dependem do cadastro, que só o backend tem. */
+function darOperadoraNoCache(
+  dados: VolumetriaPayload, operadoraKey: string, userId: string,
+): VolumetriaPayload {
+  return {
+    ...dados,
+    grupos: dados.grupos.map((g) => {
+      const pessoa = g.pessoas.find((p) => p.user_id === userId)
+      if (!pessoa?.por_operadora) return g
+      const sai = g.operadoras_sem_cobertura?.find((o) => o.operadora_key === operadoraKey)
+      const cobertos = new Set(sai?.hospitais.map((h) => h.hospital_key) ?? [])
+      return {
+        ...g,
+        sem_cobertura: g.sem_cobertura.filter((h) => !cobertos.has(h.hospital_key)),
+        operadoras_sem_cobertura: g.operadoras_sem_cobertura?.filter((o) => o.operadora_key !== operadoraKey),
+        operadoras: g.operadoras?.map((o) => o.operadora_key !== operadoraKey
+          || o.responsaveis.some((r) => r.user_id === userId) ? o
+          : { ...o, responsaveis: [...o.responsaveis, { user_id: userId, nome: pessoa.nome }] }),
+        pessoas: g.pessoas.map((p) => p.user_id !== userId ? p : {
+          ...p,
+          sem_vinculo: false,
+          operadoras: [...new Set([...(p.operadoras ?? []), operadoraKey])],
+        }),
+      }
+    }),
+  }
+}
+
+export function useVincularOperadoraVolumetria() {
+  const qc = useQueryClient()
+  const invalidar = useInvalidarVolumetria()
+  return useMutation({
+    mutationFn: ({ operadoraKey, userId }: { operadoraKey: string; userId: string }) =>
+      vincularOperadora(operadoraKey, userId),
+    onMutate: async ({ operadoraKey, userId }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.volumetria() })
+      const antes = qc.getQueryData<VolumetriaPayload>(queryKeys.volumetria())
+      if (antes) qc.setQueryData(queryKeys.volumetria(), darOperadoraNoCache(antes, operadoraKey, userId))
+      return { antes }
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.antes) qc.setQueryData(queryKeys.volumetria(), ctx.antes)
+    },
+    onSettled: invalidar,
+  })
+}
+
+export function useDesvincularOperadoraVolumetria() {
+  const invalidar = useInvalidarVolumetria()
+  return useMutation({
+    mutationFn: ({ operadoraKey, userId }: { operadoraKey: string; userId: string }) =>
+      desvincularOperadora(operadoraKey, userId),
     onSuccess: invalidar,
   })
 }

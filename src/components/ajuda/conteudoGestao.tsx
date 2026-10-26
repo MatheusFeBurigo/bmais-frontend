@@ -453,16 +453,19 @@ export function ModuloVolumetria() {
 
       <h3>Como a carga é montada</h3>
       <p>
-        Uma pessoa recebe hospitais, e <strong>tudo o que chega nesses hospitais vira demanda
-        dela</strong>. O que conta como demanda muda conforme o grupo, e são exatamente as colunas
-        que a pessoa vê no próprio quadro de Tarefas.
+        O técnico recebe hospitais, e <strong>tudo o que chega nesses hospitais vira demanda
+        dele</strong>. O operacional recebe <strong>operadoras</strong>: ele cobra o censo de todo
+        hospital em que alguma operadora dele está, e esses hospitais são a área dele. O que conta
+        como demanda muda conforme o grupo, e são exatamente as colunas que a pessoa vê no próprio
+        quadro de Tarefas.
       </p>
       <Tabela cabecalho={['Grupo', 'O que conta como demanda']} larguras={['175px']}>
         <tr><Key>Técnicos</Key>
           <td>Pacientes sem relatório, aguardando visita, com visita atrasada, com relatório vencido
             e próximos de vencer.</td></tr>
         <tr><Key>Operacionais</Key>
-          <td>Hospitais com paciente internado e sem censo recebido.</td></tr>
+          <td>Hospitais das operadoras dele com censo atrasado. Todo hospital do cadastro deve
+            censo, com ou sem paciente internado.</td></tr>
       </Tabela>
       <p>
         As demandas são convertidas em <strong>horas estimadas</strong> e comparadas com a
@@ -495,13 +498,14 @@ export function ModuloVolumetria() {
         <tr><Key>Pacientes sob responsabilidade</Key>
           <td>No grupo de técnicos: internados nos hospitais da equipe, com quantos já estão em
             monitoramento.</td></tr>
-        <tr><Key>Hospitais sob responsabilidade</Key>
-          <td>No grupo de administrativos: unidades com pelo menos uma pessoa vinculada.</td></tr>
+        <tr><Key>Operadoras sob responsabilidade</Key>
+          <td>No grupo de operacionais: operadoras com pelo menos um operacional, e quantos
+            hospitais há nelas.</td></tr>
         <tr><Key>Demandas abertas</Key>
           <td>Total de pendências do grupo, com a indicação do que está sendo contado.</td></tr>
-        <tr><Key>Hospitais sem cobertura</Key>
-          <td>Unidades com demanda e ninguém responsável. Clicar leva direto à lista delas, para a
-            atribuição ser feita na hora.</td></tr>
+        <tr><Key>Hospitais ou operadoras sem cobertura</Key>
+          <td>Com demanda e ninguém responsável: hospitais no grupo de técnicos, operadoras no de
+            operacionais. Clicar leva direto à lista, para a atribuição ser feita na hora.</td></tr>
       </Tabela>
 
       <h3>Os blocos da tela</h3>
@@ -519,8 +523,8 @@ export function ModuloVolumetria() {
           de tarefa, numa barra única. A quebra dos cartões conta casos; esta conta horas.</li>
         <li><strong>Por região</strong>: uma linha por região, com quem responde por ela e o que
           há sob a responsabilidade dela. Clicar num nome abre o painel daquela pessoa.</li>
-        <li><strong>Hospitais sem cobertura</strong>, que só aparece quando há alguma unidade nessa
-          condição.</li>
+        <li><strong>Hospitais sem cobertura</strong> (técnicos) ou <strong>Operadoras sem
+          cobertura</strong> (operacionais), que só aparece quando há alguma nessa condição.</li>
         <li><strong>Comparativo</strong>, gráfico da carga pessoa a pessoa, recolhido por padrão.</li>
         <li><strong>Parâmetros de carga</strong>, também recolhido, descrito adiante.</li>
       </ol>
@@ -647,7 +651,8 @@ export function ModuloVolumetria() {
       </Callout>
 
       <Callout tipo="caution" titulo="Pessoa sem área definida">
-        Quem não tem hospitais vinculados enxerga <strong>toda a rede</strong>, e por isso não entra
+        Quem não tem hospitais vinculados (no operacional, operadoras) enxerga <strong>toda a
+        rede</strong>, e por isso não entra
         no cálculo de carga, no gráfico nem nas contagens do grupo: não há como medir a fila de quem
         não tem área delimitada. O cartão dessa pessoa aparece esmaecido, no fim da lista, e a
         convida a definir a área. Pelo mesmo motivo, <strong>ela não conta como cobertura</strong>:
@@ -660,6 +665,12 @@ export function ModuloVolumetria() {
         número de casos ou há quantos dias estão sem censo. Cada linha traz um seletor para
         atribuir o hospital a alguém do grupo ali mesmo. O seletor mostra só os nomes: a carga de
         cada um está nos cartões da equipe.
+      </p>
+      <p>
+        No grupo operacional a lista é de <strong>operadoras</strong>: cada linha traz a operadora
+        com censo atrasado e os hospitais dela que ninguém cobra. Atribuir a operadora a um
+        operacional cobre todos esses hospitais de uma vez. No cartão do operacional, as
+        operadoras também são o que se adiciona e remove; os hospitais aparecem só para consulta.
       </p>
 
       <h3>Parâmetros de carga</h3>

@@ -30,12 +30,17 @@ import {
   type ModuloResolvido,
 } from '../hooks/useProgresso'
 import type { DataEtapa } from '../services/progresso.service'
-import { importRelatorio } from '../routes'
+import { importDocumentacao, importRelatorio } from '../routes'
 import '../components/progresso/progresso.css'
 
 // Folha de documento com linhas de texto: o relatório da auditoria.
 const IconDocumento = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M9 13h6" /><path d="M9 17h6" /></svg>
+)
+
+// Sinais de código: a documentação técnica (arquitetura e APIs).
+const IconCodigo = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m16 18 6-6-6-6" /><path d="m8 6-6 6 6 6" /></svg>
 )
 
 // Tom de cada grupo. Vale para a pastilha e para o contador do topo — NÃO para
@@ -328,17 +333,26 @@ export default function Progresso() {
   // O relatório da auditoria é o plano de onde estes módulos saíram: quem
   // acompanha o avanço costuma querer, em seguida, o porquê da ordem e o que
   // cada bloco entrega. Fica como ação da tela, e não como item de menu, porque
-  // é leitura de apoio ao quadro — se abre a partir daqui e volta para cá.
+  // é leitura de apoio ao quadro — se abre a partir daqui e volta para cá. A
+  // documentação técnica entra pelo mesmo caminho: é o "como o sistema é feito"
+  // ao lado do "o que ele entrega".
   usePageHeader(useMemo(() => ({
     title: 'Progresso',
     subtitle: 'Avanço dos módulos do projeto',
     actions: (
       // onMouseEnter aquece o chunk do documento: ao clicar, ele já chegou.
-      <Link to="/progresso/relatorio" className="btn btn-outline btn-sm"
-        onMouseEnter={() => { void importRelatorio() }}>
-        <IconDocumento />
-        Relatório da auditoria
-      </Link>
+      <>
+        <Link to="/progresso/documentacao" className="btn btn-outline btn-sm"
+          onMouseEnter={() => { void importDocumentacao() }}>
+          <IconCodigo />
+          Documentação técnica
+        </Link>
+        <Link to="/progresso/relatorio" className="btn btn-outline btn-sm"
+          onMouseEnter={() => { void importRelatorio() }}>
+          <IconDocumento />
+          Relatório da auditoria
+        </Link>
+      </>
     ),
   }), []))
 
