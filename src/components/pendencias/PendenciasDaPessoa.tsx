@@ -34,7 +34,7 @@ export function PendenciasDaPessoa({ pessoa, onAviso }: {
       {lista.data && !itens.length && <p className="pd-vazio">Nenhuma pendência aberta.</p>}
       {itens.length > 0 && (
         <div className="pd-lista" style={{ marginTop: 8 }}>
-          {itens.map((p) => <CardPendencia key={p.id} p={p} mostrar="de" onAviso={onAviso} sobreposta />)}
+          {itens.map((p) => <CardPendencia key={p.id} p={p} onAviso={onAviso} sobreposta />)}
         </div>
       )}
       {criando && (

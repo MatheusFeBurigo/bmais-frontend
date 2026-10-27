@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import { usePageHeaderValue } from './PageHeader'
 import { LoadingState } from './ui'
+import { AvisoPendencias } from './pendencias/AvisoPendencias'
 
 // Layout persistente da área autenticada: Sidebar + topbar montam UMA vez e
 // permanecem montados entre navegações. Só o miolo (<Outlet/>) troca por rota,
@@ -45,6 +46,8 @@ export default function AppLayout() {
           </Suspense>
         </div>
       </main>
+      {/* Pendência nova para quem está logado: avisa em qualquer tela. */}
+      <AvisoPendencias />
     </div>
   )
 }

@@ -1921,12 +1921,29 @@ export interface Pendencia {
   /** O que quem está vendo pode fazer com ela (calculado no backend). */
   pode_concluir: boolean
   pode_excluir: boolean
+  // Situação (27/10/2026, migration 0059). Opcionais: um backend anterior não
+  // os manda, e aí a pendência é lida como pendente e sem as ações novas.
+  situacao?: SituacaoPendencia
+  /** Para quem está olhando: recebeu, pediu, ou vê como supervisão. */
+  relacao?: 'recebida' | 'pedida' | 'equipe'
+  aguardando_em?: string | null
+  concluida_em?: string | null
+  concluida_por_nome?: string | null
+  /** Pendente ⇄ aguardando (enquanto aberta). */
+  pode_mover?: boolean
+  /** Resolvida → pendente. */
+  pode_reabrir?: boolean
 }
 
-/** GET /api/pendencias: as que o usuário recebeu e as que ele pediu a outros. */
+export type SituacaoPendencia = 'pendente' | 'aguardando' | 'resolvida'
+
+/** GET /api/pendencias: as abertas que o usuário recebeu e as que ele pediu a
+ *  outros, e as resolvidas dos últimos 30 dias das duas origens. */
 export interface PendenciasMinhas {
   para_mim: Pendencia[]
   pedidas: Pendencia[]
+  /** Ausente num backend anterior à 0059. */
+  resolvidas?: Pendencia[]
 }
 
 /** Quem pode receber uma pendência de quem pede (GET /api/pendencias/equipe). */

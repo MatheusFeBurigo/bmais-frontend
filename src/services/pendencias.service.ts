@@ -29,3 +29,20 @@ export function concluirPendencia(id: number): Promise<unknown> {
 export function excluirPendencia(id: number): Promise<unknown> {
   return apiFetch(`/pendencias/${id}`, { method: 'DELETE' })
 }
+
+/** Movimentos da situação (0059): pendente → aguardando, de volta, e reabrir a resolvida. */
+export type MovimentoPendencia = 'aguardando' | 'pendente' | 'reabrir'
+
+export function moverPendencia(id: number, para: MovimentoPendencia): Promise<unknown> {
+  return apiFetch(`/pendencias/${id}/${para}`, { method: 'POST' })
+}
+
+/** As recebidas ainda não vistas: o aviso de pendência nova. */
+export function fetchPendenciasNovas(): Promise<{ pendencias: Pendencia[] }> {
+  return apiFetch('/pendencias/novas')
+}
+
+/** Quem abriu a aba Pendências viu o que recebeu. */
+export function marcarPendenciasVistas(): Promise<{ ok: boolean; vistas: number }> {
+  return apiFetch('/pendencias/vistas', { method: 'POST' })
+}

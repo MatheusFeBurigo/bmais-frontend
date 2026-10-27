@@ -3,7 +3,8 @@
 //
 // Reusam o que é puro na tela real: os indicadores (KpiCard), a grade de
 // cartões (GradePessoas), a quebra de demandas, a barra de tempo por tarefa, o
-// bloco por região e a lista de hospitais sem cobertura. O painel da pessoa é
+// bloco por região, a lista de hospitais sem cobertura e os cards de pendência
+// (CartaoPendencia). O painel da pessoa é
 // redesenhado aqui com as mesmas classes: o real busca a lista de hospitais e
 // trava a rolagem da página ao abrir, e o bloco de parâmetros real abre
 // recolhido, sem como mostrar os campos.
@@ -23,11 +24,12 @@ import PorRegiao from '../volumetria/PorRegiao'
 import QuebraDemandas from '../volumetria/QuebraDemandas'
 import TempoPorTarefa from '../volumetria/TempoPorTarefa'
 import { dividirStyles, localStyles as volumetriaStyles } from '../volumetria/volumetria.styles'
-import { NIVEL_VAR, fmtDiaMes, fmtDias, fmtHoras, iniciais, linhasQuebra } from '../volumetria/volumetria.model'
+import { NIVEL_VAR, fmtDias, fmtHoras, iniciais, linhasQuebra } from '../volumetria/volumetria.model'
 import { estilosPendencias } from '../pendencias/pendencias.styles'
 import {
   BEATRIZ, GRUPO, GRUPO_DIVIDIDO, HOSPITAIS_DA_JULIANA, JULIANA, MARCOS, PENDENCIAS_DA_JULIANA, PESSOAS,
 } from './dadosDistribuicao'
+import { CartoesPendencias } from './exemplosPendencias'
 import { Marcado, ModalReplica } from './replica'
 import { Topo } from './exemplosOperacao'
 
@@ -237,8 +239,8 @@ export function ReplicaPainelPessoa({ marcas = {} }: {
               <TempoPorTarefa role="tecnico" minutosCategoria={p.minutos_categoria} titulo="Onde o tempo está indo" />
             </Marcado>
 
-            {/* Pendências: a seção do painel real (PendenciasDaPessoa), redesenhada
-                com as mesmas classes para os botões não gravarem nada. */}
+            {/* Pendências: o cabeçalho da seção do painel real (PendenciasDaPessoa)
+                redesenhado, porque o real busca a lista; os cards são os reais. */}
             <div style={{ marginTop: 16 }}>
               <style>{estilosPendencias}</style>
               <div className="pd-cab">
@@ -246,23 +248,8 @@ export function ReplicaPainelPessoa({ marcas = {} }: {
                 <span className="pd-cab-n">{PENDENCIAS_DA_JULIANA.length} abertas</span>
                 <span className="btn btn-outline btn-sm">Nova pendência</span>
               </div>
-              <div className="pd-lista" style={{ marginTop: 8 }}>
-                {PENDENCIAS_DA_JULIANA.map((pd) => (
-                  <article key={pd.id} className={`pd-card${pd.vencida ? ' pd-vencida' : ''}`}>
-                    <div className="pd-titulo">{pd.titulo}</div>
-                    {pd.paciente && <div className="pd-meta"><span>Paciente: {pd.paciente}</span></div>}
-                    <div className="pd-meta">
-                      <span>Pedida por {pd.criado_por_nome}</span>
-                      {pd.prazo && (pd.vencida
-                        ? <span className="pd-tag pd-tag-vencida">Venceu {fmtDiaMes(pd.prazo)}</span>
-                        : <span className="pd-tag pd-tag-prazo">Prazo {fmtDiaMes(pd.prazo)}</span>)}
-                    </div>
-                    <div className="pd-acoes">
-                      <span className="btn btn-ghost btn-sm">Excluir</span>
-                      <span className="btn btn-outline btn-sm pd-concluir">Concluir</span>
-                    </div>
-                  </article>
-                ))}
+              <div style={{ marginTop: 8 }}>
+                <CartoesPendencias pendencias={PENDENCIAS_DA_JULIANA} />
               </div>
             </div>
 

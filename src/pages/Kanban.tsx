@@ -4,7 +4,7 @@ import type { KanbanTarefa } from '../types/api'
 import type { CensoAlvo } from '../services/kanban.service'
 import { usePageHeader } from '../components/PageHeader'
 import { useAuth } from '../auth/AuthContext'
-import { ehSomenteLeitura, podeVer, podeVerFichaPaciente } from '../auth/permissions'
+import { ehSomenteLeitura, podeExecutar, podeVer, podeVerFichaPaciente } from '../auth/permissions'
 import { ACOES_NO_PAINEL } from '../lib/recursos'
 import { LoadingState } from '../components/ui'
 import PacienteDrawer from '../components/PacienteDrawer'
@@ -17,7 +17,8 @@ import {
 import { usePrefetchInternacao } from '../hooks/useInternacao'
 import { localStyles } from '../components/kanban/kanban.styles'
 import { KanbanCard } from '../components/kanban/KanbanCard'
-import { PainelPendencias } from '../components/pendencias/PainelPendencias'
+import { QuadroPendencias } from '../components/pendencias/QuadroPendencias'
+import { useMinhasPendencias } from '../hooks/usePendencias'
 import { KanbanFiltros } from '../components/kanban/KanbanFiltros'
 import { ColunaInfo } from '../components/kanban/ColunaInfo'
 import CensoDrawer from '../components/kanban/CensoDrawer'
@@ -47,7 +48,12 @@ import {
 // A coluna "Em prorrogação" (01/10/2026) SAIU em 12/10/2026, a pedido do
 // usuário: quem está prorrogado se acha pelo chip do Painel Operacional, e
 // pausar/retomar ficou na ficha do paciente.
-type Quadro = 'pacientes' | 'censos'
+//
+// A aba Pendências (27/10/2026) é a terceira: as pendências avulsas que o
+// gestor e os coordenadores pedem, num quadro próprio (QuadroPendencias). Ela
+// não vem do payload do quadro e não usa a barra de filtros dele.
+type Quadro = 'pacientes' | 'censos' | 'pendencias'
+const QUADROS: readonly Quadro[] = ['pacientes', 'censos', 'pendencias']
 
 // Colunas de censo que não são tarefa: o hospital está em dia. Ficam no quadro
 // (é o retrato de quem mandou), mas não entram no "N tarefas pendentes".
@@ -118,17 +124,43 @@ export default function Kanban() {
   const [recorte, setRecorte] = useState<Recorte>({
     busca: '', chips: [], hospital: '', ordem: 'prioridade', operadora: '', atraso: '', ordemCenso: 'padrao',
   })
-  const [quadroEscolhido, setQuadro] = useState<Quadro | null>(null)
+  // A aba pode vir no endereço (`?aba=pendencias`, do aviso de pendência nova).
+  // `location.key` muda a cada navegação: o mesmo link, clicado de novo já em
+  // Tarefas, volta a escolher a aba.
+  const abaUrl = new URLSearchParams(location.search).get('aba') as Quadro | null
+  const [quadroEscolhido, setQuadro] = useState<Quadro | null>(
+    abaUrl && QUADROS.includes(abaUrl) ? abaUrl : null)
+  useEffect(() => {
+    if (abaUrl && QUADROS.includes(abaUrl)) setQuadro(abaUrl)
+  }, [abaUrl, location.key])
+  function escolherQuadro(q: Quadro) {
+    setQuadro(q)
+    // O endereço acompanha a aba: um F5 continua nela, e o aviso de pendência
+    // nova sabe quando a aba Pendências está aberta.
+    navigate(q === 'pendencias' ? '/tarefas?aba=pendencias' : '/tarefas', { replace: true })
+  }
+
+  const pendenciasAvulsas = useMinhasPendencias()
+  const avulsas = pendenciasAvulsas.data
+  const abertasAvulsas = (avulsas?.para_mim.length ?? 0) + (avulsas?.pedidas.length ?? 0)
+  // A aba Pendências aparece para quem pode pedir e para quem tem alguma.
+  const mostrarPendencias = podeExecutar(role, 'criarPendencia')
+    || abertasAvulsas > 0 || (avulsas?.resolvidas?.length ?? 0) > 0
 
   const ehTecnico = data?.papel === 'tecnico'
   const ehAdmin = data?.papel === 'admin'
   // As abas de cada papel: técnico só pacientes; administrativo, censos e os
-  // pacientes da aprovação; os demais, os dois.
-  const quadros: Quadro[] = ehTecnico ? ['pacientes']
-    : ehAdmin ? ['pacientes', 'censos'] : ['censos', 'pacientes']
+  // pacientes da aprovação; os demais, os dois. Pendências por último, para
+  // quem a tem.
+  const quadros: Quadro[] = [
+    ...(ehTecnico ? ['pacientes'] as const : ehAdmin ? ['pacientes', 'censos'] as const : ['censos', 'pacientes'] as const),
+    ...(mostrarPendencias ? ['pendencias'] as const : []),
+  ]
   const quadro: Quadro = quadro_(quadroEscolhido, quadros)
-  const colunas: ColunaKanban[] = (quadro === 'censos' ? COLUNAS_CENSO : COLUNAS_PACIENTE)
-    .filter((c) => !data?.tarefas || c.key in data.tarefas)
+  const naPendencias = quadro === 'pendencias'
+  const colunas: ColunaKanban[] = naPendencias ? []
+    : (quadro === 'censos' ? COLUNAS_CENSO : COLUNAS_PACIENTE)
+      .filter((c) => !data?.tarefas || c.key in data.tarefas)
   // Os chips clínicos não se aplicam a card de hospital: um chip ligado no
   // quadro de pacientes esvaziaria o de censos ao trocar de aba.
   // Operadora e atraso são o inverso: só existem no de censos.
@@ -293,24 +325,26 @@ export default function Kanban() {
         </div>
       )}
 
-      {/* Pendências avulsas (21/10/2026): o que o gestor ou o coordenador pediu.
-          Fora das colunas, que são as demandas do censo. */}
-      {data && <PainelPendencias onAviso={setToast} />}
-
       {tarefasRaw && quadros.length > 1 && (
         <div style={{ marginBottom: 12 }}>
           <Tabs
             tabs={quadros.map((q) => (q === 'pacientes'
               ? { key: q, label: 'Pacientes', count: contarQuadro(COLUNAS_PACIENTE) }
-              : { key: q, label: 'Censos', count: contarQuadro(COLUNAS_CENSO) }))}
+              : q === 'censos'
+                ? { key: q, label: 'Censos', count: contarQuadro(COLUNAS_CENSO) }
+                // As abertas (pendentes e aguardando), recebidas e pedidas.
+                : { key: q, label: 'Pendências', count: abertasAvulsas }))}
             active={quadro}
-            onChange={(k) => setQuadro(k as Quadro)}
+            onChange={(k) => escolherQuadro(k as Quadro)}
           />
         </div>
       )}
 
+      {/* Pendências avulsas (27/10/2026): aba própria, com as três situações. */}
+      {data && naPendencias && <QuadroPendencias onAviso={setToast} />}
+
       {/* Barra de priorização: busca, chips de urgência, hospital e ordenação. */}
-      {tarefasRaw && (
+      {tarefasRaw && !naPendencias && (
         <KanbanFiltros
           censos={quadro === 'censos'}
           operadoras={operadorasCenso}
@@ -324,7 +358,7 @@ export default function Kanban() {
         />
       )}
 
-      {tarefas && total === 0 && totalGeral > 0 && (
+      {tarefas && !naPendencias && total === 0 && totalGeral > 0 && (
         <div className="empty-state">
           Nenhum card corresponde aos filtros atuais.{' '}
           <button
@@ -337,7 +371,7 @@ export default function Kanban() {
         </div>
       )}
 
-      {tarefas && (
+      {tarefas && !naPendencias && (
         <div
           className={`kb-board${atualizando ? ' atualizando' : ''}`}
           // minmax(N, 1fr): as colunas dividem a largura por igual e param de

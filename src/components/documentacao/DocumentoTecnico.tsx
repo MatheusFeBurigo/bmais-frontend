@@ -17,7 +17,7 @@ import { ACESSOS, GRUPOS_API, type Acesso, type Endpoint, type RegraAcesso } fro
 import '../relatorio/relatorio.css'
 import './documentacao.css'
 
-const LEVANTADO_EM = '26 de outubro de 2026'
+const LEVANTADO_EM = '27 de outubro de 2026'
 
 const SECOES: [id: string, titulo: string][] = [
   ['visao', 'Visão geral'],
@@ -207,7 +207,7 @@ const ACHADOS: Achado[] = [
   {
     nivel: 'media',
     titulo: 'A suíte de testes não aponta regressão',
-    texto: <>Em {LEVANTADO_EM}: 1.796 testes passam, 715 falham e 92 são ignorados. As falhas são de ambiente, de repositórios falsos que não acompanharam o código (por exemplo, sem <code>listar_operadoras</code>), não de comportamento quebrado. Enquanto o número for esse, uma falha nova se perde entre as antigas.</>,
+    texto: <>Em {LEVANTADO_EM}: 1.827 testes passam, 714 falham e 92 são ignorados. As falhas são de ambiente, de repositórios falsos que não acompanharam o código (por exemplo, sem <code>listar_operadoras</code>), não de comportamento quebrado. Enquanto o número for esse, uma falha nova se perde entre as antigas.</>,
     onde: 'bmais-backend/tests',
   },
   {

@@ -79,16 +79,18 @@ export const RAFAEL: VolumetriaPessoa = {
 export const PESSOAS = [JULIANA, MARCOS, BEATRIZ, RAFAEL]
 
 /** As pendências abertas de Juliana, vistas por quem as pediu: Marcos, o
- *  coordenador. Uma já passou do prazo. */
+ *  coordenador. Uma já passou do prazo; a outra espera um retorno de fora. */
 export const PENDENCIAS_DA_JULIANA: Pendencia[] = [
   { id: 1, titulo: 'Responder o e-mail urgente da CarePlus sobre a UTI', descricao: null,
     paciente: null, prazo: '2026-09-25', vencida: true, responsavel: 'juliana',
     responsavel_nome: 'Juliana Prado', criado_por_nome: 'Marcos Tavares', criado_em: '2026-09-23T10:00:00Z',
-    pode_concluir: true, pode_excluir: true },
+    situacao: 'pendente', relacao: 'pedida',
+    pode_concluir: true, pode_excluir: true, pode_mover: true, pode_reabrir: false },
   { id: 2, titulo: 'Olhar a evolução antes da visita de sexta', descricao: null,
     paciente: 'Helena Duarte', prazo: '2026-09-29', vencida: false, responsavel: 'juliana',
     responsavel_nome: 'Juliana Prado', criado_por_nome: 'Marcos Tavares', criado_em: '2026-09-25T15:30:00Z',
-    pode_concluir: true, pode_excluir: true },
+    situacao: 'aguardando', relacao: 'pedida', aguardando_em: '2026-09-26T12:00:00Z',
+    pode_concluir: true, pode_excluir: true, pode_mover: true, pode_reabrir: false },
 ]
 
 /** Entregas dos últimos 30 dias até 26/09/2026: dia útil entre 3 e 9, fim de

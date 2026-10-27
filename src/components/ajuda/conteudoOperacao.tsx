@@ -1,9 +1,12 @@
 // Conteúdo dos módulos da área de Operação: o trabalho do dia a dia.
 // Cada módulo declara no catálogo a tela que documenta, e só chega a quem
 // acessa essa tela.
+import { useAuth } from '../../auth/AuthContext'
+import { podeExecutar } from '../../auth/permissions'
 import { Callout, Chip, Key, Metric, Metrics, Passo, Passos, SoGestao, Tabela } from './blocos'
 import { ComoFazer, Tela } from './replica'
 import { ACOES_NO_PAINEL, NEGOCIACAO_NO_RELATORIO } from '../../lib/recursos'
+import { ReplicaAvisoPendencia, ReplicaNovaPendencia, ReplicaQuadroPendencias } from './exemplosPendencias'
 import {
   ReplicaAdicionarPaciente, ReplicaCidsPaciente, ReplicaCobranca, ReplicaConferencia, ReplicaDadosPaciente,
   ReplicaFichaRapida, ReplicaFichaRelatorioPendente, ReplicaFormularioEnvio, ReplicaModalAlta,
@@ -106,7 +109,7 @@ export function ModuloOperacional({ irPara }: Props) {
         <tr><Key>Operadora</Key><td>Recorta tudo para uma operadora, ou consolida todas. Também se escolhe pela lista sob <strong>Visão Geral</strong>, no menu. Com uma aberta, <strong>Ver todas as operadoras</strong> volta ao consolidado.</td></tr>
         <tr><Key>Hospital</Key><td>Restringe a uma unidade. Cada opção já mostra quantos internados e quantos alertas ela tem. Na visão consolidada, os hospitais aparecem agrupados por operadora. <strong>Limpar filtro</strong> volta a todos.</td></tr>
         <tr><Key>Período</Key><td><strong>Internação de</strong> e <strong>até</strong>: recorta a lista pela data de internação. Na lista de altas vira <strong>Alta de</strong> e recorta pela data da alta. Digite a data ou escolha no calendário; <strong>Limpar datas</strong> tira o recorte.</td></tr>
-        <tr><Key>Busca</Key><td>A lupa, no fim dos filtros rápidos, abre o campo de busca. Procura por nome do segurado, número de atendimento e senha de autorização, entre os internados e também entre as altas (sem precisar ligar o filtro <strong>Altas</strong>). Esc limpa e fecha.</td></tr>
+        <tr><Key>Busca</Key><td>A lupa, no fim dos filtros rápidos, abre o campo de busca. Procura por nome do segurado, número de atendimento e senha de autorização, entre os internados e também entre as altas (sem precisar ligar o filtro <strong>Altas</strong>). Aberta, ocupa o espaço que sobra na linha dos filtros. Esc limpa e fecha; com o campo vazio, um novo clique na lupa também fecha.</td></tr>
         <tr><Key>UTI / CTI</Key><td>Mantém apenas leitos de terapia intensiva.</td></tr>
         <tr><Key>Longa permanência</Key><td>Escolha a partir de quantos dias de internação: 3, 7, 10, 15 ou 30. O chip fica marcado com o corte escolhido. Clique nele para trocar, ou no x para tirar o filtro. Na lista de altas, conta os dias até a alta.</td></tr>
         <tr><Key>Prorrogados</Key><td>Mantém apenas os internados com prorrogação aprovada que ainda não terminou, inclusive as pausadas. Quem teve a prorrogação encerrada sai do filtro. Não aparece na lista de altas.</td></tr>
@@ -491,14 +494,17 @@ export function ModuloPaciente({ irPara }: Props) {
 }
 
 export function ModuloKanban({ irPara }: Props) {
+  // Pedir pendência é do gestor, dos coordenadores e do admin: os demais leem
+  // só como receber e resolver.
+  const podePedir = podeExecutar(useAuth().role, 'criarPendencia')
   return (
     <>
       <h3>Objetivo</h3>
       <p>
         Reunir as pendências da equipe em um quadro único, separadas por tipo: pacientes que
         precisam de relatório, visitas já marcadas, visitas cujo horário passou, relatórios
-        aguardando aprovação e hospitais que não enviaram o censo. No topo ficam ainda as
-        pendências que o gestor ou um coordenador pediu a alguém da equipe.
+        aguardando aprovação e hospitais que não enviaram o censo. A aba Pendências reúne ainda
+        o que o gestor ou um coordenador pediu a alguém da equipe.
       </p>
 
       <h3>Passo a passo</h3>
@@ -556,6 +562,65 @@ export function ModuloKanban({ irPara }: Props) {
         </Tela>
       </ComoFazer>
 
+      <ComoFazer
+        titulo="Resolver uma pendência que você recebeu"
+        passos={[
+          { n: 1, titulo: 'Clique em Ver pendências', corpo: <>A janela abre em qualquer tela, em até um minuto depois do pedido, com o que fazer, quem pediu, o paciente e o prazo. <strong>Depois</strong> fecha a janela por enquanto: ela volta no próximo acesso enquanto você não abrir a aba Pendências.</> },
+          { n: 2, titulo: 'Leia o card em Pendentes', corpo: <>O título é o que fazer. Abaixo vêm o paciente, os detalhes, com quem a pendência está (<strong>Está com você</strong>), quem pediu e o prazo: <strong>Vence hoje</strong>, ou <strong>Venceu</strong> em vermelho quando passou. As vencidas ficam no topo da coluna.</> },
+          { n: 3, titulo: 'Já agiu e espera alguém? Clique em Aguardando', corpo: <>Por exemplo, mandou o e-mail e espera a resposta. O card vai para a coluna <strong>Aguardando</strong> e mostra desde quando. Se o retorno não vier, <strong>Voltar para pendente</strong> o devolve.</> },
+          { n: 4, titulo: 'Terminou? Clique em Concluir', corpo: <>Vale nas duas colunas. O card vai para <strong>Resolvidas</strong>, com a data e quem concluiu, e fica lá por 30 dias.</> },
+          { n: 5, titulo: 'Concluiu por engano? Clique em Reabrir', corpo: <>Na coluna Resolvidas. A pendência volta para <strong>Pendentes</strong>, também quando o problema voltou.</> },
+        ]}
+      >
+        <>
+          <Tela nome="Aviso de pendência nova" largura={520}
+            descricao="A janela que avisa quem recebeu uma pendência, em qualquer tela do sistema.">
+            <ReplicaAvisoPendencia marcas={{ ver: 1 }} />
+          </Tela>
+          <Tela nome="Tarefas" largura={960}
+            descricao="Aba Pendências do perfil técnico: o que a coordenadora pediu, nas três situações."
+            destaques={{
+              '.pd-col-pendente .pd-card': 2,
+              '.pd-col-pendente .pd-aguardar': 3,
+              '.pd-col-pendente .pd-concluir': 4,
+              '.pd-col-resolvida .pd-reabrir': 5,
+            }}>
+            <ReplicaQuadroPendencias />
+          </Tela>
+        </>
+      </ComoFazer>
+
+      {podePedir && (
+        <ComoFazer
+          titulo="Pedir uma pendência a alguém da equipe"
+          passos={[
+            { n: 1, titulo: 'Clique em Nova pendência', corpo: <>Na aba Pendências de Tarefas. Também dá para pedir pelo painel da pessoa na{' '} <button type="button" className="aj-link" onClick={() => irPara('distribuicao-de-tarefas')}>Distribuição de tarefas</button>, que já abre com ela escolhida.</> },
+            { n: 2, titulo: 'Escolha para quem', corpo: <>A lista traz a equipe que você alcança: para o coordenador, o próprio grupo, inclusive ele mesmo; para o gestor, as duas equipes. Contas suspensas não aparecem.</> },
+            { n: 3, titulo: 'Escreva o que fazer', corpo: <>É o único campo obrigatório além de <strong>Para</strong>, e vira o título do card.</> },
+            { n: 4, titulo: 'Paciente, prazo e detalhes, se ajudarem', corpo: <>Os três são opcionais. O paciente é texto livre, nome ou atendimento. O prazo começa hoje. Os detalhes guardam as quebras de linha e comportam o texto de um e-mail.</> },
+            { n: 5, titulo: 'Clique em Enviar pendência', corpo: <>A pessoa é avisada em até um minuto, em qualquer tela. Quem pede para si mesmo não recebe o aviso.</> },
+            { n: 6, titulo: 'Acompanhe com quem está', corpo: <>O pedido fica na sua aba Pendências. Cada card diz com quem a pendência está e em que coluna ela anda; o que você pediu a si mesmo aparece como <strong>Está com você</strong>. Com pendências dos dois lados, o filtro separa <strong>Para você</strong> e <strong>Que você pediu</strong>. Pediu errado? <strong>Excluir</strong>, enquanto ela estiver aberta.</> },
+          ]}
+        >
+          <>
+            <Tela nome="Tarefas" largura={960}
+              descricao="Aba Pendências da coordenadora: o que ela pediu à equipe e o que pediu a si mesma."
+              destaques={{ '.pd-nova': 1 }}>
+              <ReplicaQuadroPendencias coordenador />
+            </Tela>
+            <Tela nome="Nova pendência" largura={560}
+              descricao="Só Para e O que fazer são obrigatórios.">
+              <ReplicaNovaPendencia marcas={{ para: 2, oque: 3, opcionais: 4, enviar: 5 }} />
+            </Tela>
+            <Tela nome="Tarefas" largura={960}
+              descricao="Depois de enviar: o card diz com quem a pendência está."
+              destaques={{ '.pd-col-pendente .kb-col-body > div:nth-child(2) .pd-com': 6 }}>
+              <ReplicaQuadroPendencias coordenador />
+            </Tela>
+          </>
+        </ComoFazer>
+      )}
+
       <h3>Como o quadro funciona</h3>
       <p>
         O quadro é dividido em colunas, e <strong>cada coluna reúne um tipo de pendência</strong>.
@@ -598,17 +663,56 @@ export function ModuloKanban({ irPara }: Props) {
       <p>
         Além das demandas que vêm do censo, o gestor e os coordenadores podem pedir algo a alguém
         da equipe: um paciente para olhar, um e-mail urgente, uma tarefa específica. O coordenador
-        pede a quem é do grupo dele, inclusive a si mesmo. O pedido
-        aparece no painel <strong>Pendências</strong>, no topo de Tarefas, com o paciente, os
-        detalhes e o prazo (em vermelho quando venceu). Feito o que foi pedido, use{' '}
-        <strong>Concluir</strong>: a pendência sai da lista. Quem pediu acompanha em{' '}
-        <strong>Que você pediu</strong>, onde também pode concluir o pedido ou excluí-lo, se foi
-        feito por engano. Para pedir, use{' '}
-        <strong>Nova pendência</strong>, no mesmo painel, ou o painel da pessoa na Distribuição de
-        tarefas.
-        <SoGestao> O gestor conclui e exclui a pendência de qualquer pessoa, pelo painel dela na
-        Distribuição de tarefas.</SoGestao>
+        pede a quem é do grupo dele, inclusive a si mesmo. Os pedidos ficam na aba{' '}
+        <strong>Pendências</strong> de Tarefas, ao lado de Pacientes e Censos. A aba aparece para
+        quem pode pedir e para quem recebeu ou pediu alguma pendência, e o número nela conta as
+        abertas, pendentes e aguardando, das duas origens.
+        {podePedir && ' Pendência não entra na carga em horas da Distribuição de tarefas: ela é contada à parte, no cartão da pessoa.'}
       </p>
+      <p>
+        Ao contrário das colunas de pacientes, as de pendências <strong>são fases do mesmo
+        item</strong>: o card anda de uma para a outra conforme o trabalho avança. Todo card diz{' '}
+        <strong>com quem a pendência está</strong> e quem a pediu, com <strong>você</strong> no
+        lugar do seu nome; na resolvida, com quem estava.
+      </p>
+      <Tabela cabecalho={['Coluna', 'O que reúne', 'Como o card sai dela']} larguras={['160px', undefined, '215px']}>
+        <tr><Key>Pendentes</Key>
+          <td>Pedidas e ainda sem andamento. As vencidas vêm primeiro.</td>
+          <td>Aguardando, se você já agiu e espera algo de fora; Concluir, quando terminar.</td></tr>
+        <tr><Key>Aguardando</Key>
+          <td>Quem recebeu já agiu e espera um retorno de fora: um e-mail, uma ligação, um documento. O card mostra desde quando.</td>
+          <td>Concluir, quando o retorno chegar; Voltar para pendente, se não vier.</td></tr>
+        <tr><Key>Resolvidas</Key>
+          <td>Concluídas nos últimos 30 dias, com a data e quem concluiu. Depois disso saem da aba.</td>
+          <td>Reabrir, se foi concluída por engano ou o problema voltou: o card volta para Pendentes.</td></tr>
+      </Tabela>
+
+      <Tabela cabecalho={['Quem', 'O que pode fazer na pendência']} larguras={['175px']}>
+        <tr><Key>Quem recebeu</Key>
+          <td>Mover entre Pendentes e Aguardando, concluir e reabrir.</td></tr>
+        <tr><Key>Quem pediu</Key>
+          <td>O mesmo, e excluir o pedido enquanto ele está aberto, se foi feito por engano. Quem tem
+            pendências dos dois lados separa as listas pelo filtro <strong>Para você</strong> e{' '}
+            <strong>Que você pediu</strong>.</td></tr>
+        <SoGestao>
+          <tr><Key>Gestor</Key>
+            <td>Tudo isso na pendência de qualquer pessoa da equipe, pelo painel dela na
+              Distribuição de tarefas.</td></tr>
+        </SoGestao>
+      </Tabela>
+
+      <Callout tipo="rule" titulo="O aviso de pendência nova">
+        Quem recebe uma pendência vê uma janela com o pedido em qualquer tela, em até um minuto.
+        Ela volta a cada acesso até a pessoa abrir a aba Pendências, que é o que conta como visto;{' '}
+        <strong>Depois</strong> só a adia nesta aba do navegador. Uma pendência nova avisa de novo.
+        Quem pede para si mesmo não é avisado.
+      </Callout>
+
+      <Callout tipo="caution" titulo="Excluir não é concluir">
+        Excluir tira o pedido da lista de quem o recebeu sem registrar que ele foi feito: serve para
+        o pedido errado. Para registrar que o trabalho foi feito, use <strong>Concluir</strong>. A
+        pendência resolvida não pode mais ser excluída; se precisar mexer nela, reabra.
+      </Callout>
 
       <h3>Pacientes em prorrogação</h3>
       <p>
@@ -675,6 +779,8 @@ export function ModuloKanban({ irPara }: Props) {
           operacional, com as mesmas abas.</li>
         <li>Quem acompanha as duas equipes alterna entre os quadros pelas abas{' '}
           <strong>Pacientes</strong> e <strong>Censos</strong>.</li>
+        <li>A aba <strong>Pendências</strong> aparece para quem pode pedir pendências e para
+          quem recebeu ou pediu alguma, em qualquer perfil que trabalha no quadro.</li>
         <li>O perfil <strong>analista</strong> acompanha o quadro sem executar as tarefas, por ser
           um perfil de observação.</li>
       </ul>

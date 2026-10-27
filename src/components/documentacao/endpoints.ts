@@ -3,7 +3,7 @@
 // decide quem alcança cada rota é o servidor (interface/authz.py), e a lista
 // viva de rotas é a do próprio FastAPI.
 //
-// Como foi levantado (26/10/2026): as rotas saíram do `router` de cada módulo
+// Como foi levantado (26/10/2026, revisto em 27/10/2026): as rotas saíram do `router` de cada módulo
 // em `bmais-backend/src/interface/routes/` (o `app.routes` do FastAPI 0.143 as
 // esconde dentro de `_IncludedRouter`), e o guard efetivo de cada uma é a
 // interseção do guard do router com o da rota, resolvida pela mesma tabela de
@@ -361,10 +361,14 @@ export const GRUPOS_API: GrupoEndpoints[] = [
     id: 'api-pendencias',
     titulo: 'Pendências avulsas',
     arquivo: 'pendencias.py',
-    resumo: 'Tarefas pedidas pelo gestor e pelos coordenadores a alguém da equipe (migration 0058).',
+    resumo: 'Tarefas pedidas pelo gestor e pelos coordenadores a alguém da equipe (0058), com a situação pendente → aguardando → resolvida e o aviso de pendência nova (0059).',
     endpoints: [
       { metodo: 'GET', rota: '/api/pendencias', acesso: 'acesso',
-        descricao: 'As pendências que o usuário recebeu e as que pediu.' },
+        descricao: 'As abertas que o usuário recebeu e as que pediu, e as resolvidas dos últimos 30 dias (aba Pendências de Tarefas).' },
+      { metodo: 'GET', rota: '/api/pendencias/novas', acesso: 'acesso',
+        descricao: 'As recebidas que a pessoa ainda não viu: o aviso de pendência nova, consultado de toda tela.' },
+      { metodo: 'POST', rota: '/api/pendencias/vistas', acesso: 'acesso',
+        descricao: 'Marca como vistas as recebidas (ao abrir a aba). Fora da trilha e da limpeza de cache.' },
       { metodo: 'GET', rota: '/api/pendencias/equipe', acesso: 'criarPendencia',
         descricao: 'Quem pode receber uma pendência de quem pede.' },
       { metodo: 'GET', rota: '/api/pendencias/pessoa/{user_id}', acesso: 'criarPendencia',
@@ -372,8 +376,14 @@ export const GRUPOS_API: GrupoEndpoints[] = [
       { metodo: 'POST', rota: '/api/pendencias', acesso: 'criarPendencia',
         descricao: 'Pede uma pendência a alguém da equipe.',
         corpo: 'CriarPendencia {titulo, descricao, paciente, prazo, responsavel}' },
+      { metodo: 'POST', rota: '/api/pendencias/{tarefa_id}/aguardando', acesso: 'escrita',
+        descricao: 'Pendente → aguardando: quem recebeu já agiu e espera algo de fora. 409 fora de "pendente".' },
+      { metodo: 'POST', rota: '/api/pendencias/{tarefa_id}/pendente', acesso: 'escrita',
+        descricao: 'Aguardando → pendente. 409 fora de "aguardando".' },
+      { metodo: 'POST', rota: '/api/pendencias/{tarefa_id}/reabrir', acesso: 'escrita',
+        descricao: 'Resolvida → pendente: concluída por engano. 409 se não está resolvida.' },
       { metodo: 'POST', rota: '/api/pendencias/{tarefa_id}/concluir', acesso: 'escrita',
-        descricao: 'Conclui a pendência (quem recebeu, ou a supervisão).' },
+        descricao: 'Conclui a pendência (quem recebeu, quem pediu, ou a supervisão).' },
       { metodo: 'DELETE', rota: '/api/pendencias/{tarefa_id}', acesso: 'criarPendencia',
         descricao: 'Exclui a pendência.' },
     ],
@@ -390,6 +400,11 @@ export const GRUPOS_API: GrupoEndpoints[] = [
         descricao: 'Vincula uma pessoa do grupo do solicitante a um hospital.', corpo: 'VincularVolumetria {user_id}' },
       { metodo: 'DELETE', rota: '/api/volumetria/hospital/{hospital_key}/pessoas/{user_id}', acesso: 'atribuirVolumetria',
         descricao: 'Desvincula a pessoa do hospital.' },
+      { metodo: 'POST', rota: '/api/volumetria/operadora/{operadora_key}/pessoas', acesso: 'atribuirVolumetria',
+        descricao: 'Dá uma operadora a um operacional, que responde por operadora desde a 0053.',
+        corpo: 'VincularVolumetria {user_id}' },
+      { metodo: 'DELETE', rota: '/api/volumetria/operadora/{operadora_key}/pessoas/{user_id}', acesso: 'atribuirVolumetria',
+        descricao: 'Tira a operadora do operacional.' },
       { metodo: 'POST', rota: '/api/volumetria/divisoes', acesso: 'atribuirVolumetria',
         descricao: 'Divide a carga de uma pessoa entre colegas por um período.',
         corpo: 'DividirCargaVolumetria {de_user_id, distribuicao, inicio, fim}' },

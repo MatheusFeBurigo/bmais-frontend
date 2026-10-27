@@ -710,8 +710,9 @@ export function ModuloVolumetria() {
       <p>
         O painel de cada pessoa tem a seção <strong>Pendências</strong>: o que o gestor ou o
         coordenador pediu a ela fora do censo, como um paciente para olhar ou um e-mail urgente,
-        com o prazo de cada uma. <strong>Nova pendência</strong> pede algo a essa pessoa; ela vê o
-        pedido no topo das Tarefas dela e o conclui quando terminar. Só o que fazer é obrigatório;
+        com o prazo de cada uma. <strong>Nova pendência</strong> pede algo a essa pessoa; ela é
+        avisada em até um minuto, vê o pedido na aba Pendências das Tarefas dela e o conclui quando
+        terminar. Só o que fazer é obrigatório;
         paciente, prazo e detalhes são opcionais. Pelo painel, quem pediu também conclui a
         pendência, ou a exclui se pediu errado.<SoGestao> O gestor conclui e exclui a de qualquer
         pessoa.</SoGestao> O cartão da pessoa mostra quantas pendências estão abertas. Elas não

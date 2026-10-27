@@ -1,7 +1,7 @@
 // Nova pendência avulsa (21/10/2026): o gestor ou o coordenador pede algo a
 // alguém da equipe ("um nome de paciente, algum email urgente, ou alguma tarefa
-// específica"). Só o título e quem recebe são obrigatórios. Aberta pelo painel
-// de Tarefas (escolhe a pessoa) ou pela pessoa na Distribuição (já escolhida).
+// específica"). Só o título e quem recebe são obrigatórios. Aberta pela aba
+// Pendências de Tarefas (escolhe a pessoa) ou pela pessoa na Distribuição (já escolhida).
 //
 // Erro do backend aparece aqui dentro e a modal continua aberta: fechar
 // perderia o que foi digitado.
