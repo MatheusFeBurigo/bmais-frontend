@@ -78,10 +78,21 @@ export function vincularOperadora(hospitalKey: string, operadoraKey: string): Pr
   })
 }
 
-/** Apaga o cadastro do hospital. O backend recusa (409) quando ha pacientes ou
- *  escala apontando para ele — a mensagem do erro diz o que esta prendendo. */
-export function excluirHospital(key: string): Promise<OkResult> {
-  return apiFetch<OkResult>(`/hospital/${key}`, { method: 'DELETE' })
+/** O que a exclusao do hospital vai mexer, para o alerta antes de confirmar:
+ *  os pacientes (que passam para o Sem hospital) e a escala (que sai junto). */
+export function dependentesHospital(key: string): Promise<{ pacientes: number; escala: number }> {
+  return apiFetch<{ pacientes: number; escala: number }>(`/hospital/${key}/dependentes`)
+}
+
+/** Apaga o cadastro do hospital. Com pacientes, so com `moverPacientes` (a
+ *  confirmacao do alerta, 27/10/2026): eles passam para o Sem hospital; sem
+ *  ela, o backend recusa (409) dizendo quantos. A escala do hospital sai junto.
+ *  O resultado conta o que foi junto, para o aviso de sucesso. */
+export function excluirHospital(key: string, moverPacientes = false): Promise<
+  OkResult & { pacientes_movidos?: number; escala_removida?: number }
+> {
+  return apiFetch<OkResult & { pacientes_movidos?: number; escala_removida?: number }>(
+    `/hospital/${key}${moverPacientes ? '?mover_pacientes=true' : ''}`, { method: 'DELETE' })
 }
 
 /** Troca o nome de exibicao da operadora (a key e identidade, nao muda). */

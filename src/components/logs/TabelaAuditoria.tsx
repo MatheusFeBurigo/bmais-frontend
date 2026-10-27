@@ -66,8 +66,10 @@ function Detalhe({ log }: { log: AuditLog }) {
 
 export default function TabelaAuditoria({
   itens, total, pagina, limite, carregando, atualizando, abertoId,
-  onToggle, onPagina, onFiltrarUsuario,
+  onToggle, onPagina, onFiltrarUsuario, acoesDaLinha,
 }: {
+  /** Ação extra à direita da linha (o "Desfazer lote" dos censos processados). */
+  acoesDaLinha?: (log: AuditLog) => ReactNode
   itens: AuditLog[]
   total: number
   pagina: number
@@ -143,6 +145,7 @@ export default function TabelaAuditoria({
                               o "o quê" ao lado do "quem". */}
                           {alvoDaAcao(log) && <span className="logs-alvo-neg">{alvoDaAcao(log)}</span>}
                         </span>
+                        {acoesDaLinha?.(log)}
                       </div>
                     </td>
                   </tr>

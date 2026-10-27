@@ -462,6 +462,9 @@ export function ModuloPaciente({ irPara }: Props) {
         Histórico completo da internação, do mais recente para o mais antigo, com o marco de hoje no
         topo. Registra admissão, relatórios externos, pareceres internos, mudanças de status, altas
         automáticas, altas dadas à mão e desfeitas, visitas agendadas e canceladas e pendências.
+        Se o hospital do paciente for excluído, ele passa para <strong>Sem hospital</strong> e a
+        timeline ganha o marco <strong>Hospital excluído</strong>, com o nome do hospital de
+        antes.
         As edições da ficha não entram, salvo a troca de acomodação ou de leito, logo abaixo: elas
         ficam na trilha de Movimentações. Relatórios internos exibem o autor; os externos,
         o médico responsável. Clicar num relatório (ou numa troca de acomodação) abre a ficha do

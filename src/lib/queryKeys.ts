@@ -63,6 +63,9 @@ export const queryKeys = {
     ['auditoria', userId, entidade, acao, de, ate, q, pagina, limite] as const,
   auditoriaOpcoes: () => ['auditoria-opcoes'] as const,
   auditoriaResumo: (de: string) => ['auditoria-resumo', de] as const,
+  /** Envios de censo recentes com o estado de reversão de cada arquivo
+   *  (Movimentações: o botão "Desfazer lote"). */
+  enviosCenso: (limite: number) => ['envios-censo', limite] as const,
 
   /** Ajustes manuais do avanço dos módulos (tela Progresso). */
   progresso: () => ['progresso'] as const,
@@ -102,6 +105,7 @@ export const queryRoots = {
   kanban: ['kanban'] as const,
   auditoria: ['auditoria'] as const,
   auditoriaResumo: ['auditoria-resumo'] as const,
+  enviosCenso: ['envios-censo'] as const,
   progresso: ['progresso'] as const,
   volumetria: ['volumetria'] as const,
   pendencias: ['pendencias'] as const,

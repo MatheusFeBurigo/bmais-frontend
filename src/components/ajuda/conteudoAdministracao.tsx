@@ -251,7 +251,7 @@ export function ModuloOperacoes() {
         passos={[
           { n: 1, titulo: 'Abra a operadora', corpo: <>Clique no cartão dela. Os hospitais aparecem agrupados por cidade.</> },
           { n: 2, titulo: 'Clique no nome do hospital para editar', corpo: <>Abre o mesmo cadastro, já preenchido: nome, cidade, operadoras atendidas e contato. Tirar uma operadora desfaz o vínculo com ela.</> },
-          { n: 3, titulo: 'Use a lixeira para excluir', corpo: <>Pede um segundo clique em <strong>Excluir</strong>, na própria linha. É recusada, com o motivo, quando há pacientes ou escala ligados ao hospital.</> },
+          { n: 3, titulo: 'Use a lixeira para excluir', corpo: <>Pede um segundo clique em <strong>Excluir</strong>, na própria linha. Se o hospital tem pacientes, a linha avisa quantos e o botão vira <strong>Mover e excluir</strong>: eles passam para <strong>Sem hospital</strong> e continuam no sistema, com o nome do hospital excluído registrado na timeline de cada um. A escala dele sai junto, e o aviso de sucesso diz o que foi movido e removido.</> },
           { n: 4, titulo: 'A engrenagem cuida da operadora', corpo: <>Renomeia a operadora ou a exclui. Renomear não mexe nos pacientes, hospitais e histórico dela. Excluir só passa quando ela não tem mais hospitais nem pacientes.</> },
         ]}
       >
@@ -316,9 +316,12 @@ export function ModuloOperacoes() {
           são opcionais. Editar abre o mesmo cadastro, pelo nome do hospital na lista.</li>
         <li>Renomear uma operadora altera apenas o nome exibido. Os pacientes, hospitais e o
           histórico dela permanecem vinculados.</li>
-        <li>A exclusão de operadora ou hospital exige confirmação e é recusada, com a indicação do
-          motivo, quando ainda há algo vinculado ao registro: pacientes ou escala, no hospital;
-          hospitais ou pacientes, na operadora.</li>
+        <li>A exclusão de operadora ou hospital exige confirmação. A de operadora é recusada, com
+          a indicação do motivo, enquanto ela tiver hospitais ou pacientes. A de hospital nunca
+          leva os pacientes junto: com o alerta confirmado, eles passam para{' '}
+          <strong>Sem hospital</strong>, que não aparece nas listas de cadastro, não recebe censo
+          e só é visto por quem não tem recorte de hospital ou de operadora. A escala do hospital
+          sai junto.</li>
         <li>A <strong>cidade</strong> é o que agrupa os hospitais nas telas de escolha de escopo e
           de escala.<SoGestao> No painel do Gestor, o recorte geográfico é a região, que no
           hospital cadastrado por aqui nasce igual à cidade.</SoGestao></li>

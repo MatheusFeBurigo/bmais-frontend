@@ -37,6 +37,9 @@ export const TIPO_CLASSE: Record<string, string> = {
   MUDANCA_ACOMODACAO: 'tp-troca-hospital',
   // Troca de leito feita à mão na ficha (08/10/2026).
   MUDANCA_LEITO: 'tp-troca-hospital',
+  // O hospital do paciente foi excluído e ele passou para o Sem hospital
+  // (27/10/2026): laranja, como a alta automática, o outro "o sistema mexeu aqui".
+  HOSPITAL_EXCLUIDO: 'tp-alta-auto',
   EDIT: 'tp-edit',
   PENDENTE: 'tp-pendente',
   VISITA_AGENDADA: 'tp-visita-agendada',

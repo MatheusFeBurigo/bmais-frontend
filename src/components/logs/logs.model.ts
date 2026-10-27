@@ -155,3 +155,37 @@ export function iniciais(nome: string): string {
   const letras = partes.length >= 2 ? partes[0][0] + partes[1][0] : base.slice(0, 2)
   return letras.toUpperCase()
 }
+
+// ── Desfazer lote (27/10/2026) ───────────────────────────────────────────────
+/** Um lote de censo que um registro da trilha gravou: um arquivo de um envio. */
+export interface LoteDoRegistro {
+  sessao: string
+  arquivo: string
+  hospital: string
+  /** Pacientes gravados pelo arquivo (criados e atualizados). */
+  total: number
+}
+
+// Rotas que GRAVAM pacientes de censo: o processamento em fases e o envio
+// antigo de uma chamada só. O "1 arquivo(s) de censo enviado(s)" (stage) só
+// salva o arquivo, e o completar de pendência grava um paciente avulso.
+const ROTAS_DE_LOTE = new Set(['/api/upload/processar', '/api/upload'])
+
+/** Os lotes que o registro gravou, com o que é preciso para desfazê-los. Vazio
+ *  quando o registro não é um processamento de censo bem-sucedido. */
+export function lotesDoRegistro(log: Pick<AuditLog, 'rota' | 'resultado' | 'entidade_id' | 'detalhes'>): LoteDoRegistro[] {
+  if (log.resultado !== 'ok' || !log.rota || !ROTAS_DE_LOTE.has(log.rota) || !log.entidade_id) return []
+  const arquivos = log.detalhes?.arquivos
+  if (!Array.isArray(arquivos)) return []
+  const lotes: LoteDoRegistro[] = []
+  for (const a of arquivos) {
+    const r = (a ?? {}) as Record<string, unknown>
+    const total = typeof r.total === 'number' ? r.total : 0
+    if (typeof r.arquivo !== 'string' || !r.arquivo || r.erro || total <= 0) continue
+    lotes.push({
+      sessao: log.entidade_id, arquivo: r.arquivo, total,
+      hospital: typeof r.hospital === 'string' ? r.hospital : '',
+    })
+  }
+  return lotes
+}

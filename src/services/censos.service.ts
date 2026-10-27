@@ -163,7 +163,10 @@ export interface EnvioCenso {
   processado_em?: string | null
   arquivos: string[]
   total_pacientes: number
+  /** Preenchido só quando TODOS os arquivos da sessão foram desfeitos. */
   revertido_em?: string | null
+  /** Um item por arquivo (censo) do envio, com o estado próprio de reversão. */
+  por_arquivo?: Array<{ censo_id: number; arquivo: string; total_pacientes: number; revertido_em?: string | null }>
 }
 
 /** Resultado de desfazer um envio. `pacientes` são os que foram REMOVIDOS. */
@@ -176,9 +179,10 @@ export interface ReverterEnvioResposta {
   hospital_nome?: string | null
 }
 
-/** Envios de censo recentes, já recortados ao escopo de hospitais do usuário. */
-export function fetchEnviosCenso(): Promise<{ envios: EnvioCenso[] }> {
-  return apiFetch('/upload/envios')
+/** Envios de censo recentes, já recortados ao escopo de hospitais do usuário.
+ *  `limite` (até 200, o alcance do desfazer): Movimentações pede a lista longa. */
+export function fetchEnviosCenso(limite?: number): Promise<{ envios: EnvioCenso[] }> {
+  return apiFetch(`/upload/envios${limite ? `?limite=${limite}` : ''}`)
 }
 
 /** Desfaz um envio: apaga os pacientes que ELE criou (censo no hospital errado).

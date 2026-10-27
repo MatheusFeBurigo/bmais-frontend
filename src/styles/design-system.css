@@ -592,6 +592,12 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .malha-hosp-row.confirmando.com-erro{flex-wrap:wrap;padding-bottom:6px;background:var(--danger-bg)}
 .malha-hosp-row.confirmando.com-erro .malha-hosp-nome{flex:1 0 100%;color:var(--danger-2)}
 .malha-hosp-erro{flex:1;min-width:0;font-size:var(--t-xs);line-height:1.35;color:var(--danger-2);padding:0 6px;white-space:normal}
+/* Alerta de exclusao com paciente (27/10/2026): mesmo desenho em duas linhas do
+   erro, em tom de aviso — nao e recusa, e o que vai acontecer ao confirmar. */
+.malha-hosp-row.confirmando.com-aviso{flex-wrap:wrap;padding-bottom:6px;background:var(--warning-bg);box-shadow:inset 2px 0 0 var(--warning)}
+.malha-hosp-row.confirmando.com-aviso .malha-hosp-nome{flex:1 0 100%}
+.malha-hosp-aviso{flex:1 0 100%;font-size:var(--t-xs);line-height:1.35;color:var(--warning-2);padding:0 6px 4px;white-space:normal}
+.malha-hosp-row.confirmando.com-aviso .malha-hosp-acao{margin-left:auto}
 .malha-hosp-btn{flex-shrink:0;font-size:var(--t-xs);font-weight:600;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--ink-2);cursor:pointer;font-family:inherit}
 .malha-hosp-btn:hover:not(:disabled){border-color:var(--ink-3)}
 .malha-hosp-btn:disabled{opacity:.6;cursor:default}

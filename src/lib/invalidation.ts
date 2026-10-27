@@ -40,6 +40,10 @@ const EVENTO_INVALIDA: Record<string, QueryRoot[]> = {
   equipeAlterada: ['equipe', 'sidebar'],
   // Gestão de usuários (a trilha de auditoria também muda: criar/suspender/apagar).
   usuariosAlterados: ['usuarios', 'auditoria', 'auditoriaResumo'],
+  // Lote de censo desfeito (Movimentações): os pacientes que ele criou somem, como
+  // num censo processado ao contrário, e a trilha ganha o registro do desfazer.
+  loteDesfeito: ['dashboard', 'dashboardOverview', 'diretoria', 'gestor', 'sidebar', 'equipe', 'kanban',
+    'hospital', 'volumetria', 'auditoria', 'auditoriaResumo', 'enviosCenso'],
   // Chamado aberto, respondido, encerrado ou reaberto: muda a lista, a conversa
   // e a contagem do aviso no menu. Nada da operação depende de chamado.
   chamadoAlterado: ['chamados'],

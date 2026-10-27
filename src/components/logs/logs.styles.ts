@@ -26,6 +26,11 @@ export const localStyles = `
 .logs-user-btn{background:none;border:0;padding:0;text-align:left;cursor:pointer;font:inherit;color:inherit}
 .logs-user-btn:hover .logs-user-nome{color:var(--primary-3);text-decoration:underline}
 .logs-acao{display:flex;align-items:center;gap:8px;min-width:0}
+/* Desfazer lote: à direita da ação, sem disputar espaço com o resumo. */
+.logs-lote{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0}
+.logs-lote-btn{color:var(--danger);white-space:nowrap}
+.logs-lote-btn:hover:not(:disabled){background:var(--danger-bg)}
+.logs-lote-feito{font-size:var(--t-xs);font-weight:600;color:var(--muted);background:var(--surface-3);border-radius:99px;padding:2px 9px;white-space:nowrap}
 .logs-resumo{color:var(--ink-2);line-height:1.35}
 .logs-alvo-neg{display:block;font-weight:600;color:var(--ink);font-size:var(--t-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px}
 .logs-detalhe td{background:var(--surface-2)!important;padding:10px 14px 14px 52px!important}

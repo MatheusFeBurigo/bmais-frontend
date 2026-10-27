@@ -13,7 +13,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useConfiguracoes } from '../../hooks/useConfiguracoes'
 import { useTodosHospitais } from '../../hooks/useEquipe'
 import {
-  criarOperadora, renomearOperadora, excluirOperadora, excluirHospital,
+  criarOperadora, renomearOperadora, excluirOperadora, excluirHospital, dependentesHospital,
 } from '../../services/configuracoes.service'
 import HospitalFormModal, { paraKey } from '../HospitalFormModal'
 import { invalidarPorEvento } from '../../lib/invalidation'
@@ -83,18 +83,39 @@ export default function CadastroMalha({ onToast }: Props) {
   const [excluindo, setExcluindo] = useState<string | null>(null)
   const [apagando, setApagando] = useState(false)
   const [erroExcluir, setErroExcluir] = useState<string | null>(null)
+  // O que a exclusao vai levar junto (27/10/2026): pacientes que passam para o
+  // Sem hospital e escala. Consultado ao pedir a exclusao, para o alerta; ate
+  // chegar (`undefined`), o "Excluir" fica travado.
+  const [dependentes, setDependentes] = useState<{ pacientes: number; escala: number } | null | undefined>()
+
+  function pedirExcluir(key: string) {
+    setExcluindo(key)
+    setErroExcluir(null)
+    setDependentes(undefined)
+    dependentesHospital(key)
+      .then((d) => setDependentes(d))
+      // Sem a contagem, segue o caminho antigo: se houver paciente, o backend
+      // recusa (409) e a mensagem diz quantos.
+      .catch(() => setDependentes(null))
+  }
 
   async function removerHospital(h: { key: string; nome: string }) {
     setApagando(true)
     setErroExcluir(null)
     try {
-      await excluirHospital(h.key)
-      onToast(`✓ ${h.nome} excluído`)
+      const r = await excluirHospital(h.key, (dependentes?.pacientes ?? 0) > 0)
+      const p = r.pacientes_movidos ?? 0
+      const n = r.escala_removida ?? 0
+      onToast(`✓ ${h.nome} excluído`
+        + (p ? ` · ${p} paciente${p > 1 ? 's foram' : ' foi'} para Sem hospital` : '')
+        + (n ? ` · ${n} vínculo${n > 1 ? 's' : ''} de escala removido${n > 1 ? 's' : ''}` : ''))
       setExcluindo(null)
       invalidar()
+      // Pacientes mudaram de hospital: Visão Geral, Tarefas e indicadores recontam.
+      if (p) invalidarPorEvento(qc, 'dadosAlterados')
     } catch (e) {
-      // 409 traz o motivo (pacientes/escala presos). Fica na propria linha, para
-      // a pessoa ler junto do hospital em questao.
+      // 409 traz o motivo. Fica na propria linha, para a pessoa ler junto do
+      // hospital em questao.
       setErroExcluir((e as Error).message)
     } finally {
       setApagando(false)
@@ -271,8 +292,9 @@ export default function CadastroMalha({ onToast }: Props) {
                             hosp={h}
                             confirmando={excluindo === h.key}
                             ocupado={apagando}
+                            dependentes={excluindo === h.key ? dependentes : null}
                             onEditar={() => setFichaHosp({ hosp: h })}
-                            onPedirExcluir={() => { setExcluindo(h.key); setErroExcluir(null) }}
+                            onPedirExcluir={() => pedirExcluir(h.key)}
                             onCancelar={() => { setExcluindo(null); setErroExcluir(null) }}
                             onConfirmar={() => removerHospital(h)}
                             erro={excluindo === h.key ? erroExcluir : null}
@@ -372,10 +394,16 @@ function MenuNovo({ onOperadora, onHospital }: { onOperadora: () => void; onHosp
 // chegar num botao de excluir era caminho longo demais para uma acao simples.
 // A confirmacao tambem e inline (o X vira "Excluir?/Nao"), sem modal em cima de
 // modal, mas ainda exigindo um segundo clique porque e irreversivel.
-function HospitalItem({ hosp, confirmando, ocupado, onEditar, onPedirExcluir, onCancelar, onConfirmar, erro }: {
+//
+// Com paciente (27/10/2026), a confirmacao vira alerta: os pacientes passam
+// para o Sem hospital, e o botao diz isso ("Mover e excluir"), para ninguem
+// confirmar achando que so apaga um cadastro vazio.
+function HospitalItem({ hosp, confirmando, ocupado, dependentes, onEditar, onPedirExcluir, onCancelar, onConfirmar, erro }: {
   hosp: { key: string; nome: string }
   confirmando: boolean
   ocupado: boolean
+  /** O que a exclusao leva junto; `undefined` enquanto a consulta nao chega. */
+  dependentes: { pacientes: number; escala: number } | null | undefined
   onEditar: () => void
   onPedirExcluir: () => void
   onCancelar: () => void
@@ -383,8 +411,11 @@ function HospitalItem({ hosp, confirmando, ocupado, onEditar, onPedirExcluir, on
   erro: string | null
 }) {
   if (confirmando) {
+    const pacientes = dependentes?.pacientes ?? 0
+    const aviso = !erro && pacientes > 0
+    const consultando = dependentes === undefined
     return (
-      <div className={`malha-hosp-row confirmando${erro ? ' com-erro' : ''}`}>
+      <div className={`malha-hosp-row confirmando${erro ? ' com-erro' : aviso ? ' com-aviso' : ''}`}>
         <span className="malha-hosp-nome" title={hosp.nome}>{hosp.nome}</span>
         {erro ? (
           <>
@@ -393,16 +424,25 @@ function HospitalItem({ hosp, confirmando, ocupado, onEditar, onPedirExcluir, on
           </>
         ) : (
           <>
+            {aviso && (
+              <span className="malha-hosp-aviso" role="alert">
+                {pacientes > 1
+                  ? <>{pacientes} pacientes deste hospital passam para <strong>Sem hospital</strong> e continuam no sistema.</>
+                  : <>1 paciente deste hospital passa para <strong>Sem hospital</strong> e continua no sistema.</>}
+                {' '}O nome deste hospital fica registrado na timeline de cada um.
+                {dependentes?.escala ? ' A escala dele também é removida.' : ''}
+              </span>
+            )}
             <button
               type="button"
               className="malha-hosp-acao"
               onClick={onConfirmar}
-              disabled={ocupado}
-              title={`Confirmar exclusão de ${hosp.nome}`}
-              aria-label={`Confirmar exclusão de ${hosp.nome}`}
+              disabled={ocupado || consultando}
+              title={aviso ? `Mover os pacientes e excluir ${hosp.nome}` : `Confirmar exclusão de ${hosp.nome}`}
+              aria-label={aviso ? `Mover os pacientes e excluir ${hosp.nome}` : `Confirmar exclusão de ${hosp.nome}`}
             >
-              {ocupado ? <Spinner size={11} /> : IconLixeiraMini}
-              {ocupado ? 'Excluindo' : 'Excluir'}
+              {ocupado || consultando ? <Spinner size={11} /> : IconLixeiraMini}
+              {ocupado ? 'Excluindo' : aviso ? 'Mover e excluir' : 'Excluir'}
             </button>
             <button
               type="button"

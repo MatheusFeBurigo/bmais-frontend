@@ -22,10 +22,12 @@ import KpisAuditoria from '../components/logs/KpisAuditoria'
 import FiltrosAuditoria from '../components/logs/FiltrosAuditoria'
 import TabelaAuditoria from '../components/logs/TabelaAuditoria'
 import UsuariosPainel from '../components/logs/UsuariosPainel'
+import DesfazerLote from '../components/logs/DesfazerLote'
+import { ConfirmarModal } from '../components/ConfirmarModal'
 import { localStyles } from '../components/logs/logs.styles'
-import { PERIODOS, nomeDoUsuario } from '../components/logs/logs.model'
+import { PERIODOS, lotesDoRegistro, nomeDoUsuario, type LoteDoRegistro } from '../components/logs/logs.model'
 import { useLogsView } from '../hooks/useLogsView'
-import { useDefinirAtivoUsuario } from '../hooks/useAuditoria'
+import { useDefinirAtivoUsuario, useDesfazerLote, useEnviosCenso } from '../hooks/useAuditoria'
 import type { AuditoriaUsuario } from '../types/api'
 
 const IconRefresh = (
@@ -51,6 +53,29 @@ export default function Logs() {
   const usuarios = v.resumo.data?.usuarios ?? []
   const totalTrilha = v.trilha.data?.total ?? 0
   const atualizando = v.trilha.isFetching || v.resumo.isFetching
+
+  // Desfazer lote (27/10/2026): só quem envia censo desfaz um envio, a mesma regra
+  // da tela de Envio e do backend (requer_envio_censo). O analista lê a trilha.
+  const podeDesfazer = liberado && podeVer(role, 'upload')
+  const envios = useEnviosCenso(podeDesfazer)
+  const enviosPorSessao = useMemo(
+    () => new Map((envios.data?.envios ?? []).map((e) => [e.sessao, e])),
+    [envios.data])
+  const desfazerLote = useDesfazerLote()
+  const [confirmarLote, setConfirmarLote] = useState<LoteDoRegistro | null>(null)
+  const desfazendo = desfazerLote.isPending && desfazerLote.variables
+    ? `${desfazerLote.variables.sessao}|${desfazerLote.variables.arquivo}` : null
+
+  async function desfazer(lote: LoteDoRegistro) {
+    try {
+      const r = await desfazerLote.mutateAsync({ sessao: lote.sessao, arquivo: lote.arquivo })
+      setToast(`✓ Lote desfeito: ${r.removidos} paciente${r.removidos === 1 ? '' : 's'} removido${r.removidos === 1 ? '' : 's'} (${lote.arquivo})`)
+    } catch (e) {
+      setToast(`Erro ao desfazer: ${(e as Error).message}`)
+    } finally {
+      setConfirmarLote(null)
+    }
+  }
 
   usePageHeader(
     useMemo(() => ({
@@ -140,6 +165,21 @@ export default function Logs() {
             onToggle={v.toggleAberto}
             onPagina={v.setPagina}
             onFiltrarUsuario={(id) => v.setFiltro({ usuario: id })}
+            acoesDaLinha={podeDesfazer ? (log) => {
+              const lotes = lotesDoRegistro(log)
+              return lotes.length > 0
+                ? <DesfazerLote lotes={lotes} envios={enviosPorSessao} desfazendo={desfazendo}
+                                onDesfazer={(lote) => {
+                                  // O hospital ATUAL do censo vence o da trilha, que é
+                                  // o do momento do envio (o lote pode ter sido mudado
+                                  // de hospital depois). Só dá para saber com um
+                                  // arquivo na sessão: a lista traz um hospital por envio.
+                                  const envio = enviosPorSessao.get(lote.sessao)
+                                  const atual = envio?.por_arquivo?.length === 1 ? envio.hospital_nome : null
+                                  setConfirmarLote({ ...lote, hospital: atual || lote.hospital })
+                                }} />
+                : null
+            } : undefined}
           />
         </>
       )}
@@ -202,6 +242,28 @@ export default function Logs() {
           onDone={(msg) => { setApagarAlvo(null); setToast(msg); v.refetchTudo() }}
           onError={setToast}
         />
+      )}
+      {confirmarLote && (
+        <ConfirmarModal
+          titulo="Desfazer este lote?"
+          perigo
+          confirmar="Apagar e desfazer"
+          cancelar="Manter como está"
+          ocupado={desfazerLote.isPending}
+          onCancelar={() => setConfirmarLote(null)}
+          onConfirmar={() => desfazer(confirmarLote)}
+        >
+          <div>
+            Os pacientes que <strong>{confirmarLote.arquivo}</strong> criou
+            {confirmarLote.hospital && <> em <strong>{confirmarLote.hospital}</strong></>} serão
+            apagados ({confirmarLote.total} gravado{confirmarLote.total === 1 ? '' : 's'} por este arquivo,
+            entre criados e atualizados). Esta ação não pode ser desfeita.
+          </div>
+          <div>
+            Pacientes que já existiam antes e foram apenas atualizados por este arquivo continuam no
+            sistema, com os dados que tinham.
+          </div>
+        </ConfirmarModal>
       )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </>
