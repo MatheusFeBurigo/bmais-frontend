@@ -17,6 +17,7 @@ import type { ReactNode } from 'react'
 import type { Hospital, Profissional, UserRole } from '../../types/api'
 import { Badge, OpAvatar } from '../ui'
 import ProfTabela from '../equipe/ProfTabela'
+import { PedirNovaSenhaBotao } from '../equipe/PedirNovaSenha'
 import SeletorEscala from '../equipe/SeletorEscala'
 import { SERVICOS } from '../equipe/equipe.styles'
 import MenuAcoes, { IconesAcao } from '../MenuAcoes'
@@ -113,14 +114,15 @@ function MenuAberto({ itens, marcas = [] }: {
 // ── Aba Auditores ─────────────────────────────────────────────────────────────
 
 const PROFISSIONAIS: Profissional[] = [
-  { id: 1, nome: 'Ana Clara Souza', tipo: 'E', ativo: true, tem_acesso: true, acesso_email: 'ana.souza@exemplo.com', n_hospitais: 3 },
+  { id: 1, nome: 'Ana Clara Souza', tipo: 'E', ativo: true, tem_acesso: true, acesso_user_id: 'u1', acesso_email: 'ana.souza@exemplo.com', n_hospitais: 3 },
   { id: 2, nome: 'Paulo Mendes', tipo: 'M', ativo: true, tem_acesso: false, n_hospitais: 2 },
-  { id: 3, nome: 'Renata Alves', tipo: 'M', ativo: true, tem_acesso: true, acesso_email: 'renata.alves@exemplo.com', n_hospitais: 4 },
-  { id: 4, nome: 'Marcos Tavares', tipo: 'E', ativo: true, tem_acesso: true, acesso_email: 'marcos.tavares@exemplo.com', n_hospitais: 1 },
+  { id: 3, nome: 'Renata Alves', tipo: 'M', ativo: true, tem_acesso: true, acesso_user_id: 'u3', acesso_email: 'renata.alves@exemplo.com', acesso_senha_provisoria: true, n_hospitais: 4 },
+  { id: 4, nome: 'Marcos Tavares', tipo: 'E', ativo: true, tem_acesso: true, acesso_user_id: 'u4', acesso_email: 'marcos.tavares@exemplo.com', n_hospitais: 1 },
 ]
 
 /** A aba Auditores: busca, filtro por tipo, "Adicionar" e a lista. Na lista,
- *  Paulo Mendes (2ª linha) ainda não tem acesso: é o exemplo do "Editar".
+ *  Paulo Mendes (2ª linha) ainda não tem acesso: é o exemplo do "Editar"; a
+ *  Renata (3ª) ainda não criou a senha: é o exemplo do "Troca pedida".
  *  `menuAberto` mostra o ⋮ da 1ª linha aberto, com as marcas pedidas. */
 export function ReplicaProfissionais({ marcas = {}, menuAberto }: {
   marcas?: Partial<Record<'adicionar' | 'lista', number>>
@@ -151,7 +153,7 @@ export function ReplicaProfissionais({ marcas = {}, menuAberto }: {
             lista={PROFISSIONAIS}
             vazio="Nenhum auditor cadastrado."
             onAbrir={nada}
-            acoes={{ onEditar: nada, onSenha: nada, onAtivo: nada, onExcluir: nada }}
+            acoes={{ onEditar: nada, onSenha: nada, onPedirSenha: nada, onAtivo: nada, onExcluir: nada }}
           />
           {menuAberto && (
             <MenuAberto
@@ -366,6 +368,7 @@ export function ReplicaUsuarios({ marcas = {} }: {
                   <td>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                       <span className="btn btn-outline btn-sm" style={{ gap: 6 }}>{IconKey}Senha</span>
+                      <PedirNovaSenhaBotao onClick={nada} />
                       <span className="btn btn-outline btn-sm">Editar</span>
                       <MenuAcoes rotulo={`Mais ações para ${u.nome}`} itens={[]} />
                     </div>

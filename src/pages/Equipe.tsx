@@ -18,6 +18,7 @@ import ProfTabela from '../components/equipe/ProfTabela'
 import DetalheProf from '../components/equipe/DetalheProf'
 import AddProfModal from '../components/equipe/AddProfModal'
 import ResetSenhaModal from '../components/equipe/ResetSenhaModal'
+import { PedirNovaSenhaModal } from '../components/equipe/PedirNovaSenha'
 import { definirAtivoProfissional, excluirProfissional } from '../services/equipe.service'
 import { ConfirmarModal } from '../components/ConfirmarModal'
 
@@ -69,6 +70,8 @@ export default function Equipe() {
   // Atalho "Senha" da linha: a mesma modal de Usuários de acesso. Sem conta
   // não há senha a redefinir: ela explica e leva à ficha (e-mail + senha inicial).
   const [senhaAlvo, setSenhaAlvo] = useState<Profissional | null>(null)
+  // "Pedir troca": a pessoa cria a senha no próximo acesso (só com conta).
+  const [pedirAlvo, setPedirAlvo] = useState<Profissional | null>(null)
   // Ações do menu "⋮" da linha, cada uma com a sua confirmação.
   const [ativoAlvo, setAtivoAlvo] = useState<Profissional | null>(null)
   const [excluirAlvo, setExcluirAlvo] = useState<Profissional | null>(null)
@@ -285,6 +288,7 @@ export default function Equipe() {
             acoes={gestor ? {
               onEditar: (p) => setSelId(p.id),
               onSenha: setSenhaAlvo,
+              onPedirSenha: setPedirAlvo,
               onAtivo: (p) => abrirAcao(() => setAtivoAlvo(p)),
               onExcluir: (p) => abrirAcao(() => setExcluirAlvo(p)),
             } : undefined}
@@ -323,6 +327,14 @@ export default function Equipe() {
           onClose={() => setSenhaAlvo(null)}
           onDone={(msg) => { setSenhaAlvo(null); setToast(msg) }}
           onError={setToast}
+        />
+      )}
+      {pedirAlvo?.acesso_user_id && (
+        <PedirNovaSenhaModal
+          userId={pedirAlvo.acesso_user_id}
+          nome={pedirAlvo.nome}
+          onClose={() => setPedirAlvo(null)}
+          onDone={(msg) => { setPedirAlvo(null); setToast(msg) }}
         />
       )}
       {ativoAlvo && (

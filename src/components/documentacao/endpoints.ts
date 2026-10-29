@@ -499,6 +499,8 @@ export const GRUPOS_API: GrupoEndpoints[] = [
         descricao: 'Apaga a conta (profile, vínculos e Auth). Ninguém apaga a própria; o último admin é protegido.' },
       { metodo: 'PATCH', rota: '/api/usuarios/{user_id}/senha', acesso: 'gestaoOperacoes',
         descricao: 'Redefine a senha sem a atual; a conta fica com senha provisória.', corpo: 'RedefinirSenha {nova_senha}' },
+      { metodo: 'POST', rota: '/api/usuarios/{user_id}/pedir-nova-senha', acesso: 'gestaoOperacoes',
+        descricao: 'Pede uma senha nova sem trocar a atual: só marca a senha como provisória, e no próximo acesso o dono vê "Crie sua senha".' },
     ],
   },
   {

@@ -195,7 +195,7 @@ export function ModuloOperacoes() {
         ]}
       >
         <Tela nome="Operações" largura={900}
-          destaques={{ 'tbody tr:nth-child(2) td:last-child .btn:nth-child(2)': 1 }}
+          destaques={{ 'tbody tr:nth-child(2) td:last-child .btn:nth-child(3)': 1 }}
           descricao="Paulo Mendes ainda não tem acesso à plataforma.">
           <ReplicaProfissionais />
         </Tela>
@@ -209,7 +209,7 @@ export function ModuloOperacoes() {
       <ComoFazer
         titulo="Desativar ou excluir um auditor"
         passos={[
-          { n: 1, titulo: 'Clique no ⋮ da linha', corpo: <>Fica depois de <strong>Senha</strong> e <strong>Editar</strong>. Na aba Usuários de acesso o menu é o mesmo, para as contas da equipe interna.</> },
+          { n: 1, titulo: 'Clique no ⋮ da linha', corpo: <>Fica depois de <strong>Senha</strong>, <strong>Pedir troca</strong> e <strong>Editar</strong>. Na aba Usuários de acesso o menu é o mesmo, para as contas da equipe interna.</> },
           { n: 2, titulo: 'Só quer tirar o acesso? Desativar acesso', corpo: <>A pessoa deixa de entrar e sai das listas de escala, mas o cadastro e o histórico ficam. <strong>Reativar acesso</strong>, no mesmo menu, desfaz.</> },
           { n: 3, titulo: 'Quer apagar de vez? Excluir auditor', corpo: <>Sai o cadastro, a escala de hospitais e a conta de login. Relatórios e visitas já registrados com o nome dele continuam no histórico.</> },
           { n: 4, titulo: 'Confirme', corpo: <>As duas ações pedem confirmação numa janela. A exclusão não tem volta.</> },
@@ -266,8 +266,9 @@ export function ModuloOperacoes() {
         <li>A lista tem busca por nome e filtro por tipo, com a contagem de cada categoria.</li>
         <li>Cada linha mostra o tipo, o e-mail de acesso (ou <strong>Sem acesso</strong>) e quantos
           hospitais o auditor cobre, com os atalhos <strong>Senha</strong> (só redefine a senha de
-          quem já tem acesso) e <strong>Editar</strong>, e o menu <strong>⋮</strong> com{' '}
-          <strong>Desativar acesso</strong> e <strong>Excluir auditor</strong>.</li>
+          quem já tem acesso), <strong>Pedir troca</strong> e <strong>Editar</strong>, e o menu{' '}
+          <strong>⋮</strong> com <strong>Desativar acesso</strong> e{' '}
+          <strong>Excluir auditor</strong>.</li>
         <li>Clicar na linha abre a ficha do auditor, com a <strong>escala de hospitais</strong>:
           em quais unidades ele atende e em qual serviço. O que já está na escala aparece marcado,
           para não ser incluído duas vezes.</li>
@@ -290,8 +291,9 @@ export function ModuloOperacoes() {
           (<strong>Todos</strong>) ou só o que foi vinculado a ela: operadoras, no operacional;
           hospitais, no técnico; e, nos coordenadores, os hospitais recebidos na Distribuição de
           tarefas.</li>
-        <li>Os atalhos da linha são <strong>Senha</strong> e <strong>Editar</strong> (nome, papel e
-          área, nas mesmas etapas do cadastro), e o menu <strong>⋮</strong> traz{' '}
+        <li>Os atalhos da linha são <strong>Senha</strong>, <strong>Pedir troca</strong> e{' '}
+          <strong>Editar</strong> (nome, papel e área, nas mesmas etapas do cadastro), e o
+          menu <strong>⋮</strong> traz{' '}
           <strong>Desativar acesso</strong> e <strong>Excluir usuário</strong>. Desativar é
           reversível; a exclusão não, mas o histórico de ações da pessoa na trilha de auditoria é
           preservado. A própria conta não pode ser desativada nem excluída.</li>
@@ -301,6 +303,12 @@ export function ModuloOperacoes() {
         <li>Toda senha definida por aqui, no cadastro, no <strong>Senha</strong> ou no Editar, é
           provisória: no acesso seguinte a pessoa vê <strong>Crie sua senha</strong> e pode
           trocá-la por uma só dela.</li>
+        <li><strong>Pedir troca</strong> leva a mesma tela <strong>Crie sua senha</strong> à
+          pessoa sem você definir senha nenhuma: a atual continua valendo até ela escolher a
+          nova. Quem está com o sistema aberto vê a tela ao recarregar a página. Enquanto a senha
+          não é trocada, o botão aparece como <strong>Troca pedida</strong>, inclusive depois de
+          um <strong>Senha</strong>. O atalho existe nas abas Auditores (só para quem tem acesso)
+          e Usuários de acesso.</li>
       </ul>
 
       <h3>Hospitais e operadoras</h3>

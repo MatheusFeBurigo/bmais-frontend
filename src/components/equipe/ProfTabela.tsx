@@ -1,11 +1,13 @@
 // Tabela de auditores, no mesmo desenho da lista de usuários de acesso
-// (UsuariosAcesso): colunas fixas, atalhos na linha (Senha / Editar) e o menu
-// "⋮" com as ações de acesso: desativar (reversível) ou excluir (definitivo).
+// (UsuariosAcesso): colunas fixas, atalhos na linha (Senha / Pedir troca /
+// Editar) e o menu "⋮" com as ações de acesso: desativar (reversível) ou
+// excluir (definitivo).
 import type { MouseEvent, ReactNode } from 'react'
 import type { Profissional } from '../../types/api'
 import { Badge } from '../ui'
 import MenuAcoes, { IconesAcao } from '../MenuAcoes'
 import { TIPO_LABEL, isAtivo } from './equipe.styles'
+import { PedirNovaSenhaBotao } from './PedirNovaSenha'
 
 const IconKey = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="7.5" cy="15.5" r="4.5" /><path d="m10.5 12.5 8.5-8.5" /><path d="m16 5 3 3" /><path d="m14 7 3 3" /></svg>
@@ -14,6 +16,8 @@ const IconKey = (
 export interface AcoesProf {
   onEditar: (p: Profissional) => void
   onSenha: (p: Profissional) => void
+  /** Pedir que crie uma senha nova ("Crie sua senha"); só com conta. */
+  onPedirSenha: (p: Profissional) => void
   onAtivo: (p: Profissional) => void
   onExcluir: (p: Profissional) => void
 }
@@ -45,7 +49,7 @@ export default function ProfTabela({ lista, vazio, onAbrir, acoes }: {
   return (
     <div className="card" style={{ padding: 0 }}>
       <div style={{ overflow: 'auto', maxHeight: 35 * 58 + 38 }}>
-        <table className="bmais-table" style={{ minWidth: acoes ? 640 : 420 }}>
+        <table className="bmais-table" style={{ minWidth: acoes ? 760 : 420 }}>
           <thead>
             <tr>
               <th>Nome</th>
@@ -77,6 +81,11 @@ export default function ProfTabela({ lista, vazio, onAbrir, acoes }: {
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                         {/* Senha só redefine a senha (mesma modal de Usuários de acesso). */}
                         {btn(() => acoes.onSenha(p), 'Redefinir senha', <>{IconKey}Senha</>)}
+                        <PedirNovaSenhaBotao
+                          semConta={!p.acesso_user_id}
+                          pedida={p.acesso_senha_provisoria}
+                          onClick={() => acoes.onPedirSenha(p)}
+                        />
                         {btn(() => acoes.onEditar(p), 'Editar auditor', 'Editar')}
                         <MenuAcoes
                           rotulo={`Mais ações para ${p.nome}`}

@@ -10,6 +10,7 @@ import type { Usuario, UserRole } from '../types/api'
 import { Badge, LoadingState } from './ui'
 import Toast from './Toast'
 import ResetSenhaModal from './equipe/ResetSenhaModal'
+import { PedirNovaSenhaBotao, PedirNovaSenhaModal } from './equipe/PedirNovaSenha'
 import ApagarUsuarioModal from './equipe/ApagarUsuarioModal'
 import { ConfirmarModal } from './ConfirmarModal'
 import MenuAcoes, { IconesAcao } from './MenuAcoes'
@@ -59,6 +60,8 @@ export default function UsuariosAcesso() {
   const irPara = (rota: string) => navigate(rota, { state: { voltar: location.pathname + location.search } })
   // Usuário cuja senha está sendo redefinida na modal (null = fechada).
   const [resetAlvo, setResetAlvo] = useState<Usuario | null>(null)
+  // Usuário a quem se pede uma senha nova ("Crie sua senha"). null = fechada.
+  const [pedirAlvo, setPedirAlvo] = useState<Usuario | null>(null)
   // Usuário a ser apagado (modal de confirmação). null = fechada.
   const [apagarAlvo, setApagarAlvo] = useState<Usuario | null>(null)
   // Usuário a suspender/reativar (modal de confirmação). null = fechada.
@@ -224,7 +227,7 @@ export default function UsuariosAcesso() {
               O teto cabe 35 linhas (~58px cada, mais o cabeçalho), que é o quanto a
               tela mostra de uma vez; daí em diante a lista rola por dentro. */}
           <div style={{ overflow: 'auto', maxHeight: 35 * 58 + 38 }}>
-            <table className="bmais-table" style={{ minWidth: 560 }}>
+            <table className="bmais-table" style={{ minWidth: 680 }}>
               <thead>
                 <tr>
                   <th>Nome</th>
@@ -263,6 +266,7 @@ export default function UsuariosAcesso() {
                               {IconKey}
                               Senha
                             </button>
+                            <PedirNovaSenhaBotao pedida={u.senha_provisoria} onClick={() => setPedirAlvo(u)} />
                             <button className="btn btn-outline btn-sm" onClick={() => irPara('/usuarios/' + u.user_id)}>Editar</button>
                             {/* A própria conta não se desativa nem se apaga. */}
                             {propria ? <span className="menu-acoes-vaga" /> : (
@@ -304,6 +308,14 @@ export default function UsuariosAcesso() {
           onClose={() => setResetAlvo(null)}
           onDone={(msg) => { setResetAlvo(null); setToast(msg) }}
           onError={(msg) => setToast(msg)}
+        />
+      )}
+      {pedirAlvo && (
+        <PedirNovaSenhaModal
+          userId={pedirAlvo.user_id}
+          nome={pedirAlvo.nome || pedirAlvo.email || 'este usuário'}
+          onClose={() => setPedirAlvo(null)}
+          onDone={(msg) => { setPedirAlvo(null); setToast(msg) }}
         />
       )}
       {apagarAlvo && (

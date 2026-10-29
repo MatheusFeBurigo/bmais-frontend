@@ -1,4 +1,5 @@
-// Convite para trocar a senha definida pelo admin/analista (0048).
+// Convite para trocar a senha definida pelo admin/analista (0048), ou cuja
+// troca ele pediu pelo "Pedir troca" de Operações (28/10/2026).
 //
 // Aparece logo depois de entrar enquanto a senha for provisória. "Agora não"
 // fecha só nesta sessão: no próximo acesso o convite volta, até o usuário
@@ -56,7 +57,7 @@ export default function SenhaProvisoriaModal() {
     >
       <div style={{ display: 'grid', gap: 12 }}>
         <p style={{ margin: 0, fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>
-          Sua senha foi definida por um administrador. Escolha uma senha só sua.
+          Um administrador pediu que você crie uma senha só sua.
         </p>
         <div>
           <label className="uppercase t-muted" style={rotulo} htmlFor="senha-provisoria-nova">Nova senha</label>

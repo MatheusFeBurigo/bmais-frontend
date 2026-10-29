@@ -542,6 +542,9 @@ export interface Usuario {
   /** false = conta SUSPENSA pelo analista (403 em toda a API, sem apagar).
    *  Ausente/true = ativa. */
   ativo?: boolean
+  /** Aguardando o dono criar a senha ("Crie sua senha", 0048): definida por
+   *  outra pessoa ou troca pedida. */
+  senha_provisoria?: boolean
   /** Keys dos hospitais associados. Vazio = sem restrição (vê todos). */
   hospitais?: string[]
   /** Só o operacional: keys das operadoras que ele atende, em todos os
@@ -757,6 +760,8 @@ export interface Profissional {
   /** Só para o admin, quando há conta: o atalho "Senha" da linha abre direto. */
   acesso_user_id?: string
   acesso_email?: string
+  /** A conta aguarda o dono criar a senha (como `Usuario.senha_provisoria`). */
+  acesso_senha_provisoria?: boolean
   /** Hospitais distintos na escala dele. */
   n_hospitais?: number
 }

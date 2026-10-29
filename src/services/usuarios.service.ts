@@ -34,6 +34,12 @@ export function redefinirSenhaUsuario(userId: string, password: string): Promise
   return apiFetch(`/usuarios/${userId}/senha`, { method: 'PATCH', body: { password } })
 }
 
+/** Pede que o usuário crie uma senha nova no próximo acesso, sem trocar a
+ *  atual: só marca a senha como provisória ("Crie sua senha"). */
+export function pedirNovaSenha(userId: string): Promise<unknown> {
+  return apiFetch(`/usuarios/${userId}/pedir-nova-senha`, { method: 'POST' })
+}
+
 /** Admin apaga uma conta de acesso (profile + vínculos + Auth). Irreversível.
  *  O backend impede apagar a própria conta e o último admin. */
 export function apagarUsuario(userId: string): Promise<unknown> {
