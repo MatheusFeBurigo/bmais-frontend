@@ -15,12 +15,17 @@
 // cobertura (se houver) → comparativo (gráfico, recolhido) → parâmetros
 // (recolhido).
 // Admin vê os dois grupos num seletor; cada coordenador vê só o seu.
+//
+// Acima de tudo, a troca de visão (29/10/2026): a distribuição, em blocos, ou
+// "Acontecendo agora", a operação da rede em tempo quase real para quem remaneja.
 import { useEffect, useMemo, useState } from 'react'
 import { usePageHeader } from '../components/PageHeader'
 import { KpiCard, LoadingState } from '../components/ui'
 import Toast from '../components/Toast'
 import { useVolumetria } from '../hooks/useVolumetria'
+import AcontecendoAgora from '../components/volumetria/AcontecendoAgora'
 import ComparativoCarga from '../components/volumetria/ComparativoCarga'
+import CompartilharHospitais from '../components/volumetria/CompartilharHospitais'
 import DemandaXDistribuicao from '../components/volumetria/DemandaXDistribuicao'
 import DividirCarga from '../components/volumetria/DividirCarga'
 import DrawerPessoa from '../components/volumetria/DrawerPessoa'
@@ -49,6 +54,8 @@ export default function Volumetria() {
   const [grupoIdx, setGrupoIdx] = useState(0)
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null)
   const [dividirId, setDividirId] = useState<string | null>(null)
+  const [compartilharId, setCompartilharId] = useState<string | null>(null)
+  const [visao, setVisao] = useState<'distribuicao' | 'atividade'>('distribuicao')
   const [aviso, setAviso] = useState('')
 
   usePageHeader(useMemo(() => ({
@@ -61,6 +68,11 @@ export default function Volumetria() {
   const pessoasComVinculo = useMemo(() => (grupo ? comVinculo(grupo) : []), [grupo])
   const pessoa = grupo?.pessoas.find((p) => p.user_id === selecionadoId) ?? null
   const pessoaDividir = grupo?.pessoas.find((p) => p.user_id === dividirId) ?? null
+  const pessoaCompartilhar = grupo?.pessoas.find((p) => p.user_id === compartilharId) ?? null
+  const todasAsPessoas = useMemo(
+    () => (data?.grupos ?? []).flatMap((g) => g.pessoas.map((p) => ({ user_id: p.user_id, nome: p.nome }))),
+    [data],
+  )
 
   // A pessoa selecionada pode sumir do grupo (mudou de papel, foi apagada):
   // solta a seleção em vez de deixar o drawer apontando para ninguém.
@@ -74,6 +86,7 @@ export default function Volumetria() {
     setGrupoIdx(i)
     setSelecionadoId(null)
     setDividirId(null)
+    setCompartilharId(null)
   }
 
   if (isLoading || !data) {
@@ -92,9 +105,32 @@ export default function Volumetria() {
   const sobrecarregados = pessoasComVinculo.filter((p) => p.nivel === 'sobrecarga').length
   const atencao = pessoasComVinculo.filter((p) => p.nivel === 'atencao').length
 
+  const seletorVisao = (
+    <div className="vol-seg" role="tablist" aria-label="Visão">
+      {([['distribuicao', 'Distribuição'], ['atividade', 'Acontecendo agora']] as const).map(([k, label]) => (
+        <button type="button" role="tab" key={k} aria-selected={visao === k}
+          className={visao === k ? 'active' : ''} onClick={() => setVisao(k)}>
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+
+  if (visao === 'atividade') {
+    return (
+      <>
+        <style>{localStyles}</style>
+        {seletorVisao}
+        <AcontecendoAgora pessoas={todasAsPessoas} />
+      </>
+    )
+  }
+
   return (
     <>
       <style>{localStyles}</style>
+
+      {seletorVisao}
 
       {/* Pedidos que esperam decisão: não dependem do grupo escolhido. */}
       <PedidosDesfazerAtualizacao onErro={setAviso} onAviso={setAviso} />
@@ -163,7 +199,8 @@ export default function Volumetria() {
       </div>
 
       {/* Bloco 2: equipe */}
-      <GradePessoas grupo={grupo} onAbrir={setSelecionadoId} onDividir={setDividirId} />
+      <GradePessoas grupo={grupo} onAbrir={setSelecionadoId} onDividir={setDividirId}
+        onCompartilhar={setCompartilharId} />
 
       {/* Bloco 3: demandas x distribuição e produtividade */}
       <div className="card" style={{ marginTop: 16 }}>
@@ -258,6 +295,16 @@ export default function Volumetria() {
           pessoa={pessoaDividir}
           grupo={grupo}
           onClose={() => setDividirId(null)}
+          onErro={setAviso}
+          onAviso={setAviso}
+        />
+      )}
+
+      {pessoaCompartilhar && (
+        <CompartilharHospitais
+          pessoa={pessoaCompartilhar}
+          grupo={grupo}
+          onClose={() => setCompartilharId(null)}
           onErro={setAviso}
           onAviso={setAviso}
         />

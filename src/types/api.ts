@@ -315,17 +315,29 @@ export interface VolumetriaHospitalDaPessoa {
   regiao: string
   /** Minutos estimados por categoria de demanda. Só categorias da FILA. */
   minutos_categoria: VolumetriaMinutosCategoria
-  /** Presente quando o hospital chegou por divisão temporária de carga: de
-   *  quem veio e até quando (inclusive). Some sozinho ao fim do período. */
-  temporario?: { de_user_id: string; de_nome: string; fim: string; lote: string } | null
+  /** Presente quando o hospital chegou por um período: por divisão da carga
+   *  (`repasse`, de quem veio) ou dado pela coordenação sem tirar de ninguém
+   *  (`compartilhamento`, sem quem cedeu). Some sozinho ao fim do período. */
+  temporario?: {
+    tipo: VolumetriaTipoPeriodo
+    de_user_id: string | null
+    de_nome: string | null
+    fim: string
+    lote: string
+  } | null
 }
 
-/** Uma divisão temporária de carga (um lote): quem cedeu, o período e para
- *  quem foi cada hospital. Vigente = o período já começou. */
+/** Repasse: "Dividir a carga" (o hospital sai de quem cedeu). Compartilhamento:
+ *  "Dar hospitais por um período" (0060, o hospital fica também com quem o tinha). */
+export type VolumetriaTipoPeriodo = 'repasse' | 'compartilhamento'
+
+/** Um lote com período: a divisão da carga de alguém, ou hospitais dados a
+ *  alguém por um período (aí sem quem cedeu). Vigente = o período já começou. */
 export interface VolumetriaDivisao {
   lote: string
-  de_user_id: string
-  de_nome: string
+  tipo: VolumetriaTipoPeriodo
+  de_user_id: string | null
+  de_nome: string | null
   inicio: string
   fim: string
   vigente: boolean
@@ -340,6 +352,43 @@ export interface VolumetriaDividirCorpo {
   distribuicao: Record<string, string>
   inicio: string
   fim: string
+}
+
+/** Corpo de POST /api/volumetria/compartilhamentos (0060). */
+export interface VolumetriaCompartilharCorpo {
+  para_user_id: string
+  hospitais: string[]
+  inicio: string
+  fim: string
+}
+
+/** Grupo da aba "Acontecendo agora": pelo papel de quem agiu. */
+export type AtividadeGrupo = 'tecnico' | 'administrativo' | 'todos'
+
+/** Uma linha da aba "Acontecendo agora" (GET /api/volumetria/atividade). */
+export interface AtividadeItem {
+  id: number
+  quando: string | null
+  /** Nome de quem agiu, já resolvido pelo cadastro. */
+  quem: string
+  user_id: string | null
+  papel: UserRole | null
+  acao: string
+  /** Família da ação: relatorio, paciente, censo, kanban, pendencia, usuario. */
+  tipo: string
+  /** A frase da linha, com nomes (nunca id ou chave). */
+  texto: string
+  paciente: string | null
+  /** Abre a ficha do paciente, quando a linha é de um. */
+  internacao_id: number | null
+  hospitais: Array<{ hospital_key: string; hospital_nome: string }>
+}
+
+export interface AtividadeResposta {
+  grupo: AtividadeGrupo
+  itens: AtividadeItem[]
+  /** Há linhas mais antigas: a próxima página vem com `antes_de` = id da última. */
+  mais: boolean
 }
 
 /** Uma região coberta por uma pessoa: a parte DELA naquela região. */

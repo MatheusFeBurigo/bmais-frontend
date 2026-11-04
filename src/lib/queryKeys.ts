@@ -74,6 +74,10 @@ export const queryKeys = {
 
   /** Carga de trabalho por hospital (tela Volumetria, coordenadores). */
   volumetria: () => ['volumetria'] as const,
+  /** Aba "Acontecendo agora" da Distribuição. Debaixo de `volumetria`: um
+   *  remanejo invalida o painel e a aba juntos, e a linha dele aparece na hora. */
+  volumetriaAtividade: (filtros: { grupo?: string; usuario?: string; q?: string }) =>
+    ['volumetria', 'atividade', filtros] as const,
 
   /** Pendências avulsas: as do usuário (aba Pendências de Tarefas), as de uma
    *  pessoa (Distribuição), quem pode recebê-las e as novas ainda não vistas

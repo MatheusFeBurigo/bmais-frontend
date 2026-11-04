@@ -1,13 +1,16 @@
 // Hooks do painel de Volumetria (carga de trabalho por pessoa, coordenadores).
 // Toda mutation invalida a query inteira: a carga de UMA pessoa depende de
 // parâmetros e vínculos que afetam as outras, então recalcular tudo é o certo.
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { opcoesAutoRefresh } from '../lib/autoRefresh'
 import { queryKeys } from '../lib/queryKeys'
-import type { VolumetriaDividirCorpo, VolumetriaParametrosCorpo, VolumetriaPayload } from '../types/api'
+import type {
+  VolumetriaCompartilharCorpo, VolumetriaDividirCorpo, VolumetriaParametrosCorpo, VolumetriaPayload,
+} from '../types/api'
 import {
-  cancelarDivisao, desvincularOperadora, desvincularPessoa, dividirCarga, fetchVolumetria, restaurarParametros,
-  salvarParametros, vincularOperadora, vincularPessoa,
-  type GrupoVolumetria,
+  cancelarDivisao, compartilharHospitais, desvincularOperadora, desvincularPessoa, dividirCarga, fetchAtividade,
+  fetchVolumetria, restaurarParametros, salvarParametros, vincularOperadora, vincularPessoa,
+  type FiltrosAtividade, type GrupoVolumetria,
 } from '../services/volumetria.service'
 import { aplicarDivisao } from '../components/volumetria/volumetria.model'
 
@@ -183,5 +186,30 @@ export function useCancelarDivisao() {
   return useMutation({
     mutationFn: (lote: string) => cancelarDivisao(lote),
     onSuccess: invalidar,
+  })
+}
+
+/** Sem otimismo: o hospital dado conta para quem recebe e para quem já o tinha,
+ *  e a conta das duas é do backend. O refetch traz o painel já com o período. */
+export function useCompartilharHospitais() {
+  const invalidar = useInvalidarVolumetria()
+  return useMutation({
+    mutationFn: (corpo: VolumetriaCompartilharCorpo) => compartilharHospitais(corpo),
+    onSuccess: invalidar,
+  })
+}
+
+/** Aba "Acontecendo agora": páginas de 50, relidas pelo polling da tela
+ *  (lib/autoRefresh). "Carregar mais" pede a página anterior à última linha. */
+export function useAtividade(filtros: FiltrosAtividade, ativo: boolean) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.volumetriaAtividade(filtros),
+    queryFn: ({ pageParam }) => fetchAtividade(filtros, pageParam),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (ultima) => (ultima.mais ? ultima.itens.at(-1)?.id : undefined),
+    enabled: ativo,
+    ...opcoesAutoRefresh,
+    // A lista anterior fica na tela enquanto o filtro novo carrega.
+    placeholderData: keepPreviousData,
   })
 }

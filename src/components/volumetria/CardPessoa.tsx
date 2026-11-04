@@ -1,6 +1,7 @@
 // O bloco de um funcionário: quem é, quanto carrega e as demandas quebradas
 // como no quadro de Tarefas dele. Clique em qualquer ponto abre o drawer; o ⋮
-// no canto abre as ações sobre a pessoa (dividir a carga).
+// no canto abre as ações sobre a pessoa (dividir a carga, dar hospitais por um
+// período).
 //
 // O ⋮ é IRMÃO do cartão, não filho: o cartão é um <button> e botão dentro de
 // botão não é HTML válido (o clique no ⋮ também abriria o drawer).
@@ -10,7 +11,7 @@ import { Badge, ProgressBar } from '../ui'
 import QuebraDemandas from './QuebraDemandas'
 import {
   NIVEL_BADGE, NIVEL_LABEL, NIVEL_VAR, colegasParaDividir, divisoesDe, fmtDiaMes, iniciais, linhasQuebra,
-  operadorasDaPessoa, resumoRegiao, rotuloGrupo,
+  operadorasDaPessoa, podeReceberPorPeriodo, resumoRegiao, rotuloGrupo,
 } from './volumetria.model'
 
 const IconMais = (
@@ -19,10 +20,13 @@ const IconMais = (
   </svg>
 )
 
-function MenuPessoa({ nome, podeDividir, onDividir }: {
+function MenuPessoa({ nome, podeDividir, onDividir, motivoSemPeriodo, onCompartilhar }: {
   nome: string
   podeDividir: boolean
   onDividir: () => void
+  /** Por que a pessoa não pode receber hospitais por um período; null = pode. */
+  motivoSemPeriodo: string | null
+  onCompartilhar: () => void
 }) {
   const [aberto, setAberto] = useState(false)
   const raiz = useRef<HTMLDivElement>(null)
@@ -66,18 +70,28 @@ function MenuPessoa({ nome, podeDividir, onDividir }: {
           >
             Dividir a carga
           </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!!motivoSemPeriodo}
+            title={motivoSemPeriodo ?? undefined}
+            onClick={() => { setAberto(false); onCompartilhar() }}
+          >
+            Dar hospitais por um período
+          </button>
         </div>
       )}
     </div>
   )
 }
 
-export default function CardPessoa({ pessoa, grupo, maxDemandas, onAbrir, onDividir }: {
+export default function CardPessoa({ pessoa, grupo, maxDemandas, onAbrir, onDividir, onCompartilhar }: {
   pessoa: VolumetriaPessoa
   grupo: VolumetriaGrupo
   maxDemandas: number
   onAbrir: (userId: string) => void
   onDividir: (userId: string) => void
+  onCompartilhar: (userId: string) => void
 }) {
   const rotulo = rotuloGrupo(grupo.papel)
   const nivel = pessoa.nivel ?? 'normal'
@@ -91,6 +105,9 @@ export default function CardPessoa({ pessoa, grupo, maxDemandas, onAbrir, onDivi
     && pessoa.hospitais.filter((h) => !h.temporario).length >= 2
   // Operacional: a área é a lista de operadoras; os hospitais vêm delas.
   const porOperadora = !!pessoa.por_operadora
+  const motivoSemPeriodo = podeReceberPorPeriodo(pessoa) ? null
+    : porOperadora ? 'O operacional responde por operadora: use Dividir a carga'
+      : 'Sem área definida a pessoa já vê toda a rede'
   const operadoras = operadorasDaPessoa(grupo, pessoa)
   const area = porOperadora
     ? (operadoras || 'sem operadora')
@@ -133,7 +150,7 @@ export default function CardPessoa({ pessoa, grupo, maxDemandas, onAbrir, onDivi
           <div className="vol-card-div">
             {vigente
               ? `Carga dividida até ${fmtDiaMes(vigente.fim)}`
-              : `Ajudando com ${recebidos} ${recebidos === 1 ? 'hospital' : 'hospitais'} de colegas`}
+              : `Ajudando com ${recebidos} ${recebidos === 1 ? 'hospital' : 'hospitais'} por um período`}
           </div>
         )}
 
@@ -188,7 +205,8 @@ export default function CardPessoa({ pessoa, grupo, maxDemandas, onAbrir, onDivi
           </span>
         </footer>
       </button>
-      <MenuPessoa nome={pessoa.nome} podeDividir={podeDividir} onDividir={() => onDividir(pessoa.user_id)} />
+      <MenuPessoa nome={pessoa.nome} podeDividir={podeDividir} onDividir={() => onDividir(pessoa.user_id)}
+        motivoSemPeriodo={motivoSemPeriodo} onCompartilhar={() => onCompartilhar(pessoa.user_id)} />
     </div>
   )
 }

@@ -11,10 +11,11 @@ const IconBusca = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
 )
 
-export default function GradePessoas({ grupo, onAbrir, onDividir }: {
+export default function GradePessoas({ grupo, onAbrir, onDividir, onCompartilhar }: {
   grupo: VolumetriaGrupo
   onAbrir: (userId: string) => void
   onDividir: (userId: string) => void
+  onCompartilhar: (userId: string) => void
 }) {
   const [busca, setBusca] = useState('')
   const [ordem, setOrdem] = useState<OrdemPessoas>('carga')
@@ -108,7 +109,8 @@ export default function GradePessoas({ grupo, onAbrir, onDividir }: {
         ) : (
           <div className="vol-grade">
             {visiveis.map((p) => (
-              <CardPessoa key={p.user_id} pessoa={p} grupo={grupo} maxDemandas={maximo} onAbrir={onAbrir} onDividir={onDividir} />
+              <CardPessoa key={p.user_id} pessoa={p} grupo={grupo} maxDemandas={maximo} onAbrir={onAbrir}
+                onDividir={onDividir} onCompartilhar={onCompartilhar} />
             ))}
           </div>
         )}

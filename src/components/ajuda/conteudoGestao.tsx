@@ -12,8 +12,8 @@ import { lazy, Suspense, type ReactNode } from 'react'
 import { Callout, Chip, Key, Metric, Metrics, SoGestao, Tabela } from './blocos'
 import { ComoFazer, Tela } from './replica'
 import {
-  ReplicaDemandaXDistribuicao, ReplicaDividirCarga, ReplicaEquipe, ReplicaPainelPessoa,
-  ReplicaParametros, ReplicaPorRegiao, ReplicaSemCobertura,
+  ReplicaAcontecendoAgora, ReplicaCompartilharHospitais, ReplicaDemandaXDistribuicao, ReplicaDividirCarga,
+  ReplicaEquipe, ReplicaPainelPessoa, ReplicaParametros, ReplicaPorRegiao, ReplicaSemCobertura,
 } from './exemplosDistribuicao'
 
 // As réplicas do Gestor usam os gráficos reais, que puxam o Chart.js. Este
@@ -387,6 +387,53 @@ export function ModuloVolumetria() {
       </ComoFazer>
 
       <ComoFazer
+        titulo="Cobrir uma colega: dar hospitais a alguém por um período"
+        passos={[
+          { n: 1, titulo: 'Clique no ⋮ do cartão de quem vai cobrir', corpo: <>O cartão é o de quem <strong>recebe</strong>, não o de quem vai se ausentar. No menu, clique em <strong>Dar hospitais por um período</strong>. A opção só libera para quem já tem hospitais definidos.</> },
+          { n: 2, titulo: 'Escolha os hospitais', corpo: <>Digite o nome, escolha o hospital e clique em <strong>Incluir</strong>. Repita para cada um. A lista não traz os hospitais que a pessoa já cobre, e o <strong>×</strong> tira um hospital escolhido por engano.</> },
+          { n: 3, titulo: 'Escolha o período', corpo: <><strong>Só hoje</strong>, <strong>Hoje e amanhã</strong>, <strong>7 dias</strong> ou <strong>Outro</strong>, para escolher as datas. O período não pode começar no passado nem passar de 31 dias. Para uma ausência de poucas horas, use <strong>Só hoje</strong>.</> },
+          { n: 4, titulo: 'Clique em Dar hospitais', corpo: <>O botão diz quantos hospitais serão dados. Ao gravar, a janela fecha. Nada sai de quem já tinha o hospital.</> },
+          { n: 5, titulo: 'Confira no cartão', corpo: <>O cartão de quem recebeu mostra <strong>Ajudando com</strong> o número de hospitais. A partir daí ela vê esses hospitais na Visão Geral e nas Tarefas e pode trabalhar neles normalmente. As tarefas e a carga deles contam para ela durante o período.</> },
+          { n: 6, titulo: 'Encerre quando a colega voltar', corpo: <>Abra a mesma opção no ⋮ do cartão: o período aparece no topo, com <strong>Encerrar agora</strong>. Se ninguém encerrar, os hospitais saem sozinhos no fim do período.</> },
+        ]}
+      >
+        <Tela nome="Distribuição de tarefas" largura={960}
+          destaques={{ '.vol-grade > .vol-card-wrap:nth-child(3) .vol-menu-btn': 1 }}
+          descricao="Juliana Prado vai a uma reunião e Beatriz Lemos vai cobrir. O ⋮ abre as ações no cartão de Beatriz.">
+          <ReplicaEquipe />
+        </Tela>
+        <Tela nome="Distribuição de tarefas" largura={560}
+          descricao="Dois hospitais de Juliana escolhidos para Beatriz, só neste dia.">
+          <ReplicaCompartilharHospitais marcas={{ hospitais: 2, periodo: 3, dar: 4 }} />
+        </Tela>
+        <Tela nome="Distribuição de tarefas" largura={960}
+          destaques={{ '.vol-grade > .vol-card-wrap:nth-child(3) .vol-card-div': 5 }}
+          descricao="Durante a cobertura: o cartão de Beatriz avisa, e o de Juliana continua como estava.">
+          <ReplicaEquipe coberta />
+        </Tela>
+        <Tela nome="Distribuição de tarefas" largura={560}
+          destaques={{ '.dv-and .btn': 6 }}
+          descricao="A mesma opção reaberta durante o período: é daqui que se encerra antes do fim.">
+          <ReplicaCompartilharHospitais encerrar />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
+        titulo="Acompanhar o que a equipe está fazendo na rede"
+        passos={[
+          { n: 1, titulo: 'Abra Acontecendo agora', corpo: <>No topo da tela, troque de <strong>Distribuição</strong> para <strong>Acontecendo agora</strong>. Só a coordenação, a gestão e a administração têm esta visão.</> },
+          { n: 2, titulo: 'Escolha de quem ver as ações', corpo: <><strong>Técnicos</strong> ou <strong>Operacionais</strong> mostram o que as pessoas daquele grupo fizeram, e <strong>Todos</strong>, o que toda a equipe fez. O coordenador abre no próprio grupo; o gestor, em Todos.</> },
+          { n: 3, titulo: 'Filtre por pessoa ou busque', corpo: <>A busca procura o paciente e o hospital na frase de cada linha. A cobrança de censo é a exceção: ela não é encontrada pelo nome do hospital.</> },
+          { n: 4, titulo: 'Leia as linhas', corpo: <>Cada linha diz quem fez, o que fez e há quanto tempo. A lista se atualiza sozinha a cada 30 segundos, e <strong>Abrir paciente</strong> leva à ficha.</> },
+        ]}
+      >
+        <Tela nome="Distribuição de tarefas" largura={960}
+          descricao="O que a equipe fez na última hora, em todos os hospitais.">
+          <ReplicaAcontecendoAgora marcas={{ visao: 1, grupo: 2, filtros: 3, linhas: 4 }} />
+        </Tela>
+      </ComoFazer>
+
+      <ComoFazer
         titulo="Comparar demandas com a distribuição dos hospitais"
         passos={[
           { n: 1, titulo: 'Compare a barra com o traço', corpo: <>A barra é a parte das demandas abertas do grupo que está com a pessoa; o traço é a parte dos hospitais que ela recebeu. <strong>Barra além do traço</strong> quer dizer hospitais mais pesados que a média; barra aquém, hospitais leves. Clicar na linha abre o painel da pessoa.</> },
@@ -520,7 +567,7 @@ export function ModuloVolumetria() {
         <li><strong>Equipe</strong>: um cartão por pessoa, com o nível de carga, o número de
           demandas e a quebra delas pelos mesmos nomes das colunas de Tarefas. A lista pode ser
           ordenada por <strong>Maior carga</strong> ou por <strong>Nome</strong>. O ⋮ de cada cartão
-          traz <strong>Dividir a carga</strong>.</li>
+          traz <strong>Dividir a carga</strong> e <strong>Dar hospitais por um período</strong>.</li>
         <li><strong>Demandas x distribuição</strong>: a parte das demandas abertas e a parte dos
           hospitais de cada pessoa, lado a lado.</li>
         <li><strong>Produtividade</strong>: abertas e concluídas por pessoa, e as entregas do grupo
@@ -598,6 +645,67 @@ export function ModuloVolumetria() {
         coordenador não dividem carga entre si: a área de um é por operadora, e a do outro, por
         hospital.
       </Callout>
+
+      <h3>Hospitais por um período</h3>
+      <p>
+        <strong>Dar hospitais por um período</strong>, no ⋮ do cartão, serve para alguém cobrir
+        uma colega que vai se ausentar: numa reunião, num plantão fora, num dia de folga. Diferente
+        de dividir a carga, <strong>nada sai de ninguém</strong>: quem já tinha o hospital continua
+        com ele, e as duas o veem durante o período.
+      </p>
+      <Callout tipo="rule" titulo="O que cada pessoa vê">
+        Na Visão Geral e nas Tarefas, cada pessoa vê os hospitais da própria área. Dar hospitais por
+        um período amplia essa área por um tempo, e as tarefas desses hospitais vêm junto. Não libera
+        a rede inteira: a visão de toda a rede é a de <strong>Acontecendo agora</strong>, da
+        coordenação, da gestão e da administração.
+      </Callout>
+      <Tabela cabecalho={['', 'Dividir a carga', 'Dar hospitais por um período']} larguras={['175px']}>
+        <tr><Key>Para que serve</Key>
+          <td>Aliviar quem está com carga demais.</td>
+          <td>Cobrir quem vai se ausentar.</td></tr>
+        <tr><Key>O hospital sai de quem tinha?</Key>
+          <td>Sim, durante o período.</td>
+          <td>Não, fica com as duas pessoas.</td></tr>
+        <tr><Key>Por onde começa</Key>
+          <td>No cartão de quem cede.</td>
+          <td>No cartão de quem recebe.</td></tr>
+        <tr><Key>Quem escolhe os hospitais</Key>
+          <td>O sistema reparte pelas horas de cada um.</td>
+          <td>Você escolhe um a um.</td></tr>
+        <tr><Key>Para o operacional</Key>
+          <td>Disponível.</td>
+          <td>Não disponível: a área dele é por operadora.</td></tr>
+      </Tabela>
+      <Tabela cabecalho={['Situação', 'O que acontece']} larguras={['215px']}>
+        <tr><Key>Durante o período</Key>
+          <td>Os hospitais entram na Visão Geral, nas Tarefas e na carga de quem recebeu. O cartão
+            das Tarefas mostra as duas pessoas como responsáveis.</td></tr>
+        <tr><Key>No fim do período</Key>
+          <td>Os hospitais saem sozinhos de quem recebeu.</td></tr>
+        <tr><Key>Encerrar antes do fim</Key>
+          <td>Abra de novo <strong>Dar hospitais por um período</strong> na mesma pessoa: os
+            períodos dela aparecem no topo, cada um com <strong>Encerrar agora</strong>. Para uma
+            ausência de poucas horas, escolha <strong>Só hoje</strong> e encerre quando a colega
+            voltar.</td></tr>
+      </Tabela>
+      <Callout tipo="caution" titulo="Quem pode receber">
+        Só quem já tem hospitais definidos: sem área, a pessoa já vê a rede inteira, e o período a
+        recortaria. O operacional responde por operadora e, para ele, o caminho é dividir a carga.
+        Como na divisão, o período começa hoje ou depois e dura no máximo 31 dias.
+      </Callout>
+
+      <h3>Acontecendo agora</h3>
+      <p>
+        No topo da tela, <strong>Acontecendo agora</strong> troca os blocos por uma linha do tempo
+        da operação na rede inteira: quem registrou relatório, agendou visita, deu alta, enviou
+        censo, cobrou hospital ou remanejou hospitais, com o paciente e o hospital. A lista se
+        atualiza sozinha a cada 30 segundos, e <strong>Abrir paciente</strong> leva à ficha.
+      </p>
+      <p>
+        Ela abre nas ações do seu grupo; <strong>Todos</strong> mostra os dois. Dá para filtrar por
+        pessoa e buscar por paciente ou hospital. Só a coordenação, a gestão e a administração veem
+        esta visão: técnicos e operacionais continuam vendo os hospitais da área deles.
+      </p>
 
       <h3>Onde o tempo está indo</h3>
       <p>

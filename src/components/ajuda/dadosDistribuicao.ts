@@ -9,7 +9,8 @@
 // (sobrecarga, atenção, normal e sem área definida). Marcos é o coordenador,
 // que também trabalha no grupo (21/10/2026).
 import type {
-  Pendencia, VolumetriaDivisao, VolumetriaGrupo, VolumetriaMinutosCategoria, VolumetriaPessoa, VolumetriaQuebra,
+  AtividadeItem, Pendencia, VolumetriaDivisao, VolumetriaGrupo, VolumetriaMinutosCategoria, VolumetriaPessoa,
+  VolumetriaQuebra,
 } from '../../types/api'
 import { SEM_REGIAO } from '../../lib/regioes'
 
@@ -176,7 +177,7 @@ export const HOSPITAIS_DA_JULIANA: Array<{
 /** A divisão que o passo a passo monta: Juliana cede dois hospitais a Beatriz
  *  por dois dias. */
 const DIVISAO: VolumetriaDivisao = {
-  lote: 'exemplo', de_user_id: 'juliana', de_nome: 'Juliana Prado',
+  lote: 'exemplo', tipo: 'repasse', de_user_id: 'juliana', de_nome: 'Juliana Prado',
   inicio: '2026-09-26', fim: '2026-09-27', vigente: true, criado_por: 'Camila Freitas',
   itens: [
     { hospital_key: 'sao_lucas', hospital_nome: 'Hospital São Lucas', para_user_id: 'beatriz', para_nome: 'Beatriz Lemos' },
@@ -196,7 +197,55 @@ export const GRUPO_DIVIDIDO: VolumetriaGrupo = {
     hospitais: DIVISAO.itens.map((it) => ({
       hospital_key: it.hospital_key, hospital_nome: it.hospital_nome, operadora_key: null,
       pendencias: 0, horas: 0, quebra: {}, compartilhado_com: 0, regiao: 'Campinas', minutos_categoria: {},
-      temporario: { de_user_id: 'juliana', de_nome: 'Juliana Prado', fim: DIVISAO.fim, lote: DIVISAO.lote },
+      temporario: { tipo: 'repasse', de_user_id: 'juliana', de_nome: 'Juliana Prado', fim: DIVISAO.fim, lote: DIVISAO.lote },
     })),
   }),
 }
+
+/** O período do "como fazer" de cobertura: Juliana sai para uma reunião e Beatriz
+ *  recebe dois hospitais dela, só naquele dia. Nada sai de Juliana. */
+export const COBERTURA: VolumetriaDivisao = {
+  lote: 'exemplo-cobertura', tipo: 'compartilhamento', de_user_id: null, de_nome: null,
+  inicio: '2026-09-26', fim: '2026-09-26', vigente: true, criado_por: 'Marcos Tavares',
+  itens: [
+    { hospital_key: 'sao_lucas', hospital_nome: 'Hospital São Lucas', para_user_id: 'beatriz', para_nome: 'Beatriz Lemos' },
+    { hospital_key: 'vila_nova', hospital_nome: 'Hospital Vila Nova', para_user_id: 'beatriz', para_nome: 'Beatriz Lemos' },
+  ],
+}
+
+/** O grupo durante a cobertura: só o cartão de Beatriz avisa, e o de Juliana fica
+ *  como estava. Os números de carga ficam os de antes, como em GRUPO_DIVIDIDO. */
+export const GRUPO_COMPARTILHADO: VolumetriaGrupo = {
+  ...GRUPO,
+  divisoes: [COBERTURA],
+  pessoas: GRUPO.pessoas.map((p) => p.user_id !== 'beatriz' ? p : {
+    ...p,
+    hospitais_n: p.hospitais_n + COBERTURA.itens.length,
+    hospitais: [...p.hospitais, ...COBERTURA.itens.map((it) => ({
+      hospital_key: it.hospital_key, hospital_nome: it.hospital_nome, operadora_key: null,
+      pendencias: 0, horas: 0, quebra: {}, compartilhado_com: 1, regiao: 'Campinas', minutos_categoria: {},
+      temporario: { tipo: 'compartilhamento' as const, de_user_id: null, de_nome: null, fim: COBERTURA.fim, lote: COBERTURA.lote },
+    }))],
+  }),
+}
+
+const minutosAtras = (m: number) => new Date(Date.now() - m * 60_000).toISOString()
+
+/** As linhas da réplica de "Acontecendo agora", com as frases que o sistema grava. */
+export const ATIVIDADE_EXEMPLO: AtividadeItem[] = [
+  { id: 5, quando: minutosAtras(3), quem: 'Beatriz Lemos', user_id: 'beatriz', papel: 'tecnico',
+    acao: 'relatorio.registrar', tipo: 'relatorio', texto: 'Relatório registrado para Maria Souza (Hospital São Lucas)',
+    paciente: 'Maria Souza', internacao_id: 1, hospitais: [{ hospital_key: 'sao_lucas', hospital_nome: 'Hospital São Lucas' }] },
+  { id: 4, quando: minutosAtras(12), quem: 'Marcos Tavares', user_id: 'marcos', papel: 'coordenador_tecnico',
+    acao: 'volumetria.compartilhar', tipo: 'usuario', texto: 'Deu 2 hospitais a Beatriz Lemos de 26/09 a 26/09: Hospital São Lucas, Hospital Vila Nova',
+    paciente: null, internacao_id: null, hospitais: [] },
+  { id: 3, quando: minutosAtras(24), quem: 'Juliana Prado', user_id: 'juliana', papel: 'tecnico',
+    acao: 'visita.agendar', tipo: 'paciente', texto: 'Visita agendada para João Lima (Hospital Santa Clara)',
+    paciente: 'João Lima', internacao_id: 2, hospitais: [{ hospital_key: 'santa_clara', hospital_nome: 'Hospital Santa Clara' }] },
+  { id: 2, quando: minutosAtras(41), quem: 'Camila Freitas', user_id: 'camila', papel: 'administrativo',
+    acao: 'kanban.cobranca_cobrado', tipo: 'kanban', texto: 'Hospital cobrado pelo censo atrasado: Hospital Bela Vista',
+    paciente: null, internacao_id: null, hospitais: [{ hospital_key: 'bela_vista', hospital_nome: 'Hospital Bela Vista' }] },
+  { id: 1, quando: minutosAtras(52), quem: 'Juliana Prado', user_id: 'juliana', papel: 'tecnico',
+    acao: 'paciente.alta', tipo: 'paciente', texto: 'Alta dada a Ana Reis (Hospital Vila Nova)',
+    paciente: 'Ana Reis', internacao_id: 3, hospitais: [{ hospital_key: 'vila_nova', hospital_nome: 'Hospital Vila Nova' }] },
+]

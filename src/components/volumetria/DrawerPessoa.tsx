@@ -316,8 +316,9 @@ export default function DrawerPessoa({ pessoa, grupo, onClose, onErro }: {
                       {tecnico
                         ? `${h.internados ?? 0} ${h.internados === 1 ? 'paciente' : 'pacientes'}`
                         : (h.dias_sem_censo != null ? `sem censo há ${h.dias_sem_censo} ${h.dias_sem_censo === 1 ? 'dia' : 'dias'}` : 'sem censo')}
-                      {h.temporario && (
-                        <> · de {h.temporario.de_nome} até {fmtDiaMes(h.temporario.fim)}</>
+                      {h.temporario && (h.temporario.tipo === 'compartilhamento'
+                        ? <> · por um período, até {fmtDiaMes(h.temporario.fim)}</>
+                        : <> · de {h.temporario.de_nome} até {fmtDiaMes(h.temporario.fim)}</>
                       )}
                       {h.compartilhado_com > 0 && (
                         <> · compartilhado com {h.compartilhado_com} {h.compartilhado_com === 1 ? 'pessoa' : 'pessoas'}</>

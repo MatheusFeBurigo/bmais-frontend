@@ -45,7 +45,7 @@ export const localStyles = `
 .vol-menu-btn{width:26px;height:26px;display:grid;place-items:center;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer}
 .vol-menu-btn:hover,.vol-menu-btn[aria-expanded="true"]{background:var(--surface-3);color:var(--ink)}
 .vol-menu-btn:focus-visible{outline:2px solid var(--primary-3);outline-offset:1px}
-.vol-menu-lista{position:absolute;right:0;top:30px;z-index:5;min-width:170px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);box-shadow:0 8px 24px rgba(11,26,38,.14);padding:4px}
+.vol-menu-lista{position:absolute;right:0;top:30px;z-index:5;min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);box-shadow:0 8px 24px rgba(11,26,38,.14);padding:4px}
 .vol-menu-lista button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:7px 10px;border-radius:6px;font:inherit;font-size:var(--t-sm);color:var(--ink);cursor:pointer}
 .vol-menu-lista button:hover:not(:disabled){background:var(--surface-2)}
 .vol-menu-lista button:disabled{color:var(--muted);cursor:default}
@@ -247,6 +247,25 @@ export const dividirStyles = `
 .dv-prev-num{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
 .dv-prev-num b{font-weight:600}
 .dv-and{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border-soft);border-radius:var(--r-sm);background:var(--surface-2);font-size:var(--t-sm);margin-bottom:6px}
-.dv-and span{flex:1;min-width:0}
+.dv-and > :nth-child(2){flex:1;min-width:0}
 .dv-vazio{font-size:var(--t-sm);color:var(--muted);line-height:1.5}
+`
+
+// Aba "Acontecendo agora" (29/10/2026): a operação da rede, uma linha por ação.
+export const atividadeStyles = `
+.at-barra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:4px}
+.at-barra .vol-seg{margin-bottom:0}
+.at-barra .bm-input{width:auto;min-width:0;font-size:var(--t-sm)}
+.at-barra .at-busca{flex:1;min-width:180px}
+.at-nota{font-size:var(--t-xs);color:var(--muted);margin:6px 0 2px}
+.at-dia{font-size:var(--t-xs);font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 4px}
+.at-item{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--border-soft)}
+.at-item:last-child{border-bottom:0}
+.at-quem{font-size:var(--t-sm);font-weight:600;color:var(--ink)}
+.at-quem span{font-weight:400;color:var(--muted)}
+.at-texto{font-size:var(--t-sm);color:var(--ink-2);line-height:1.45;overflow-wrap:anywhere}
+.at-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:5px;font-size:var(--t-xs)}
+.at-meta a{color:var(--primary-3);font-weight:600}
+.at-hora{font-size:var(--t-xs);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;padding-top:2px}
+.at-mais{display:flex;justify-content:center;margin-top:12px}
 `

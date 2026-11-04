@@ -10,24 +10,28 @@
 // recolhido, sem como mostrar os campos.
 //
 // O modal "Dividir a carga" também é redesenhado: o real grava ao confirmar e
-// trava a rolagem da página. As classes e o CSS são os dele (dividirStyles).
+// trava a rolagem da página. As classes e o CSS são os dele (dividirStyles). O
+// "Dar hospitais por um período" segue o mesmo caminho, e "Acontecendo agora"
+// reusa a linha real sobre uma barra redesenhada: a aba real busca do servidor.
 //
 // A equipe é fictícia (dadosDistribuicao.ts).
 import type { ReactNode } from 'react'
 import type { VolumetriaGrupo } from '../../types/api'
 import { Badge, KpiCard, OpAvatar } from '../ui'
 import { HospitalCombobox } from '../HospitalCombobox'
+import { Linha } from '../volumetria/AcontecendoAgora'
 import DemandaXDistribuicao from '../volumetria/DemandaXDistribuicao'
 import GradePessoas from '../volumetria/GradePessoas'
 import HospitaisSemCobertura from '../volumetria/HospitaisSemCobertura'
 import PorRegiao from '../volumetria/PorRegiao'
 import QuebraDemandas from '../volumetria/QuebraDemandas'
 import TempoPorTarefa from '../volumetria/TempoPorTarefa'
-import { dividirStyles, localStyles as volumetriaStyles } from '../volumetria/volumetria.styles'
+import { atividadeStyles, dividirStyles, localStyles as volumetriaStyles } from '../volumetria/volumetria.styles'
 import { NIVEL_VAR, fmtDias, fmtHoras, iniciais, linhasQuebra } from '../volumetria/volumetria.model'
 import { estilosPendencias } from '../pendencias/pendencias.styles'
 import {
-  BEATRIZ, GRUPO, GRUPO_DIVIDIDO, HOSPITAIS_DA_JULIANA, JULIANA, MARCOS, PENDENCIAS_DA_JULIANA, PESSOAS,
+  ATIVIDADE_EXEMPLO, BEATRIZ, COBERTURA, GRUPO, GRUPO_COMPARTILHADO, GRUPO_DIVIDIDO, HOSPITAIS_DA_JULIANA, JULIANA,
+  MARCOS, PENDENCIAS_DA_JULIANA, PESSOAS,
 } from './dadosDistribuicao'
 import { CartoesPendencias } from './exemplosPendencias'
 import { Marcado, ModalReplica } from './replica'
@@ -60,18 +64,20 @@ function Cabecalho() {
 }
 
 /** Topo da tela: indicadores e a grade de cartões da equipe. `dividida`
- *  mostra o grupo durante a divisão de carga do exemplo. */
-export function ReplicaEquipe({ marcas = {}, dividida }: {
+ *  mostra o grupo durante a divisão de carga do exemplo; `coberta`, durante a
+ *  cobertura com hospitais dados por um período. */
+export function ReplicaEquipe({ marcas = {}, dividida, coberta }: {
   marcas?: Partial<Record<'equipe' | 'semCobertura', number>>
   dividida?: boolean
+  coberta?: boolean
 }) {
-  const grupo: VolumetriaGrupo = dividida ? GRUPO_DIVIDIDO : GRUPO
+  const grupo: VolumetriaGrupo = coberta ? GRUPO_COMPARTILHADO : dividida ? GRUPO_DIVIDIDO : GRUPO
   return (
     <>
       <style>{volumetriaStyles}</style>
       <Cabecalho />
       <Indicadores marcas={marcas} />
-      <GradePessoas grupo={grupo} onAbrir={nada} onDividir={nada} />
+      <GradePessoas grupo={grupo} onAbrir={nada} onDividir={nada} onCompartilhar={nada} />
     </>
   )
 }
@@ -171,6 +177,141 @@ export function ReplicaDividirCarga({ marcas = {} }: {
         </Marcado>
       </div>
     </ModalReplica>
+  )
+}
+
+/** O modal "Dar hospitais por um período" de Beatriz. `encerrar` mostra o mesmo
+ *  modal reaberto durante o período, com o "Encerrar agora" no topo. */
+export function ReplicaCompartilharHospitais({ marcas = {}, encerrar }: {
+  marcas?: Partial<Record<'hospitais' | 'periodo' | 'dar', number>>
+  encerrar?: boolean
+}) {
+  const escolhidos = encerrar ? [] : COBERTURA.itens.map((i) => i.hospital_nome)
+  return (
+    <ModalReplica
+      titulo={`Dar hospitais a ${BEATRIZ.nome} por um período`}
+      largura={520}
+      rodape={
+        <>
+          <span className="btn btn-outline btn-sm">Cancelar</span>
+          <Marcado n={marcas.dar}>
+            <span className="btn btn-primary btn-sm">{encerrar ? 'Dar hospital' : `Dar ${escolhidos.length} hospitais`}</span>
+          </Marcado>
+        </>
+      }
+    >
+      <style>{volumetriaStyles}</style>
+      <style>{dividirStyles}</style>
+
+      {encerrar && (
+        <div className="dv-sec">
+          <div className="dv-lbl">Hospitais por um período</div>
+          <div className="dv-and">
+            <Badge variant="info">Em andamento</Badge>
+            <span>26/09 a 26/09 · {COBERTURA.itens.map((i) => i.hospital_nome).join(', ')}</span>
+            <button type="button" className="btn btn-ghost btn-sm">Encerrar agora</button>
+          </div>
+        </div>
+      )}
+
+      <div className="dv-sec">
+        <div className="dv-vazio">
+          Os hospitais entram na Visão Geral e nas Tarefas de {BEATRIZ.nome} durante o período,
+          sem sair de quem já os tem. No fim, saem sozinhos.
+        </div>
+      </div>
+
+      <Marcado n={marcas.hospitais} bloco>
+        <div className="dv-sec">
+          <div className="dv-lbl">
+            Hospitais
+            {escolhidos.length > 0 && <span>{escolhidos.length} escolhidos</span>}
+          </div>
+          {escolhidos.length > 0 && (
+            <div className="dv-lista" style={{ marginBottom: 8 }}>
+              {escolhidos.map((nome) => (
+                <div className="dv-colega" key={nome} style={{ cursor: 'default' }}>
+                  <span className="dv-colega-nome">{nome}</span>
+                  <span className="vol-x">×</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="vol-add" style={{ marginTop: 0 }}>
+            <HospitalCombobox hospitais={[]} value="" onChange={nada} placeholder="Escolher hospital…" />
+            <span className="btn btn-outline btn-sm">Incluir</span>
+          </div>
+        </div>
+      </Marcado>
+
+      <Marcado n={marcas.periodo} bloco>
+        <div className="dv-sec">
+          <div className="dv-lbl">Período<span>26/09 a 26/09</span></div>
+          <div className="dv-periodo">
+            <span className="dv-chip" aria-pressed="true">Só hoje</span>
+            <span className="dv-chip">Hoje e amanhã</span>
+            <span className="dv-chip">7 dias</span>
+            <span className="dv-chip">Outro</span>
+          </div>
+        </div>
+      </Marcado>
+    </ModalReplica>
+  )
+}
+
+/** A visão "Acontecendo agora", como o gestor a abre: todos os grupos, com a
+ *  linha real de cada ação. */
+export function ReplicaAcontecendoAgora({ marcas = {} }: {
+  marcas?: Partial<Record<'visao' | 'grupo' | 'filtros' | 'linhas', number>>
+}) {
+  return (
+    <>
+      <style>{volumetriaStyles}</style>
+      <style>{atividadeStyles}</style>
+      <Cabecalho />
+      <div style={{ marginBottom: 16 }}>
+        <Marcado n={marcas.visao}>
+          <div className="vol-seg" style={{ marginBottom: 0 }}>
+            <button type="button">Distribuição</button>
+            <button type="button" className="active">Acontecendo agora</button>
+          </div>
+        </Marcado>
+      </div>
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <div className="card-title">Acontecendo agora</div>
+            <p className="card-sub">
+              O que a equipe está fazendo na rede inteira: relatórios, visitas, altas, censos, cobranças e remanejos.
+            </p>
+          </div>
+        </div>
+        <div className="card-body">
+          <div className="at-barra">
+            <Marcado n={marcas.grupo}>
+              <div className="vol-seg">
+                <button type="button">Técnicos</button>
+                <button type="button">Operacionais</button>
+                <button type="button" className="active">Todos</button>
+              </div>
+            </Marcado>
+            <Marcado n={marcas.filtros}>
+              <select className="bm-input bm-select" defaultValue="">
+                <option value="">Todas as pessoas</option>
+              </select>
+            </Marcado>
+            <input className="bm-input at-busca" readOnly placeholder="Buscar paciente ou hospital…" />
+          </div>
+          <p className="at-nota">Atualiza sozinho a cada 30 segundos.</p>
+          <div className="at-dia">Hoje</div>
+          <Marcado n={marcas.linhas} bloco>
+            <div>
+              {ATIVIDADE_EXEMPLO.map((item) => <Linha key={item.id} item={item} />)}
+            </div>
+          </Marcado>
+        </div>
+      </div>
+    </>
   )
 }
 

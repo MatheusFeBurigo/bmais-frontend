@@ -336,7 +336,7 @@ export function aplicarDivisao(
   const nomeDe = (uid: string) => g.pessoas.find((p) => p.user_id === uid)?.nome ?? 'Outra pessoa'
   const lote = `otimista-${Date.now()}`
   const divisao: VolumetriaDivisao = {
-    lote, de_user_id: origem.user_id, de_nome: origem.nome, inicio: corpo.inicio, fim: corpo.fim,
+    lote, tipo: 'repasse', de_user_id: origem.user_id, de_nome: origem.nome, inicio: corpo.inicio, fim: corpo.fim,
     vigente, criado_por: null,
     itens: Object.entries(corpo.distribuicao).map(([hk, para]) => ({
       hospital_key: hk,
@@ -360,7 +360,7 @@ export function aplicarDivisao(
         .filter((h) => corpo.distribuicao[h.hospital_key] === p.user_id && !ja.has(h.hospital_key))
         .map((h) => ({
           ...h,
-          temporario: { de_user_id: origem.user_id, de_nome: origem.nome, fim: corpo.fim, lote },
+          temporario: { tipo: 'repasse' as const, de_user_id: origem.user_id, de_nome: origem.nome, fim: corpo.fim, lote },
         }))
       return recebe.length > 0 ? recontar(p, [...p.hospitais, ...recebe], g) : p
     }),
@@ -383,3 +383,23 @@ export function hojeIso(desloc = 0): string {
 export function divisoesDe(g: VolumetriaGrupo, userId: string): VolumetriaDivisao[] {
   return (g.divisoes ?? []).filter((d) => d.de_user_id === userId)
 }
+
+/** Hospitais dados à pessoa por um período (0060), em andamento ou agendados. */
+export function compartilhamentosDe(g: VolumetriaGrupo, userId: string): VolumetriaDivisao[] {
+  return (g.divisoes ?? []).filter((d) => d.tipo === 'compartilhamento'
+    && d.itens.some((i) => i.para_user_id === userId))
+}
+
+/** Quem pode receber hospitais por um período: quem já tem área por hospital.
+ *  Sem área a pessoa vê a rede inteira, e o período a recortaria; o operacional
+ *  responde por operadora e tem a divisão da carga. */
+export function podeReceberPorPeriodo(p: VolumetriaPessoa): boolean {
+  return !p.sem_vinculo && !p.por_operadora
+}
+
+/** Atalhos de período da divisão e do "Dar hospitais por um período". */
+export const PERIODOS: Array<{ key: string; label: string; dias: number }> = [
+  { key: 'hoje', label: 'Só hoje', dias: 1 },
+  { key: 'amanha', label: 'Hoje e amanhã', dias: 2 },
+  { key: 'semana', label: '7 dias', dias: 7 },
+]

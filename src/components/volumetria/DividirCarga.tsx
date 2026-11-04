@@ -8,16 +8,10 @@ import type { VolumetriaGrupo, VolumetriaPessoa } from '../../types/api'
 import { useCancelarDivisao, useDividirCarga } from '../../hooks/useVolumetria'
 import { Badge, Modal, Spinner } from '../ui'
 import {
-  NIVEL_LABEL, NIVEL_VAR, colegasParaDividir, divisoesDe, fmtDiaMes, fmtDias,
+  NIVEL_LABEL, NIVEL_VAR, PERIODOS, colegasParaDividir, divisoesDe, fmtDiaMes, fmtDias,
   hojeIso, hospitaisDivisiveis, preverDivisao, repartir, type PlanoDivisao,
 } from './volumetria.model'
 import { dividirStyles } from './volumetria.styles'
-
-const PERIODOS: Array<{ key: string; label: string; dias: number }> = [
-  { key: 'hoje', label: 'Só hoje', dias: 1 },
-  { key: 'amanha', label: 'Hoje e amanhã', dias: 2 },
-  { key: 'semana', label: '7 dias', dias: 7 },
-]
 
 export default function DividirCarga({ pessoa, grupo, onClose, onErro, onAviso }: {
   pessoa: VolumetriaPessoa
