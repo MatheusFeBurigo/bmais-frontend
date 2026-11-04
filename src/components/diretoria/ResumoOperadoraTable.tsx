@@ -49,7 +49,6 @@ export default function ResumoOperadoraTable({ data, expOp, onExpOp, onExportar 
               <th className="t-right">L.10</th>
               <th className="t-right">L.30</th>
               <th className="t-right">Altas</th>
-              <th>Responsável</th>
             </tr>
           </thead>
           <tbody>
@@ -64,7 +63,7 @@ export default function ResumoOperadoraTable({ data, expOp, onExpOp, onExportar 
                       <div>
                         <div className="fw-6" style={{ fontSize: 'var(--t-base)' }}>{op.nome}</div>
                         {/* Rede + janela na mesma linha de apoio: a tabela já tem
-                            12 colunas de métrica, e o tamanho da rede identifica a
+                            11 colunas de métrica, e o tamanho da rede identifica a
                             operadora — não é mais um indicador a comparar. */}
                         <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)' }}>
                           {op.hospitais != null && (
@@ -101,7 +100,6 @@ export default function ResumoOperadoraTable({ data, expOp, onExpOp, onExportar 
                     {op.total_altas || 0}
                     {(op.total_altas || 0) > 0 && <span style={{ fontSize: 10, color: 'var(--danger)', marginLeft: 3 }}>({op.total_altas}↑)</span>}
                   </td>
-                  <td style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>{op.responsaveis || '—'}</td>
                 </tr>
               )
             })}
@@ -118,7 +116,6 @@ export default function ResumoOperadoraTable({ data, expOp, onExpOp, onExportar 
               <td className="t-right mono">{data.longa_permanencia || 0}</td>
               <td className="t-right mono">{data.longa_avancada || 0}</td>
               <td className="t-right mono">{data.total_altas || 0}</td>
-              <td style={{ color: 'var(--muted)' }}>—</td>
             </tr>
           </tbody>
         </table>

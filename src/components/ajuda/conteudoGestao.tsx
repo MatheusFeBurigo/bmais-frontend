@@ -86,7 +86,6 @@ export function ModuloDiretoria() {
         <tr><Key>L.10</Key><td>Longa permanência: internados que passaram do primeiro limite da operadora, 10 dias por padrão.</td></tr>
         <tr><Key>L.30</Key><td>Longa permanência avançada: internados que passaram do segundo limite, 30 dias por padrão.</td></tr>
         <tr><Key>Altas</Key><td>Total de altas registradas na operadora, e não só as recentes.</td></tr>
-        <tr><Key>Responsável</Key><td>Quem responde pela operadora, definido em Configurações.</td></tr>
       </Tabela>
       <p>A tabela fecha com uma linha de total geral, consolidando todas as operadoras.</p>
 

@@ -1,8 +1,8 @@
 // Serviço de dados do domínio "configuracoes" (operadoras + hospitais + regras).
 import { apiFetch } from '../api/client'
 import type {
-  ConfiguracoesPayload, Hospital, HospitalFicha, OperadoraRegras, RegrasCobranca,
-  RegrasHospitalOperadora, TimelineHospital,
+  ConfiguracoesPayload, DependentesOperadora, Hospital, HospitalFicha, OperadoraRegras,
+  PacienteDaOperadora, RegrasCobranca, RegrasHospitalOperadora, TimelineHospital,
 } from '../types/api'
 
 export interface ConfiguracoesParams {
@@ -103,9 +103,25 @@ export function renomearOperadora(key: string, nome: string): Promise<OkResult> 
   })
 }
 
-/** Apaga a operadora. Recusada (409) enquanto tiver hospital ou paciente. */
-export function excluirOperadora(key: string): Promise<OkResult> {
-  return apiFetch<OkResult>(`/configuracoes/operadora/${key}`, { method: 'DELETE' })
+/** O que a exclusao da operadora leva junto, por hospital. Só contagens. */
+export function dependentesOperadora(key: string): Promise<DependentesOperadora> {
+  return apiFetch<DependentesOperadora>(`/configuracoes/operadora/${key}/dependentes`)
+}
+
+/** Os pacientes da operadora em um hospital, em qualquer situação. */
+export function pacientesDaOperadora(key: string, hospital: string): Promise<PacienteDaOperadora[]> {
+  return apiFetch<PacienteDaOperadora[]>(
+    `/configuracoes/operadora/${key}/pacientes?hospital=${encodeURIComponent(hospital)}`)
+}
+
+/** Apaga a operadora. Com hospital ou paciente, so com `comDependentes` (a
+ *  confirmacao de quem viu o que sai); sem ela, o backend recusa (409) dizendo
+ *  quantos. Os pacientes sao apagados junto, o que e exclusivo do admin (403). */
+export function excluirOperadora(key: string, comDependentes = false): Promise<
+  OkResult & { pacientes_removidos?: number; hospitais_excluidos?: number }
+> {
+  return apiFetch<OkResult & { pacientes_removidos?: number; hospitais_excluidos?: number }>(
+    `/configuracoes/operadora/${key}${comDependentes ? '?com_dependentes=true' : ''}`, { method: 'DELETE' })
 }
 
 /** Remove o vinculo do hospital com uma operadora. */

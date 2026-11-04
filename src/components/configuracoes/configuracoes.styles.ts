@@ -13,8 +13,6 @@ export const localStyles = `
 .config-group-title{font-size:var(--t-md);font-weight:600;color:var(--ink);margin-bottom:2px}
 .config-field label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:600;color:var(--muted);margin-bottom:5px}
 .config-hint{font-size:var(--t-xs);color:var(--muted-2);font-style:italic;margin-top:4px}
-.resp-chip{display:inline-flex;align-items:center;gap:7px;padding:4px 10px 4px 6px;background:var(--surface);border:1px solid var(--border);border-radius:99px;font-size:var(--t-sm);font-weight:500}
-.resp-avatar{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--primary));color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;flex-shrink:0}
 .toggle-wrap{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--success-bg);border:1px solid rgba(14,122,83,.15);border-radius:var(--r-md)}
 .toggle{width:36px;height:20px;border-radius:99px;background:var(--muted-3);position:relative;cursor:pointer;transition:background .15s;flex-shrink:0;border:none}
 .toggle.on{background:var(--success)}
@@ -34,7 +32,6 @@ export const localStyles = `
 .op-acc-chevron{flex-shrink:0;color:var(--muted-2);transition:transform .2s cubic-bezier(.2,.7,.2,1)}
 .op-acc-item.open .op-acc-chevron{transform:rotate(90deg);color:var(--primary-3)}
 .op-acc-name{font-weight:600;font-size:var(--t-md);color:var(--ink);line-height:1.2}
-.op-acc-resp{font-size:var(--t-sm);color:var(--muted);margin-top:1px}
 .op-acc-body{padding:0 16px 16px 46px;display:flex;flex-direction:column;gap:14px;animation:op-acc-in .22s cubic-bezier(.2,.7,.2,1)}
 .op-acc-rules{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:var(--t-sm);color:var(--muted)}
 .op-acc-actions{display:flex;gap:8px;flex-wrap:wrap}

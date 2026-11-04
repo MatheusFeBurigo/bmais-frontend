@@ -71,7 +71,6 @@ export default function OverviewView({ operadoras, onNav, onToast, onChanged, to
                 <OpAvatar opKey={o.key} size={38} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="op-acc-name truncate">{o.nome}</div>
-                  <div className="op-acc-resp truncate">{o.responsaveis || 'Sem responsável definido'}</div>
                 </div>
                 <span style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)', marginRight: 4 }}>
                   {o.hospitais_count || 0} hosp.

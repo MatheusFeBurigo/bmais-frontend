@@ -35,6 +35,10 @@ export const queryKeys = {
   /** Regras de cobranca do hospital por operadora (GET /api/hospital/{key}/regras). */
   hospitalRegras: (key: string) => ['hospital', key, 'regras'] as const,
 
+  /** Pacientes da operadora em um hospital, na exclusão da operadora. */
+  pacientesDaOperadora: (operadora: string, hospital: string) =>
+    ['operadora-pacientes', operadora, hospital] as const,
+
   usuarios: () => ['usuarios'] as const,
 
   internacaoDados: (id: number) => ['internacao-dados', id] as const,

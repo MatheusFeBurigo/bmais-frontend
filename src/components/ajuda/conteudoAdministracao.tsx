@@ -411,10 +411,9 @@ export function ModuloConfiguracoes() {
         do hospital.
       </p>
 
-      <h4>5. Responsáveis e situação da operadora</h4>
+      <h4>5. Situação da operadora</h4>
       <p>
-        Quem responde pela operadora<SoGestao>, nome exibido na Diretoria,</SoGestao> e o botão que
-        inclui ou retira a operadora do monitoramento e dos relatórios.
+        O botão que inclui ou retira a operadora do monitoramento e dos relatórios.
       </p>
 
       <Callout tipo="caution" titulo="Efeito imediato das alterações">

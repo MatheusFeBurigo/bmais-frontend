@@ -183,11 +183,15 @@ const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
   // coordenadores. Quem cada um alcança, o backend decide. Espelha
   // ROLES_CRIAR_PENDENCIA no backend.
   criarPendencia: ['gestor', 'coordenador_tecnico', 'coordenador_administrativo', 'admin'],
+  // Excluir uma operadora que tem pacientes apaga todos eles, de vez: destrutivo,
+  // como apagar um paciente. A operadora sem paciente segue com quem cuida do
+  // cadastro. O backend recusa os demais (403, DELETE /api/configuracoes/operadora).
+  excluirPacientesDaOperadora: ['admin'],
 }
 
 export type AcaoProtegida = 'registrarRelatorio' | 'criarConvenio' | 'agendarVisita' | 'atribuirCid'
   | 'darAlta' | 'aprovarRelatorio' | 'controlarProrrogacao' | 'leitoHomecare' | 'vincularPessoa'
-  | 'criarPendencia'
+  | 'criarPendencia' | 'excluirPacientesDaOperadora'
 
 /** True se o papel pode executar a ação. `role` null/desconhecido NÃO libera:
  *  ação sensível exige papel resolvido (diferente de `podeVer`, que é permissivo). */

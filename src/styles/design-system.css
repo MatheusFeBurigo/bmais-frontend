@@ -602,6 +602,31 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .malha-hosp-btn:hover:not(:disabled){border-color:var(--ink-3)}
 .malha-hosp-btn:disabled{opacity:.6;cursor:default}
 
+/* Exclusao de operadora com dependentes (04/11/2026): o que sai, hospital por
+   hospital. So a tabela de pacientes tem rolagem propria: a lista inteira rola com
+   o corpo da modal, para o alerta nao ficar preso numa caixa pequena. */
+.malha-dep{display:grid;gap:10px}
+.malha-dep-alerta{font-size:var(--t-sm);line-height:1.45;color:var(--danger-2);background:var(--danger-bg);border:1px solid var(--danger);border-radius:var(--r-sm);padding:8px 10px}
+.malha-dep-alerta p{margin:0}
+.malha-dep-alerta p+p{margin-top:4px}
+.malha-dep-lista{border:1px solid var(--border);border-radius:var(--r-sm)}
+.malha-dep-hosp{padding:8px 10px}
+.malha-dep-hosp+.malha-dep-hosp{border-top:1px solid var(--border)}
+.malha-dep-cab{display:flex;align-items:center;gap:6px;width:100%;padding:0;border:0;background:none;color:var(--ink-2);font-family:inherit;font-size:var(--t-base);font-weight:600;text-align:left;cursor:pointer}
+.malha-dep-cab:disabled{cursor:default}
+.malha-dep-cab svg{flex-shrink:0;color:var(--muted);transition:transform .12s}
+.malha-dep-cab.aberto svg{transform:rotate(90deg)}
+.malha-dep-nome{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.malha-dep-qtd{margin-left:auto;flex-shrink:0;font-size:var(--t-sm);font-weight:500;color:var(--ink-3)}
+.malha-dep-perde{color:var(--danger-2);font-weight:700}
+.malha-dep-nota{margin:2px 0 0;font-size:var(--t-xs);line-height:1.4;color:var(--muted);overflow-wrap:anywhere}
+.malha-dep-tabela{margin-top:8px;max-height:280px;overflow:auto;border:1px solid var(--border);border-radius:var(--r-sm)}
+.malha-dep-tabela table{width:100%;border-collapse:collapse;font-size:var(--t-sm)}
+.malha-dep-tabela th{position:sticky;top:0;background:var(--surface-2);padding:5px 8px;text-align:left;font-weight:600;color:var(--muted);white-space:nowrap}
+.malha-dep-tabela td{padding:5px 8px;border-top:1px solid var(--border);color:var(--ink-2);white-space:nowrap}
+.malha-dep-tabela td:first-child{min-width:170px;white-space:normal}
+.malha-dep-digitar{display:grid;gap:4px;width:100%;font-size:var(--t-sm);color:var(--ink-2)}
+
 /* ── Quick filters ── */
 .quick-filters{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);flex-wrap:wrap}
 .qf-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;background:var(--surface-3);border:1px solid var(--border);font-size:var(--t-sm);color:var(--ink-2);cursor:pointer;transition:background .12s,border-color .12s,color .12s;white-space:nowrap}

@@ -12,11 +12,16 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useConfiguracoes } from '../../hooks/useConfiguracoes'
 import { useTodosHospitais } from '../../hooks/useEquipe'
+import { useAuth } from '../../auth/AuthContext'
+import { podeExecutar } from '../../auth/permissions'
 import {
-  criarOperadora, renomearOperadora, excluirOperadora, excluirHospital, dependentesHospital,
+  criarOperadora, renomearOperadora, excluirOperadora, dependentesOperadora, excluirHospital, dependentesHospital,
 } from '../../services/configuracoes.service'
 import HospitalFormModal, { paraKey } from '../HospitalFormModal'
 import { invalidarPorEvento } from '../../lib/invalidation'
+import { normalizarNome } from '../../lib/operadorasDosHospitais'
+import type { DependentesOperadora } from '../../types/api'
+import DependentesOperadoraPainel from './DependentesOperadora'
 import { LoadingState, Modal, OpAvatar, Spinner } from '../ui'
 import { cidadeDaRegiao, ordenarCidades } from '../../lib/cidades'
 
@@ -487,6 +492,32 @@ function OperadoraEditModal({ operadora, onClose, onToast, onDone }: {
   const [saving, setSaving] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
   const [erroExcluir, setErroExcluir] = useState<string | null>(null)
+  const qc = useQueryClient()
+  const { role } = useAuth()
+  // O que a exclusao leva junto: `undefined` enquanto consulta, null se a consulta
+  // falhou (segue o caminho antigo: se houver dependente, o backend recusa).
+  const [dep, setDep] = useState<DependentesOperadora | null | undefined>()
+  const [digitado, setDigitado] = useState('')
+  const temDependentes = !!dep && (dep.pacientes > 0 || dep.hospitais.length > 0)
+  const pacientes = dep?.pacientes ?? 0
+  const podeApagar = pacientes === 0 || podeExecutar(role, 'excluirPacientesDaOperadora')
+  // Apagar pacientes nao tem volta: pede o nome digitado, nao so mais um clique.
+  const conferido = pacientes === 0 || normalizarNome(digitado) === normalizarNome(operadora.nome)
+
+  function pedirExclusao() {
+    setConfirmando(true)
+    setErroExcluir(null)
+    setDep(undefined)
+    setDigitado('')
+    dependentesOperadora(operadora.key)
+      .then((d) => setDep(d))
+      .catch((e) => { setDep(null); setErroExcluir((e as Error).message) })
+  }
+
+  function cancelarExclusao() {
+    setConfirmando(false)
+    setErroExcluir(null)
+  }
 
   async function salvar() {
     const n = nome.trim()
@@ -508,19 +539,26 @@ function OperadoraEditModal({ operadora, onClose, onToast, onDone }: {
     setSaving(true)
     setErroExcluir(null)
     try {
-      await excluirOperadora(operadora.key)
-      onToast('✓ Operadora excluída')
+      const r = await excluirOperadora(operadora.key, temDependentes)
+      const p = r.pacientes_removidos ?? 0
+      const h = r.hospitais_excluidos ?? 0
+      onToast('✓ Operadora excluída'
+        + (p ? ` · ${p} paciente${p > 1 ? 's apagados' : ' apagado'}` : '')
+        + (h ? ` · ${h} hospita${h > 1 ? 'is excluídos' : 'l excluído'}` : ''))
+      // Pacientes e hospitais saíram: Visão Geral, Tarefas e indicadores recontam.
+      if (temDependentes) invalidarPorEvento(qc, 'dadosAlterados')
       onDone()
     } catch (e) {
-      // 409 explica o que prende (hospitais/pacientes). Fica na modal, nao num
-      // toast que some antes de a pessoa ler.
+      // A recusa explica o motivo. Fica na modal, nao num toast que some antes de
+      // a pessoa ler.
       setErroExcluir((e as Error).message)
       setSaving(false)
     }
   }
 
   return (
-    <Modal title={`Operadora · ${operadora.nome}`} onClose={onClose}>
+    <Modal title={`Operadora · ${operadora.nome}`} onClose={onClose}
+      largura={confirmando && temDependentes ? 760 : undefined}>
       <div style={{ display: 'grid', gap: 12 }}>
         <div className="nh-campo nh-op-cabeca">
           <OpAvatar opKey={operadora.key} size={38} />
@@ -543,22 +581,42 @@ function OperadoraEditModal({ operadora, onClose, onToast, onDone }: {
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+        {confirmando && temDependentes && dep && (
+          <DependentesOperadoraPainel operadora={operadora} dep={dep} />
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
           {confirmando ? (
             <>
-              <span style={{ fontSize: 'var(--t-sm)', color: 'var(--danger)', fontWeight: 600 }}>
-                Excluir definitivamente?
-              </span>
-              <button className="btn btn-sm" onClick={excluir} disabled={saving}
-                style={{ background: 'var(--danger)', color: '#fff', borderColor: 'var(--danger)' }}>
-                {saving ? 'Excluindo…' : 'Sim, excluir'}
-              </button>
-              <button className="btn btn-outline btn-sm" onClick={() => setConfirmando(false)} disabled={saving}>
+              {pacientes > 0 && (podeApagar ? (
+                <label className="malha-dep-digitar">
+                  <span>Para confirmar, digite <strong>{operadora.nome}</strong>:</span>
+                  <input type="text" className="bm-input" value={digitado} autoComplete="off"
+                    onChange={(e) => setDigitado(e.target.value)} disabled={saving} />
+                </label>
+              ) : (
+                <span style={{ flexBasis: '100%', fontSize: 'var(--t-sm)', color: 'var(--danger)', fontWeight: 600 }}>
+                  Só o administrador exclui uma operadora com pacientes, porque eles são apagados junto.
+                </span>
+              ))}
+              {pacientes === 0 && (
+                <span style={{ fontSize: 'var(--t-sm)', color: 'var(--danger)', fontWeight: 600 }}>
+                  Excluir definitivamente?
+                </span>
+              )}
+              {podeApagar && (
+                <button className="btn btn-sm" onClick={excluir} disabled={saving || dep === undefined || !conferido}
+                  style={{ background: 'var(--danger)', color: '#fff', borderColor: 'var(--danger)' }}>
+                  {dep === undefined ? <Spinner size={11} /> : saving ? 'Excluindo…'
+                    : pacientes > 0 ? `Excluir a operadora e ${pacientes} paciente${pacientes > 1 ? 's' : ''}` : 'Sim, excluir'}
+                </button>
+              )}
+              <button className="btn btn-outline btn-sm" onClick={cancelarExclusao} disabled={saving}>
                 Cancelar
               </button>
             </>
           ) : (
-            <button className="btn btn-outline btn-sm" onClick={() => setConfirmando(true)} disabled={saving}
+            <button className="btn btn-outline btn-sm" onClick={pedirExclusao} disabled={saving}
               style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>
               Excluir operadora
             </button>

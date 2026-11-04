@@ -24,6 +24,47 @@ export interface HospitalFicha {
   observacoes?: string | null
 }
 
+/** Um hospital no que a exclusão da operadora leva junto. */
+export interface DependenteHospital {
+  key: string
+  nome: string
+  /** O cadastro diz que ele atende a operadora. Falso = só tem paciente dela. */
+  vinculado: boolean
+  /** Só atende esta operadora: é excluído junto. */
+  exclusivo: boolean
+  pacientes: number
+  com_relatorio: number
+  /** Pacientes de outras operadoras, num hospital que sai: vão para o Sem hospital. */
+  outros_pacientes: number
+  /** Os censos que criaram os pacientes dela neste hospital. */
+  censos: { id: number; arquivo: string; data: string; pacientes: number }[]
+}
+
+/** GET /api/configuracoes/operadora/{key}/dependentes */
+export interface DependentesOperadora {
+  pacientes: number
+  com_relatorio: number
+  relatorios: number
+  escala: number
+  cobrancas: number
+  /** Operacionais que só respondem por ela: sem ela, passam a ver todas. */
+  operacionais_so_nela: number
+  hospitais: DependenteHospital[]
+}
+
+/** GET /api/configuracoes/operadora/{key}/pacientes?hospital= */
+export interface PacienteDaOperadora {
+  id: number
+  nome: string | null
+  senha: string | null
+  atendimento: string | null
+  status: string | null
+  convenio: string | null
+  data_entrada: string | null
+  data_alta: string | null
+  relatorios: number
+}
+
 export interface Hospital extends HospitalFicha {
   key: string
   nome: string

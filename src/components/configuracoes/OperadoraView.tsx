@@ -69,7 +69,7 @@ export default function OperadoraView({ opSel, operadoras, onNav, onToast, onCha
 
   usePageHeader({
     title,
-    subtitle: `${s.total_internados || 0} internados · SLA ${s.sla || 0}% · ${opSel.responsaveis || '—'}`,
+    subtitle: `${s.total_internados || 0} internados · SLA ${s.sla || 0}%`,
     actions,
   })
 
@@ -138,23 +138,7 @@ export default function OperadoraView({ opSel, operadoras, onNav, onToast, onCha
             </div>
 
             <div className="config-group">
-              <div className="config-group-title">Equipe e Status</div>
-              <div>
-                <div className="uppercase t-muted" style={{ marginBottom: 8, fontSize: 10, letterSpacing: '.1em', fontWeight: 600 }}>Responsáveis</div>
-                <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-                  {(regras.responsaveis || '').split(',').map((r) => r.trim()).filter(Boolean).map((r) => (
-                    <div key={r} className="resp-chip">
-                      <div className="resp-avatar">{r.slice(0, 2).toUpperCase()}</div>
-                      <span>{r}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="config-field">
-                  <label>Editar responsáveis (separados por vírgula)</label>
-                  <input type="text" className="bm-input" value={regras.responsaveis || ''} placeholder="Ex: Ana Silva, João Costa" onChange={(e) => upd('responsaveis', e.target.value)} />
-                </div>
-              </div>
-
+              <div className="config-group-title">Status</div>
               <div className="toggle-wrap">
                 <div>
                   <div className="fw-6" style={{ fontSize: 'var(--t-base)' }}>Operadora ativa</div>
