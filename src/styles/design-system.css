@@ -605,7 +605,7 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 /* Exclusao de operadora com dependentes (04/11/2026): o que sai, hospital por
    hospital. So a tabela de pacientes tem rolagem propria: a lista inteira rola com
    o corpo da modal, para o alerta nao ficar preso numa caixa pequena. */
-.malha-dep{display:grid;gap:10px}
+.malha-dep{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
 .malha-dep-alerta{font-size:var(--t-sm);line-height:1.45;color:var(--danger-2);background:var(--danger-bg);border:1px solid var(--danger);border-radius:var(--r-sm);padding:8px 10px}
 .malha-dep-alerta p{margin:0}
 .malha-dep-alerta p+p{margin-top:4px}

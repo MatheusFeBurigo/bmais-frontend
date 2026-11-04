@@ -252,7 +252,7 @@ export function ModuloOperacoes() {
           { n: 1, titulo: 'Abra a operadora', corpo: <>Clique no cartão dela. Os hospitais aparecem agrupados por cidade.</> },
           { n: 2, titulo: 'Clique no nome do hospital para editar', corpo: <>Abre o mesmo cadastro, já preenchido: nome, cidade, operadoras atendidas e contato. Tirar uma operadora desfaz o vínculo com ela.</> },
           { n: 3, titulo: 'Use a lixeira para excluir', corpo: <>Pede um segundo clique em <strong>Excluir</strong>, na própria linha. Se o hospital tem pacientes, a linha avisa quantos e o botão vira <strong>Mover e excluir</strong>: eles passam para <strong>Sem hospital</strong> e continuam no sistema, com o nome do hospital excluído registrado na timeline de cada um. A escala dele sai junto, e o aviso de sucesso diz o que foi movido e removido.</> },
-          { n: 4, titulo: 'A engrenagem cuida da operadora', corpo: <>Renomeia a operadora ou a exclui. Renomear não mexe nos pacientes, hospitais e histórico dela. Excluir só passa quando ela não tem mais hospitais nem pacientes.</> },
+          { n: 4, titulo: 'A engrenagem cuida da operadora', corpo: <>Renomeia a operadora ou a exclui. Renomear não mexe nos pacientes, hospitais e histórico dela. Excluir mostra antes o que sai junto: de qual hospital e de qual arquivo vieram os pacientes, e quem são eles.</> },
         ]}
       >
         <Tela nome="Operações" largura={900}
@@ -324,8 +324,12 @@ export function ModuloOperacoes() {
           são opcionais. Editar abre o mesmo cadastro, pelo nome do hospital na lista.</li>
         <li>Renomear uma operadora altera apenas o nome exibido. Os pacientes, hospitais e o
           histórico dela permanecem vinculados.</li>
-        <li>A exclusão de operadora ou hospital exige confirmação. A de operadora é recusada, com
-          a indicação do motivo, enquanto ela tiver hospitais ou pacientes. A de hospital nunca
+        <li>A exclusão de operadora ou hospital exige confirmação. A de operadora mostra antes o
+          que sai junto, hospital por hospital. <strong>Os pacientes dela são apagados de vez</strong>,
+          com relatórios, eventos, CIDs e prorrogações, e por isso só o administrador a confirma,
+          digitando o nome da operadora. O hospital que só atende essa operadora é excluído; o que
+          atende outras só perde o vínculo. Depois disso, o censo que ainda trouxer paciente desse
+          convênio o registra na operadora escolhida no envio. A de hospital nunca
           leva os pacientes junto: com o alerta confirmado, eles passam para{' '}
           <strong>Sem hospital</strong>, que não aparece nas listas de cadastro, não recebe censo
           e só é visto por quem não tem recorte de hospital ou de operadora. A escala do hospital

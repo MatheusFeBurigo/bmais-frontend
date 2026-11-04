@@ -556,10 +556,62 @@ function OperadoraEditModal({ operadora, onClose, onToast, onDone }: {
     }
   }
 
+  // A linha de acoes. Na exclusao com dependentes vai para o rodape fixo da modal: a
+  // lista de hospitais e longa, e no fim da rolagem o botao de confirmar nao aparece.
+  const acoes = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', width: '100%' }}>
+      {confirmando ? (
+        <>
+          {pacientes > 0 && (podeApagar ? (
+            <label className="malha-dep-digitar">
+              <span>Para confirmar, digite <strong>{operadora.nome}</strong>:</span>
+              <input type="text" className="bm-input" value={digitado} autoComplete="off"
+                onChange={(e) => setDigitado(e.target.value)} disabled={saving} />
+            </label>
+          ) : (
+            <span style={{ flexBasis: '100%', fontSize: 'var(--t-sm)', color: 'var(--danger)', fontWeight: 600 }}>
+              Só o administrador exclui uma operadora com pacientes, porque eles são apagados junto.
+            </span>
+          ))}
+          {pacientes === 0 && (
+            <span style={{ fontSize: 'var(--t-sm)', color: 'var(--danger)', fontWeight: 600 }}>
+              Excluir definitivamente?
+            </span>
+          )}
+          {podeApagar && (
+            <button className="btn btn-sm" onClick={excluir} disabled={saving || dep === undefined || !conferido}
+              style={{ background: 'var(--danger)', color: '#fff', borderColor: 'var(--danger)' }}>
+              {dep === undefined ? <Spinner size={11} /> : saving ? 'Excluindo…'
+                : pacientes > 0 ? `Excluir a operadora e ${pacientes} paciente${pacientes > 1 ? 's' : ''}` : 'Sim, excluir'}
+            </button>
+          )}
+          <button className="btn btn-outline btn-sm" onClick={cancelarExclusao} disabled={saving}>
+            Cancelar
+          </button>
+        </>
+      ) : (
+        <button className="btn btn-outline btn-sm" onClick={pedirExclusao} disabled={saving}
+          style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>
+          Excluir operadora
+        </button>
+      )}
+      <div style={{ flex: 1 }} />
+      {!confirmando && (
+        <>
+          <button className="btn btn-outline btn-sm" onClick={onClose} disabled={saving}>Cancelar</button>
+          <button className="btn btn-primary btn-sm" onClick={salvar} disabled={saving || !nome.trim()}>
+            {saving ? 'Salvando…' : 'Salvar'}
+          </button>
+        </>
+      )}
+    </div>
+  )
+
   return (
     <Modal title={`Operadora · ${operadora.nome}`} onClose={onClose}
-      largura={confirmando && temDependentes ? 760 : undefined}>
-      <div style={{ display: 'grid', gap: 12 }}>
+      largura={confirmando && temDependentes ? 760 : undefined}
+      footer={confirmando && temDependentes ? acoes : undefined}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
         <div className="nh-campo nh-op-cabeca">
           <OpAvatar opKey={operadora.key} size={38} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -585,52 +637,9 @@ function OperadoraEditModal({ operadora, onClose, onToast, onDone }: {
           <DependentesOperadoraPainel operadora={operadora} dep={dep} />
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-          {confirmando ? (
-            <>
-              {pacientes > 0 && (podeApagar ? (
-                <label className="malha-dep-digitar">
-                  <span>Para confirmar, digite <strong>{operadora.nome}</strong>:</span>
-                  <input type="text" className="bm-input" value={digitado} autoComplete="off"
-                    onChange={(e) => setDigitado(e.target.value)} disabled={saving} />
-                </label>
-              ) : (
-                <span style={{ flexBasis: '100%', fontSize: 'var(--t-sm)', color: 'var(--danger)', fontWeight: 600 }}>
-                  Só o administrador exclui uma operadora com pacientes, porque eles são apagados junto.
-                </span>
-              ))}
-              {pacientes === 0 && (
-                <span style={{ fontSize: 'var(--t-sm)', color: 'var(--danger)', fontWeight: 600 }}>
-                  Excluir definitivamente?
-                </span>
-              )}
-              {podeApagar && (
-                <button className="btn btn-sm" onClick={excluir} disabled={saving || dep === undefined || !conferido}
-                  style={{ background: 'var(--danger)', color: '#fff', borderColor: 'var(--danger)' }}>
-                  {dep === undefined ? <Spinner size={11} /> : saving ? 'Excluindo…'
-                    : pacientes > 0 ? `Excluir a operadora e ${pacientes} paciente${pacientes > 1 ? 's' : ''}` : 'Sim, excluir'}
-                </button>
-              )}
-              <button className="btn btn-outline btn-sm" onClick={cancelarExclusao} disabled={saving}>
-                Cancelar
-              </button>
-            </>
-          ) : (
-            <button className="btn btn-outline btn-sm" onClick={pedirExclusao} disabled={saving}
-              style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>
-              Excluir operadora
-            </button>
-          )}
-          <div style={{ flex: 1 }} />
-          {!confirmando && (
-            <>
-              <button className="btn btn-outline btn-sm" onClick={onClose} disabled={saving}>Cancelar</button>
-              <button className="btn btn-primary btn-sm" onClick={salvar} disabled={saving || !nome.trim()}>
-                {saving ? 'Salvando…' : 'Salvar'}
-              </button>
-            </>
-          )}
-        </div>
+        {!(confirmando && temDependentes) && (
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>{acoes}</div>
+        )}
       </div>
     </Modal>
   )
