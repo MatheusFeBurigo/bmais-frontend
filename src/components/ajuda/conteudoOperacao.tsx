@@ -760,7 +760,7 @@ export function ModuloKanban({ irPara }: Props) {
           <td>Esperar. Se o hospital avisar que não há censo novo, clicar em Marcar como atualizado. Se o dia virar sem censo, o card volta para Censos atrasados. Cobrou por engano? Desfazer cobrança.</td></tr>
         <tr><Key>Aguardando censo</Key>
           <td>O censo de ontem chegou, o de hoje ainda não.</td>
-          <td>Nada por enquanto.</td></tr>
+          <td>Esperar o censo de hoje. Se o hospital avisar que não há censo novo, clicar em Marcar como atualizado.</td></tr>
         <tr><Key>Censos atualizados</Key>
           <td>O censo de hoje já chegou, ou o hospital confirmou que não há censo novo.</td>
           <td>Nada. O hospital está em dia. Marcou como atualizado por engano? Desfazer, que espera a aprovação de um coordenador ou do gestor (quem aprova desfaz na hora).</td></tr>
@@ -972,7 +972,8 @@ export function ModuloUpload() {
           e operadora, e uma lista única repetiria o mesmo nome de hospital várias vezes sem nada
           que os diferenciasse. A escolha também vale como dado: o censo conta como recebido para
           essa operadora no quadro de Tarefas, mesmo sem nenhum paciente dela, e quem vier com
-          convênio não reconhecido entra nela. Os demais entram na operadora do próprio convênio.
+          convênio não homologado fica nela até alguém decidir, na aba <strong>Outros</strong>. Os
+          demais entram na operadora do próprio convênio.
         </Passo>
         <Passo titulo="De qual hospital são estes censos">
           Campo com busca, já filtrado pela operadora escolhida. O hospital vale para todo o lote.
@@ -1055,6 +1056,13 @@ export function ModuloUpload() {
         um anel marca a operadora escolhida no envio. Cada paciente entra na operadora do próprio
         convênio, que é o certo; as abas servem para conferir cada grupo contra o PDF.
       </p>
+      <p>
+        <strong>Convênio não homologado.</strong> Quem vem com um convênio que o sistema não conhece
+        aparece na aba <strong>Outros</strong>, mesmo que o censo seja de uma operadora só. Enquanto
+        ninguém decide, ele fica na operadora escolhida no envio. O lápis define a operadora certa,
+        e o paciente muda de aba na hora. A aba existe só nesta tela: ao sair dela, quem ficou sem
+        decisão continua naquela operadora.
+      </p>
 
       <h3>Assistente de complemento</h3>
       <p>
@@ -1083,7 +1091,7 @@ export function ModuloUpload() {
       <Tabela cabecalho={['Ação', 'Efeito']} larguras={['185px']}>
         <tr><Key>Editar paciente</Key><td>Corrige nome, atendimento, carteirinha, leito, convênio, operadora, data de internação e data de alta. A alteração vale para a ficha do paciente, não só para esta tela. Escolher um convênio conhecido já traz a operadora dele junto, e só o que mudou é enviado. Aberto numa linha marcada, o modal traz <strong>Salvar e próximo</strong>, que segue para o próximo paciente com alerta sem voltar à lista.<SoGestao> O diretor pode ainda cadastrar ali um convênio novo, que passa a valer para todos.</SoGestao></td></tr>
         <tr><Key>Tirar do censo</Key><td>Quem não deveria estar no censo é retirado pelo suporte. Peça por um chamado, em <strong>Abrir chamado</strong>, no fim deste módulo.</td></tr>
-        <tr><Key>Corrigir a operadora</Key><td>Pelo lápis, no campo Operadora: no censo misto, o paciente muda de aba na hora. Corrigir um convênio não reconhecido baixa o aviso do resumo do envio, e o arquivo fica sinalizado como resolvido quando não resta pendência. Quem já existe em outra operadora continua nela, porque nenhum censo troca a seguradora de quem já está no sistema; o aviso do arquivo lista esses casos, e a troca, se for o certo, também é feita pelo lápis.</td></tr>
+        <tr><Key>Corrigir a operadora</Key><td>Pelo lápis, no campo Operadora: no censo misto, o paciente muda de aba na hora. Corrigir um convênio não homologado tira o paciente da aba Outros e baixa o aviso do resumo do envio, e o arquivo fica sinalizado como resolvido quando não resta pendência. Quem já existe em outra operadora continua nela, porque nenhum censo troca a seguradora de quem já está no sistema; o aviso do arquivo lista esses casos, e a troca, se for o certo, também é feita pelo lápis.</td></tr>
         <tr><Key>Completar pendências</Key><td>Abre o assistente para os pacientes que o leitor entendeu parcialmente. Também é possível descartar a pendência, para o registro que não deve entrar.</td></tr>
         <tr><Key>Ignorar arquivo</Key><td>Retira um arquivo ilegível da lista e do resumo do envio. Nada é gravado, porque não há o que gravar.</td></tr>
         <tr><Key>Desfazer envio</Key><td>Reverte o lote inteiro ou apenas um arquivo dele. Apaga os pacientes que aquele envio criou; quem já existia e foi apenas atualizado permanece, com os dados que este censo trouxe, e a tela avisa sobre isso. A alta automática dada pelo envio também fica. Só aparece quando o envio criou algum paciente, e exige confirmação, com o hospital e a quantidade no texto.</td></tr>

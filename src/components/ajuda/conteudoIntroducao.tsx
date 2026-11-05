@@ -3,7 +3,7 @@
 import { useAuth } from '../../auth/AuthContext'
 import { ACOES_NO_PAINEL } from '../../lib/recursos'
 import { Callout, Key, Metric, Metrics, Nao, Sim, SoGestao, Tabela } from './blocos'
-import { useLeAlemDoMenu, useVeGestao } from './acessoAjuda'
+import { useLeAlemDoMenu, useVeTodosOsPerfis } from './acessoAjuda'
 import { modulosVisiveis } from './catalogo'
 
 interface Props {
@@ -171,7 +171,8 @@ export function ModuloVisao({ irPara }: Props) {
 }
 
 // Matriz de telas por papel. As colunas de Gestor e Diretor e as linhas das
-// telas de decisão só aparecem para quem tem essa competência (acessoAjuda.ts).
+// telas de decisão só aparecem para quem tem essa competência e para o analista
+// interno (acessoAjuda.ts).
 const PAPEIS_MATRIZ = [
   { nome: 'Técnico' },
   { nome: 'Operacional' },
@@ -197,12 +198,12 @@ const TELAS_MATRIZ: { tela: string; acesso: string; gestao?: boolean }[] = [
 ]
 
 function MatrizTelas() {
-  const gestao = useVeGestao()
+  const todos = useVeTodosOsPerfis()
   const colunas = PAPEIS_MATRIZ
     .map((p, i) => ({ ...p, i }))
-    .filter((p) => gestao || !('gestao' in p))
+    .filter((p) => todos || !('gestao' in p))
   const linhas = TELAS_MATRIZ
-    .filter((t) => gestao || !t.gestao)
+    .filter((t) => todos || !t.gestao)
     // Sem as colunas de gestão, uma tela que só a gestão abre viraria uma
     // linha inteira de "sem acesso", que não informa nada.
     .filter((t) => colunas.some((c) => t.acesso[c.i] === 'S'))
@@ -220,6 +221,7 @@ function MatrizTelas() {
 
 export function ModuloNavegacao() {
   const alemDoMenu = useLeAlemDoMenu()
+  const todosOsPerfis = useVeTodosOsPerfis()
   return (
     <>
       <p>
@@ -257,23 +259,25 @@ export function ModuloNavegacao() {
             valem depois que um técnico, um coordenador técnico ou um gestor aprova. Trabalha no
             Painel Operacional, no Envio de Censos e nas Tarefas.</td>
         </tr>
-        <SoGestao>
-          <tr>
-            <Key>Gestor</Key>
-            <td>Painel do Gestor, Configurações e Distribuição de tarefas, além do Painel
-              Operacional, das Tarefas e do Envio de Censos, para acompanhar quem ele gerencia.
-              Tem as ações do técnico: o
-              relatório dele vale na hora, e ele aprova o do operacional, ou o corrige e
-              salva para depois ou já aprova. Pede pendências a quem é da equipe e aprova ou
-              recusa os pedidos para desfazer a atualização de um censo. Não acessa a
-              Diretoria.</td>
-          </tr>
-          <tr>
-            <Key>Diretor</Key>
-            <td>Diretoria, Gestor, Painel Operacional, Envio de Censos, Configurações e Progresso.
-              Não acessa os cadastros de manutenção do sistema.</td>
-          </tr>
-        </SoGestao>
+        {todosOsPerfis && (
+          <>
+            <tr>
+              <Key>Gestor</Key>
+              <td>Painel do Gestor, Configurações e Distribuição de tarefas, além do Painel
+                Operacional, das Tarefas e do Envio de Censos, para acompanhar quem ele gerencia.
+                Tem as ações do técnico: o
+                relatório dele vale na hora, e ele aprova o do operacional, ou o corrige e
+                salva para depois ou já aprova. Pede pendências a quem é da equipe e aprova ou
+                recusa os pedidos para desfazer a atualização de um censo. Não acessa a
+                Diretoria.</td>
+            </tr>
+            <tr>
+              <Key>Diretor</Key>
+              <td>Diretoria, Gestor, Painel Operacional, Envio de Censos, Configurações e Progresso.
+                Não acessa os cadastros de manutenção do sistema.</td>
+            </tr>
+          </>
+        )}
         <tr>
           <Key>Analista interno</Key>
           <td>Acompanha o Painel Operacional, as Tarefas e as Movimentações sem alterar nada

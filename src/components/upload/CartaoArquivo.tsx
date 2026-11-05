@@ -29,7 +29,7 @@ import {
   BuscaPacientes, contarProblemas, filtrarPacientes, ListaPacientes, temProblema,
 } from './ListaPacientes'
 import {
-  ABA_TODOS, AbasOperadora, abasOperadoraStyles, agruparPorOperadora,
+  ABA_OUTROS, ABA_TODOS, AbasOperadora, abasOperadoraStyles, agruparPorOperadora,
 } from './AbasOperadora'
 import { DataDoCenso, IcoChevron, IcoImagem, plural } from './comuns'
 
@@ -281,6 +281,13 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   const fechar = (chave: string) => setFechados((atual) => new Set(atual).add(chave))
   const aberto = (chave: string) => !fechados.has(chave)
 
+  /** Este paciente ainda conta no badge "em Outros" do placar do lote? Corrigido
+   *  na modal, ele já foi descontado por lá. */
+  const contaNoPlacar = (p: PacienteGravado) => {
+    const chave = String(p.atendimento ?? '').trim()
+    return !p.resolvido && Boolean(chave) && (res.convenios_nao_reconhecidos ?? []).some(
+      (n) => String(n.atendimento ?? '').trim() === chave)
+  }
 
   async function desfazerRemocao() {
     if (!apagado) return
@@ -296,6 +303,8 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
         const idAntigo = apagado.paciente.id
         setRemovidos((lista) => lista.filter((x) => x !== idAntigo))
       }
+      // Voltou para a aba Outros: o badge do placar volta a contá-lo.
+      if (contaNoPlacar(apagado.paciente)) onConveniosResolvidos?.(res.arquivo, -1)
       setApagado(null)
     } catch (e) {
       // Falhou recriar: o aviso vira um erro que NÃO some sozinho, senão o
@@ -320,6 +329,9 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
     try {
       const r = await removerPacienteDoCenso(res.censo_id, removendo.id)
       setRemovidos((lista) => [...lista, removendo.id as number])
+      // Descartar é uma das decisões da aba Outros: sem isto, o badge do placar
+      // continuaria contando quem já saiu da lista.
+      if (contaNoPlacar(removendo)) onConveniosResolvidos?.(res.arquivo, 1)
       // Só oferece DESFAZER quando a ficha de fato saiu do sistema: é o único
       // caso em que há o que recriar. Tendo apenas saído da lista deste censo, o
       // paciente continua lá inteiro, e um "desfazer" ali recriaria um duplicado.
@@ -476,8 +488,8 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
       if (!chave) continue
       mapa.set(chave, {
         tipo: 'convenio_nao_reconhecido',
-        texto: `Convênio “${pac.convenio ?? '—'}” não está no cadastro. `
-          + 'entrou na operadora escolhida no envio.',
+        texto: `Convênio “${pac.convenio ?? '—'}” não homologado. `
+          + 'O paciente fica na operadora escolhida no envio até alguém decidir.',
       })
     }
     for (const d of divergentes) {
@@ -545,7 +557,8 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // movê-lo de aba na hora, e remover alguém tem de baixar a contagem da aba.
   //
   // Só existe com 2+ operadoras. Com uma só — o caso comum — não há agrupamento
-  // a fazer, e uma aba única seria um controle inerte ocupando a linha.
+  // a fazer, e uma aba única seria um controle inerte ocupando a linha. A aba
+  // Outros é a exceção: pede uma decisão, então aparece mesmo sendo o único grupo.
   //
   // Cálculo direto, sem `useMemo`: este ponto fica DEPOIS dos returns
   // antecipados (digitalizado, erro, falta hospital), e um hook aqui seria
@@ -553,6 +566,7 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // dos hooks entre renderizações.
   const gruposOperadora = agruparPorOperadora(leitoVisto, altaVista, res, operadoras)
   const censoMisto = gruposOperadora.length > 1
+    || gruposOperadora.some((g) => g.key === ABA_OUTROS)
   // Aba que não existe mais (o último paciente dela foi corrigido ou removido)
   // volta para "Todos" — senão a lista ficaria vazia sem que nada explicasse
   // por quê. Derivado, pelo mesmo motivo de não haver hook aqui: o estado
@@ -664,11 +678,14 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
     // outros. A contagem passa pelo MESMO `semRuido` da lista, para contar o que
     // a tela de fato vai marcar, e olha a aba de DESTINO — `grupoAtivo` ainda é
     // a aba antiga neste ponto, porque o estado só muda no próximo quadro.
+    //
+    // Em Outros todos estão marcados: o recorte não tiraria ninguém, e só poria a
+    // faixa "mostrando N" sobre a orientação da aba.
     const destino = grupo ?? { emLeito: leitoVisto, comAlta: altaVista }
     const marcados = contarProblemas(
       semRuido(destino.emLeito), semRuido(destino.comAlta),
     )
-    setSomenteProblema(marcados > 0)
+    setSomenteProblema(chave !== ABA_OUTROS && marcados > 0)
   }
 
   // Os avisos do painel contam só quem AINDA tem o problema. `naoReconhecidos` e
@@ -745,7 +762,34 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // returns antecipados acima (erro, falta hospital), então um hook aqui não
   // rodaria em toda renderização. Assim o estado guarda a intenção e a lista
   // volta a ser inteira sozinha quando não há mais o que marcar.
-  const filtrando = somenteProblema && problemasNaAba > 0
+  const filtrando = somenteProblema && problemasNaAba > 0 && abaAtiva !== ABA_OUTROS
+
+  // O que há para decidir na aba Outros, em uma frase, com o estado real do paciente
+  // enquanto ninguém decide. Sem a operadora dita aqui, tirá-lo da aba dela pareceria
+  // dizer que ele não está nela, e ele está: é para lá que o censo o mandou.
+  const orientacaoOutros = (() => {
+    if (abaAtiva !== ABA_OUTROS || !grupoAtivo) return undefined
+    const n = grupoAtivo.total
+    const onde = [...new Set(
+      [...grupoAtivo.emLeito, ...grupoAtivo.comAlta].map((p) => (p.operadora_key ?? '').trim()),
+    )]
+    const nomeOnde = onde.length === 1 && onde[0]
+      ? operadoras?.find((o) => o.key === onde[0])?.nome ?? onde[0]
+      : null
+    return (
+      <>
+        <b>{n} {plural(n, 'paciente')} com convênio não homologado{' '}
+          {plural(n, 'aguarda', 'aguardam')} decisão.</b>{' '}
+        Até lá, {plural(n, 'fica', 'ficam')}{' '}
+        {nomeOnde
+          ? <>em <b>{nomeOnde}</b></>
+          : `na operadora em que ${plural(n, 'foi gravado', 'foram gravados')}`}.{' '}
+        {podeExcluir && !somenteLeitura
+          ? 'Use o lápis para escolher a operadora certa ou a lixeira para descartar.'
+          : 'Use o lápis para escolher a operadora certa. Para tirar alguém do censo, abra um chamado.'}
+      </>
+    )
+  })()
 
   // Quantos avisos este arquivo tem, por gravidade — é o que a linha recolhida
   // mostra no lugar das frases. Conta tudo o que o painel vai exibir: os avisos
@@ -1001,7 +1045,7 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               // linha, o cadastro de convênios) continuam onde sempre
               // estiveram, para quem quiser agir.
               <Alerta nivel="atencao" onFechar={() => fechar('convenio')}>
-                Convênio não identificado:{' '}
+                Convênio não homologado:{' '}
                 <b>{convenios.join(', ')}</b>, em{' '}
                 <b>{naoReconhecidosAbertos.length}{' '}
                   {plural(naoReconhecidosAbertos.length, 'paciente')}</b>.
@@ -1009,8 +1053,8 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
                   <>
                     {' '}(
                     <button type="button" className="up-link-filtro"
-                            onClick={() => verNaLista(res.operadora_escolhida)}>
-                      ver {plural(naoReconhecidosAbertos.length, 'quem é', 'quem são')}
+                            onClick={() => verNaLista(ABA_OUTROS)}>
+                      decidir em Outros
                     </button>
                     )
                   </>
@@ -1130,6 +1174,7 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               comAlta={altaNaAba}
               termo={termoBusca}
               somenteProblema={filtrando}
+              orientacao={orientacaoOutros}
               onVerTodos={() => setSomenteProblema(false)}
               onEditar={somenteLeitura ? undefined : abrirEdicao}
               onRemover={(somenteLeitura || !podeExcluir) ? undefined : (p) => {
@@ -1211,24 +1256,25 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
 
       {removendo && (
         <ConfirmarModal
-          titulo="Remover do censo?"
-          confirmar="Remover do censo"
+          titulo="Descartar paciente?"
+          confirmar="Descartar"
           cancelar="Manter"
           ocupado={apagando}
           onCancelar={() => setRemovendo(null)}
           onConfirmar={confirmarRemocao}
         >
-          {/* Uma frase só. A ação é a que o botão nomeia, e quem decide o
-              destino da ficha é o backend (ele conhece a origem do registro e em
-              quantos censos ele aparece). Explicar a regra inteira aqui era
-              texto que ninguém lê antes de um clique de rotina — o retorno conta
-              o que de fato aconteceu. O nome vai pelo `nomeProprio` porque os
-              censos chegam em CAIXA ALTA e este texto é uma frase, não uma
-              célula de tabela. */}
+          {/* Quem decide o destino da ficha é o backend (ele conhece a origem do
+              registro e em quantos censos ele aparece), então a frase cobre os dois
+              casos. Afirmar só que "a ficha continua" era falso para quem nasceu
+              deste censo, cuja ficha é excluída. O retorno depois do clique conta o
+              que de fato aconteceu. O nome vai pelo `nomeProprio` porque os censos
+              chegam em CAIXA ALTA e este texto é uma frase, não uma célula de
+              tabela. */}
           <div>
             <strong>{nomeProprio(removendo.nome) || removendo.atendimento
               || 'Este registro'}</strong>{' '}
-            sai da lista deste censo. A ficha dele continua no sistema.
+            sai da lista deste censo. Se a ficha nasceu deste censo, ela é excluída;
+            se já existia, continua no sistema.
           </div>
           {erroRemover && (
             <div style={{ color: 'var(--danger-2)' }}>{erroRemover}</div>

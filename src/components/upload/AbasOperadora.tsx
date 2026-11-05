@@ -19,7 +19,8 @@
 //
 // As abas só nascem com 2+ operadoras no arquivo. Com uma só (o caso comum) não
 // há agrupamento a fazer, e uma aba única seria um controle inerte ocupando a
-// linha para não dizer nada.
+// linha para não dizer nada. A exceção é a aba Outros: quem tem convênio não
+// homologado pede uma decisão, então ela aparece mesmo em censo de uma operadora.
 //
 // Forma: abas com base sublinhada, penduradas numa régua horizontal. Não
 // pílulas — nesta tela a pílula já é o vocabulário do FILTRO opcional ("Ver 110
@@ -27,6 +28,7 @@
 // as abas são mais um filtro que se liga e desliga. Elas não são: dividem o
 // censo inteiro em partes, e uma delas está sempre valendo.
 
+import type { CSSProperties } from 'react'
 import type { PacienteGravado, UploadCensoResult } from '../../types/api'
 import { varsOperadora } from '../../lib/coresOperadora'
 import { plural } from './comuns'
@@ -69,6 +71,10 @@ export const abasOperadoraStyles = `
    ponto ao lado, porque o ponto da cor já está ali — dois pontos na mesma aba
    seriam lidos como dois estados diferentes. */
 .up-aba-cor.escolhida{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--op-cor)}
+/* Outros não é marca nenhuma: em vez do ponto da operadora, o contador âmbar diz
+   que há gente aguardando decisão, mesmo com a aba fechada. */
+.up-aba.outros .up-aba-n{background:var(--warning-bg);color:var(--warning-2)}
+.up-aba.outros.ativa .up-aba-n{background:var(--warning);color:#fff}
 /* A lista fica PENDURADA na régua: o painel do cartão separa seus blocos com
    10px de respiro, e esse vão entre a aba ativa e a tabela desfazia justamente
    a ligação que a aba existe para afirmar ("estas linhas são desta operadora").
@@ -94,6 +100,18 @@ export interface GrupoOperadora {
  *  nem tem espaço), e é o estado inicial da conferência: quem abre o cartão
  *  quer ver o censo inteiro, como ele veio. */
 export const ABA_TODOS = '\u0000todos'
+
+/** Chave da aba "Outros": quem veio com convênio não homologado e ainda não teve
+ *  decisão. Mesma forma de `ABA_TODOS`, para também não colidir com uma key real. */
+export const ABA_OUTROS = '\u0000outros'
+
+/** Convênio fora do cadastro e sem decisão: é quem vai para a aba Outros.
+ *
+ *  Corrigido na modal, `resolvido` tira o paciente dali e ele vai para a aba da
+ *  operadora escolhida para ele, sem recarregar nada. */
+export function aguardaDecisao(p: PacienteGravado): boolean {
+  return p.problema?.tipo === 'convenio_nao_reconhecido' && !p.resolvido
+}
 
 /** Nome legível de cada `operadora_key` presente no arquivo.
  *
@@ -125,7 +143,11 @@ function nomesDasOperadoras(
  *
  *  Recebe as listas JÁ passadas pelas edições e remoções da tela (leitoVisto /
  *  altaVista do cartão): corrigir a operadora de um paciente na modal tem de
- *  movê-lo de aba na hora, e não ao recarregar. */
+ *  movê-lo de aba na hora, e não ao recarregar.
+ *
+ *  Quem aguarda decisão vai para Outros mesmo gravado na operadora escolhida: é
+ *  ela que o recebe por falta de opção (ver `_resolver_operadoras` no backend), e
+ *  listá-lo ali faria parecer que o convênio dele é daquela operadora. */
 export function agruparPorOperadora(
   emLeito: PacienteGravado[],
   comAlta: PacienteGravado[],
@@ -137,7 +159,7 @@ export function agruparPorOperadora(
 
   const acumular = (lista: PacienteGravado[], deAlta: boolean) => {
     for (const p of lista) {
-      const key = (p.operadora_key ?? '').trim()
+      const key = aguardaDecisao(p) ? ABA_OUTROS : (p.operadora_key ?? '').trim()
       let g = grupos.get(key)
       if (!g) {
         g = {
@@ -145,7 +167,8 @@ export function agruparPorOperadora(
           // Sem operadora não é um erro a esconder: o paciente entrou e alguém
           // vai precisar dizer de quem ele é. A aba o mantém visível em vez de
           // diluí-lo entre os demais.
-          nome: key ? (nomes.get(key) ?? key) : 'Sem operadora',
+          nome: key === ABA_OUTROS ? 'Outros'
+            : key ? (nomes.get(key) ?? key) : 'Sem operadora',
           emLeito: [],
           comAlta: [],
           total: 0,
@@ -160,18 +183,30 @@ export function agruparPorOperadora(
   acumular(emLeito, false)
   acumular(comAlta, true)
 
+  // Em Outros, o mesmo convênio fica junto: a decisão costuma ser igual para todos
+  // os pacientes dele, e a ordem do PDF os deixaria espalhados.
+  const outros = grupos.get(ABA_OUTROS)
+  if (outros) {
+    const porConvenio = (a: PacienteGravado, b: PacienteGravado) =>
+      (a.convenio ?? '').localeCompare(b.convenio ?? '', 'pt-BR')
+    outros.emLeito.sort(porConvenio)
+    outros.comAlta.sort(porConvenio)
+  }
+
   // A operadora ESCOLHIDA no envio vem primeiro, mesmo sendo minoria: é a
   // referência de quem enviou ("pedi careplus"), e achá-la no meio da barra,
   // ordenada por volume, obrigava a ler nome por nome. Depois dela, as maiores
   // — num censo misto é o tamanho do grupo que decide o que se confere antes.
-  // "Sem operadora" fecha a fila: é o resíduo, não um destino.
+  // Outros e "Sem operadora" fecham a fila: não são operadoras, são o que falta
+  // definir.
   const escolhida = (res.operadora_escolhida ?? '').trim()
   // Peso explícito em vez de uma cadeia de comparações: 0 = a escolhida no
-  // envio, 1 = as demais operadoras, 2 = o resíduo sem operadora. Dentro do
-  // mesmo peso, o maior grupo primeiro.
+  // envio, 1 = as demais operadoras, 2 = Outros, 3 = o resíduo sem operadora.
+  // Dentro do mesmo peso, o maior grupo primeiro.
   const peso = (g: GrupoOperadora) => {
     if (escolhida && g.key === escolhida) return 0
-    return g.key ? 1 : 2
+    if (g.key === ABA_OUTROS) return 2
+    return g.key ? 1 : 3
   }
   return [...grupos.values()].sort((a, b) => peso(a) - peso(b) || b.total - a.total)
 }
@@ -201,32 +236,41 @@ export function AbasOperadora({ grupos, ativa, onAba, escolhida, total }: {
           Todos
           <span className="up-aba-n">{total}</span>
         </button>
-        {grupos.map((g) => (
-          <button
-            key={g.key || 'sem-operadora'}
-            type="button"
-            role="tab"
-            aria-selected={ativa === g.key}
-            className={`up-aba${ativa === g.key ? ' ativa' : ''}`}
-            onClick={() => onAba(g.key)}
-            title={`${g.total} ${plural(g.total, 'paciente')} em ${g.nome}`}
-            // A cor da marca desce por variável CSS: a aba, o contador e o ponto
-            // se pintam sozinhos a partir daqui.
-            style={varsOperadora(g.key)}
-          >
-            {/* Ponto na cor da operadora; com anel, é a escolhida no envio.
-                Some na aba "Sem operadora", que não é marca nenhuma e receberia
-                o cinza neutro sem significar nada. */}
-            {g.key && (
-              <i
-                className={`up-aba-cor${g.key === chave ? ' escolhida' : ''}`}
-                title={g.key === chave ? 'Operadora escolhida no envio' : undefined}
-              />
-            )}
-            {g.nome}
-            <span className="up-aba-n">{g.total}</span>
-          </button>
-        ))}
+        {grupos.map((g) => {
+          const ehOutros = g.key === ABA_OUTROS
+          return (
+            <button
+              key={g.key || 'sem-operadora'}
+              type="button"
+              role="tab"
+              aria-selected={ativa === g.key}
+              className={`up-aba${ativa === g.key ? ' ativa' : ''}${ehOutros ? ' outros' : ''}`}
+              onClick={() => onAba(g.key)}
+              title={ehOutros
+                ? `${g.total} ${plural(g.total, 'paciente')} com convênio não homologado, aguardando decisão`
+                : `${g.total} ${plural(g.total, 'paciente')} em ${g.nome}`}
+              // A cor da marca desce por variável CSS: a aba, o contador e o ponto
+              // se pintam sozinhos a partir daqui. Outros usa o âmbar de "pede
+              // decisão", porque não é marca de operadora nenhuma.
+              style={ehOutros
+                ? { '--op-cor': 'var(--warning)', '--op-ink': 'var(--warning-2)',
+                    '--op-fundo': 'var(--warning-bg)' } as CSSProperties
+                : varsOperadora(g.key)}
+            >
+              {/* Ponto na cor da operadora; com anel, é a escolhida no envio.
+                  Some nas abas "Sem operadora" e Outros, que não são marca nenhuma
+                  e receberiam o cinza neutro sem significar nada. */}
+              {g.key && !ehOutros && (
+                <i
+                  className={`up-aba-cor${g.key === chave ? ' escolhida' : ''}`}
+                  title={g.key === chave ? 'Operadora escolhida no envio' : undefined}
+                />
+              )}
+              {g.nome}
+              <span className="up-aba-n">{g.total}</span>
+            </button>
+          )
+        })}
       </div>
     </div>
   )

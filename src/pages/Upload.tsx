@@ -13,7 +13,10 @@ import { type EstadoProgresso, progressoStyles } from '../components/upload/Prog
 import { ehSomenteLeitura } from '../auth/permissions'
 import { useAuth } from '../auth/AuthContext'
 import { enviarCensos, reverterEnvioCenso } from '../services/censos.service'
-import type { HospitalManual, Operadora, PendenteCenso, UploadCensoResponse, UploadCensoResult } from '../types/api'
+import type {
+  CompletarPendenciaResponse, HospitalManual, Operadora, PendenteCenso, UploadCensoResponse,
+  UploadCensoResult,
+} from '../types/api'
 import { usePageHeader } from '../components/PageHeader'
 import Toast from '../components/Toast'
 import WizardComplemento from '../components/upload/WizardComplemento'
@@ -230,7 +233,8 @@ export default function Upload() {
     setToast(`${res.arquivo}: ${res.total ?? 0} ${plural(res.total ?? 0, 'paciente')} ${plural(res.total ?? 0, 'gravado')}`)
   }
 
-  function onSalvo(id: number, nome: string, situacao?: 'INTERNADO' | 'ALTA') {
+  function onSalvo(id: number, nome: string, resposta: CompletarPendenciaResponse) {
+    const { situacao } = resposta
     setPendentes((lista) => lista.filter((p) => p.pendencia_id !== id))
     // O paciente entrou agora: soma no placar do arquivo de origem, na coluna certa.
     // Sem isto os números do resumo ficavam no valor do processamento inicial e não
@@ -254,6 +258,11 @@ export default function Upload() {
           gravados_detalhe: [
             ...(r.gravados_detalhe ?? []),
             {
+              // Sem o id a linha ficava sem lixeira e com o lápis travado; sem a
+              // operadora, numa aba "Sem operadora" que não é onde ele foi gravado.
+              id: resposta.internacao_id ?? null,
+              operadora_key: resposta.operadora_key ?? null,
+              problema: resposta.problema ?? null,
               nome: nome || pendente?.nome || null,
               atendimento: pendente?.atendimento ?? null,
               situacao: situacao === 'ALTA' ? 'ALTA' : 'INTERNADO',

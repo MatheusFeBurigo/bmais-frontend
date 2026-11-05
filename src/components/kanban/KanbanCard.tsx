@@ -26,7 +26,7 @@ export const KanbanCard = memo(function KanbanCard({
   onCobrar: (t: KanbanTarefa) => void
   /** Cards de censo: desfazer a cobrança. */
   onDesfazer?: (t: KanbanTarefa) => void
-  /** Hospital cobrado respondeu que não há censo novo: dá o dia por atualizado. */
+  /** O hospital avisou que não há censo novo: dá o dia por atualizado. */
   onAtualizar?: (t: KanbanTarefa) => void
   onDesfazerAtualizado?: (t: KanbanTarefa) => void
   /** Card de censo: abre o drawer com a timeline de anotações. */

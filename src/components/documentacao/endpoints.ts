@@ -310,7 +310,7 @@ export const GRUPOS_API: GrupoEndpoints[] = [
         descricao: 'Fase 2: lê e grava os arquivos da sessão. Com arquivos/hospitais, reprocessa só os listados (hospital informado pelo usuário).',
         corpo: 'ReprocessarSessao {sessao, arquivos?, hospitais?}' },
       { metodo: 'POST', rota: '/api/upload/pendencia/{pendencia_id}/completar', acesso: 'envioCenso',
-        descricao: 'Fase 3: grava o paciente de extração incompleta com os campos do usuário. {ok:false, campos_faltantes} se ainda faltar.',
+        descricao: 'Fase 3: grava o paciente de extração incompleta com os campos do usuário. Devolve {internacao_id, operadora_key, problema} para a linha da conferência; {ok:false, campos_faltantes} se ainda faltar.',
         corpo: 'CompletarPendencia {hospital_key?, atendimento?, nome?, data_entrada?, data_alta?}' },
       { metodo: 'POST', rota: '/api/upload/pendencia/{pendencia_id}/descartar', acesso: 'envioCenso',
         descricao: 'Resolve a pendência sem gravar o paciente.' },
@@ -522,11 +522,11 @@ export const GRUPOS_API: GrupoEndpoints[] = [
     endpoints: [
       { metodo: 'GET', rota: '/api/auditoria', acesso: 'auditoria',
         query: 'user_id, entidade, acao, resultado, de, ate, q, pagina, limite',
-        descricao: 'Página da trilha, mais recentes primeiro, com total. de/ate em ISO com fuso.' },
+        descricao: 'Página da trilha, mais recentes primeiro, com total. de/ate em ISO com fuso. Só o admin recebe as linhas de contas de administrador.' },
       { metodo: 'GET', rota: '/api/auditoria/opcoes', acesso: 'auditoria',
         descricao: 'Entidades e ações do catálogo, com rótulo, para os filtros.' },
       { metodo: 'GET', rota: '/api/auditoria/resumo', acesso: 'auditoria', query: 'de, dias',
-        descricao: 'Totais do período e atividade por usuário.' },
+        descricao: 'Totais do período e atividade por usuário. Só o admin recebe as contas de administrador, e só nos totais dele elas contam.' },
     ],
   },
   {

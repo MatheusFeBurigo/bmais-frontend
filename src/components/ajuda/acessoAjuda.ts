@@ -14,6 +14,11 @@
 // Distribuição de tarefas, Progresso), menos os das telas de decisão (decisão
 // do usuário, 29/09/2026). Os trechos de gestão dentro dos demais módulos
 // (`SoGestao`) seguem fechados para ele.
+//
+// Exceção nos perfis: o analista interno lê o quadro de perfis e a matriz inteiros,
+// com Gestor e Diretor, porque cria as contas desses tipos e precisa saber o que
+// cada um faz para escolher (decisão do usuário, 05/11/2026). Vale só para ele e
+// só para esses dois quadros: os outros papéis seguem sem ver Gestor e Diretor.
 import { useAuth } from '../../auth/AuthContext'
 import { podeVer, type Screen } from '../../auth/permissions'
 import type { UserRole } from '../../types/api'
@@ -53,6 +58,13 @@ export function veGestao(role: UserRole | null): boolean {
 
 export function useVeGestao(): boolean {
   return veGestao(useAuth().role)
+}
+
+/** Pode ler Gestor e Diretor no quadro de perfis e na matriz? Quem tem a
+ *  competência de gestão e o analista interno. */
+export function useVeTodosOsPerfis(): boolean {
+  const { role } = useAuth()
+  return veGestao(role) || leAlemDoMenu(role)
 }
 
 /** Papéis que a réplica do cadastro de conta mostra: os da tela real, sem o de

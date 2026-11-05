@@ -7,7 +7,8 @@
 //   Censos atrasados   → "Marcar como cobrado"
 //   Aguardando retorno → "Marcar como atualizado" (o hospital respondeu que não
 //                        há censo novo a gerar) e "Desfazer cobrança"
-//   Aguardando censo   → nenhuma: o dia ainda não acabou
+//   Aguardando censo   → "Marcar como atualizado" (o hospital avisou, sem ser
+//                        cobrado, que não há censo novo)
 //   Censos atualizados → nenhuma, ou "Desfazer" se foi marcado à mão
 //
 // Os botões só pedem a ação: quem decide é o quadro, que abre a modal da
@@ -49,6 +50,7 @@ export function CensoCard({
   const dias = tarefa.dias_sem_censo
   const atrasado = estado === 'censos_atrasados'
   const retorno = estado === 'aguardando_retorno'
+  const aguardando = estado === 'aguardando_censo'
   const pendente = atrasado || retorno
   // Em "Censos atualizados" sem censo: alguém deu o dia por atualizado à mão.
   const atualizadoManual = estado === 'censos_processados' && !!tarefa.atualizado_em
@@ -59,6 +61,17 @@ export function CensoCard({
   const teclado = (e: KeyboardEvent) => {
     if (onAbrir && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onAbrir() }
   }
+  const botaoAtualizar = onAtualizar && (
+    <button
+      type="button"
+      className="btn btn-outline btn-sm kb-btn-atualizar"
+      disabled={cobrando}
+      onClick={acao(onAtualizar)}
+      title="O hospital avisou que não há censo novo a gerar"
+    >
+      {cobrando ? 'Registrando…' : 'Marcar como atualizado'}
+    </button>
+  )
 
   return (
     <article
@@ -143,17 +156,7 @@ export function CensoCard({
       )}
       {!somenteLeitura && retorno && (onAtualizar || onDesfazer) && (
         <div className="kb-card-actions empilhadas">
-          {onAtualizar && (
-            <button
-              type="button"
-              className="btn btn-outline btn-sm kb-btn-atualizar"
-              disabled={cobrando}
-              onClick={acao(onAtualizar)}
-              title="O hospital respondeu que não há censo novo a gerar"
-            >
-              {cobrando ? 'Registrando…' : 'Marcar como atualizado'}
-            </button>
-          )}
+          {botaoAtualizar}
           {onDesfazer && (
             <button
               type="button"
@@ -167,6 +170,9 @@ export function CensoCard({
           )}
         </div>
       )}
+      {!somenteLeitura && aguardando && botaoAtualizar && (
+        <div className="kb-card-actions">{botaoAtualizar}</div>
+      )}
       {!somenteLeitura && atualizadoManual && tarefa.desfazer_pendente && (
         <div className="kb-card-actions">
           <span className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Desfazer aguardando aprovação</span>
@@ -179,7 +185,7 @@ export function CensoCard({
             className="btn btn-ghost btn-sm"
             disabled={cobrando}
             onClick={acao(onDesfazerAtualizado)}
-            title="Volta o hospital para Aguardando retorno"
+            title="Volta o hospital para a coluna em que estava"
           >
             {cobrando ? 'Desfazendo…' : 'Desfazer'}
           </button>

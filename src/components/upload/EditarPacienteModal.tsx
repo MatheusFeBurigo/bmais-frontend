@@ -557,8 +557,7 @@ export function EditarPacienteModal({ paciente, operadoras = [], onFechar, onSal
 
       {/* Sem `id` não há o que editar: o backend identifica a internação por ele.
           Acontece com resultado de envio antigo (processado antes de o id ser
-          devolvido) e com o paciente que o censo repetiu mas NÃO gravou, por já
-          ter alta. O botão fica desabilitado; esta frase diz por quê e para onde
+          devolvido). O botão fica desabilitado; esta frase diz por quê e para onde
           ir — sem ela, a tela só mostrava um botão que não responde. */}
       {!paciente.id && (
         <div className="up-edit-erro">

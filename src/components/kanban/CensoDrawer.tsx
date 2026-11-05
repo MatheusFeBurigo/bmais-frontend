@@ -50,6 +50,7 @@ function paraTimeline(ev: CensoEvento): TimelineEvento {
 function acoesDaColuna(t: KanbanTarefa): { principal?: AcaoCenso; desfazer?: AcaoCenso } {
   if (t.estado_censo === 'censos_atrasados') return { principal: 'cobrar' }
   if (t.estado_censo === 'aguardando_retorno') return { principal: 'atualizar', desfazer: 'desfazer' }
+  if (t.estado_censo === 'aguardando_censo') return { principal: 'atualizar' }
   return {}
 }
 

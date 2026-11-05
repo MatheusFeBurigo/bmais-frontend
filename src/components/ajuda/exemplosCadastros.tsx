@@ -313,7 +313,10 @@ const USUARIOS: { nome: string; email: string; role: UserRole; hospitais: string
   { nome: 'Camila Freitas', email: 'camila.freitas@exemplo.com', role: 'coordenador_tecnico', hospitais: 'Todos' },
   { nome: 'Eduardo Lins', email: 'eduardo.lins@exemplo.com', role: 'analista', hospitais: 'Todos' },
   { nome: 'Juliana Prado', email: 'juliana.prado@exemplo.com', role: 'tecnico', hospitais: '3 hospitais' },
+  { nome: 'Lúcia Prado', email: 'lucia.prado@exemplo.com', role: 'coordenador_administrativo', hospitais: 'Todos' },
+  { nome: 'Otávio Rezende', email: 'otavio.rezende@exemplo.com', role: 'gestor', hospitais: 'Todos' },
   { nome: 'Rafael Nogueira', email: 'rafael.nogueira@exemplo.com', role: 'administrativo', hospitais: 'CarePlus' },
+  { nome: 'Sônia Barreto', email: 'sonia.barreto@exemplo.com', role: 'diretor', hospitais: 'Todos' },
 ]
 
 /** A aba Usuários de acesso: busca, "Novo usuário", a linha de filtros e a lista. */

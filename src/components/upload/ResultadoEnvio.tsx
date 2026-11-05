@@ -269,7 +269,7 @@ export function ResultadoEnvio({
               )}
               {semConvenioCasado > 0 && (
                 <span className="badge warning">
-                  {semConvenioCasado} {plural(semConvenioCasado, 'convênio')} não {plural(semConvenioCasado, 'reconhecido')}
+                  {semConvenioCasado} {plural(semConvenioCasado, 'paciente')} em Outros
                 </span>
               )}
               {pendentes > 0 && <span className="badge warning">{pendentes} a completar</span>}

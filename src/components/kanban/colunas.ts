@@ -47,7 +47,8 @@ export const COLUNAS: ColunaKanban[] = [
   // ── Fluxo de censos: um card por hospital, e o card anda sozinho ──────────
   // A coluna vem da data do último censo recebido. Manuais: "Marcar como
   // cobrado" (atrasados → aguardando retorno) e "Marcar como atualizado"
-  // (aguardando retorno → atualizados, quando não há censo novo a gerar).
+  // (aguardando retorno ou aguardando censo → atualizados, quando não há censo
+  // novo a gerar).
   {
     key: 'censos_atrasados',
     titulo: 'Censos atrasados',

@@ -1740,7 +1740,12 @@ export interface CompletarPendenciaResponse {
   ok: boolean
   pendencia_id?: number
   /** Situação com que o paciente entrou — soma na coluna certa do placar do upload. */
-  situacao?: 'INTERNADO' | 'ALTA' 
+  situacao?: 'INTERNADO' | 'ALTA'
+  /** O que a linha da conferência precisa, como as demais do censo: o id libera a
+   *  lixeira e o lápis, e a operadora e o problema decidem a aba dela. */
+  internacao_id?: number | null
+  operadora_key?: string | null
+  problema?: ProblemaPaciente | null
   erro?: string
   motivos?: string[]
   campos_faltantes?: CampoCenso[]

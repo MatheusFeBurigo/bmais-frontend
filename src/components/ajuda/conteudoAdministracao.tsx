@@ -26,11 +26,8 @@ const PARA_QUEM: Partial<Record<UserRole, string>> = {
   coordenador_tecnico: 'Para quem distribui os hospitais entre os técnicos, na Distribuição de tarefas, e também trabalha como técnico.',
   coordenador_administrativo: 'Para quem distribui as operadoras entre os operacionais, na Distribuição de tarefas, e também trabalha como operacional.',
   analista: 'Para quem acompanha a operação sem alterar pacientes e mantém os cadastros desta tela.',
-  // Gestor e diretor sem descrição de função: o que a gestão vê e faz só é
-  // contado a quem tem essa competência (acessoAjuda.ts), e quem lê este
-  // módulo é o analista.
-  gestor: 'Para a gestão.',
-  diretor: 'Para a diretoria.',
+  gestor: 'Para quem gerencia a equipe: acompanha o fluxo no Painel do Gestor, divide a carga na Distribuição de tarefas e ajusta as Configurações.',
+  diretor: 'Para quem acompanha os indicadores da operação no Dashboard da Diretoria e no Painel do Gestor. Não trabalha nas Tarefas.',
 }
 
 function passosDaConta(papel: UserRole): PassoAjuda[] {
@@ -468,7 +465,7 @@ export function ModuloMovimentacoes() {
       <h3>Quem acessa</h3>
       <p>
         O perfil analista, que existe justamente para observar. Os demais perfis não acessam a
-        trilha.
+        trilha. As contas de administrador e o que elas fizeram aparecem só para o administrador.
       </p>
 
       <Callout tipo="info" titulo="O que a trilha registra">

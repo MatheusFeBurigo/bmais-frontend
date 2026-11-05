@@ -37,8 +37,9 @@ export function desfazerCobranca(m: MovimentoCenso): Promise<{ ok: boolean }> {
   return postCenso(m, 'desfazer-cobranca')
 }
 
-/** "Marcar como atualizado": o hospital respondeu que não há censo novo a
- *  gerar. O censo vai de "Aguardando retorno" para "Censos atualizados". */
+/** "Marcar como atualizado": o hospital avisou que não há censo novo a gerar.
+ *  O censo vai de "Aguardando retorno" ou "Aguardando censo" para "Censos
+ *  atualizados". */
 export function marcarAtualizado(m: MovimentoCenso): Promise<{ ok: boolean }> {
   return postCenso(m, 'atualizado')
 }

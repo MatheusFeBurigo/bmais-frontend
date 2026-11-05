@@ -13,8 +13,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { completarPendenciaCenso, descartarPendenciaCenso, reprocessarCensos } from '../../services/censos.service'
 import type {
-  CampoCenso, CompletarPendenciaPayload, Hospital, HospitalManual, Operadora,
-  PendenteCenso, UploadCensoResult,
+  CampoCenso, CompletarPendenciaPayload, CompletarPendenciaResponse, Hospital, HospitalManual,
+  Operadora, PendenteCenso, UploadCensoResult,
 } from '../../types/api'
 import { Alerta, alertaStyles } from '../Alerta'
 import { Spinner } from '../ui'
@@ -298,8 +298,8 @@ export default function WizardComplemento({
   /** Arquivo reprocessado com hospital: o pai substitui o resultado e soma os pendentes. */
   onArquivoProcessado: (res: UploadCensoResult) => void
   /** Chamado a cada paciente gravado (o pai atualiza contadores/caches).
-   *  `situacao` diz em qual coluna do placar ele entra (em leito x com alta). */
-  onSalvo: (pendenciaId: number, nome: string, situacao?: 'INTERNADO' | 'ALTA') => void
+   *  `resposta` traz em qual coluna do placar ele entra e o que a linha precisa. */
+  onSalvo: (pendenciaId: number, nome: string, resposta: CompletarPendenciaResponse) => void
   /** Chamado a cada paciente descartado (resolvido sem gravar). */
   onDescartado: (pendenciaId: number, nome: string) => void
   onClose: () => void
@@ -435,7 +435,7 @@ export default function WizardComplemento({
       const res = await completarPendenciaCenso(id, payloadDe(item, rascunhos[k]))
       if (res.ok) {
         setEstado((e) => ({ ...e, [k]: 'salvo' }))
-        onSalvo(id, rascunhos[k].nome.trim() || item.nome || '', res.situacao)
+        onSalvo(id, rascunhos[k].nome.trim() || item.nome || '', res)
         avancar()
         return
       }

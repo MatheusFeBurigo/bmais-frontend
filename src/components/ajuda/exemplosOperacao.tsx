@@ -1176,7 +1176,7 @@ const EM_LEITO: PacienteGravado[] = [
     medico: 'Rafael Antunes Prado', diagnostico: 'J18.9 PNEUMONIA NÃO ESPECIFICADA' }),
   pac({ situacao: 'INTERNADO', nome: 'MARCOS VINICIUS TEIXEIRA', atendimento: '771422', carteirinha: '0042119054001',
     leito_codigo: '405', convenio: 'SAUDE VIDA PLUS', data_entrada: '23/09/2026', hora_entrada: '08:15',
-    problema: { tipo: 'convenio_nao_reconhecido', texto: 'O convênio "SAUDE VIDA PLUS" não está no cadastro. O paciente entrou como CarePlus.' } }),
+    problema: { tipo: 'convenio_nao_reconhecido', texto: 'Convênio “SAUDE VIDA PLUS” não homologado. O paciente fica em CarePlus até alguém decidir.' } }),
   pac({ situacao: 'INTERNADO', nome: 'LÚCIA FERRAZ', atendimento: '771430', carteirinha: '0042733981002',
     senha: 'K5T3A07', leito_codigo: '312', tipo_leito: 'APARTAMENTO', convenio: 'CAREPLUS',
     data_entrada: '24/09/2026', hora_entrada: '14:02', medico: 'Helena Prates Vidal' }),

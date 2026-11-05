@@ -77,15 +77,17 @@ export function useDesfazerCobranca() {
   })
 }
 
-// Marcar atualizado: "Aguardando retorno" → "Censos atualizados", sem censo novo.
+// Marcar atualizado: "Aguardando retorno" ou "Aguardando censo" → "Censos
+// atualizados", sem censo novo. O card está em uma só das duas: a outra não muda.
 export function useMarcarAtualizado() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (m: MovimentoCenso) => marcarAtualizado(m),
     onSuccess: (_res, alvo) => {
+      const extra = { atualizado_em: new Date().toISOString() }
       qc.setQueryData<KanbanPayload>(queryKeys.kanban(), (atual) => moverCenso(
-        atual, alvo, 'aguardando_retorno', 'censos_processados',
-        { atualizado_em: new Date().toISOString() }))
+        moverCenso(atual, alvo, 'aguardando_retorno', 'censos_processados', extra),
+        alvo, 'aguardando_censo', 'censos_processados', extra))
       qc.invalidateQueries({ queryKey: queryKeys.kanban() })
     },
   })

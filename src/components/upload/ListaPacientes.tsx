@@ -15,7 +15,7 @@
 // alinhadas, todos os atendimentos alinhados) em vez de reencontrar cada campo
 // numa posição diferente a cada linha.
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { nomeProprio } from '../../lib/texto'
 import type { PacienteGravado } from '../../types/api'
 
@@ -257,6 +257,9 @@ export const listaPacientesStyles = `
 .up-pac-recorte button{flex-shrink:0;padding:3px 11px;border:1px solid var(--warning);border-radius:99px;background:var(--surface);font-family:inherit;font-size:var(--t-xs);font-weight:600;color:var(--warning-2);cursor:pointer}
 .up-pac-recorte button:hover{background:rgba(217,105,12,.08)}
 .up-pac-recorte button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(217,105,12,.2)}
+/* Orientação da aba Outros: mesmo âmbar da faixa acima, mas rola com a lista e sem
+   botão, porque aqui não há modo do qual sair: é a própria aba. */
+.up-pac-decisao{padding:8px 10px;background:var(--warning-bg);border-bottom:1px solid rgba(217,105,12,.22);font-size:var(--t-sm);color:var(--ink-2);line-height:1.45}
 /* Trecho que casou com a busca: fundo âmbar, como qualquer resultado de busca. */
 .up-pac-marca{background:var(--caution-bg);color:var(--ink);border-radius:2px;padding:0 1px}
 `
@@ -619,8 +622,8 @@ function Linhas({ pacientes, termo, onEditar, onRemover }: {
                     // "deste censo", não "do sistema": quem já existia antes do
                     // envio continua no sistema — o X corrige a lista deste
                     // documento, e só apaga a ficha de quem nasceu dele.
-                    title={`Tirar ${nomeProprio(p.nome) || p.atendimento || 'este paciente'} da lista deste censo`}
-                    aria-label={`Remover ${nomeProprio(p.nome) || p.atendimento || 'paciente'}`}
+                    title={`Descartar ${nomeProprio(p.nome) || p.atendimento || 'este paciente'} deste censo`}
+                    aria-label={`Descartar ${nomeProprio(p.nome) || p.atendimento || 'paciente'}`}
                   >
                     {IcoLixeira}
                   </button>
@@ -853,7 +856,7 @@ export function contarProblemas(...listas: PacienteGravado[][]): number {
 
 export function ListaPacientes({
   emLeito, comAlta, termo = '', somenteProblema = false, onEditar, onRemover,
-  onVerTodos,
+  onVerTodos, orientacao,
 }: {
   emLeito: PacienteGravado[]
   comAlta: PacienteGravado[]
@@ -871,6 +874,9 @@ export function ListaPacientes({
   /** Desliga o recorte por "marcados". Ausente = a faixa não oferece saída
    *  (não deveria acontecer: quem liga o filtro é quem passa esta função). */
   onVerTodos?: () => void
+  /** Texto no topo da lista, dentro da moldura: a aba Outros diz ali o que há para
+   *  decidir. Fora dela, a lista deixaria de ficar colada na régua das abas. */
+  orientacao?: ReactNode
 }) {
   const total = emLeito.length + comAlta.length
 
@@ -909,6 +915,7 @@ export function ListaPacientes({
   return (
     <div>
       <div className="up-lista-pac">
+        {orientacao && <div className="up-pac-decisao">{orientacao}</div>}
         {/* A lista está recortada: diz isso e oferece a volta. Sem esta faixa, o
             modo "marcados" era um beco — entrava-se por um link de alerta e não
             havia nada em tela dizendo por que faltavam pacientes nem como
