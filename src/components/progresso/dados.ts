@@ -7,6 +7,10 @@
 //
 // Se um dia o avanço passar a ser calculado pelo backend, este módulo vira o
 // contrato que o endpoint precisa devolver.
+//
+// Desde 09/11/2026 o quadro é dividido por FASE do roadmap, e os módulos foram
+// renumerados por fase ("Módulo 0" a "Módulo 10"). A numeração nova está em
+// `codigo`; o `id` segue o antigo, porque é a chave dos ajustes no banco.
 
 /** Data da última conferência. Aparece na tela, para ninguém ler os números
  *  como se fossem de hoje. */
@@ -35,10 +39,22 @@ export const GRUPOS: readonly GrupoModulo[] = [
   'Em construção', 'Iniciados', 'A construir', 'A estudar',
 ]
 
+/** As fases do roadmap, na ordem da tela (09/11/2026). O quadro é dividido por
+ *  elas; a situação de cada módulo (o grupo acima) segue na pastilha. */
+export const FASES: readonly number[] = [1, 2, 3, 4, 5]
+
 export interface ModuloProjeto {
-  /** Identificador curto exibido antes do nome (ex.: "Mód. 0", "App"). */
+  /** Chave do módulo no banco (`progresso_modulos.modulo_id` e
+   *  `progresso_atividades.modulo_id`). NÃO é o que a tela mostra: é a
+   *  numeração antiga ("Mód. 2A", "App"), mantida para os ajustes e as
+   *  atividades já gravados continuarem presos ao módulo certo. Trocar um id
+   *  aqui deixa as linhas dele órfãs, e a tela volta ao valor do catálogo. */
   id: string
+  /** Código exibido acima do nome, na numeração por fase ("Módulo 3"). */
+  codigo: string
   nome: string
+  /** Fase do roadmap (ver FASES). */
+  fase: number
   grupo: GrupoModulo
   /** Rótulo da pastilha: o mesmo do grupo, no singular. */
   status: string
@@ -67,12 +83,18 @@ export interface ModuloProjeto {
   inferido?: boolean
 }
 
-// Ordem idêntica à do documento de origem: dentro de cada grupo, do maior para
-// o menor avanço já era a ordem de lá, então nada é reordenado em tela.
+// Mapa por fase de 09/11/2026: a Fase 2 veio da diretoria (Validação de senhas,
+// Pré análise de contas, App do auditor); as demais seguem a ordem dos blocos
+// do Relatório da auditoria, com a numeração corrida. A ordem do array é a da
+// tela: por fase e, dentro dela, pelo número do módulo. O código antigo de cada
+// um é o próprio `id`.
 export const MODULOS: readonly ModuloProjeto[] = [
+  // ── Fase 1 ──
   {
     id: 'Mód. 0',
+    codigo: 'Módulo 0',
     nome: 'Acesso e segurança',
+    fase: 1,
     grupo: 'Em construção',
     status: 'Em construção',
     pct: 92,
@@ -87,7 +109,9 @@ export const MODULOS: readonly ModuloProjeto[] = [
   },
   {
     id: 'Mód. 1',
+    codigo: 'Módulo 1',
     nome: 'Censos, relatórios e timeline',
+    fase: 1,
     grupo: 'Em construção',
     status: 'Em construção',
     pct: 73,
@@ -100,9 +124,46 @@ export const MODULOS: readonly ModuloProjeto[] = [
       { inicio: '27/10' },
     ],
   },
+  // ── Fase 2 ──
+  {
+    // Módulo novo em 09/11/2026: antes a senha ia dentro da Agenda de serviços
+    // ("4 Agenda de serviços e senhas" no relatório). A chave é nova, sem linha
+    // no banco, então ele abre no catálogo: não iniciado.
+    id: 'Senhas',
+    codigo: 'Módulo 2',
+    nome: 'Validação de senhas',
+    fase: 2,
+    grupo: 'A construir',
+    status: 'A construir',
+    pct: 0,
+    etapasPct: [0, 0, 0, 0, 0, 0],
+  },
+  {
+    id: 'Mód. 2A',
+    codigo: 'Módulo 3',
+    nome: 'Pré análise de contas',
+    fase: 2,
+    grupo: 'A construir',
+    status: 'A construir',
+    pct: 0,
+    etapasPct: [0, 0, 0, 0, 0, 0],
+  },
+  {
+    id: 'App', // antes "Registro em campo"
+    codigo: 'Módulo 4',
+    nome: 'App do auditor',
+    fase: 2,
+    grupo: 'A estudar',
+    status: 'A estudar',
+    pct: 0,
+    etapasPct: [0, 0, 0, 0, 0, 0],
+  },
+  // ── Fase 3 ──
   {
     id: 'Mód. 4',
+    codigo: 'Módulo 5',
     nome: 'Agenda de serviços',
+    fase: 3,
     grupo: 'Iniciados',
     status: 'Iniciado',
     pct: 8,
@@ -110,8 +171,31 @@ export const MODULOS: readonly ModuloProjeto[] = [
     datas: [{}, { inicio: 'desde 15/09' }, {}, {}, {}, {}],
   },
   {
+    id: 'Mód. 2B',
+    codigo: 'Módulo 6',
+    nome: 'Assistente com IA',
+    fase: 3,
+    grupo: 'A construir',
+    status: 'A construir',
+    pct: 0,
+    etapasPct: [0, 0, 0, 0, 0, 0],
+  },
+  {
+    id: 'Mód. 3',
+    codigo: 'Módulo 7',
+    nome: 'Gestão financeira',
+    fase: 3,
+    grupo: 'A construir',
+    status: 'A construir',
+    pct: 0,
+    etapasPct: [0, 0, 0, 0, 0, 0],
+  },
+  // ── Fase 4 ──
+  {
     id: 'Mód. 5A',
+    codigo: 'Módulo 8',
     nome: 'Gestão de prestadores',
+    fase: 4,
     grupo: 'Iniciados',
     status: 'Iniciado',
     pct: 22,
@@ -122,54 +206,28 @@ export const MODULOS: readonly ModuloProjeto[] = [
     inferido: true,
   },
   {
-    id: 'Mód. 2A',
-    nome: 'Pré análise de contas',
-    grupo: 'A construir',
-    status: 'A construir',
-    pct: 0,
-    etapasPct: [0, 0, 0, 0, 0, 0],
-  },
-  {
-    id: 'Mód. 2B',
-    nome: 'Assistente com IA',
-    grupo: 'A construir',
-    status: 'A construir',
-    pct: 0,
-    etapasPct: [0, 0, 0, 0, 0, 0],
-  },
-  {
-    id: 'Mód. 3',
-    nome: 'Gestão financeira',
-    grupo: 'A construir',
-    status: 'A construir',
-    pct: 0,
-    etapasPct: [0, 0, 0, 0, 0, 0],
-  },
-  {
     id: 'Mód. 5B',
+    codigo: 'Módulo 9',
     nome: 'Gestão da qualidade',
+    fase: 4,
     grupo: 'A construir',
     status: 'A construir',
     pct: 0,
     etapasPct: [0, 0, 0, 0, 0, 0],
   },
+  // ── Fase 5 ──
   {
     id: 'Mód. 6',
+    codigo: 'Módulo 10',
     nome: 'Inteligência de dados e BI',
+    fase: 5,
     grupo: 'A construir',
     status: 'A construir',
     pct: 25,
-    // Inferido pelo mesmo motivo do Mód. 5A (25% sem etapa alguma marcada).
+    // Inferido pelo mesmo motivo da Gestão de prestadores (25% sem etapa
+    // alguma marcada).
     etapasPct: [100, 50, 0, 0, 0, 0],
     inferido: true,
-  },
-  {
-    id: 'App',
-    nome: 'Registro em campo',
-    grupo: 'A estudar',
-    status: 'A estudar',
-    pct: 0,
-    etapasPct: [0, 0, 0, 0, 0, 0],
   },
 ]
 

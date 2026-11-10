@@ -182,8 +182,6 @@
 .prg-fase-data i{font-family:var(--font-mono);font-size:var(--t-xs);font-style:normal;
   color:var(--muted-2);font-variant-numeric:tabular-nums}
 
-.prg-nao-iniciado{margin:10px 0 0;font-size:var(--t-base);color:var(--muted-2);font-style:italic}
-
 /* ── Avanço de cada etapa ───────────────────────────────────────────────────
    O percentual por etapa é a fonte da verdade (migration 0031): dele saem a
    cor da etapa, o total do módulo e o avanço geral do projeto. */

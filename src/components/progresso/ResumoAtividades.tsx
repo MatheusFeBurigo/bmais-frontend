@@ -166,8 +166,9 @@ const IconLixeira = () => (
 )
 
 export default function ResumoAtividades({ modulo, onClose, podeEditar }: {
-  /** Módulo do quadro: a janela lista e grava só as atividades dele. */
-  modulo: { id: string; nome: string }
+  /** Módulo do quadro: a janela lista e grava só as atividades dele. `id` é a
+   *  chave das atividades no banco; `codigo` é o que aparece ("Módulo 3"). */
+  modulo: { id: string; codigo: string; nome: string }
   onClose: () => void
   /** Só a administração adiciona, edita e remove. Sem isto, a janela é de leitura. */
   podeEditar: boolean
@@ -214,7 +215,7 @@ export default function ResumoAtividades({ modulo, onClose, podeEditar }: {
       <div className="prg-detalhes">
         {/* De qual módulo é a lista: o título da janela é o mesmo em todos. */}
         <div className="prg-resumo-modulo">
-          <span className="prg-modulo-cod">{modulo.id}</span>
+          <span className="prg-modulo-cod">{modulo.codigo}</span>
           <span className="prg-resumo-modulo-nome">{modulo.nome}</span>
         </div>
 

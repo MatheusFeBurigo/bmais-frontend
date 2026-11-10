@@ -24,7 +24,10 @@ import { EditarPacienteModal } from './EditarPacienteModal'
 import { ConfirmarModal } from '../ConfirmarModal'
 import { AvisoDesfazer } from './AvisoDesfazer'
 import { nomeProprio } from '../../lib/texto'
-import { removerPacienteDoCenso, restaurarInternacao } from '../../services/internacao.service'
+import {
+  religarPacientesAoCenso, removerPacienteDoCenso, removerPacientesDoCenso, restaurarInternacao,
+} from '../../services/internacao.service'
+import { DescartarConvenioModal } from './DescartarConvenioModal'
 import {
   BuscaPacientes, contarProblemas, filtrarPacientes, ListaPacientes, temProblema,
 } from './ListaPacientes'
@@ -208,10 +211,37 @@ export function ordenarPorUrgencia(resultados: UploadCensoResult[]): UploadCenso
   return [...resultados].sort((a, b) => PESO[urgenciaDe(a)] - PESO[urgenciaDe(b)])
 }
 
+/** O último descarte por convênio, guardado para o desfazer. */
+interface LoteDescartado {
+  convenios: string[]
+  /** Saíram do sistema: o desfazer recria a ficha. */
+  apagados: { paciente: PacienteGravado; ficha: Record<string, unknown> }[]
+  /** Só saíram da lista: o desfazer religa com a origem que tinham (null = não
+   *  constavam neste censo, e não há o que religar). */
+  desvinculados: { paciente: PacienteGravado; origem: 'novo' | 'atualizado' | null }[]
+}
+
+/** Roda `fn` sobre os itens com no máximo `limite` chamadas ao mesmo tempo: o
+ *  desfazer de um lote recria dezenas de fichas, e disparar todas de uma vez
+ *  enfileiraria o servidor. */
+async function emParalelo<T>(itens: T[], limite: number, fn: (item: T) => Promise<void>) {
+  let proximo = 0
+  await Promise.all(Array.from({ length: Math.min(limite, itens.length) }, async () => {
+    while (proximo < itens.length) await fn(itens[proximo++])
+  }))
+}
+
 export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, operadoras,
-                               onDesfazer, desfazendo, onConveniosResolvidos }: {
+                               onDesfazer, desfazendo, onConveniosResolvidos,
+                               onPacientesRemovidos }: {
   res: UploadCensoResult
   onIgnorar: (arquivo: string) => void
+  /** Pacientes saíram (números positivos) ou voltaram (negativos) da lista deste
+   *  arquivo. O placar do lote e o "Desfazer este arquivo" contam pelo resultado
+   *  da página, que nada daqui de dentro altera: sem o aviso, a linha recolhida
+   *  seguia dizendo "112 internações" depois de 92 descartadas. */
+  onPacientesRemovidos?: (arquivo: string,
+                          delta: { internados: number; altas: number; criados: number }) => void
   /** Quantos convênios não reconhecidos deste arquivo o usuário já corrigiu.
    *  O placar do lote é somado FORA do cartão, a partir do resultado do
    *  processamento, e não enxerga as correções feitas aqui dentro — sem isto o
@@ -268,6 +298,22 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // há desfazer a oferecer (a ficha continua lá), mas sumir da lista sem dizer
   // nada deixaria a dúvida de sempre — "apaguei o paciente?".
   const [saiuDaLista, setSaiuDaLista] = useState<string | null>(null)
+  // O id que a ficha ganhou ao ser recriada pelo desfazer (antigo → novo). O
+  // resultado do envio guarda o id de quando o arquivo foi lido; sem a troca, a
+  // linha que voltava ficava com o id da ficha apagada, e a lixeira e o lápis
+  // dela respondiam "não encontrado".
+  const [idsNovos, setIdsNovos] = useState<Record<number, number>>({})
+  // Descarte por convênio: a modal aberta, o pedido em andamento e o erro dele
+  // (que fica na modal, como o da lixeira).
+  const [descartandoConvenio, setDescartandoConvenio] = useState(false)
+  const [apagandoLote, setApagandoLote] = useState(false)
+  const [erroLote, setErroLote] = useState<string | null>(null)
+  const [loteDescartado, setLoteDescartado] = useState<LoteDescartado | null>(null)
+  const [desfazendoLote, setDesfazendoLote] = useState(false)
+  // Falha de um desfazer, ou de parte de um descarte. Fica no cartão até ser
+  // fechada: o aviso de desfazer some sozinho, e o usuário sairia achando que o
+  // paciente voltou.
+  const [erroNoCartao, setErroNoCartao] = useState<string | null>(null)
   // Correções feitas nesta tela, por id da internação. O resultado do envio é
   // imutável (veio do backend), então a linha lê daqui quando há uma edição —
   // sem isto o usuário salvaria e continuaria vendo o valor antigo até recarregar.
@@ -289,30 +335,172 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
       (n) => String(n.atendimento ?? '').trim() === chave)
   }
 
+  /** O id de AGORA de uma linha: a ficha recriada pelo desfazer ganhou outro (e
+   *  pode ter sido apagada e recriada de novo, daí a cadeia). */
+  const idAtual = (id: number | null | undefined) => {
+    if (id == null) return id
+    let atual = id
+    for (let i = 0; i < 20 && idsNovos[atual] != null; i++) atual = idsNovos[atual]
+    return atual
+  }
+
+  /** Avisa a página de quem saiu (sinal 1) ou voltou (sinal -1) da lista.
+   *  `criados` = quantos deles este censo criou e o desfazer do arquivo apagaria. */
+  const avisarContagem = (pacientes: PacienteGravado[], criados: number, sinal: 1 | -1) => {
+    if (!pacientes.length) return
+    const altas = pacientes.filter((p) => p.situacao === 'ALTA').length
+    onPacientesRemovidos?.(res.arquivo, {
+      internados: sinal * (pacientes.length - altas), altas: sinal * altas, criados: sinal * criados,
+    })
+  }
+
   async function desfazerRemocao() {
     if (!apagado) return
+    const { paciente, ficha } = apagado
+    const nome = nomeProprio(paciente.nome) || paciente.atendimento || 'O paciente'
     setDesfazendoRemocao(true)
     try {
       // Rota PRÓPRIA de restauração, não a de criação manual: aquela exige nome
       // e data de entrada, e há censos sem coluna de paciente (identificados
       // pela senha) e sem data — o desfazer falharia justamente neles.
-      // O registro ganha id NOVO; a linha volta à lista porque tiramos o id
-      // antigo de `removidos`.
-      await restaurarInternacao(apagado.ficha)
-      if (apagado.paciente.id != null) {
-        const idAntigo = apagado.paciente.id
+      const r = await restaurarInternacao(ficha)
+      // O registro ganha id NOVO: a linha passa a valer por ele, e volta à lista
+      // porque o id antigo sai de `removidos`.
+      const idAntigo = paciente.id
+      const idNovo = r.internacao_id
+      if (idAntigo != null) {
+        if (idNovo != null && idNovo !== idAntigo) {
+          setIdsNovos((m) => ({ ...m, [idAntigo]: idNovo }))
+        }
         setRemovidos((lista) => lista.filter((x) => x !== idAntigo))
       }
       // Voltou para a aba Outros: o badge do placar volta a contá-lo.
-      if (contaNoPlacar(apagado.paciente)) onConveniosResolvidos?.(res.arquivo, -1)
+      if (contaNoPlacar(paciente)) onConveniosResolvidos?.(res.arquivo, -1)
       setApagado(null)
+      // E volta à lista DESTE censo, como criado por ele. Sem isto ele voltava ao
+      // sistema solto: a lixeira passava a só tirá-lo da lista (não era mais
+      // "deste censo"), e desfazer o arquivo já não o apagava.
+      let religou = false
+      if (res.censo_id != null && idNovo != null) {
+        try {
+          await religarPacientesAoCenso(res.censo_id, [
+            { internacao_id: idNovo, origem: r.ja_existia ? 'atualizado' : 'novo' }])
+          religou = true
+        } catch (e) {
+          setErroNoCartao(`${nome} voltou ao sistema, mas não à lista deste censo: `
+            + ((e as Error).message || 'erro ao religar.'))
+        }
+      }
+      avisarContagem([paciente], religou && !r.ja_existia ? 1 : 0, -1)
     } catch (e) {
-      // Falhou recriar: o aviso vira um erro que NÃO some sozinho, senão o
-      // usuário acha que desfez e o paciente continua apagado.
-      setErroRemover((e as Error).message || 'Não foi possível desfazer.')
+      // Falhou recriar: o erro fica no cartão e NÃO some sozinho, senão o
+      // usuário acha que desfez e o paciente continua apagado. (Ia para
+      // `erroRemover`, que só aparece dentro da modal de confirmação, já fechada
+      // a essa altura: a falha passava calada.)
+      setErroNoCartao(`${nome} não voltou: ${(e as Error).message || 'não foi possível desfazer.'}`)
       setApagado(null)
     } finally {
       setDesfazendoRemocao(false)
+    }
+  }
+
+  async function confirmarLote(pacientes: PacienteGravado[], convenios: string[]) {
+    const ids = pacientes.map((p) => p.id).filter((id): id is number => id != null)
+    if (!ids.length) return
+    if (res.censo_id == null) {
+      setErroLote('Não foi possível descartar. Reenvie o arquivo e tente de novo.')
+      return
+    }
+    setApagandoLote(true)
+    setErroLote(null)
+    try {
+      const r = await removerPacientesDoCenso(res.censo_id, ids, convenios)
+      const porId = new Map(pacientes.map((p) => [p.id as number, p]))
+      const apagados = (r.apagados ?? []).flatMap((a) => {
+        const p = porId.get(a.internacao_id)
+        return p ? [{ paciente: p, ficha: a.ficha }] : []
+      })
+      const desvinculados = (r.desvinculados ?? []).flatMap((d) => {
+        const p = porId.get(d.internacao_id)
+        return p ? [{ paciente: p, origem: d.origem ?? null }] : []
+      })
+      const saiu = [...apagados.map((a) => a.paciente), ...desvinculados.map((d) => d.paciente)]
+      setRemovidos((lista) => [...lista, ...saiu.map((p) => p.id as number)])
+      const noPlacar = saiu.filter(contaNoPlacar).length
+      if (noPlacar) onConveniosResolvidos?.(res.arquivo, noPlacar)
+      avisarContagem(saiu, apagados.length, 1)
+      // Um aviso de desfazer por vez: todos ocupam o mesmo canto da tela.
+      setApagado(null)
+      setSaiuDaLista(null)
+      setLoteDescartado({ convenios, apagados, desvinculados })
+      setDescartandoConvenio(false)
+      const falhas = r.falhas?.length ?? 0
+      if (falhas) {
+        setErroNoCartao(`${falhas} ${plural(falhas, 'paciente')} não `
+          + `${plural(falhas, 'pôde', 'puderam')} sair deste censo. Recarregue a página e confira.`)
+      }
+    } catch (e) {
+      setErroLote((e as Error).message || 'Não foi possível descartar.')
+    } finally {
+      setApagandoLote(false)
+    }
+  }
+
+  async function desfazerLote() {
+    if (!loteDescartado || res.censo_id == null) return
+    const censoId = res.censo_id
+    const { apagados, desvinculados } = loteDescartado
+    setDesfazendoLote(true)
+    // As fichas excluídas voltam pela mesma rota do desfazer da lixeira.
+    const restaurados: { paciente: PacienteGravado; novo: number; jaExistia: boolean }[] = []
+    let naoVoltaram = 0
+    await emParalelo(apagados, 4, async ({ paciente, ficha }) => {
+      try {
+        const r = await restaurarInternacao(ficha)
+        if (r.internacao_id != null) {
+          restaurados.push({ paciente, novo: r.internacao_id, jaExistia: Boolean(r.ja_existia) })
+        } else {
+          naoVoltaram += 1
+        }
+      } catch {
+        naoVoltaram += 1
+      }
+    })
+    // E todos voltam à lista deste censo como constavam.
+    const religar = [
+      ...restaurados.map((r) => ({
+        internacao_id: r.novo, origem: r.jaExistia ? 'atualizado' as const : 'novo' as const })),
+      ...desvinculados.flatMap((d) => (d.origem && d.paciente.id != null
+        ? [{ internacao_id: d.paciente.id, origem: d.origem }] : [])),
+    ]
+    let religou = true
+    if (religar.length) {
+      try {
+        await religarPacientesAoCenso(censoId, religar)
+      } catch {
+        religou = false
+      }
+    }
+    const trocas: Record<number, number> = {}
+    for (const r of restaurados) {
+      if (r.paciente.id != null && r.paciente.id !== r.novo) trocas[r.paciente.id] = r.novo
+    }
+    setIdsNovos((m) => ({ ...m, ...trocas }))
+    const voltaram = [...restaurados.map((r) => r.paciente), ...desvinculados.map((d) => d.paciente)]
+    const idsVoltaram = new Set(voltaram.map((p) => p.id))
+    setRemovidos((lista) => lista.filter((id) => !idsVoltaram.has(id)))
+    const noPlacar = voltaram.filter(contaNoPlacar).length
+    if (noPlacar) onConveniosResolvidos?.(res.arquivo, -noPlacar)
+    avisarContagem(voltaram, religou ? restaurados.filter((r) => !r.jaExistia).length : 0, -1)
+    setLoteDescartado(null)
+    setDesfazendoLote(false)
+    if (naoVoltaram) {
+      setErroNoCartao(`${naoVoltaram} ${plural(naoVoltaram, 'paciente')} não `
+        + `${plural(naoVoltaram, 'voltou', 'voltaram')} ao sistema. Recarregue a página e confira; `
+        + 'quem faltar pode ser cadastrado pela Visão Geral.')
+    } else if (!religou) {
+      setErroNoCartao('Os pacientes voltaram ao sistema, mas não à lista deste censo. As fichas '
+        + 'estão inteiras; só a presença neste censo ficou de fora.')
     }
   }
 
@@ -332,12 +520,18 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
       // Descartar é uma das decisões da aba Outros: sem isto, o badge do placar
       // continuaria contando quem já saiu da lista.
       if (contaNoPlacar(removendo)) onConveniosResolvidos?.(res.arquivo, 1)
+      avisarContagem([removendo], r.apagado ? 1 : 0, 1)
       // Só oferece DESFAZER quando a ficha de fato saiu do sistema: é o único
       // caso em que há o que recriar. Tendo apenas saído da lista deste censo, o
       // paciente continua lá inteiro, e um "desfazer" ali recriaria um duplicado.
+      // Um aviso por vez: todos ocupam o mesmo canto da tela, e dois juntos se
+      // sobrepunham.
+      setLoteDescartado(null)
       if (r.apagado && r.ficha) {
+        setSaiuDaLista(null)
         setApagado({ paciente: removendo, ficha: r.ficha as Record<string, unknown> })
       } else {
+        setApagado(null)
         setSaiuDaLista(nomeProprio(removendo.nome) || removendo.atendimento || 'Paciente')
       }
       setRemovendo(null)
@@ -528,10 +722,19 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
 
   const aplicarEdicoes = (lista: PacienteGravado[]) =>
     lista
+      // O id de AGORA antes de tudo: a ficha recriada pelo desfazer ganhou outro,
+      // e é por ele que a remoção e a edição seguintes acontecem.
+      .map((p) => {
+        const id = idAtual(p.id)
+        return id === p.id ? p : { ...p, id }
+      })
       .filter((p) => p.id == null || !removidos.includes(p.id))
-      .map((p) => (p.id != null && editados[p.id])
-        || editadosPorAtendimento.get(String(p.atendimento ?? '').trim())
-        || p)
+      .map((p) => {
+        const editado = (p.id != null && editados[p.id])
+          || editadosPorAtendimento.get(String(p.atendimento ?? '').trim())
+        // A edição guarda o id de quando foi salva; a linha vale pelo id atual.
+        return editado ? { ...editado, id: p.id ?? editado.id } : p
+      })
       // O campo do backend vence; o derivado entra só quando ele não veio.
       //
       // `resolvido` sai da frente das duas regras: quem foi corrigido na modal
@@ -548,6 +751,11 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   const leitoVisto = aplicarEdicoes(emLeito)
   const altaVista = aplicarEdicoes(comAlta)
   const nProblemas = contarProblemas(leitoVisto, altaVista)
+  // As duas saídas destrutivas do rodapé do arquivo. Descartar por convênio pede
+  // o que a lixeira pede (admin, `censo_id` e linha com id), mais alguém na lista.
+  const podeDesfazerArquivo = Boolean(onDesfazer) && (res.criados ?? 0) > 0
+  const podeDescartarConvenio = Boolean(podeExcluir) && !somenteLeitura
+    && res.censo_id != null && [...leitoVisto, ...altaVista].some((p) => p.id != null)
 
   // CENSO MISTO: uma aba por operadora, no lugar de uma faixa âmbar por
   // operadora seguida de uma lista com todo mundo embaralhado.
@@ -785,7 +993,8 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
           ? <>em <b>{nomeOnde}</b></>
           : `na operadora em que ${plural(n, 'foi gravado', 'foram gravados')}`}.{' '}
         {podeExcluir && !somenteLeitura
-          ? 'Use o lápis para escolher a operadora certa ou a lixeira para descartar.'
+          ? 'Use o lápis para escolher a operadora certa ou a lixeira para descartar. '
+            + 'Para descartar um convênio inteiro, use “Descartar por convênio”, no fim do arquivo.'
           : 'Use o lápis para escolher a operadora certa. Para tirar alguém do censo, abra um chamado.'}
       </>
     )
@@ -942,6 +1151,12 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
           </button>
         </span>
       </div>
+
+      {/* Fora do painel recolhível: um desfazer que falhou tem de ser visto com
+          o cartão aberto ou fechado. */}
+      {erroNoCartao && (
+        <Alerta nivel="critico" onFechar={() => setErroNoCartao(null)}>{erroNoCartao}</Alerta>
+      )}
 
       {expandido && (
         <div id={idPainel} className="up-painel">
@@ -1219,20 +1434,71 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
           depois da conferência, não antes dela. O botão do LOTE continua no
           rodapé do resultado, para o caso de tudo ter ido para o hospital
           errado. */}
-      {expandido && onDesfazer && (res.criados ?? 0) > 0 && (
+      {/* Descartar por convênio mora ao lado: também é destrutivo e também vem
+          depois da conferência. A lixeira tira um paciente; isto tira todos os
+          de um convênio que não devia estar no censo. */}
+      {expandido && (podeDesfazerArquivo || podeDescartarConvenio) && (
         <div className="up-arquivo-desfazer">
           <span>
-            Este arquivo criou <b>{res.criados}</b> {plural(res.criados ?? 0, 'paciente')}.
-            {(res.atualizados?.length ?? 0) > 0 && (
-              <> Outros {res.atualizados?.length} já existiam e permanecem.</>
-            )}
+            {podeDesfazerArquivo ? (
+              <>
+                Este arquivo criou <b>{res.criados}</b> {plural(res.criados ?? 0, 'paciente')}.
+                {(res.atualizados?.length ?? 0) > 0 && (
+                  <> Outros {res.atualizados?.length} já existiam e permanecem.</>
+                )}
+              </>
+            ) : 'Um convênio que não devia estar neste censo sai inteiro por aqui.'}
           </span>
-          <button type="button" className="up-desfazer-arq"
-                  disabled={desfazendo}
-                  onClick={() => onDesfazer(res.arquivo)}>
-            {desfazendo ? 'Desfazendo…' : 'Desfazer este arquivo'}
-          </button>
+          {podeDescartarConvenio && (
+            <button type="button" className="up-desfazer-arq"
+                    disabled={apagandoLote || desfazendoLote || desfazendo}
+                    onClick={() => { setErroLote(null); setDescartandoConvenio(true) }}>
+              Descartar por convênio
+            </button>
+          )}
+          {podeDesfazerArquivo && onDesfazer && (
+            <button type="button" className="up-desfazer-arq"
+                    disabled={desfazendo}
+                    onClick={() => onDesfazer(res.arquivo)}>
+              {desfazendo ? 'Desfazendo…' : 'Desfazer este arquivo'}
+            </button>
+          )}
         </div>
+      )}
+
+      {loteDescartado && (() => {
+        const { convenios, apagados, desvinculados } = loteDescartado
+        const n = apagados.length + desvinculados.length
+        const a = apagados.length
+        const d = desvinculados.length
+        return (
+          <AvisoDesfazer
+            texto={<>
+              <b>{n} {plural(n, 'paciente')}</b> de{' '}
+              {convenios.length === 1 ? <b>{convenios[0]}</b> : `${convenios.length} convênios`}{' '}
+              {plural(n, 'saiu', 'saíram')} deste censo.
+            </>}
+            detalhe={a > 0 && d > 0
+              ? `${a} ${plural(a, 'excluído')} (${plural(a, 'nasceu', 'nasceram')} deste censo); `
+                + `${d} já ${plural(d, 'existia', 'existiam')} e ${plural(d, 'continua', 'continuam')} no sistema.`
+              : a > 0
+                ? 'Nasceram deste censo e foram excluídos. Relatórios e histórico não voltam com o desfazer.'
+                : 'As fichas continuam no sistema, com relatórios e histórico.'}
+            desfazendo={desfazendoLote}
+            onDesfazer={desfazerLote}
+            onFechar={() => setLoteDescartado(null)}
+          />
+        )
+      })()}
+
+      {descartandoConvenio && (
+        <DescartarConvenioModal
+          grupos={gruposOperadora}
+          ocupado={apagandoLote}
+          erro={erroLote}
+          onCancelar={() => setDescartandoConvenio(false)}
+          onConfirmar={confirmarLote}
+        />
       )}
 
       {apagado && (

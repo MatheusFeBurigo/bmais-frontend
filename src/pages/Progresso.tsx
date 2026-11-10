@@ -1,8 +1,10 @@
 // Tela Progresso: o avanço da construção do próprio BMais, módulo a módulo.
 //
 // Layout do documento de origem (`BMais_Avanco_Modulos.html`): cartão de
-// destaque, legenda das seis etapas e um quadro único dividido pelos grupos do
-// roadmap, com uma linha por módulo e a trilha de etapas visível.
+// destaque, legenda das seis etapas e um quadro único dividido pelas fases do
+// roadmap, com uma linha por módulo e a trilha de etapas visível. A situação de
+// cada módulo (em construção, iniciado...) fica na pastilha e nos contadores
+// do topo.
 //
 // O que a tela cuida é da SEPARAÇÃO DOS TEXTOS: cada bloco de informação tem o
 // seu lugar e o seu peso — identificação (código e nome), situação (pastilha e
@@ -20,7 +22,7 @@ import { usePageHeader } from '../components/PageHeader'
 import ResumoAtividades from '../components/progresso/ResumoAtividades'
 import Toast from '../components/Toast'
 import {
-  ATUALIZADO_EM, ETAPAS, GRUPOS, type GrupoModulo,
+  ATUALIZADO_EM, ETAPAS, FASES, GRUPOS, type GrupoModulo,
 } from '../components/progresso/dados'
 import {
   etapasConcluidas, etapasEmCurso, faseDoPct, pctDoModulo,
@@ -91,7 +93,6 @@ function Modulo({
   const pctAtual = pctDoModulo(emTela)
   const concluidas = etapasConcluidas(emTela)
   const emCurso = etapasEmCurso(emTela)
-  const comecou = concluidas > 0 || emCurso.length > 0
 
   const mudarData = (i: number, campo: 'inicio' | 'previsto', valor: string) => {
     setDatas((ds) => ds.map((d, j) => (j === i ? { ...d, [campo]: valor } : d)))
@@ -103,14 +104,11 @@ function Modulo({
     setEtapasPct((ps) => ps.map((p, j) => (j === i ? n : p)))
   }
 
-  // Na edição a trilha mostra as SEIS etapas, mesmo num módulo que não começou:
-  // é justamente ali que se registra o cronograma de quem vai começar.
-  const mostrarTrilha = editando || comecou
-
   // Resumo da situação, em texto: com percentual por etapa, mais de uma pode
   // estar em curso — o modelo antigo de "etapa atual" única não dizia isso.
   const resumo = (() => {
     if (concluidas === ETAPAS.length) return 'Todas as etapas concluídas'
+    if (concluidas === 0 && emCurso.length === 0) return 'Nenhuma etapa iniciada'
     if (emCurso.length === 0) return `${concluidas} de ${ETAPAS.length} etapas concluídas`
     const nomes = emCurso.map((i) => ETAPAS[i]).join(' e ')
     return `Em ${nomes}`
@@ -119,11 +117,11 @@ function Modulo({
   return (
     <article className={`prg-modulo${editando ? ' editando' : ''}`}>
       {/* 1. IDENTIFICAÇÃO — o código acima do nome, e não colado nele: são duas
-          informações diferentes, e lado a lado o "Mód. 5A" era lido como parte
-          do título. */}
+          informações diferentes, e lado a lado o "Módulo 8" era lido como parte
+          do título. É o `codigo` (numeração por fase), não o `id` do banco. */}
       <div className="prg-modulo-topo">
         <div className="prg-modulo-id">
-          <span className="prg-modulo-cod">{m.id}</span>
+          <span className="prg-modulo-cod">{m.codigo}</span>
           <h3 className="prg-modulo-nome">{m.nome}</h3>
         </div>
 
@@ -146,120 +144,119 @@ function Modulo({
         )}
       </div>
 
-      {mostrarTrilha ? (
-        <div className="prg-andamento">
-          {/* Fora da edição, o resumo da situação; dentro dela a frase sobraria,
-              porque os campos logo abaixo dizem o mesmo com mais precisão. */}
-          {!editando && (
-            <p className="prg-etapa-atual">
-              <span className="prg-etapa-atual-txt">
-                <span className="prg-etapa-atual-n">{concluidas}/{ETAPAS.length}</span>
-                <span className="prg-etapa-atual-nome">{resumo}</span>
-              </span>
-              {(m.ajustado || m.inferido) && (
-                <span className="prg-marcas">
-                  {m.ajustado && (
-                    <span className="prg-ajustado"
-                      title={`Ajustado manualmente${m.ajustadoPor ? ` por ${m.ajustadoPor}` : ''}`}>
-                      ajustado
-                    </span>
-                  )}
-                  {m.inferido && (
-                    <span className="prg-inferido"
-                      title="A conferência registrou o percentual, mas não em qual etapa o módulo está; esta posição foi deduzida do avanço.">
-                      etapa estimada
-                    </span>
-                  )}
-                </span>
-              )}
-            </p>
-          )}
-
-          <ol className="prg-fases" aria-label={`Etapas do módulo ${m.nome}`}>
-            {ETAPAS.map((nomeEtapa, i) => {
-              const valor = emTela[i] ?? 0
-              const fase = faseDoPct(valor)
-              const data = editando ? datas[i] : m.datas?.[i]
-              return (
-                <li className={`prg-fase ${fase}`} key={nomeEtapa}>
-                  <span className="prg-fase-dot">
-                    {fase === 'done' ? (
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"
-                        aria-hidden="true"><path d="m5 13 4.5 4.5L19 7" /></svg>
-                    ) : i + 1}
+      {/* A trilha aparece em TODO módulo, iniciado ou não (09/11/2026): é o
+          mesmo formato em todas as fases, e o módulo que não começou mostra as
+          seis etapas por iniciar, em vez de uma frase no lugar delas. */}
+      <div className="prg-andamento">
+        {/* Fora da edição, o resumo da situação; dentro dela a frase sobraria,
+            porque os campos logo abaixo dizem o mesmo com mais precisão. */}
+        {!editando && (
+          <p className="prg-etapa-atual">
+            <span className="prg-etapa-atual-txt">
+              <span className="prg-etapa-atual-n">{concluidas}/{ETAPAS.length}</span>
+              <span className="prg-etapa-atual-nome">{resumo}</span>
+            </span>
+            {(m.ajustado || m.inferido) && (
+              <span className="prg-marcas">
+                {m.ajustado && (
+                  <span className="prg-ajustado"
+                    title={`Ajustado manualmente${m.ajustadoPor ? ` por ${m.ajustadoPor}` : ''}`}>
+                    ajustado
                   </span>
+                )}
+                {m.inferido && (
+                  <span className="prg-inferido"
+                    title="A conferência registrou o percentual, mas não em qual etapa o módulo está; esta posição foi deduzida do avanço.">
+                    etapa estimada
+                  </span>
+                )}
+              </span>
+            )}
+          </p>
+        )}
 
-                  <span className="prg-fase-nome">{nomeEtapa}</span>
+        <ol className="prg-fases" aria-label={`Etapas do módulo ${m.nome}`}>
+          {ETAPAS.map((nomeEtapa, i) => {
+            const valor = emTela[i] ?? 0
+            const fase = faseDoPct(valor)
+            const data = editando ? datas[i] : m.datas?.[i]
+            return (
+              <li className={`prg-fase ${fase}`} key={nomeEtapa}>
+                <span className="prg-fase-dot">
+                  {fase === 'done' ? (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"
+                      aria-hidden="true"><path d="m5 13 4.5 4.5L19 7" /></svg>
+                  ) : i + 1}
+                </span>
 
-                  {/* Avanço da etapa. Na leitura, só quando há algo a dizer: uma
-                      coluna de "0%" em etapas que nem começaram seria ruído. */}
-                  {editando ? (
-                    <span className="prg-fase-pct-edit">
-                      <input className="bm-input" type="number" min={0} max={100} value={valor}
-                        disabled={salvando} aria-label={`Avanço de ${nomeEtapa}`}
-                        onChange={(e) => mudarPct(i, Number(e.target.value))} />
-                      <span className="prg-edit-sufixo">%</span>
-                      {/* Atalho para o caso mais comum: dar a etapa por pronta
-                          sem digitar 1-0-0. */}
-                      <button type="button" className="prg-fase-concluir"
-                        disabled={salvando || valor >= 100}
-                        onClick={() => mudarPct(i, 100)}
-                        title={`Marcar "${nomeEtapa}" como concluída`}>
-                        concluir
-                      </button>
-                    </span>
-                  ) : valor > 0 && (
-                    <span className={`prg-fase-pct ${fase}`}>
-                      {valor >= 100 ? 'concluída' : `${valor}%`}
-                    </span>
-                  )}
+                <span className="prg-fase-nome">{nomeEtapa}</span>
 
-                  {/* 4. PRAZOS — na leitura, cada data rotulada; na edição, os
-                      mesmos dois campos viram texto livre ("27/08", "out/26"). */}
-                  {editando ? (
-                    <span className="prg-fase-edit">
-                      <input className="bm-input" type="text" value={data?.inicio ?? ''}
-                        placeholder="início" disabled={salvando}
-                        aria-label={`Início de ${nomeEtapa}`}
-                        onChange={(e) => mudarData(i, 'inicio', e.target.value)} />
-                      <input className="bm-input" type="text" value={data?.previsto ?? ''}
-                        placeholder="até" disabled={salvando}
-                        aria-label={`Previsão de ${nomeEtapa}`}
-                        onChange={(e) => mudarData(i, 'previsto', e.target.value)} />
+                {/* Avanço da etapa. Na leitura, só quando há algo a dizer: uma
+                    coluna de "0%" em etapas que nem começaram seria ruído. */}
+                {editando ? (
+                  <span className="prg-fase-pct-edit">
+                    <input className="bm-input" type="number" min={0} max={100} value={valor}
+                      disabled={salvando} aria-label={`Avanço de ${nomeEtapa}`}
+                      onChange={(e) => mudarPct(i, Number(e.target.value))} />
+                    <span className="prg-edit-sufixo">%</span>
+                    {/* Atalho para o caso mais comum: dar a etapa por pronta
+                        sem digitar 1-0-0. */}
+                    <button type="button" className="prg-fase-concluir"
+                      disabled={salvando || valor >= 100}
+                      onClick={() => mudarPct(i, 100)}
+                      title={`Marcar "${nomeEtapa}" como concluída`}>
+                      concluir
+                    </button>
+                  </span>
+                ) : valor > 0 && (
+                  <span className={`prg-fase-pct ${fase}`}>
+                    {valor >= 100 ? 'concluída' : `${valor}%`}
+                  </span>
+                )}
+
+                {/* 4. PRAZOS — na leitura, cada data rotulada; na edição, os
+                    mesmos dois campos viram texto livre ("27/08", "out/26"). */}
+                {editando ? (
+                  <span className="prg-fase-edit">
+                    <input className="bm-input" type="text" value={data?.inicio ?? ''}
+                      placeholder="início" disabled={salvando}
+                      aria-label={`Início de ${nomeEtapa}`}
+                      onChange={(e) => mudarData(i, 'inicio', e.target.value)} />
+                    <input className="bm-input" type="text" value={data?.previsto ?? ''}
+                      placeholder="até" disabled={salvando}
+                      aria-label={`Previsão de ${nomeEtapa}`}
+                      onChange={(e) => mudarData(i, 'previsto', e.target.value)} />
+                  </span>
+                ) : (data?.inicio || data?.previsto) && (
+                  <span className="prg-fase-data">
+                    {/* Cada data na SUA coluna, mesmo quando a outra falta:
+                        sem o espaço reservado, uma etapa só com previsão
+                        jogava o valor para debaixo do "início" da etapa de
+                        cima, e a coluna serrilhava. */}
+                    <span className="prg-fase-quando">
+                      {data?.inicio && (
+                        <>
+                          <span className="prg-fase-rotulo">início</span>
+                          <b>{data.inicio}</b>
+                        </>
+                      )}
                     </span>
-                  ) : (data?.inicio || data?.previsto) && (
-                    <span className="prg-fase-data">
-                      {/* Cada data na SUA coluna, mesmo quando a outra falta:
-                          sem o espaço reservado, uma etapa só com previsão
-                          jogava o valor para debaixo do "início" da etapa de
-                          cima, e a coluna serrilhava. */}
-                      <span className="prg-fase-quando">
-                        {data?.inicio && (
-                          <>
-                            <span className="prg-fase-rotulo">início</span>
-                            <b>{data.inicio}</b>
-                          </>
-                        )}
-                      </span>
-                      <span className="prg-fase-quando">
-                        {data?.previsto && (
-                          <>
-                            <span className="prg-fase-rotulo">até</span>
-                            <i>{data.previsto}</i>
-                          </>
-                        )}
-                      </span>
+                    <span className="prg-fase-quando">
+                      {data?.previsto && (
+                        <>
+                          <span className="prg-fase-rotulo">até</span>
+                          <i>{data.previsto}</i>
+                        </>
+                      )}
                     </span>
-                  )}
-                </li>
-              )
-            })}
-          </ol>
-        </div>
-      ) : (
-        <p className="prg-nao-iniciado">Nenhuma etapa iniciada</p>
-      )}
+                  </span>
+                )}
+              </li>
+            )
+          })}
+        </ol>
+      </div>
 
       {/* Rodapé do card: o resumo detalhado das atividades DESTE módulo. Na
           edição sai, para o rodapé ser só o de Salvar e Cancelar. */}
@@ -429,16 +426,16 @@ export default function Progresso() {
       </section>
 
       <div className="prg-quadro">
-        {GRUPOS.map((grupo) => {
-          const doGrupo = modulos.filter((m) => m.grupo === grupo)
-          if (doGrupo.length === 0) return null
+        {FASES.map((fase) => {
+          const daFase = modulos.filter((m) => m.fase === fase)
+          if (daFase.length === 0) return null
           return (
-            <section className="prg-grupo" key={grupo}>
+            <section className="prg-grupo" key={fase}>
               <h2 className="prg-grupo-titulo">
-                {grupo}
-                <span className="prg-grupo-total">{doGrupo.length}</span>
+                Fase {fase}
+                <span className="prg-grupo-total">{daFase.length}</span>
               </h2>
-              {doGrupo.map((m) => (
+              {daFase.map((m) => (
                 <Modulo m={m} key={m.id}
                   editando={editandoId === m.id}
                   onEditar={podeEditar ? () => setEditandoId(m.id) : undefined}

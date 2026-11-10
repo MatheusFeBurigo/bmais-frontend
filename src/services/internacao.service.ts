@@ -169,6 +169,39 @@ export function restaurarInternacao(ficha: Record<string, unknown>): Promise<{
   return apiFetch('/internacoes/restaurar', { method: 'POST', body: ficha })
 }
 
+/** `removerPacienteDoCenso` para vários pacientes do mesmo censo: o "descartar
+ *  por convênio" da conferência do envio. Mesma regra por paciente (quem nasceu
+ *  deste censo e só consta nele sai do sistema; o resto só sai da lista). Os
+ *  `convenios` só vão para a trilha de auditoria. Só admin. */
+export function removerPacientesDoCenso(censoId: number, internacoes: number[],
+                                        convenios: string[] = []): Promise<{
+  ok?: boolean
+  /** Saíram do sistema; a `ficha` é o que o desfazer recria. */
+  apagados?: { internacao_id: number; nome?: string | null; atendimento?: string | null
+               ficha: Record<string, unknown> }[]
+  /** Só saíram da lista. `origem` é como constavam no censo (o desfazer religa
+   *  assim); null = não constavam nele. */
+  desvinculados?: { internacao_id: number; nome?: string | null; atendimento?: string | null
+                    origem?: 'novo' | 'atualizado' | null }[]
+  /** Não puderam sair (inexistentes ou fora do escopo). */
+  falhas?: { internacao_id: number; erro: string }[]
+}> {
+  return apiFetch(`/censo/${censoId}/pacientes/remover`, {
+    method: 'POST', body: { internacoes, convenios },
+  })
+}
+
+/** O desfazer do descarte: devolve os pacientes à lista do censo. As fichas
+ *  excluídas voltam antes, por `restaurarInternacao` (id novo, `origem: 'novo'`).
+ *  Só admin. */
+export function religarPacientesAoCenso(censoId: number, internacoes: {
+  internacao_id: number; origem: 'novo' | 'atualizado'
+}[]): Promise<{ ok?: boolean; religados?: number; falhas?: number[] }> {
+  return apiFetch(`/censo/${censoId}/pacientes/religar`, {
+    method: 'POST', body: { internacoes },
+  })
+}
+
 /** Registra um relatório rápido a partir do drawer do paciente. */
 export function registrarRelatorioRapido(id: number, rel: RelatorioRapido): Promise<unknown> {
   return apiFetch(`/internacao/${id}/relatorio-rapido`, {

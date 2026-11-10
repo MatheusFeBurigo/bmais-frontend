@@ -71,7 +71,7 @@ export const estilosResultado = [
 export function ResultadoEnvio({
   resultados, pendentes, semHospital, criados, atualizados,
   podeDesfazer, desfazendo, onCompletar, onDesfazer, onIgnorar, somenteLeitura,
-  onDesfazerArquivo, desfazendoArquivo, podeExcluir, operadoras,
+  onDesfazerArquivo, desfazendoArquivo, podeExcluir, operadoras, onPacientesRemovidos,
 }: {
   resultados: UploadCensoResult[]
   pendentes: number
@@ -96,6 +96,10 @@ export function ResultadoEnvio({
   podeExcluir?: boolean
   /** Cadastro de operadoras, repassado ate a modal de edicao do paciente. */
   operadoras?: Operadora[]
+  /** Pacientes que saíram (ou voltaram) da lista de um arquivo pela lixeira ou
+   *  pelo descarte por convênio: a página corrige as contagens do resultado. */
+  onPacientesRemovidos?: (arquivo: string,
+                          delta: { internados: number; altas: number; criados: number }) => void
 }) {
   // Digitalizados não são "erro": o arquivo chegou certo, o hospital é que o
   // mandou como imagem. Contar junto os pintaria de vermelho no placar,
@@ -309,6 +313,7 @@ export function ResultadoEnvio({
                        operadoras={operadoras}
                        onDesfazer={somenteLeitura ? undefined : onDesfazerArquivo}
                        onConveniosResolvidos={marcarResolvidos}
+                       onPacientesRemovidos={onPacientesRemovidos}
                        desfazendo={desfazendoArquivo === res.arquivo} />
       ))}
 

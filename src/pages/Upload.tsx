@@ -284,6 +284,28 @@ export default function Upload() {
     setToast(`${nome || 'Paciente'} gravado`)
   }
 
+  // Pacientes que saíram da lista de um arquivo (lixeira ou descarte por
+  // convênio), ou que voltaram pelo desfazer, com os números negativos. O placar
+  // e o "Desfazer este arquivo" contam pelo resultado daqui, que o cartão
+  // sozinho não altera: depois de descartar 92 pacientes, a linha recolhida
+  // seguia dizendo "112 internações" e o desfazer do arquivo prometia apagar
+  // quem já tinha saído.
+  function onPacientesRemovidos(arquivo: string,
+                                d: { internados: number; altas: number; criados: number }) {
+    setResult((atual) => atual ? {
+      ...atual,
+      resultados: atual.resultados.map((r) => (r.arquivo !== arquivo ? r : {
+        ...r,
+        total: Math.max(0, (r.total ?? 0) - d.internados - d.altas),
+        internados: Math.max(0, (r.internados ?? 0) - d.internados),
+        altas: Math.max(0, (r.altas ?? 0) - d.altas),
+        criados: Math.max(0, (r.criados ?? 0) - d.criados),
+      })),
+    } : atual)
+    // A Visão Geral e as listas por hospital também mudaram.
+    invalidarDados()
+  }
+
   // Descartado = resolvido sem gravar. Sai da lista de pendentes igual ao gravado:
   // em ambos os casos a decisão já foi tomada e não há mais o que fazer com ele.
   function onDescartado(id: number, nome: string) {
@@ -364,6 +386,7 @@ export default function Upload() {
               desfazendoArquivo={revertendo}
               podeExcluir={podeExcluir}
               operadoras={operadoras}
+              onPacientesRemovidos={onPacientesRemovidos}
               onIgnorar={(arquivo) => {
                 setIgnorados((lista) => [...lista, arquivo])
                 setToast(`${arquivo} ignorado`)

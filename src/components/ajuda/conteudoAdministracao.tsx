@@ -635,11 +635,16 @@ export function ModuloProgresso() {
       <h3>Como a tela se organiza</h3>
       <p>
         O topo traz o <strong>avanço geral do projeto</strong>, que é a média dos módulos listados
-        abaixo. Em seguida, a legenda das seis etapas e o quadro, dividido em{' '}
-        <strong>quatro grupos</strong>, do mais adiantado ao mais distante, cada um com a contagem
-        de módulos.
+        abaixo, e quantos módulos há em cada situação. Em seguida, a legenda das seis etapas e o
+        quadro, dividido pelas <strong>fases do projeto</strong>, da Fase 1 à Fase 5, cada uma com
+        a contagem de módulos. Os módulos são numerados na ordem das fases, do Módulo 0 ao
+        Módulo 10.
       </p>
-      <Tabela cabecalho={['Grupo', 'O que reúne']} larguras={['175px']}>
+      <p>
+        Cada módulo traz uma etiqueta com a sua <strong>situação</strong>, que é independente da
+        fase:
+      </p>
+      <Tabela cabecalho={['Situação', 'O que indica']} larguras={['175px']}>
         <tr><Key>Em construção</Key><td>Módulos em desenvolvimento no momento.</td></tr>
         <tr><Key>Iniciados</Key><td>Módulos que já saíram do papel, mas ainda não estão em construção plena.</td></tr>
         <tr><Key>A construir</Key><td>Módulos previstos, com escopo definido e desenvolvimento ainda não começado.</td></tr>
@@ -674,7 +679,8 @@ export function ModuloProgresso() {
         há prazo definido. Um resumo acima da trilha informa quantas das seis já foram concluídas e
         em qual etapa o módulo está. <strong>Mais de uma etapa pode estar em andamento ao mesmo
         tempo</strong>, porque na prática elas se sobrepõem: os testes começam antes de a entrega
-        terminar. Módulo que ainda não começou não exibe trilha.
+        terminar. Módulo que ainda não começou exibe a mesma trilha, com as seis etapas por
+        iniciar.
       </p>
 
       <h3>Duas etiquetas que aparecem na linha do módulo</h3>
