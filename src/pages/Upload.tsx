@@ -103,7 +103,10 @@ export default function Upload() {
   const sidebarQ = useSidebar()
 
   const operadoras = useMemo<Operadora[]>(() => {
-    const daSidebar = sidebarQ.data?.operadoras ?? []
+    // `operadoras` do /api/sidebar é o cadastro inteiro, com as desligadas em
+    // Configurações ("Operadora ativa"). Desligada não recebe censo novo: a
+    // SulAmérica seguia no passo 1 depois de desligada em 04/11/2026.
+    const daSidebar = (sidebarQ.data?.operadoras ?? []).filter((o) => o.ativo !== false)
     if (daSidebar.length) return daSidebar
     // Fallback: deriva do próprio cadastro de hospitais enquanto a sidebar carrega.
     const vistas = new Map<string, string>()
@@ -125,6 +128,16 @@ export default function Upload() {
   }, [hospitaisQ.data, operadora])
 
   const hospitalEscolhido = hospitaisDaOperadora.find((h) => h.key === hospital) ?? null
+
+  // A escolha guardada do último envio pode ser de uma operadora desligada
+  // depois. Sem a opção na lista, o select mostraria "Selecione a operadora…"
+  // com o passo 2 aberto nos hospitais dela: volta ao passo 1 vazio.
+  useEffect(() => {
+    if (operadora && sidebarQ.data && !operadoras.some((o) => o.key === operadora)) {
+      setOperadora('')
+      setHospital('')
+    }
+  }, [operadora, operadoras, sidebarQ.data])
 
   // Trocar de operadora invalida o hospital anterior (era de outra operadora).
   function trocarOperadora(nova: string) {
