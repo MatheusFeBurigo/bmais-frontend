@@ -11,10 +11,14 @@
 // mesmo convênio sob duas operadoras vira duas linhas: alguém corrigiu parte dos
 // pacientes na modal de edição, e descartar uma parte não pode levar a outra.
 //
-// Nada nasce marcado. É uma ação destrutiva, e o botão só diz quantos pacientes
-// saem depois que o usuário escolhe.
+// Pelo botão do fim do arquivo, nada nasce marcado. É uma ação destrutiva, e o
+// botão só diz quantos pacientes saem depois que o usuário escolhe.
+//
+// Pela lixeira de uma aba (10/11/2026), a escolha já foi feita: a modal vem só
+// com a operadora daquela aba e com todos os convênios dela marcados. Continua
+// sendo a confirmação, com a lista do que sai, e dá para desmarcar um convênio.
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { PacienteGravado } from '../../types/api'
 import { varsOperadora } from '../../lib/coresOperadora'
 import { Modal, Spinner } from '../ui'
@@ -95,7 +99,9 @@ function montarSecoes(grupos: GrupoOperadora[]): SecaoOperadora[] {
   }).filter((s) => s.linhas.length > 0)
 }
 
-export function DescartarConvenioModal({ grupos, ocupado, erro, onConfirmar, onCancelar }: {
+export function DescartarConvenioModal({
+  grupos, ocupado, erro, onConfirmar, onCancelar, titulo, introducao, marcarTudo,
+}: {
   /** Os grupos das abas do cartão, já com as edições e remoções da tela. */
   grupos: GrupoOperadora[]
   ocupado?: boolean
@@ -103,9 +109,14 @@ export function DescartarConvenioModal({ grupos, ocupado, erro, onConfirmar, onC
   /** `convenios` são os nomes como vieram no censo, para a trilha de auditoria. */
   onConfirmar: (pacientes: PacienteGravado[], convenios: string[]) => void
   onCancelar: () => void
+  titulo?: string
+  introducao?: ReactNode
+  /** Todos os convênios já marcados: a lixeira da aba, em que a escolha foi feita. */
+  marcarTudo?: boolean
 }) {
   const secoes = useMemo(() => montarSecoes(grupos), [grupos])
-  const [marcadas, setMarcadas] = useState<Set<string>>(() => new Set())
+  const [marcadas, setMarcadas] = useState<Set<string>>(() => new Set(
+    marcarTudo ? secoes.flatMap((s) => s.linhas.map((l) => l.chave)) : []))
   const alternar = (chave: string) => setMarcadas((atual) => {
     const nova = new Set(atual)
     if (nova.has(chave)) nova.delete(chave)
@@ -120,7 +131,7 @@ export function DescartarConvenioModal({ grupos, ocupado, erro, onConfirmar, onC
 
   return (
     <Modal
-      title="Descartar por convênio"
+      title={titulo ?? 'Descartar por convênio'}
       largura={520}
       onClose={ocupado ? () => {} : onCancelar}
       footer={
@@ -140,7 +151,7 @@ export function DescartarConvenioModal({ grupos, ocupado, erro, onConfirmar, onC
     >
       <style>{estilos}</style>
       <div className="dc-corpo">
-        <div>Marque os convênios cujos pacientes saem deste censo.</div>
+        <div>{introducao ?? 'Marque os convênios cujos pacientes saem deste censo.'}</div>
         <div className="dc-secoes">
           {secoes.map((s) => (
             <div key={s.key || 'sem-operadora'}>

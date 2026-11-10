@@ -84,7 +84,29 @@ export const abasOperadoraStyles = `
 /* Cantos de cima retos: a lista encosta na régua e uma curva ali abriria uma
    fresta entre a aba ativa e o conteúdo dela. */
 .up-abas-bloco + * .up-lista-pac{border-top-left-radius:0;border-top-right-radius:0}
+/* Lixeira da aba (10/11/2026): descarta deste censo todos os pacientes da aba.
+   É um botão IRMÃO da aba, e não um filho: botão dentro de botão não é HTML
+   válido, e o clique na lixeira trocaria de aba antes de pedir a confirmação.
+   O grupo carrega as cores da operadora (variáveis CSS herdam), e a lixeira
+   encosta na contagem e continua a base da aba ativa, para se ler como parte
+   dela. Sempre visível, em tom apagado: escondida até o hover, ninguém a acharia
+   numa tela de toque, e é ela o pedido. O vermelho só vem no hover. */
+.up-aba-grupo{display:inline-flex;align-items:stretch}
+.up-aba-grupo .up-aba{padding-right:8px}
+.up-aba-lixo{display:inline-flex;align-items:center;justify-content:center;width:28px;margin-bottom:-2px;padding:0;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);opacity:.6;cursor:pointer;transition:color .12s,background .12s,opacity .12s}
+.up-aba-lixo:hover:not(:disabled){opacity:1;color:var(--danger);background:var(--danger-bg)}
+.up-aba-lixo:focus-visible{outline:none;opacity:1;box-shadow:0 0 0 3px rgba(21,92,168,.18);border-radius:var(--r-xs) var(--r-xs) 0 0}
+.up-aba-lixo:disabled{opacity:.25;cursor:default}
+.up-aba.ativa + .up-aba-lixo{border-bottom-color:var(--op-cor,var(--primary-3))}
 `
+
+const IcoLixeira = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M3 6h18" /><path d="M8 6V4h8v2" />
+    <path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
+  </svg>
+)
 
 /** Um grupo de pacientes de um arquivo, por operadora de gravação. */
 export interface GrupoOperadora {
@@ -211,7 +233,15 @@ export function agruparPorOperadora(
   return [...grupos.values()].sort((a, b) => peso(a) - peso(b) || b.total - a.total)
 }
 
-export function AbasOperadora({ grupos, ativa, onAba, escolhida, total }: {
+/** Quem da aba pode sair do censo: só a linha com `id` (a mesma exigência da
+ *  lixeira da linha e do descarte por convênio). */
+function descartaveis(g: GrupoOperadora): number {
+  return [...g.emLeito, ...g.comAlta].filter((p) => p.id != null).length
+}
+
+export function AbasOperadora({
+  grupos, ativa, onAba, escolhida, total, onDescartar, descartando,
+}: {
   grupos: GrupoOperadora[]
   /** Key da aba ativa, ou `ABA_TODOS`. */
   ativa: string
@@ -220,6 +250,12 @@ export function AbasOperadora({ grupos, ativa, onAba, escolhida, total }: {
   escolhida?: string | null
   /** Quantos pacientes o arquivo tem ao todo (a aba "Todos"). */
   total: number
+  /** Lixeira de cada aba de operadora (e da Outros): pede a confirmação de
+   *  descartar todos os pacientes dela. Ausente = sem lixeira (quem não pode
+   *  excluir). "Todos" não tem: para o arquivo inteiro há "Desfazer este arquivo". */
+  onDescartar?: (key: string) => void
+  /** Um descarte ou desfazer em andamento: as lixeiras esperam. */
+  descartando?: boolean
 }) {
   const chave = (escolhida ?? '').trim()
 
@@ -238,9 +274,18 @@ export function AbasOperadora({ grupos, ativa, onAba, escolhida, total }: {
         </button>
         {grupos.map((g) => {
           const ehOutros = g.key === ABA_OUTROS
-          return (
+          // A cor da marca desce por variável CSS: a aba, o contador e o ponto
+          // se pintam sozinhos a partir daqui. Outros usa o âmbar de "pede
+          // decisão", porque não é marca de operadora nenhuma. Com lixeira, as
+          // variáveis vão no grupo, para a lixeira herdar a cor da base.
+          const cores = ehOutros
+            ? { '--op-cor': 'var(--warning)', '--op-ink': 'var(--warning-2)',
+                '--op-fundo': 'var(--warning-bg)' } as CSSProperties
+            : varsOperadora(g.key)
+          const n = onDescartar ? descartaveis(g) : 0
+          const aba = (
             <button
-              key={g.key || 'sem-operadora'}
+              key={n > 0 ? undefined : g.key || 'sem-operadora'}
               type="button"
               role="tab"
               aria-selected={ativa === g.key}
@@ -249,13 +294,7 @@ export function AbasOperadora({ grupos, ativa, onAba, escolhida, total }: {
               title={ehOutros
                 ? `${g.total} ${plural(g.total, 'paciente')} com convênio não homologado, aguardando decisão`
                 : `${g.total} ${plural(g.total, 'paciente')} em ${g.nome}`}
-              // A cor da marca desce por variável CSS: a aba, o contador e o ponto
-              // se pintam sozinhos a partir daqui. Outros usa o âmbar de "pede
-              // decisão", porque não é marca de operadora nenhuma.
-              style={ehOutros
-                ? { '--op-cor': 'var(--warning)', '--op-ink': 'var(--warning-2)',
-                    '--op-fundo': 'var(--warning-bg)' } as CSSProperties
-                : varsOperadora(g.key)}
+              style={n > 0 ? undefined : cores}
             >
               {/* Ponto na cor da operadora; com anel, é a escolhida no envio.
                   Some nas abas "Sem operadora" e Outros, que não são marca nenhuma
@@ -269,6 +308,21 @@ export function AbasOperadora({ grupos, ativa, onAba, escolhida, total }: {
               {g.nome}
               <span className="up-aba-n">{g.total}</span>
             </button>
+          )
+          if (n === 0 || !onDescartar) return aba
+          const deQuem = ehOutros ? 'com convênio não homologado' : `de ${g.nome}`
+          const rotulo = n === 1
+            ? `Descartar deste censo o paciente ${deQuem}`
+            : `Descartar deste censo os ${n} pacientes ${deQuem}`
+          return (
+            <span key={g.key || 'sem-operadora'} className="up-aba-grupo"
+                  role="presentation" style={cores}>
+              {aba}
+              <button type="button" className="up-aba-lixo" disabled={descartando}
+                      onClick={() => onDescartar(g.key)} title={rotulo} aria-label={rotulo}>
+                {IcoLixeira}
+              </button>
+            </span>
           )
         })}
       </div>

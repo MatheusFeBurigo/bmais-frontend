@@ -211,9 +211,23 @@ export function ordenarPorUrgencia(resultados: UploadCensoResult[]): UploadCenso
   return [...resultados].sort((a, b) => PESO[urgenciaDe(a)] - PESO[urgenciaDe(b)])
 }
 
+/** A aba cuja lixeira descartou o lote: o nome da operadora, ou a aba Outros. */
+interface AbaDescartada {
+  nome: string
+  outros: boolean
+}
+
+/** A aba, dita numa frase: "de Mediservice" / "com convênio não homologado". */
+function deQuemNaFrase(aba: AbaDescartada) {
+  return aba.outros ? <>com <b>convênio não homologado</b></> : <>de <b>{aba.nome}</b></>
+}
+
 /** O último descarte por convênio, guardado para o desfazer. */
 interface LoteDescartado {
   convenios: string[]
+  /** Pela lixeira da aba: de quem eram ("Mediservice", ou a aba Outros), para o
+   *  aviso dizer isso em vez de contar os convênios impressos. */
+  deQuem?: AbaDescartada
   /** Saíram do sistema: o desfazer recria a ficha. */
   apagados: { paciente: PacienteGravado; ficha: Record<string, unknown> }[]
   /** Só saíram da lista: o desfazer religa com a origem que tinham (null = não
@@ -306,6 +320,8 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // Descarte por convênio: a modal aberta, o pedido em andamento e o erro dele
   // (que fica na modal, como o da lixeira).
   const [descartandoConvenio, setDescartandoConvenio] = useState(false)
+  // A aba cuja lixeira abriu a modal (null = o botão do fim do arquivo).
+  const [abaDoDescarte, setAbaDoDescarte] = useState<string | null>(null)
   const [apagandoLote, setApagandoLote] = useState(false)
   const [erroLote, setErroLote] = useState<string | null>(null)
   const [loteDescartado, setLoteDescartado] = useState<LoteDescartado | null>(null)
@@ -404,7 +420,8 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
     }
   }
 
-  async function confirmarLote(pacientes: PacienteGravado[], convenios: string[]) {
+  async function confirmarLote(pacientes: PacienteGravado[], convenios: string[],
+                               deQuem?: AbaDescartada) {
     const ids = pacientes.map((p) => p.id).filter((id): id is number => id != null)
     if (!ids.length) return
     if (res.censo_id == null) {
@@ -432,7 +449,7 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
       // Um aviso de desfazer por vez: todos ocupam o mesmo canto da tela.
       setApagado(null)
       setSaiuDaLista(null)
-      setLoteDescartado({ convenios, apagados, desvinculados })
+      setLoteDescartado({ convenios, deQuem, apagados, desvinculados })
       setDescartandoConvenio(false)
       const falhas = r.falhas?.length ?? 0
       if (falhas) {
@@ -994,7 +1011,9 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
           : `na operadora em que ${plural(n, 'foi gravado', 'foram gravados')}`}.{' '}
         {podeExcluir && !somenteLeitura
           ? 'Use o lápis para escolher a operadora certa ou a lixeira para descartar. '
-            + 'Para descartar um convênio inteiro, use “Descartar por convênio”, no fim do arquivo.'
+            + (podeDescartarConvenio
+              ? 'Para descartar todos de uma vez, use a lixeira ao lado do nome da aba.'
+              : '')
           : 'Use o lápis para escolher a operadora certa. Para tirar alguém do censo, abra um chamado.'}
       </>
     )
@@ -1377,6 +1396,12 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               onAba={setAbaOperadora}
               escolhida={res.operadora_escolhida}
               total={leitoVisto.length + altaVista.length}
+              // Lixeira por aba: a mesma modal e a mesma regra do "Descartar por
+              // convênio", já recortada na operadora da aba e com tudo marcado.
+              onDescartar={podeDescartarConvenio
+                ? (key) => { setErroLote(null); setAbaDoDescarte(key); setDescartandoConvenio(true) }
+                : undefined}
+              descartando={apagandoLote || desfazendoLote || desfazendo}
             />
           )}
           {gravados.length > 0 ? (
@@ -1452,7 +1477,7 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
           {podeDescartarConvenio && (
             <button type="button" className="up-desfazer-arq"
                     disabled={apagandoLote || desfazendoLote || desfazendo}
-                    onClick={() => { setErroLote(null); setDescartandoConvenio(true) }}>
+                    onClick={() => { setErroLote(null); setAbaDoDescarte(null); setDescartandoConvenio(true) }}>
               Descartar por convênio
             </button>
           )}
@@ -1467,15 +1492,17 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
       )}
 
       {loteDescartado && (() => {
-        const { convenios, apagados, desvinculados } = loteDescartado
+        const { convenios, deQuem, apagados, desvinculados } = loteDescartado
         const n = apagados.length + desvinculados.length
         const a = apagados.length
         const d = desvinculados.length
         return (
           <AvisoDesfazer
             texto={<>
-              <b>{n} {plural(n, 'paciente')}</b> de{' '}
-              {convenios.length === 1 ? <b>{convenios[0]}</b> : `${convenios.length} convênios`}{' '}
+              <b>{n} {plural(n, 'paciente')}</b>{' '}
+              {deQuem
+                ? deQuemNaFrase(deQuem)
+                : <>de {convenios.length === 1 ? <b>{convenios[0]}</b> : `${convenios.length} convênios`}</>}{' '}
               {plural(n, 'saiu', 'saíram')} deste censo.
             </>}
             detalhe={a > 0 && d > 0
@@ -1491,15 +1518,32 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
         )
       })()}
 
-      {descartandoConvenio && (
-        <DescartarConvenioModal
-          grupos={gruposOperadora}
-          ocupado={apagandoLote}
-          erro={erroLote}
-          onCancelar={() => setDescartandoConvenio(false)}
-          onConfirmar={confirmarLote}
-        />
-      )}
+      {descartandoConvenio && (() => {
+        // Pela lixeira de uma aba: só a operadora dela, com tudo marcado. Se a
+        // aba sumiu nesse meio-tempo, volta à modal do arquivo inteiro, sem nada
+        // marcado, em vez de descartar outra coisa.
+        const grupo = abaDoDescarte == null
+          ? null
+          : gruposOperadora.find((g) => g.key === abaDoDescarte) ?? null
+        const aba = grupo ? { nome: grupo.nome, outros: grupo.key === ABA_OUTROS } : undefined
+        return (
+          <DescartarConvenioModal
+            grupos={grupo ? [grupo] : gruposOperadora}
+            titulo={aba
+              ? (aba.outros ? 'Descartar a aba Outros' : `Descartar ${aba.nome} deste censo`)
+              : undefined}
+            introducao={aba && <>
+              Todos os pacientes {deQuemNaFrase(aba)} saem deste censo. Desmarque
+              um convênio para mantê-lo.
+            </>}
+            marcarTudo={Boolean(aba)}
+            ocupado={apagandoLote}
+            erro={erroLote}
+            onCancelar={() => setDescartandoConvenio(false)}
+            onConfirmar={(pacientes, convenios) => confirmarLote(pacientes, convenios, aba)}
+          />
+        )
+      })()}
 
       {apagado && (
         <AvisoDesfazer
