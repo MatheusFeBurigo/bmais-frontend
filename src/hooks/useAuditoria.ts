@@ -64,12 +64,13 @@ export function useEnviosCenso(enabled: boolean) {
   })
 }
 
-/** Desfaz um lote (um arquivo de um envio de censo): apaga os pacientes que ele
- *  criou. Recompõe os painéis, a trilha e a lista de envios. */
+/** Desfaz um lote (um arquivo de um envio de censo), ou o envio inteiro quando
+ *  `arquivo` não vem: apaga os pacientes que ele criou. Recompõe os painéis, a
+ *  trilha e a lista de envios. */
 export function useDesfazerLote() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ sessao, arquivo }: { sessao: string; arquivo: string }) =>
+    mutationFn: ({ sessao, arquivo }: { sessao: string; arquivo?: string }) =>
       reverterEnvioCenso(sessao, arquivo),
     onSuccess: () => invalidarPorEvento(qc, 'loteDesfeito'),
   })

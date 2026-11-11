@@ -4,6 +4,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './styles/design-system.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth/AuthContext'
+import { aoFalharCarregamento } from './lib/versaoApp'
+
+// Um pedaço da tela que não carrega depois de um deploy (o arquivo da versão
+// velha já não existe): recarrega para a versão nova em vez de deixar a tela em
+// branco, se não houver trabalho aberto. Ver lib/versaoApp.ts.
+window.addEventListener('vite:preloadError', (e) => {
+  if (aoFalharCarregamento()) e.preventDefault()
+})
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -7,16 +7,23 @@
 // lista de envios, e não da trilha: é ela que diz se o arquivo já foi desfeito.
 // Envio fora dessa lista (antigo demais, ou de hospital fora do escopo) não
 // mostra nada, porque o backend também não o desfaria.
+//
+// Envio com vários arquivos (11/11/2026, pedido do usuário): além do botão de
+// cada arquivo, "Desfazer todos" desfaz o envio inteiro de uma vez, como o
+// "Desfazer envio" da tela de Envio. Só aparece com 2+ arquivos ainda abertos.
 import type { EnvioCenso } from '../../services/censos.service'
 import { dataHora } from '../../lib/datas'
 import type { LoteDoRegistro } from './logs.model'
 
-export default function DesfazerLote({ lotes, envios, desfazendo, onDesfazer }: {
+export default function DesfazerLote({ lotes, envios, desfazendo, onDesfazer, onDesfazerTodos }: {
   lotes: LoteDoRegistro[]
   envios: ReadonlyMap<string, EnvioCenso>
-  /** `sessao|arquivo` do lote em reversão: trava o botão dele. */
+  /** `sessao|arquivo` do lote em reversão (`sessao|*` = o envio inteiro): trava
+   *  o botão dele. */
   desfazendo: string | null
   onDesfazer: (lote: LoteDoRegistro) => void
+  /** Desfaz o envio inteiro. Recebe os arquivos ainda abertos. */
+  onDesfazerTodos?: (lotes: LoteDoRegistro[]) => void
 }) {
   const varios = lotes.length > 1
   const itens = lotes.flatMap((lote) => {
@@ -29,9 +36,20 @@ export default function DesfazerLote({ lotes, envios, desfazendo, onDesfazer }: 
     return [{ lote, aberto, quando }]
   })
   if (itens.length === 0) return null
+  const abertos = itens.filter((i) => i.aberto).map((i) => i.lote)
+  const chaveTodos = `${lotes[0].sessao}|*`
+  const desfazendoTodos = desfazendo === chaveTodos
 
   return (
     <span className="logs-lote" onClick={(e) => e.stopPropagation()}>
+      {onDesfazerTodos && abertos.length > 1 && (
+        <button type="button" className="btn btn-ghost btn-sm logs-lote-btn"
+                disabled={desfazendoTodos}
+                title={`Apaga os pacientes que os ${abertos.length} arquivos deste envio criaram`}
+                onClick={() => onDesfazerTodos(abertos)}>
+          {desfazendoTodos ? 'Desfazendo…' : `Desfazer todos (${abertos.length})`}
+        </button>
+      )}
       {itens.map(({ lote, aberto, quando }) => {
         const chave = `${lote.sessao}|${lote.arquivo}`
         if (!aberto) {
@@ -43,7 +61,7 @@ export default function DesfazerLote({ lotes, envios, desfazendo, onDesfazer }: 
         }
         return (
           <button key={chave} type="button" className="btn btn-ghost btn-sm logs-lote-btn"
-                  disabled={desfazendo === chave}
+                  disabled={desfazendo === chave || desfazendoTodos}
                   title={`Apaga os pacientes que ${lote.arquivo} criou${lote.hospital ? ` em ${lote.hospital}` : ''}`}
                   onClick={() => onDesfazer(lote)}>
             {desfazendo === chave ? 'Desfazendo…' : varios ? `Desfazer ${lote.arquivo}` : 'Desfazer lote'}

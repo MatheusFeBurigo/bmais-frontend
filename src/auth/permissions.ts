@@ -154,11 +154,13 @@ const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
   // Pausar e retomar a prorrogação na tabela de Prorrogações (Tarefas): quem
   // administra. Espelha ROLES_CONTROLE_PRORROGACAO no backend.
   controlarProrrogacao: ['admin', 'administrativo', 'coordenador_administrativo'],
-  // Cadastrar convênio na modal de edição do paciente. É cadastro, não operação:
+  // Cadastrar convênio na modal de edição do paciente, na conferência do envio:
   // o nome passa a existir para TODAS as telas e leva junto a operadora que o
-  // cobre. Espelha `requer_diretor` na rota POST /api/convenios — os papéis
-  // operacionais continuam escolhendo da lista e digitando texto livre.
-  criarConvenio: ['diretor', 'admin'],
+  // cobre. Desde 11/11/2026 é de quem envia censo (todos menos o analista), como
+  // o resto do envio; antes era só diretor e admin. Espelha `requer_envio_censo`
+  // na rota POST /api/convenios.
+  criarConvenio: ['admin', 'diretor', 'gestor', 'administrativo', 'tecnico',
+                  'coordenador_administrativo', 'coordenador_tecnico'],
   // Agendar a visita: é o gatilho que move o card para "Aguardando visita", e
   // pertence a quem vai fazer a visita. Mesmo par de `registrarRelatorio`, mas em
   // constante própria — as duas podem divergir (ex.: liberar o agendamento ao

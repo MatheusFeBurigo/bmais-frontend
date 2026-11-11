@@ -3,16 +3,21 @@
 // enfermeiro e no login. Sem botão de fechar: a versão velha é a que o usuário
 // não pode continuar usando, então o aviso fica até ele recarregar. Não sai na
 // impressão: a folha impressa não é lugar de aviso de sistema.
+//
+// Desde 11/11/2026 a aba recarrega SOZINHA no primeiro momento seguro (ver
+// lib/versaoApp.ts). O cartão é o que a pessoa vê enquanto há trabalho aberto
+// na tela, e o botão continua para quem quer a versão nova na hora.
 import type { CSSProperties } from 'react'
 import { Alerta, alertaStyles } from './Alerta'
-import { useNovaVersao } from '../lib/versaoApp'
+import { useAtualizacaoAutomatica, useVersaoNova } from '../lib/versaoApp'
 
 const estilos = `${alertaStyles}
 @media print{.aviso-versao{display:none!important}}
 `
 
 export default function AvisoNovaVersao({ style }: { style?: CSSProperties }) {
-  const nova = useNovaVersao()
+  const nova = useVersaoNova()
+  const automatica = useAtualizacaoAutomatica(nova)
   if (!nova) return null
   return (
     <div className="aviso-versao" role="status" style={{ marginBottom: 12, ...style }}>
@@ -25,7 +30,10 @@ export default function AvisoNovaVersao({ style }: { style?: CSSProperties }) {
           </button>
         }
       >
-        <strong>Nova versão do sistema disponível.</strong> Atualize para carregar as melhorias.
+        <strong>Nova versão do sistema disponível.</strong>{' '}
+        {automatica
+          ? 'Ela entra sozinha assim que você terminar o que está fazendo e salvar.'
+          : 'Atualize para carregar as melhorias.'}
       </Alerta>
     </div>
   )

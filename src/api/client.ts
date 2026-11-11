@@ -1,6 +1,8 @@
 // Cliente HTTP central. Prefixa a base da API, injeta o token Bearer e
 // normaliza erros. Em dev, VITE_API_URL vazio => usa o proxy /api do Vite.
 
+import { segurarAtualizacao } from '../lib/versaoApp'
+
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 const TOKEN_KEY = 'bmais_token'
 // Metadados da sessão (refresh_token + prazos), gravados no MESMO storage do token.
@@ -322,6 +324,18 @@ export async function apiFetch<T = unknown>(
   path: string,
   opts: RequestOptions = {},
 ): Promise<T> {
+  // Gravação em andamento segura a recarga automática da versão nova
+  // (lib/versaoApp.ts): um F5 no meio dela deixaria a pessoa sem saber se gravou.
+  if ((opts.method ?? 'GET') === 'GET') return apiFetchSemSegurar<T>(path, opts)
+  const soltar = segurarAtualizacao()
+  try {
+    return await apiFetchSemSegurar<T>(path, opts)
+  } finally {
+    soltar()
+  }
+}
+
+async function apiFetchSemSegurar<T>(path: string, opts: RequestOptions): Promise<T> {
   const { method = 'GET', body, skipAuthRedirect, timeoutMs } = opts
   const headers: Record<string, string> = {}
 
@@ -466,6 +480,18 @@ function uploadComProgresso<T>(
 // Com `onBytes`, sobe por XHR para reportar o progresso do envio; sem ele, segue
 // pelo caminho comum do fetch.
 export async function apiUpload<T = unknown>(
+  path: string, form: FormData, onBytes?: (p: ProgressoBytes) => void,
+): Promise<T> {
+  // Envio de arquivo segura a recarga automática da versão nova, como a gravação.
+  const soltar = segurarAtualizacao()
+  try {
+    return await apiUploadSemSegurar<T>(path, form, onBytes)
+  } finally {
+    soltar()
+  }
+}
+
+async function apiUploadSemSegurar<T>(
   path: string, form: FormData, onBytes?: (p: ProgressoBytes) => void,
 ): Promise<T> {
   if (onBytes) {

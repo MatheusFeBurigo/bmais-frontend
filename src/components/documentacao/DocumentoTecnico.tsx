@@ -522,7 +522,7 @@ Authorization: Bearer eyJ…
               <ul className="lista">
                 <li>As agregações caras (barra lateral, painéis, Diretoria) ficam em memória por <code>CACHE_TTL_SEGUNDOS</code> (30 s).</li>
                 <li>Toda escrita 2xx esvazia esse cache no middleware, menos login, renovação e chamados.</li>
-                <li>A Visão Geral se revalida a cada <code>VITE_AUTO_REFRESH_MS</code> (30 s) com a aba visível, e o <code>/version.json</code> sem cache avisa quando há deploy novo.</li>
+                <li>A Visão Geral se revalida a cada <code>VITE_AUTO_REFRESH_MS</code> (30 s) com a aba visível, e o <code>/version.json</code> sem cache (conferido a cada 2 min e ao voltar à aba) acusa o deploy novo. A aba recarrega sozinha no primeiro momento seguro: sem modal, gaveta, campo digitado, gravação ou envio em curso, e com a pessoa trocando de tela, parada há 1 min ou com a aba em segundo plano. Até lá fica o cartão com <b>Atualizar agora</b>. Um chunk que não carrega (<code>vite:preloadError</code>) também recarrega.</li>
                 <li><code>/api/_metricas</code> mostra, por rota, tempo, idas ao Supabase e acertos de cache.</li>
               </ul>
             </div>

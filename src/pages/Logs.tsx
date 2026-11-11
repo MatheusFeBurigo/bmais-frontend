@@ -30,6 +30,10 @@ import { useLogsView } from '../hooks/useLogsView'
 import { useDefinirAtivoUsuario, useDesfazerLote, useEnviosCenso } from '../hooks/useAuditoria'
 import type { AuditoriaUsuario } from '../types/api'
 
+/** O que a confirmação desfaz: um arquivo do envio, ou o envio inteiro
+ *  (`arquivo` ausente, com os arquivos ainda abertos em `arquivos`). */
+type AlvoDesfazer = Omit<LoteDoRegistro, 'arquivo'> & { arquivo?: string; arquivos: string[] }
+
 const IconRefresh = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
 )
@@ -62,14 +66,17 @@ export default function Logs() {
     () => new Map((envios.data?.envios ?? []).map((e) => [e.sessao, e])),
     [envios.data])
   const desfazerLote = useDesfazerLote()
-  const [confirmarLote, setConfirmarLote] = useState<LoteDoRegistro | null>(null)
+  const [confirmarLote, setConfirmarLote] = useState<AlvoDesfazer | null>(null)
   const desfazendo = desfazerLote.isPending && desfazerLote.variables
-    ? `${desfazerLote.variables.sessao}|${desfazerLote.variables.arquivo}` : null
+    ? `${desfazerLote.variables.sessao}|${desfazerLote.variables.arquivo ?? '*'}` : null
 
-  async function desfazer(lote: LoteDoRegistro) {
+  async function desfazer(alvo: AlvoDesfazer) {
     try {
-      const r = await desfazerLote.mutateAsync({ sessao: lote.sessao, arquivo: lote.arquivo })
-      setToast(`✓ Lote desfeito: ${r.removidos} paciente${r.removidos === 1 ? '' : 's'} removido${r.removidos === 1 ? '' : 's'} (${lote.arquivo})`)
+      const r = await desfazerLote.mutateAsync({ sessao: alvo.sessao, arquivo: alvo.arquivo })
+      const removidos = `${r.removidos} paciente${r.removidos === 1 ? '' : 's'} removido${r.removidos === 1 ? '' : 's'}`
+      setToast(alvo.arquivo
+        ? `✓ Lote desfeito: ${removidos} (${alvo.arquivo})`
+        : `✓ Envio desfeito: ${removidos} (${alvo.arquivos.length} arquivos)`)
     } catch (e) {
       setToast(`Erro ao desfazer: ${(e as Error).message}`)
     } finally {
@@ -176,8 +183,14 @@ export default function Logs() {
                                   // arquivo na sessão: a lista traz um hospital por envio.
                                   const envio = enviosPorSessao.get(lote.sessao)
                                   const atual = envio?.por_arquivo?.length === 1 ? envio.hospital_nome : null
-                                  setConfirmarLote({ ...lote, hospital: atual || lote.hospital })
-                                }} />
+                                  setConfirmarLote({ ...lote, arquivos: [lote.arquivo], hospital: atual || lote.hospital })
+                                }}
+                                onDesfazerTodos={(abertos) => setConfirmarLote({
+                                  sessao: abertos[0].sessao,
+                                  arquivos: abertos.map((l) => l.arquivo),
+                                  hospital: [...new Set(abertos.map((l) => l.hospital).filter(Boolean))].join(', '),
+                                  total: abertos.reduce((n, l) => n + l.total, 0),
+                                })} />
                 : null
             } : undefined}
           />
@@ -245,7 +258,7 @@ export default function Logs() {
       )}
       {confirmarLote && (
         <ConfirmarModal
-          titulo="Desfazer este lote?"
+          titulo={confirmarLote.arquivo ? 'Desfazer este lote?' : 'Desfazer o envio inteiro?'}
           perigo
           confirmar="Apagar e desfazer"
           cancelar="Manter como está"
@@ -253,14 +266,24 @@ export default function Logs() {
           onCancelar={() => setConfirmarLote(null)}
           onConfirmar={() => desfazer(confirmarLote)}
         >
+          {confirmarLote.arquivo ? (
+            <div>
+              Os pacientes que <strong>{confirmarLote.arquivo}</strong> criou
+              {confirmarLote.hospital && <> em <strong>{confirmarLote.hospital}</strong></>} serão
+              apagados ({confirmarLote.total} gravado{confirmarLote.total === 1 ? '' : 's'} por este arquivo,
+              entre criados e atualizados). Esta ação não pode ser desfeita.
+            </div>
+          ) : (
+            <div>
+              Os pacientes que os <strong>{confirmarLote.arquivos.length} arquivos</strong> deste envio
+              criaram ({confirmarLote.arquivos.join(', ')})
+              {confirmarLote.hospital && <> em <strong>{confirmarLote.hospital}</strong></>} serão
+              apagados ({confirmarLote.total} gravados, entre criados e atualizados). Esta ação não
+              pode ser desfeita.
+            </div>
+          )}
           <div>
-            Os pacientes que <strong>{confirmarLote.arquivo}</strong> criou
-            {confirmarLote.hospital && <> em <strong>{confirmarLote.hospital}</strong></>} serão
-            apagados ({confirmarLote.total} gravado{confirmarLote.total === 1 ? '' : 's'} por este arquivo,
-            entre criados e atualizados). Esta ação não pode ser desfeita.
-          </div>
-          <div>
-            Pacientes que já existiam antes e foram apenas atualizados por este arquivo continuam no
+            Pacientes que já existiam antes e foram apenas atualizados por este envio continuam no
             sistema, com os dados que tinham.
           </div>
         </ConfirmarModal>

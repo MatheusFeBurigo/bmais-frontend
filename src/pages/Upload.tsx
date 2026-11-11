@@ -13,6 +13,7 @@ import { type EstadoProgresso, progressoStyles } from '../components/upload/Prog
 import { ehSomenteLeitura } from '../auth/permissions'
 import { useAuth } from '../auth/AuthContext'
 import { enviarCensos, reverterEnvioCenso } from '../services/censos.service'
+import { useSegurarAtualizacao } from '../lib/versaoApp'
 import type {
   CompletarPendenciaResponse, HospitalManual, Operadora, PendenteCenso, UploadCensoResponse,
   UploadCensoResult,
@@ -88,10 +89,14 @@ export default function Upload() {
   // mas oferecer um botão que dá erro é pior que não oferecer.
   const { role } = useAuth()
   const somenteLeitura = ehSomenteLeitura(role)
-  // Apagar paciente é destrutivo e a rota exige admin (política do projeto:
-  // operacional=acesso, gerencial=diretor, destrutivo=admin). O gestor edita,
-  // mas não apaga — mostrar a lixeira a ele daria 403 no clique.
-  const podeExcluir = role === 'admin'
+  // Tirar paciente do censo (a lixeira da linha, o "Descartar por convênio" e a
+  // lixeira de cada aba de operadora): de quem envia censo, como o "Desfazer este
+  // arquivo", que apaga mais (11/11/2026; antes só o admin, e o cliente não via o
+  // descarte). Espelha `requer_envio_censo` do backend: todos menos o analista.
+  const podeExcluir = !somenteLeitura
+  // Arquivo escolhido, envio em curso ou a conferência do resultado na tela: nada
+  // disso sobrevive a um F5, então a versão nova espera a pessoa sair daqui.
+  useSegurarAtualizacao(files.length > 0 || busy || result != null || wizardAberto)
   // Guarda só o passo 1, a cada mudança. Sem condição de "tem resultado": estas
   // são escolhas do usuário e valem para o próximo envio, mesmo que este ainda
   // nem tenha acontecido.

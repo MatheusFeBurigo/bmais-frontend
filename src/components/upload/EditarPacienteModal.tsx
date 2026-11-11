@@ -114,10 +114,9 @@ export function EditarPacienteModal({ paciente, operadoras = [], onFechar, onSal
   const convenios = convQ.data?.convenios ?? []
   const carregandoConvenios = convQ.isLoading
 
-  // Cadastrar convênio é ação de CADASTRO (diretor/admin), não de operação: o
-  // nome passa a existir para todas as telas e leva junto a operadora que o
-  // cobre. Quem não pode continua escolhendo da lista e digitando texto livre,
-  // exatamente como antes — nada foi tirado de ninguém.
+  // Cadastrar convênio: o nome passa a existir para todas as telas e leva junto
+  // a operadora que o cobre. Desde 11/11/2026 é de quem envia censo, como o resto
+  // da conferência (antes, diretor e admin). O analista só consulta.
   const { role } = useAuth()
   const podeCriarConvenio = podeExecutar(role, 'criarConvenio')
   const criarConv = useCriarConvenio()
