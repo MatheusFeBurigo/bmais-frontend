@@ -4,6 +4,7 @@ import Sidebar from './Sidebar'
 import { usePageHeaderValue } from './PageHeader'
 import { LoadingState } from './ui'
 import { AvisoPendencias } from './pendencias/AvisoPendencias'
+import AvisoNovaVersao from './AvisoNovaVersao'
 
 // Layout persistente da área autenticada: Sidebar + topbar montam UMA vez e
 // permanecem montados entre navegações. Só o miolo (<Outlet/>) troca por rota,
@@ -41,6 +42,9 @@ export default function AppLayout() {
             só aqui, não cobrindo a Sidebar/topbar. minHeight sem 100vh para não
             empurrar a tela inteira. */}
         <div className="scope">
+          {/* Deploy novo: avisa em qualquer tela até o usuário recarregar. Fora
+              do Suspense para continuar visível enquanto uma tela carrega. */}
+          <AvisoNovaVersao />
           <Suspense fallback={<LoadingState style={{ minHeight: 360 }} />}>
             <Outlet />
           </Suspense>

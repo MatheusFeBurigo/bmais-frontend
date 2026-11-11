@@ -8,7 +8,7 @@ import { ehAlta } from '../../lib/statusRelatorio'
 import { OpAvatar } from '../ui'
 import { DiasRatio, Permanencia } from './cells'
 import { identificacaoPaciente } from '../../lib/texto'
-import { dataBR } from '../../lib/datas'
+import { dataBR, dataListaBR } from '../../lib/datas'
 import { etiquetaProrrogacao } from '../../lib/prorrogacao'
 import { rotuloMotivoAlta } from '../../lib/motivoAlta'
 
@@ -152,7 +152,7 @@ export default function InternadosTable({
                     {/* Sem a coluna "Alta" (lista de internados), a data vai aqui. */}
                     {alta && !vendoAltas && p.data_alta && (
                       <div className="mono" style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)', marginTop: 2 }}>
-                        {p.data_alta}
+                        {dataListaBR(p.data_alta)}
                       </div>
                     )}
                     {/* O badge da alta não diz que há relatório esperando; o
@@ -197,16 +197,19 @@ export default function InternadosTable({
                   <td style={{ maxWidth: 240 }}><div className="truncate fw-5">{identificacaoPaciente(p)}</div></td>
                   <td><span className="mono t-muted" style={{ fontSize: 'var(--t-sm)' }}>{p.atendimento || '—'}</span></td>
                   <td><LeitoTag tipo={p.tipo_leito} /></td>
-                  <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_entrada || '—'}</span></td>
+                  {/* O banco guarda as datas em ISO, dd/mm/aaaa ou dd/mm/aa (conforme
+                      o censo e a origem da alta): a tabela mostra todas em
+                      dd/mm/aaaa, senão a mesma coluna misturava os três. */}
+                  <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{dataListaBR(p.data_entrada) || '—'}</span></td>
                   {vendoAltas && (
                     <td>
-                      <span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_alta || '—'}</span>
+                      <span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{dataListaBR(p.data_alta) || '—'}</span>
                       {rotuloMotivoAlta(p.motivo_alta) && (
                         <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)' }}>{rotuloMotivoAlta(p.motivo_alta)}</div>
                       )}
                     </td>
                   )}
-                  <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{p.data_ultima_visita || '—'}</span></td>
+                  <td><span className="mono" style={{ fontSize: 'var(--t-sm)' }}>{dataListaBR(p.data_ultima_visita) || '—'}</span></td>
                   <td className="t-right">
                     {/* Em prorrogação (01/10/2026, pedido do usuário): a tag no
                         lugar da contagem de dias, que não diz nada enquanto a

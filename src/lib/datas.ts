@@ -83,6 +83,26 @@ export function paraISO(s: string | null | undefined): string {
   return iso ? iso[1] : ''
 }
 
+/** Como `paraISO`, mas entende também o ano com 2 dígitos (dd/mm/aa), que os
+ *  censos de São Luiz Itaim, Vila Nova Star, Alpha Med e Serra Mayor gravam
+ *  (11/11/2026). Mesma regra do backend (`%y` do Python): 00–68 vira 20aa e
+ *  69–99 vira 19aa. Serve às listas, para filtrar por período e exibir: sem
+ *  isto, o filtro de período tirava essas linhas da lista. Os formulários
+ *  seguem com `paraISO`, que de propósito não completa o ano. */
+export function isoDeCenso(s: string | null | undefined): string {
+  const iso = paraISO(s)
+  if (iso || !s) return iso
+  const aa = /^(\d{2})\/(\d{2})\/(\d{2})(?!\d)/.exec(s.trim())
+  if (!aa) return ''
+  return `${Number(aa[3]) < 69 ? '20' : '19'}${aa[3]}-${aa[2]}-${aa[1]}`
+}
+
+/** Data de lista em dd/mm/aaaa, qualquer que seja o formato gravado (ISO,
+ *  dd/mm/aaaa, dd/mm/aa). Irreconhecível passa intacta, como em `dataBR`. */
+export function dataListaBR(s: string | null | undefined): string {
+  return dataBR(isoDeCenso(s) || s)
+}
+
 /** Data para exibição: `AAAA-MM-DD` → `dd/mm/aaaa`. Valores que já vêm em
  *  dd/mm/aaaa (ou em qualquer outro formato) passam intactos — a tela nunca
  *  deve inventar uma data que não conseguiu interpretar. */

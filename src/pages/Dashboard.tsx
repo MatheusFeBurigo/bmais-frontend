@@ -21,13 +21,12 @@ import { useIsFetching } from '@tanstack/react-query'
 import { queryRoots } from '../lib/queryKeys'
 import { AUTO_REFRESH_MS } from '../lib/autoRefresh'
 import { NOME_TODAS } from '../services/dashboard.service'
-import { dataBR, hojeISO, paraISO } from '../lib/datas'
+import { dataBR, hojeISO, isoDeCenso } from '../lib/datas'
 import { etiquetaProrrogacao } from '../lib/prorrogacao'
 import { ehAlta } from '../lib/statusRelatorio'
 import type {
   DashboardOverview, DashboardOverviewOperadora, DashboardStats, Hospital, Internacao,
 } from '../types/api'
-import AvisoNovaVersao from '../components/AvisoNovaVersao'
 
 // Campos do stats que fazem sentido SOMADOS entre operadoras (os KPIs do topo).
 // Limites de permanência etc. dependem das regras de cada operadora e ficam de fora.
@@ -310,7 +309,7 @@ export default function Dashboard() {
       // data reconhecível, a linha não cabe em nenhum período e sai do recorte.
       let okData = true
       if (dataDe || dataAte) {
-        const d = paraISO(vendoAltas ? p.data_alta : p.data_entrada)
+        const d = isoDeCenso(vendoAltas ? p.data_alta : p.data_entrada)
         okData = Boolean(d) && (!dataDe || d >= dataDe) && (!dataAte || d <= dataAte)
       }
       return okBusca && okUti && okProrrog && okAprovacao && okPerm && okData
@@ -443,7 +442,6 @@ export default function Dashboard() {
 
   return (
     <>
-      <AvisoNovaVersao />
       {/* Seletor de operadora — 1ª opção é o consolidado (todas as operadoras). */}
       <div className="row" style={{ gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
         <span className={`op-av ${todas ? 'todas' : operadora}`} style={{ width: 26, height: 26, borderRadius: 7, fontSize: 10 }}>

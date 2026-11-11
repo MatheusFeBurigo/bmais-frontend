@@ -1,15 +1,22 @@
-// Aviso de versão nova no topo do Painel Operacional. Sem botão de fechar: a
-// versão velha é a que o usuário não pode continuar usando, então o aviso fica
-// até ele recarregar.
+// Aviso de versão nova, em TODAS as telas (11/11/2026; antes só no Painel
+// Operacional). Montado no AppLayout (área interna), no portal de médico e
+// enfermeiro e no login. Sem botão de fechar: a versão velha é a que o usuário
+// não pode continuar usando, então o aviso fica até ele recarregar. Não sai na
+// impressão: a folha impressa não é lugar de aviso de sistema.
+import type { CSSProperties } from 'react'
 import { Alerta, alertaStyles } from './Alerta'
 import { useNovaVersao } from '../lib/versaoApp'
 
-export default function AvisoNovaVersao() {
+const estilos = `${alertaStyles}
+@media print{.aviso-versao{display:none!important}}
+`
+
+export default function AvisoNovaVersao({ style }: { style?: CSSProperties }) {
   const nova = useNovaVersao()
   if (!nova) return null
   return (
-    <div style={{ marginBottom: 12 }}>
-      <style>{alertaStyles}</style>
+    <div className="aviso-versao" role="status" style={{ marginBottom: 12, ...style }}>
+      <style>{estilos}</style>
       <Alerta
         nivel="atencao"
         acao={

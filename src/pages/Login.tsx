@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
 import { Spinner } from '../components/ui'
+import AvisoNovaVersao from '../components/AvisoNovaVersao'
 
 // ── Ícones (inline, sem dependências) ───────────────────────────────────────
 function IcoMail() {
@@ -138,6 +139,10 @@ export default function Login() {
               <div className="t-muted" style={{ fontSize: 'var(--t-sm)' }}>Intelligence System</div>
             </div>
           </div>
+
+          {/* Aba de login aberta desde antes do deploy: entrar por ela mantém a
+              versão velha (o login não recarrega a página). */}
+          <AvisoNovaVersao style={{ marginBottom: 16 }} />
 
           <div className="auth-head">
             <div className="auth-title">Bem-vindo de volta</div>

@@ -13,6 +13,7 @@ import type { ReactNode } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { alterarMinhaSenha } from '../services/usuarios.service'
 import { Badge } from '../components/ui'
+import AvisoNovaVersao from '../components/AvisoNovaVersao'
 
 type PapelProfissional = 'medico' | 'enfermeiro'
 
@@ -140,6 +141,8 @@ export default function PortalProfissional({ papel }: { papel: PapelProfissional
 
       <main className="portal-main">
         <section className="portal-card">
+          {/* O cartão centraliza o texto; o aviso lê melhor alinhado à esquerda. */}
+          <AvisoNovaVersao style={{ textAlign: 'left' }} />
           {exibido && <p className="portal-hello">Olá, {exibido}</p>}
           {visao.render()}
           <TrocarSenha />
