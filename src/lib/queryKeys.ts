@@ -7,8 +7,10 @@
 // preserva os literais para o TypeScript casar chaves na invalidação.
 
 export const queryKeys = {
-  dashboard: (operadora: string, filtro: string, hospital: string) =>
-    ['dashboard', operadora, filtro, hospital] as const,
+  // `limite` no fim: 0 (a lista inteira) é o padrão; cada tamanho de janela
+  // vira outra entrada de cache.
+  dashboard: (operadora: string, filtro: string, hospital: string, limite = 0) =>
+    ['dashboard', operadora, filtro, hospital, limite] as const,
 
   dashboardOverview: () => ['dashboard-overview'] as const,
 

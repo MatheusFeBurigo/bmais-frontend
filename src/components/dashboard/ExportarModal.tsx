@@ -17,6 +17,9 @@ export interface ExportacaoFiltrada {
   internacoes: number[]
   /** Os filtros aplicados, como o painel os diz ("UTI / CTI", "Hospital: ..."). */
   filtros: string[]
+  /** A tela tinha só os primeiros lotes da lista e a lista inteira está a
+   *  caminho: a opção espera, para não exportar só um pedaço. */
+  carregando?: boolean
 }
 
 export default function ExportarModal({ operadora, operadoraNome, somenteTodas = false, filtrado, onClose, onError }: {
@@ -32,8 +35,9 @@ export default function ExportarModal({ operadora, operadoraNome, somenteTodas =
   onError: (msg: string) => void
 }) {
   const qtdFiltrada = filtrado?.internacoes.length ?? 0
+  const carregando = Boolean(filtrado?.carregando)
   const [escopo, setEscopo] = useState<Escopo>(
-    filtrado && qtdFiltrada > 0 ? 'filtrado' : somenteTodas ? 'todas' : 'operadora')
+    filtrado && (carregando || qtdFiltrada > 0) ? 'filtrado' : somenteTodas ? 'todas' : 'operadora')
   const [exportando, setExportando] = useState(false)
   const semFiltros = filtrado ? ', sem os filtros da tela' : ''
 
@@ -58,7 +62,7 @@ export default function ExportarModal({ operadora, operadoraNome, somenteTodas =
         <>
           <button className="btn btn-outline" onClick={onClose} disabled={exportando}>Cancelar</button>
           <button className="btn btn-primary" onClick={exportar}
-                  disabled={exportando || (escopo === 'filtrado' && qtdFiltrada === 0)}>
+                  disabled={exportando || (escopo === 'filtrado' && (carregando || qtdFiltrada === 0))}>
             {exportando ? 'Exportando…' : 'Exportar'}
           </button>
         </>
@@ -76,11 +80,15 @@ export default function ExportarModal({ operadora, operadoraNome, somenteTodas =
           <OpcaoEscopo
             selecionado={escopo === 'filtrado'}
             onSelect={() => setEscopo('filtrado')}
-            desabilitado={qtdFiltrada === 0}
-            titulo={`Com os filtros do painel (${qtdFiltrada} ${qtdFiltrada === 1 ? 'paciente' : 'pacientes'})`}
-            descricao={qtdFiltrada === 0
-              ? 'Nenhum paciente na lista com esses filtros.'
-              : 'Só os pacientes que a lista mostra agora, de todas as páginas.'}
+            desabilitado={!carregando && qtdFiltrada === 0}
+            titulo={carregando
+              ? 'Com os filtros do painel (carregando a lista…)'
+              : `Com os filtros do painel (${qtdFiltrada} ${qtdFiltrada === 1 ? 'paciente' : 'pacientes'})`}
+            descricao={carregando
+              ? 'Buscando a lista inteira, para a planilha ter todas as páginas.'
+              : qtdFiltrada === 0
+                ? 'Nenhum paciente na lista com esses filtros.'
+                : 'Só os pacientes que a lista mostra agora, de todas as páginas.'}
           >
             {filtrado.filtros.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>

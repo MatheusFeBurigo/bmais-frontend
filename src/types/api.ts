@@ -208,6 +208,13 @@ export interface DashboardPayload {
   // Visão CONSOLIDADA (sem operadora): stats somados de todas as operadoras do
   // escopo; cada internação/hospital traz operadora_key/operadora_nome.
   todas?: boolean
+  /** Tamanho da lista inteira. Com `limite`, `internacoes` traz só as primeiras
+   *  linhas e `parcial` é true. Ausentes com o backend antigo (lista inteira). */
+  total_lista?: number
+  parcial?: boolean
+  /** Fora do filtro "Altas" a lista não busca as altas: os stats deste payload
+   *  contam só internados. Os indicadores da tela vêm do panorama. */
+  stats_sem_altas?: boolean
 }
 
 // Panorama de TODAS as operadoras num disparo (stats + hospitais, SEM a lista

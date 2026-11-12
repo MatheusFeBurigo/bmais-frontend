@@ -13,6 +13,7 @@ import {
   fetchDashboardOverview,
   fetchSidebar,
   getSidebarCache,
+  LOTE_LISTA,
   type DashboardParams,
 } from '../services/dashboard.service'
 
@@ -33,7 +34,7 @@ export function useDashboardOverview() {
 
 export function useDashboard(params: DashboardParams, opts?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: queryKeys.dashboard(params.operadora, params.filtro, params.hospital ?? ''),
+    queryKey: queryKeys.dashboard(params.operadora, params.filtro, params.hospital ?? '', params.limite ?? 0),
     queryFn: () => fetchDashboard(params),
     // Ao trocar de operadora, mantém os dados da anterior visíveis enquanto a
     // nova carrega — evita o "flash" de tela vazia na navegação por operadora.
@@ -55,13 +56,18 @@ export function useDashboard(params: DashboardParams, opts?: { enabled?: boolean
  * com a MESMA queryKey/queryFn de useDashboard. Usada no hover da sidebar: ao
  * clicar, os dados já estão no cache → troca instantânea, sem novo round-trip.
  * Respeita o staleTime — não refaz fetch se o cache ainda está fresco.
+ *
+ * Sem `extra`, pré-carrega o primeiro lote (`LOTE_LISTA`), que é o que a Visão
+ * Geral pede ao abrir. A própria tela usa `extra` para trazer o lote seguinte
+ * antes de a pessoa chegar nele.
  */
 export function usePrefetchDashboard() {
   const qc = useQueryClient()
-  return useCallback((operadora: string, filtro = 'todos', hospital = '') => {
-    const params: DashboardParams = { operadora, filtro, hospital }
+  return useCallback((operadora: string, filtro = 'todos', hospital = '',
+                      extra: Pick<DashboardParams, 'limite'> = { limite: LOTE_LISTA }) => {
+    const params: DashboardParams = { operadora, filtro, hospital, ...extra }
     qc.prefetchQuery({
-      queryKey: queryKeys.dashboard(operadora, filtro, hospital),
+      queryKey: queryKeys.dashboard(operadora, filtro, hospital, params.limite ?? 0),
       queryFn: () => fetchDashboard(params),
       staleTime: opcoesAutoRefresh.staleTime,
     })

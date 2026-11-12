@@ -15,7 +15,18 @@ export interface DashboardParams {
   filtro: string
   hospital?: string
   q?: string
+  /** Quantas linhas da lista trazer (as primeiras, na ordem da lista). 0 ou
+   *  ausente = a lista inteira. A resposta diz o total em `total_lista`. */
+  limite?: number
 }
+
+/** Paginação da lista da Visão Geral: a tela abre com PAGINAS_POR_LOTE páginas
+ *  e pede o lote seguinte conforme a pessoa avança (09/11/2026; 5 páginas desde
+ *  11/11, a pedido do usuário). Busca, filtros rápidos, datas e ordenação rodam
+ *  no navegador e pedem a lista inteira. */
+export const PACIENTES_POR_PAGINA = 50
+export const PAGINAS_POR_LOTE = 5
+export const LOTE_LISTA = PACIENTES_POR_PAGINA * PAGINAS_POR_LOTE
 
 /** Sentinel de operadora: TODAS as operadoras (mesmo valor que o backend usa).
  *  Na Visão Geral, operadora vazia ('') também significa "todas": o parâmetro é
@@ -31,6 +42,7 @@ export function fetchDashboard(params: DashboardParams): Promise<DashboardPayloa
   qs.set('filtro', params.filtro)
   if (params.hospital) qs.set('hospital', params.hospital)
   if (params.q) qs.set('q', params.q)
+  if (params.limite) qs.set('limite', String(params.limite))
   return apiFetch<DashboardPayload>(`/dashboard?${qs.toString()}`)
 }
 

@@ -15,12 +15,14 @@ import { Deferred } from '../components/Deferred'
 import InternadosTable from '../components/internados/InternadosTable'
 import HospitalDetalhesModal from '../components/HospitalDetalhesModal'
 import { TabelaSkeleton } from '../components/internados/DashboardSkeleton'
-import { useDashboard, useDashboardOverview, useAtualizarVisaoGeral } from '../hooks/useDashboard'
+import { useDashboard, useDashboardOverview, useAtualizarVisaoGeral, usePrefetchDashboard } from '../hooks/useDashboard'
 import { usePrefetchInternacao } from '../hooks/useInternacao'
 import { useIsFetching } from '@tanstack/react-query'
 import { queryRoots } from '../lib/queryKeys'
 import { AUTO_REFRESH_MS } from '../lib/autoRefresh'
-import { NOME_TODAS } from '../services/dashboard.service'
+import {
+  LOTE_LISTA, NOME_TODAS, OPERADORA_TODAS, PACIENTES_POR_PAGINA, PAGINAS_POR_LOTE,
+} from '../services/dashboard.service'
 import { dataBR, hojeISO, isoDeCenso } from '../lib/datas'
 import { etiquetaProrrogacao } from '../lib/prorrogacao'
 import { ehAlta } from '../lib/statusRelatorio'
@@ -64,6 +66,7 @@ function consolidarOverview(overview: DashboardOverview | undefined): DashboardO
 // literal no render seria um array novo a cada passagem e invalidaria os useMemo.
 const SEM_HOSPITAIS: Hospital[] = []
 const SEM_INTERNACOES: Internacao[] = []
+const POR_PAGINA = PACIENTES_POR_PAGINA
 
 // Mínimos de dias oferecidos pelo chip "Longa permanência". Substituem os chips
 // "Longa 10d+", "Longa 30d+" e "> 30 dias", que se sobrepunham (30d+ e > 30 dias
@@ -153,17 +156,36 @@ export default function Dashboard() {
   const { data: overview, dataUpdatedAt: overviewAtualizadoEm } = useDashboardOverview()
   const operadorasLista = useMemo(() => overview?.lista ?? [], [overview])
 
+  // Lista em lotes (09/11/2026): a tela abre com as PAGINAS_POR_LOTE primeiras
+  // páginas e pede o lote seguinte conforme a pessoa avança. Busca, filtros
+  // rápidos, datas e ordenação recortam no navegador, então pedem a lista
+  // inteira; a exportação com os filtros da tela também, para não sair só um
+  // pedaço. Os lotes valem para a visão aberta: trocar de operadora, filtro ou
+  // hospital volta ao primeiro lote sem um pedido a mais.
+  const chaveVisao = [operadora, filtro, hospital].join('|')
+  const [lotesDaVisao, setLotesDaVisao] = useState({ chave: chaveVisao, n: 1 })
+  const lotes = lotesDaVisao.chave === chaveVisao ? lotesDaVisao.n : 1
+  const filtroLocal = busca.trim() !== '' || utiOn || soProrrogados || aprovacaoOn
+    || permanencia != null || ordenar !== '' || Boolean(dataDe || dataAte)
+  const exportaFiltrado = exportOpen && (filtro !== 'todos' || Boolean(hospital))
+  const precisaListaInteira = filtroLocal || exportaFiltrado
+  const limite = precisaListaInteira ? 0 : LOTE_LISTA * lotes
+
   // Detalhe (lista de internados) do que está aberto: uma operadora ou, sem
   // operadora, o consolidado — o backend soma os stats e etiqueta cada linha pela
   // operadora dona. Dispara de imediato: o consolidado nunca sai do escopo do usuário.
   const {
     data, isError, isPlaceholderData, isFetching: detalheFetching, dataUpdatedAt: detalheAtualizadoEm,
-  } = useDashboard({ operadora, filtro, hospital })
+  } = useDashboard({ operadora, filtro, hospital, limite })
   // Troca de operadora/filtro: com keepPreviousData, os dados ANTERIORES seguem
   // na tela enquanto o novo detalhe carrega (isPlaceholderData). Sem sinal visual,
   // a lista "troca do nada". `trocando` liga um overlay sutil sobre a tabela — o
   // conteúdo atual permanece legível, mas fica claro que há um fetch em curso.
   const trocando = isPlaceholderData && detalheFetching
+  // O que está chegando é mais da MESMA lista (outro lote, ou a lista inteira
+  // para um filtro), e não outra operadora: o aviso da troca diz isso.
+  const carregandoMais = trocando && data != null && data.filtro_atual === filtro
+    && (data.hospital_atual || '') === hospital && data.operadora === (operadora || OPERADORA_TODAS)
 
   // Panorama do que está aberto: a operadora do overview, ou o consolidado dele.
   const consolidado = useMemo(() => consolidarOverview(overview), [overview])
@@ -244,6 +266,10 @@ export default function Dashboard() {
   const opNome = ovAtual?.op_nome ?? data?.op_nome ?? (todas ? NOME_TODAS : operadora)
   const hospitaisPanorama = ovAtual?.hospitais ?? data?.hospitais ?? SEM_HOSPITAIS
   const internacoes = data?.internacoes ?? SEM_INTERNACOES
+  // Lista parcial: só os primeiros lotes chegaram, e o total vem do servidor.
+  // Pedida a lista inteira, a parcial que ainda está na tela não conta como tal.
+  const parcial = Boolean(data?.parcial) && !precisaListaInteira
+  const totalLista = data?.total_lista ?? internacoes.length
   // Um dos dois já chegou? Governa se KPIs/hospital mostram valor ou skeleton.
   const temPanorama = Boolean(ovAtual || data)
 
@@ -328,15 +354,34 @@ export default function Dashboard() {
 
   // Paginação client-side: renderizar todas as internações de uma vez trava a
   // tabela em operadoras grandes (cada linha tem vários componentes). Fatiamos
-  // em páginas e a página some do DOM quando não está visível.
-  const POR_PAGINA = 50
-  const totalPaginas = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA))
+  // em páginas e a página some do DOM quando não está visível. Com a lista
+  // parcial, o número de páginas vem do total do servidor.
+  const totalPaginas = Math.max(1, Math.ceil((parcial ? totalLista : visiveis.length) / POR_PAGINA))
   // Se a página atual passou do total (filtro reduziu a lista), volta à última válida.
   const paginaAtual = Math.min(pagina, totalPaginas)
+  // Páginas que já chegaram. A pedida pode ainda não ter vindo: até o lote
+  // responder, a tabela segue na última que chegou, sob o aviso de carregando.
+  const paginasCarregadas = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA))
+  const paginaExibida = parcial ? Math.min(paginaAtual, paginasCarregadas) : paginaAtual
   const paginados = useMemo(
-    () => visiveis.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA),
-    [visiveis, paginaAtual],
+    () => visiveis.slice((paginaExibida - 1) * POR_PAGINA, paginaExibida * POR_PAGINA),
+    [visiveis, paginaExibida],
   )
+  // Avançou além do que chegou: pede os lotes até a página atual.
+  useEffect(() => {
+    if (parcial && paginaAtual > paginasCarregadas) {
+      setLotesDaVisao({ chave: chaveVisao, n: Math.ceil(paginaAtual / PAGINAS_POR_LOTE) })
+    }
+  }, [parcial, paginaAtual, paginasCarregadas, chaveVisao])
+  // Na última página que chegou, o lote seguinte já vem em segundo plano, e o
+  // "Próxima" abre na hora.
+  const prefetchDashboard = usePrefetchDashboard()
+  const faltaChegar = parcial && internacoes.length < totalLista
+  useEffect(() => {
+    if (faltaChegar && paginaAtual >= paginasCarregadas) {
+      prefetchDashboard(operadora, filtro, hospital, { limite: LOTE_LISTA * (lotes + 1) })
+    }
+  }, [faltaChegar, paginaAtual, paginasCarregadas, prefetchDashboard, operadora, filtro, hospital, lotes])
   // Qualquer mudança de filtro reinicia a paginação na primeira página.
   useEffect(() => {
     setPagina(1)
@@ -697,8 +742,8 @@ export default function Dashboard() {
                 <div style={trocando ? { opacity: 0.45, transition: 'opacity .15s', pointerEvents: 'none' } : undefined}>
                   <InternadosTable
                     paginados={paginados}
-                    totalVisiveis={visiveis.length}
-                    totalInternacoes={internacoes.length}
+                    totalVisiveis={parcial ? totalLista : visiveis.length}
+                    totalInternacoes={parcial ? totalLista : internacoes.length}
                     totalBackend={(vendoAltas ? stats.altas_recentes : stats.total_internados) || 0}
                     paginaAtual={paginaAtual}
                     totalPaginas={totalPaginas}
@@ -734,7 +779,8 @@ export default function Dashboard() {
                       }}
                     >
                       <Spinner size={15} />
-                      {todas ? 'Carregando todas as operadoras…' : `Carregando ${opNome}…`}
+                      {carregandoMais ? 'Carregando mais pacientes…'
+                        : todas ? 'Carregando todas as operadoras…' : `Carregando ${opNome}…`}
                     </div>
                   </div>
                 )}
@@ -790,7 +836,12 @@ export default function Dashboard() {
           operadoraNome={opNome}
           somenteTodas={todas}
           filtrado={filtrosExportacao.length
-            ? { internacoes: visiveis.map((p) => p.id), filtros: filtrosExportacao }
+            ? {
+                internacoes: visiveis.map((p) => p.id), filtros: filtrosExportacao,
+                // A lista inteira ainda está a caminho (a tela tinha só os
+                // primeiros lotes): exportar agora sairia só um pedaço.
+                carregando: Boolean(data?.parcial) || isPlaceholderData,
+              }
             : null}
           onClose={() => setExportOpen(false)}
           onError={(msg) => setToast(msg)}
