@@ -74,14 +74,13 @@ export default function AddPacienteModal({
   const comAlta = situacao === 'ALTA'
   const hoje = hojeIso()
   const podeSalvar = hospital.trim() !== '' && nome.trim() !== ''
-    && atendimento.trim() !== '' && dataEntrada.trim() !== ''
+    && dataEntrada.trim() !== ''
     && (!comAlta || dataAlta.trim() !== '')
 
   async function salvar() {
     if (!operadora.trim()) { onError('Selecione a operadora do paciente.'); return }
     if (!hospital.trim()) { onError('Selecione o hospital do paciente na lista.'); return }
     if (!nome.trim()) { onError('Informe o nome do paciente.'); return }
-    if (!atendimento.trim()) { onError('Informe o atendimento do paciente.'); return }
     if (!dataEntrada.trim()) { onError('Informe a data de entrada do paciente.'); return }
     if (dataEntrada > hoje) { onError('A data de entrada não pode ser futura.'); return }
     if (comAlta) {
@@ -96,7 +95,7 @@ export default function AddPacienteModal({
         // Com hospital↔operadoras N-N, o hospital não diz a operadora do paciente:
         // sem ela o paciente cairia na operadora legada do hospital.
         operadora_key: operadora,
-        atendimento: atendimento.trim(),
+        atendimento: atendimento.trim() || null,
         nome: nome.trim(),
         data_entrada: dataEntrada,
         data_alta: comAlta ? dataAlta : null,
@@ -108,7 +107,9 @@ export default function AddPacienteModal({
       // Recompõe os agregados operacionais (Visão Geral, panorama, sidebar…).
       invalidarPorEvento(qc, 'pacienteAdicionado')
       onDone(res.ja_existia
-        ? 'Este atendimento já existia. O paciente não foi duplicado.'
+        ? (atendimento.trim()
+          ? 'Este atendimento já existia. O paciente não foi duplicado.'
+          : 'Este paciente já estava cadastrado com esta entrada. Não foi duplicado.')
         : comAlta ? '✓ Paciente adicionado com alta' : '✓ Paciente adicionado')
     } catch (err) {
       onError(`Erro: ${(err as Error).message}`)
@@ -159,8 +160,8 @@ export default function AddPacienteModal({
             value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
         </div>
         <div>
-          <label className="uppercase t-muted" style={labelStyle}>Atendimento *</label>
-          <input type="text" className="bm-input" placeholder="Nº de atendimento"
+          <label className="uppercase t-muted" style={labelStyle}>Atendimento</label>
+          <input type="text" className="bm-input" placeholder="Nº de atendimento (opcional)"
             value={atendimento} onChange={(e) => setAtendimento(e.target.value)} />
         </div>
         <div>

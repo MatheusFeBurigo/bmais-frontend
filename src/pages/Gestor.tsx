@@ -1,5 +1,8 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { usePageHeader } from '../components/PageHeader'
+import Tabs from '../components/Tabs'
+import AcompanhamentoView from '../components/gestor/AcompanhamentoView'
 import { KpiCard, LoadingState } from '../components/ui'
 import PacienteDrawer from '../components/PacienteDrawer'
 import Toast from '../components/Toast'
@@ -22,12 +25,29 @@ export default function Gestor() {
 
   const v = useGestorView()
   const { m, filtros } = v
+  // Aba na URL (?aba=acompanhamento), para o link abrir direto nela. Os demais
+  // filtros valem nas duas abas.
+  const [params] = useSearchParams()
+  const aba = params.get('aba') === 'acompanhamento' ? 'acompanhamento' : 'geral'
 
   usePageHeader({ title: 'Painel do Gestor', subtitle: v.subtitle })
 
   return (
     <>
       <style>{localStyles}</style>
+
+      {/* Acompanhamento (13/11/2026): a parte gráfica só dos pacientes em
+          prorrogação, negociação e home care. */}
+      <div className="gestor-abas">
+        <Tabs
+          tabs={[
+            { key: 'geral', label: 'Visão geral' },
+            { key: 'acompanhamento', label: 'Prorrogação, negociação e home care' },
+          ]}
+          active={aba}
+          onChange={(key) => v.setFiltro({ aba: key === 'acompanhamento' ? key : '' })}
+        />
+      </div>
 
       {/* Barra de filtro no topo — operadora como pills e hospital num seletor
           (filtros GLOBAIS: refazem a busca, afetando todo o painel). O hospital
@@ -51,7 +71,22 @@ export default function Gestor() {
       {v.isLoading && <LoadingState label="Carregando painel…" />}
       {v.isError && <div className="empty-state t-danger">Erro ao carregar o painel.</div>}
 
-      {m && (
+      {m && aba === 'acompanhamento' && (
+        <div className={`gestor-conteudo${v.atualizando ? ' atualizando' : ''}`}>
+          <AcompanhamentoView
+            m={m}
+            situacao={v.situacao}
+            onSituacao={v.toggleSituacao}
+            contagens={v.contagensSituacao}
+            faixa={v.faixa}
+            onHospital={(key) => v.setFiltro({ hospital: key === v.fHospital ? '' : key })}
+            onSelecionar={setDrawerId}
+            onPrefetch={prefetchPaciente}
+          />
+        </div>
+      )}
+
+      {m && aba === 'geral' && (
         <div className={`gestor-conteudo${v.atualizando ? ' atualizando' : ''}`}>
           {/* KPIs do dia (clicáveis → filtram a lista) */}
           <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(5,1fr)', marginBottom: 16 }}>

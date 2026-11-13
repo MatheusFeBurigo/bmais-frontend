@@ -1840,12 +1840,14 @@ export interface CompletarPendenciaResponse {
 }
 
 // Dados do paciente novo a cadastrar (Visão Geral → "Adicionar paciente").
-// hospital_key/atendimento/nome/data_entrada são obrigatórios; o resto é opcional.
+// hospital_key/nome/data_entrada são obrigatórios; o resto é opcional.
 export interface PacienteNovo {
   hospital_key: string
   /** Operadora escolhida no modal; o hospital sozinho não a define (N-N). */
   operadora_key?: string | null
-  atendimento: string
+  /** Opcional desde 13/11/2026: sem ele o backend usa a chave provisória
+   *  (nome + entrada), e cadastrar de novo acha a mesma ficha. */
+  atendimento?: string | null
   nome: string
   data_entrada: string
   /** Preenchida = paciente cadastrado já com alta (status ALTA no backend). */

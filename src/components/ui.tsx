@@ -9,6 +9,9 @@ import { useTravarScroll } from '../lib/travarScroll'
 type KpiVariant =
   | 'danger' | 'warning' | 'caution' | 'success'
   | 'info' | 'primary-kpi' | 'neutral'
+  // Negociação (folha rosa) na aba Acompanhamento do Gestor; o CSS fica em
+  // gestor.styles (só aquela tela usa).
+  | 'rosa'
 
 interface KpiCardProps {
   label: string

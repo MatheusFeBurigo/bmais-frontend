@@ -99,7 +99,7 @@ export function ModuloOperacional({ irPara }: Props) {
         passos={[
           { n: 1, titulo: "Clique em Adicionar paciente", corpo: <>Abre o formulário de cadastro manual. Quem tem perfil somente leitura não vê o botão.</> },
           { n: 2, titulo: "Escolha a operadora e o hospital", corpo: <>O hospital só libera depois da operadora, e a lista traz apenas os hospitais dela.</> },
-          { n: 3, titulo: "Informe nome e atendimento", corpo: <>Os dois são obrigatórios. O atendimento é o que impede o mesmo paciente de ser cadastrado duas vezes no hospital.</> },
+          { n: 3, titulo: "Informe o nome e, se tiver, o atendimento", corpo: <>O nome é obrigatório e o atendimento, opcional. Sem o número, o sistema reconhece o paciente pelo nome e pela data de entrada, e cadastrar de novo não cria outra ficha.</> },
           { n: 4, titulo: "Marque a situação e as datas", corpo: <><strong>Internado</strong> pede só a data de entrada, que é a base de todo o cálculo de dias. <strong>Alta</strong> serve para quem já saiu: pede também a data de alta, entre a entrada e hoje, e o paciente entra direto nos indicadores de altas e de permanência.</> },
           { n: 5, titulo: "Complete o resto, se souber", corpo: <>Leito, especialidade e médico são opcionais e podem ser completados depois, na ficha. O leito define o gatilho de monitoramento, então vale informar.</> },
           { n: 6, titulo: "Clique em Adicionar", corpo: <>Se o atendimento já existir naquele hospital, o sistema avisa e não cria um paciente repetido.</> },

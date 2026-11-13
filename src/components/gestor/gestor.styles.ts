@@ -109,4 +109,25 @@ export const localStyles = `
 .chart-reveal{animation:chartReveal .28s cubic-bezier(.2,.7,.2,1)}
 @keyframes chartReveal{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){.chart-reveal{animation:none}.gestor-conteudo{transition:none}}
+/* Abas do painel: Visão geral | Acompanhamento (13/11/2026) */
+.gestor-abas{margin-bottom:16px}
+/* Aba Acompanhamento: prorrogação, negociação e home care */
+.acomp-kpis{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:16px}
+.kpi.rosa .kpi-bar{background:#D04A7E}.kpi.rosa .kpi-value,.kpi.rosa .kpi-label{color:#A8325F}.kpi.rosa{background:linear-gradient(180deg,#FBE6EE,var(--surface) 68%)}
+.acomp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px}
+@media (max-width:960px){.acomp-grid{grid-template-columns:minmax(0,1fr)}.acomp-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.acomp-sub{margin:14px 0 8px}
+.chart-hint + .acomp-sub{margin-top:4px}
+.acomp-meters{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:11px}
+.acomp-meter-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:5px}
+.acomp-meter-nome{font-size:var(--t-base);color:var(--ink-2);font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acomp-meter-nome.alerta{color:var(--warning-2);font-weight:600}
+.acomp-meter-val{font-size:var(--t-sm);color:var(--muted);white-space:nowrap;flex-shrink:0}
+.acomp-meter-val b{font-size:var(--t-base);color:var(--ink);font-weight:600}
+.acomp-meter-track{height:8px;border-radius:99px;overflow:hidden}
+.acomp-meter-fill{height:100%;border-radius:99px;min-width:0;transition:width .3s ease}
+.acomp-meters li.zero .acomp-meter-nome{color:var(--muted)}
+.acomp-meter-det{font-size:var(--t-sm);color:var(--muted-2);margin-top:4px}
+.acomp-vazio{padding:36px 16px}
+@media (prefers-reduced-motion: reduce){.acomp-meter-fill{transition:none}}
 `
