@@ -1556,6 +1556,17 @@ export interface EmOutroHospital {
   status?: string | null
 }
 
+/** Linha que o envio segurou: o mesmo atendimento já está em outro hospital. */
+export interface AguardandoOutroHospital {
+  pendencia_id: number
+  atendimento?: string | null
+  nome?: string | null
+  hospital_key: string
+  hospital_nome?: string | null
+  internacao_id: number
+  status?: string | null
+}
+
 export interface UploadCensoResult {
   arquivo: string
   /** O censo que este arquivo gerou (`censos.id`). É por ele que a lista remove
@@ -1616,6 +1627,10 @@ export interface UploadCensoResult {
    *  atendimento ou carteirinha, mesma pessoa). Sinal de arquivo enviado no
    *  hospital errado: a tela alerta e oferece desfazer. */
   em_outro_hospital?: EmOutroHospital[]
+  /** Pacientes com o MESMO atendimento já gravado em OUTRO hospital, que este
+   *  envio NÃO salvou (13/11/2026): a tela pergunta se salva neste hospital ou
+   *  descarta. */
+  aguardando_outro_hospital?: AguardandoOutroHospital[]
   /** Operadora escolhida por quem enviou (passo 1 da tela). É o padrão para quem
    *  não tem convênio reconhecido — não é a operadora de todo mundo do arquivo. */
   operadora_escolhida?: string | null

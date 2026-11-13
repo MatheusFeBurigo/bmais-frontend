@@ -28,6 +28,7 @@ import {
   religarPacientesAoCenso, removerPacienteDoCenso, removerPacientesDoCenso, restaurarInternacao,
 } from '../../services/internacao.service'
 import { DescartarConvenioModal } from './DescartarConvenioModal'
+import { PerguntaOutroHospital } from './PerguntaOutroHospital'
 import {
   BuscaPacientes, contarProblemas, filtrarPacientes, ListaPacientes, temProblema,
 } from './ListaPacientes'
@@ -187,6 +188,8 @@ export function urgenciaDe(res: UploadCensoResult): Urgencia {
   // Paciente que já existia em outro hospital: o arquivo pode ter ido para o
   // hospital errado e o paciente ficado em dobro.
   if ((res.em_outro_hospital ?? []).length) return 'revisar'
+  // O mesmo atendimento já em outro hospital: não foi salvo e espera decisão.
+  if ((res.aguardando_outro_hospital ?? []).length) return 'revisar'
   // Censo misto ou enviado no lugar errado: parte dos pacientes entrou sob outra
   // operadora. É exatamente o que a dupla checagem existe para mostrar, então o
   // cartão não pode nascer recolhido escondendo-a. O mesmo vale para o convênio
@@ -297,6 +300,9 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // começo e fim estáveis: quem entrou marcado é percorrido até o fim, mesmo
   // depois de corrigido.
   const [fila, setFila] = useState<string[]>([])
+  // O que foi decidido sobre quem já estava em outro hospital (13/11/2026): a
+  // frase substitui a pergunta, e o cartão para de contá-la como pendente.
+  const [outroHospitalDecidido, setOutroHospitalDecidido] = useState<string | null>(null)
   // Paciente aguardando confirmação de exclusão, e o que já foi apagado (some
   // da lista sem refazer o envio).
   const [removendo, setRemovendo] = useState<PacienteGravado | null>(null)
@@ -665,6 +671,8 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   // ter ido para o hospital errado (caso real de 02/10/2026).
   const emOutroHospital = res.em_outro_hospital ?? []
   const hospitaisDeOrigem = [...new Set(emOutroHospital.map((e) => e.hospital_nome))]
+  // O mesmo atendimento já em outro hospital: o envio não salvou e pergunta.
+  const aguardandoOutroHospital = res.aguardando_outro_hospital ?? []
   // Os avisos do leitor entram classificados: o que significa "faltou paciente"
   // deixa de ter a mesma cara de "dia sem internados".
   const avisos = classificarAvisos(res.avisos ?? [])
@@ -1033,9 +1041,12 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
   const mostrarPendentes = pendentes > 0 && aberto('pendentes')
   const mostrarConflitos = conflitos.length > 0 && aberto('conflitos')
   const mostrarOutroHospital = emOutroHospital.length > 0 && aberto('outro-hospital')
+  // A pergunta não se fecha no ×: só some quando alguém decide.
+  const mostrarPerguntaOutroHospital = aguardandoOutroHospital.length > 0 && !outroHospitalDecidido
   // Crítico: o paciente pode ter ficado duplicado em dois hospitais.
   const nCriticos = acionaveis.filter((a) => a.nivel === 'critico').length
     + (mostrarOutroHospital ? 1 : 0)
+    + (mostrarPerguntaOutroHospital ? 1 : 0)
   // As divergências só contam quando o painel de fato as EXIBE como alerta. Com
   // as abas por operadora no lugar delas, contá-las faria a linha fechada
   // prometer "3 avisos" e o usuário abrir para encontrar nenhum.
@@ -1184,6 +1195,15 @@ export function CartaoArquivo({ res, onIgnorar, somenteLeitura, podeExcluir, ope
               rolável — quem abria o cartão para entender o problema tinha de passar
               por todos os nomes até achá-lo. Ficam visíveis com o cartão aberto ou
               fechado: são a razão de ele não estar limpo. */}
+          {mostrarPerguntaOutroHospital && (
+            <PerguntaOutroHospital itens={aguardandoOutroHospital}
+                                   hospitalDoEnvio={res.hospital_nome || res.hospital || 'este hospital'}
+                                   somenteLeitura={somenteLeitura}
+                                   onDecidido={setOutroHospitalDecidido} />
+          )}
+          {outroHospitalDecidido && (
+            <Alerta nivel="nota">{outroHospitalDecidido}</Alerta>
+          )}
           {mostrarOutroHospital && (
             <Alerta nivel="critico" onFechar={() => fechar('outro-hospital')}>
               {emOutroHospital.length} {plural(emOutroHospital.length, 'paciente')} deste

@@ -179,6 +179,17 @@ export interface ReverterEnvioResposta {
   hospital_nome?: string | null
 }
 
+/** Salva neste hospital (`salvar`) ou descarta os pacientes que o envio segurou
+ *  por já estarem em OUTRO hospital com o mesmo atendimento (13/11/2026). */
+export function decidirOutroHospital(
+  pendenciaIds: number[], salvar: boolean,
+): Promise<{ ok: boolean; salvos: number; descartados: number; decididos: number }> {
+  return apiFetch('/upload/outro-hospital/decidir', {
+    method: 'POST',
+    body: { pendencia_ids: pendenciaIds, salvar },
+  })
+}
+
 /** Envios de censo recentes, já recortados ao escopo de hospitais do usuário.
  *  `limite` (até 200, o alcance do desfazer): Movimentações pede a lista longa. */
 export function fetchEnviosCenso(limite?: number): Promise<{ envios: EnvioCenso[] }> {
