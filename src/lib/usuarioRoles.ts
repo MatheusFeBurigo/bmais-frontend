@@ -36,7 +36,7 @@ export const ROLE_DESC: Record<UserRole, string> = {
   administrativo: 'Painel Operacional, Upload e Kanban. Não vê Diretoria, Gestor nem Operações.',
   tecnico: 'Análise técnica dos relatórios do auditor externo. Emite o parecer interno.',
   analista: 'Consulta o Painel Operacional, o Kanban e as Movimentações (trilha de auditoria) e mantém hospitais e operadoras em Operações. Não registra relatórios nem altera dados de paciente. Não vê Diretoria nem Gestor.',
-  coordenador_administrativo: 'Distribuição de tarefas: vê a carga de cobranças de censo de cada operacional em horas, define quais hospitais cada um cobre e calibra capacidade e parâmetros de carga. Também é da equipe: tem Tarefas e as ações do operacional. Não altera cadastros.',
+  coordenador_administrativo: 'Distribuição de tarefas: vê a carga de cobranças de censo de cada operacional em horas, define quais operadoras cada um atende e calibra capacidade e parâmetros de carga. Também é da equipe: tem Tarefas e as ações do operacional. Não altera cadastros.',
   coordenador_tecnico: 'Distribuição de tarefas: vê a carga de pacientes de cada técnico em horas de análise, define quais hospitais cada um cobre e calibra capacidade e parâmetros de carga. Também é da equipe: tem Tarefas e as ações do técnico, e aprova e edita o relatório do operacional. Não altera cadastros.',
   // Não aparecem na escolha de papel (ROLES_ORDEM): a conta nasce na ficha do
   // profissional e o papel sai do tipo dele.

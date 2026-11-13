@@ -2,6 +2,10 @@
 // As duas telas mudam só o desenho; validação, envio e mensagem de erro ficam
 // aqui para não divergirem.
 //
+// Home care (13/11/2026): seção própria da modal, como a prorrogação; vai no
+// relatório completo (`detalhes.homecare`) e só vale com o relatório aprovado.
+// De 08/10 a 13/11 ia na alta com o motivo Homecare.
+//
 // O mesmo formulário corrige o relatório pendente (20/10/2026): quem aprova abre
 // a modal já preenchida (`carregarRelatorio`) e "Salvar e aprovar" grava a
 // correção e aprova no mesmo passo; "Salvar" (21/10/2026) só grava, e o
@@ -14,6 +18,9 @@ import { queryKeys } from '../../lib/queryKeys'
 import { useAuth } from '../../auth/AuthContext'
 import { precisaAprovacao } from '../../auth/permissions'
 import { hojeISO, paraISO } from '../../lib/datas'
+import {
+  homecareParaEnvio, homecareParaRascunho, homecareVazio, type RascunhoHomecare,
+} from '../../lib/altaHomecare'
 import type { RelatorioRapido } from '../../services/internacao.service'
 import type {
   AceiteFolhaRosa, AcomodacaoUtilizada, DetalhesRelatorio, PeriodoProrrogacao, RelatorioItem,
@@ -65,7 +72,7 @@ export interface RascunhoFolhaRosa {
 }
 
 /** As seções da modal, na ordem dela. O "OK" de cada uma confere só a sua. */
-export type SecaoRelatorio = 'visita' | 'internacao' | 'quadro' | 'periodo' | 'prorrogacao' | 'negociacao'
+export type SecaoRelatorio = 'visita' | 'internacao' | 'quadro' | 'periodo' | 'prorrogacao' | 'homecare' | 'negociacao'
 
 // Período começa hoje e o aceite em "Sim, carimbado", como no protótipo.
 const folhaVazia = (): RascunhoFolhaRosa => ({
@@ -132,6 +139,9 @@ export function useFormRelatorio(internacaoId: number, {
   // Folha rosa (custo evitado negociado com o hospital): fechada até ser marcada.
   const [frAtiva, setFrAtiva] = useState(false)
   const [folha, setFolha] = useState<RascunhoFolhaRosa>(folhaVazia)
+  // Home care: fechado até ser marcado; as perguntas abrem vazias.
+  const [hcAtivo, setHcAtivo] = useState(false)
+  const [homecare, setHomecare] = useState<RascunhoHomecare>(homecareVazio)
   // Relatório completo: o estado existe sempre (regra dos hooks), mas só a
   // modal o usa. Sem a 0054 os blocos não aparecem e nada vai no pedido.
   const det = useDetalhesRelatorio()
@@ -140,6 +150,8 @@ export function useFormRelatorio(internacaoId: number, {
   const pedeProrrogacao = Boolean(ctxProrrogacao) && prrAtiva
   const aplicaFolha = Boolean(ctxFolhaRosa) && frAtiva
   const comDetalhes = Boolean(ctxCompleto) && detalhesNoBanco
+  // O home care vai no relatório completo: sem a 0054, a seção não aparece.
+  const registraHomecare = comDetalhes && hcAtivo
 
   // `deSugerido` é a acomodação do paciente já casada com o catálogo (quem
   // conhece o catálogo é a seção); só preenche se o "de" ainda está vazio.
@@ -201,6 +213,8 @@ export function useFormRelatorio(internacaoId: number, {
     setPrrPausada(false)
     setFrAtiva(false)
     setFolha(folhaVazia())
+    setHcAtivo(false)
+    setHomecare(homecareVazio())
     det.iniciar(ctxCompleto?.ultimo ?? null, ctxCompleto?.dataEntrada, ctxCompleto?.censo)
   }
 
@@ -233,6 +247,9 @@ export function useFormRelatorio(internacaoId: number, {
         }
       : folhaVazia())
     det.carregar(rel.detalhes ?? null)
+    const hc = rel.detalhes?.homecare
+    setHcAtivo(Boolean(hc))
+    setHomecare(hc ? homecareParaRascunho(hc) : homecareVazio())
   }
 
   // As mensagens do DePara (seção 7); o backend confere de novo.
@@ -271,6 +288,8 @@ export function useFormRelatorio(internacaoId: number, {
       // Na modal o texto do relatório é obrigatório (no Márcia é); no drawer, não.
       case 'quadro': return ctxCompleto && !obs.trim() ? 'Escreva o relatório da visita.' : null
       case 'prorrogacao': return erroProrrogacao()
+      // Nenhuma pergunta do home care é obrigatória (13/11/2026).
+      case 'homecare': return null
       case 'internacao': return comDetalhes ? det.conferir('internacao') : null
       case 'periodo': return (comDetalhes ? det.conferir('periodo') : null) ?? erroFolhaRosa()
       case 'negociacao': return comDetalhes ? det.conferir('negociacao') : null
@@ -308,7 +327,10 @@ export function useFormRelatorio(internacaoId: number, {
         ? { folha_rosa: { ...folha, diarias: Number(folha.diarias), obs: folha.obs.trim() } }
         : {}),
       ...(comDetalhes
-        ? { detalhes: { ...det.pedido(), cid_principal: vaiParaAprovacao ? '' : (cidPrincipal?.codigo ?? '') } }
+        ? { detalhes: {
+            ...det.pedido(), cid_principal: vaiParaAprovacao ? '' : (cidPrincipal?.codigo ?? ''),
+            ...(registraHomecare ? { homecare: homecareParaEnvio(homecare) } : {}),
+          } }
         : {}),
     }
     try {
@@ -344,6 +366,10 @@ export function useFormRelatorio(internacaoId: number, {
     } : null,
     // `noBanco` false = sem a 0054: só o texto obrigatório vale.
     completo: ctxCompleto ? { ...det, noBanco: detalhesNoBanco } : null,
+    // Home care (13/11/2026): só na modal da ficha, com a 0054.
+    homecare: comDetalhes ? {
+      ativo: hcAtivo, alternar: setHcAtivo, valores: homecare, mudar: setHomecare,
+    } : null,
     erro, salvando: registrar.isPending || editar.isPending, salvar, limpar,
     conferirSecao, concluirSecao,
   }

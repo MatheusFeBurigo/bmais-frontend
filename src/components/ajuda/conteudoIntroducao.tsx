@@ -156,7 +156,7 @@ export function ModuloVisao({ irPara }: Props) {
           <tr><Key>Nível de serviço</Key><td>Percentual de pacientes com o relatório em conformidade, exibido como SLA.</td></tr>
         </SoGestao>
         <tr><Key>Censo</Key><td>O arquivo que o hospital envia com os pacientes do dia. É a fonte de todos os dados de internação.</td></tr>
-        <tr><Key>Escopo de dados</Key><td>Recorte aplicado a cada usuário: por hospital para o técnico e os coordenadores, por operadora para o operacional. Quem tem vínculo só enxerga o que está nele; sem vínculo, enxerga tudo.</td></tr>
+        <tr><Key>Escopo de dados</Key><td>Recorte aplicado a cada usuário: por hospital para o técnico e os coordenadores, por operadora para o operacional. Quem tem vínculo só enxerga o que está nele; sem vínculo, enxerga tudo. Exceção: o técnico e o coordenador técnico consultam os outros hospitais pelo filtro <strong>Todos os pacientes</strong>, sem escrever relatório neles.</td></tr>
       </Tabela>
 
       <h3>Dúvidas e suporte</h3>
@@ -179,22 +179,26 @@ const PAPEIS_MATRIZ = [
   { nome: 'Gestor', gestao: true },
   { nome: 'Diretor', gestao: true },
   { nome: 'Analista interno' },
-  { nome: 'Coordenador' },
+  { nome: 'Coord. técnico' },
+  { nome: 'Coord. operacional' },
 ] as const
 
 // Uma letra por papel, na ordem de PAPEIS_MATRIZ: S = tem acesso, N = não tem.
+// Os dois coordenadores têm colunas próprias (13/11/2026): só o técnico abre
+// Aprovações (EXCLUSIVAS.aprovacoes em auth/permissions.ts).
 const TELAS_MATRIZ: { tela: string; acesso: string; gestao?: boolean }[] = [
-  { tela: 'Painel Operacional', acesso: 'SSSSSS' },
-  { tela: 'Ficha do Paciente', acesso: 'SSSSNS' },
-  { tela: 'Tarefas', acesso: 'SSSNSS' },
-  { tela: 'Envio de Censos', acesso: 'SSSSNS' },
-  { tela: 'Dashboard da Diretoria', acesso: 'NNNSNN', gestao: true },
-  { tela: 'Painel do Gestor', acesso: 'NNSSNN', gestao: true },
-  { tela: 'Distribuição de tarefas', acesso: 'NNSNNS' },
-  { tela: 'Configurações', acesso: 'NNSSNN' },
-  { tela: 'Operações', acesso: 'NNNNSN' },
-  { tela: 'Movimentações', acesso: 'NNNNSN' },
-  { tela: 'Progresso', acesso: 'NNNSNN' },
+  { tela: 'Painel Operacional', acesso: 'SSSSSSS' },
+  { tela: 'Ficha do Paciente', acesso: 'SSSSNSS' },
+  { tela: 'Tarefas', acesso: 'SSSNSSS' },
+  { tela: 'Envio de Censos', acesso: 'SSSSNSS' },
+  { tela: 'Dashboard da Diretoria', acesso: 'NNNSNNN', gestao: true },
+  { tela: 'Painel do Gestor', acesso: 'NNSSNNN', gestao: true },
+  { tela: 'Distribuição de tarefas', acesso: 'NNSNNSS' },
+  { tela: 'Aprovações', acesso: 'NNSNNSN' },
+  { tela: 'Configurações', acesso: 'NNSSNNN' },
+  { tela: 'Operações', acesso: 'NNNNSNN' },
+  { tela: 'Movimentações', acesso: 'NNNNSNN' },
+  { tela: 'Progresso', acesso: 'NNNSNNN' },
 ]
 
 function MatrizTelas() {
@@ -287,15 +291,19 @@ export function ModuloNavegacao() {
         </tr>
         <tr>
           <Key>Coordenador técnico</Key>
-          <td>Acompanha a carga de trabalho dos técnicos na Distribuição de tarefas e define quais hospitais
-            cada um cobre. Também é da equipe: tem Tarefas e as ações do técnico, inclusive aprovar e
-            editar o relatório do operacional, e envia censos.</td>
+          <td>Coordena os técnicos: acompanha a carga de análise de cada um na Distribuição de
+            tarefas e define quais hospitais cada um cobre. Também é da equipe: tem Tarefas e as
+            ações do técnico, inclusive aprovar e editar o relatório do operacional e mexer nos
+            CIDs, e envia censos. Decide, em Aprovações, os pedidos de relatório de paciente fora
+            da área.</td>
         </tr>
         <tr>
           <Key>Coordenador operacional</Key>
-          <td>O mesmo papel, do lado operacional: acompanha a carga de cobrança de censo,
-            distribui as operadoras entre os operacionais na Distribuição de tarefas e trabalha
-            com eles, com as ações do operacional.</td>
+          <td>Coordena os operacionais: acompanha a carga de cobrança de censo de cada um na
+            Distribuição de tarefas e define quais operadoras cada um cobre. Também é da equipe:
+            tem Tarefas e as ações do operacional, inclusive pausar e retomar a prorrogação, e
+            envia censos. O relatório dele, como o do operacional, só vale depois de
+            aprovado.</td>
         </tr>
         <tr>
           <Key>Médico e enfermeiro</Key>
@@ -308,9 +316,11 @@ export function ModuloNavegacao() {
       <MatrizTelas />
       <p className="aj-legend"><Sim /> tem acesso <Nao /> sem acesso</p>
       <p>
-        A coluna <strong>Coordenador</strong> vale para os dois perfis de coordenação, técnico e
-        operacional, que têm o mesmo recorte de telas e se distinguem pela equipe que acompanham
-        na Distribuição de tarefas.
+        Os dois coordenadores abrem as mesmas telas, com uma exceção:{' '}
+        <strong>Aprovações</strong>, onde se decidem os pedidos de relatório de paciente fora da
+        área, é só do coordenador técnico. O que mais os separa está dentro das telas: a equipe que
+        cada um acompanha e as ações que tem, explicadas em <strong>Coordenadores</strong>, mais
+        abaixo.
       </p>
 
       <SoGestao>
@@ -330,24 +340,71 @@ export function ModuloNavegacao() {
       </ul>
 
       <h3>Coordenadores</h3>
+      <p>
+        Há um papel de coordenação para cada equipe: o <strong>coordenador técnico</strong>{' '}
+        acompanha os técnicos, e o <strong>coordenador operacional</strong>, os operacionais. Os
+        dois coordenam e trabalham ao mesmo tempo, e o que cada um faz segue a equipe dele.
+      </p>
+      <p>Em comum, os dois:</p>
       <ul>
-        <li>Dividem o trabalho do grupo deles na Distribuição de tarefas, incluindo a própria parte.</li>
-        <li>Também trabalham no grupo: têm Tarefas e as ações do técnico ou do operacional.</li>
-        <li>Pedem pendências a quem é do grupo deles e aprovam ou recusam os pedidos para desfazer
-          a atualização de um censo.</li>
-        <li>Enquanto não têm hospital vinculado, veem a rede inteira; com hospitais vinculados,
-          veem os deles.</li>
+        <li>Dividem o trabalho do grupo deles na Distribuição de tarefas, incluindo a própria
+          parte. Cada um só mexe no próprio grupo: o coordenador técnico não altera a área de um
+          operacional, nem o coordenador operacional a de um técnico.</li>
+        <li>Também trabalham no grupo: têm Tarefas, registram relatório, dão e desfazem alta,
+          ligam internações da mesma pessoa e enviam censos.</li>
+        <li>Pedem pendências a quem é do grupo deles, inclusive a si mesmos, e aprovam ou recusam
+          os pedidos para desfazer a atualização de um censo.</li>
+        <li>Recebem hospitais na Distribuição de tarefas, e não no cadastro da conta. Enquanto não
+          têm hospital vinculado, veem a rede inteira; com hospitais vinculados, veem os deles.</li>
       </ul>
+      <p>O que separa um do outro:</p>
+      <Tabela cabecalho={['O que muda', 'Coordenador técnico', 'Coordenador operacional']} larguras={['200px']}>
+        <tr><Key>Equipe que acompanha</Key>
+          <td>Técnicos e outros coordenadores técnicos</td>
+          <td>Operacionais e outros coordenadores operacionais</td></tr>
+        <tr><Key>O que divide na Distribuição</Key>
+          <td>Hospitais entre os técnicos</td>
+          <td>Operadoras entre os operacionais</td></tr>
+        <tr><Key>A própria área</Key>
+          <td>Hospitais</td>
+          <td>Hospitais, e não operadoras, como a do operacional</td></tr>
+        <tr><Key>Quadro de Tarefas</Key>
+          <td>As colunas do técnico: pacientes e aprovação</td>
+          <td>As colunas do operacional: censos e, em Pacientes, Sem relatório e aprovação</td></tr>
+        <tr><Key>Relatório que registra</Key>
+          <td>Vale na hora</td>
+          <td>Só vale depois de aprovado</td></tr>
+        <tr><Key>Relatório do operacional</Key>
+          <td>Aprova, ou edita e aprova</td>
+          <td>Não aprova</td></tr>
+        <tr><Key>CIDs do paciente</Key>
+          <td>Adiciona e remove</td>
+          <td>Não mexe</td></tr>
+        <tr><Key>Prorrogação em andamento</Key>
+          <td>Não pausa</td>
+          <td>Pausa e retoma</td></tr>
+        <tr><Key>Paciente fora da área</Key>
+          <td>Consulta pelo filtro Todos os pacientes, pede autorização para o relatório e decide
+            os pedidos em Aprovações</td>
+          <td>Não tem o filtro nem participa das autorizações</td></tr>
+      </Tabela>
 
       <h3>Escopo de dados</h3>
       <p>
         Além do papel, uma conta pode ter um recorte de dados, que vale em todas as telas. O técnico
         é vinculado a hospitais e enxerga os pacientes, censos e indicadores dessas unidades. O
         operacional é vinculado a operadoras e enxerga os pacientes e censos delas, em todos os
-        hospitais que as atendem. Os dois vínculos são definidos no cadastro da conta, e os
-        coordenadores também os ajustam na Distribuição de tarefas. Os
-        coordenadores enxergam os hospitais que recebem na Distribuição de tarefas. Sem vínculo, a
-        conta enxerga a operação inteira.
+        hospitais que as atendem. Os dois vínculos são definidos no cadastro da conta e também
+        ajustados na Distribuição de tarefas: os hospitais dos técnicos pelo coordenador técnico, e
+        as operadoras dos operacionais pelo coordenador operacional. Os dois coordenadores
+        enxergam os hospitais que recebem na Distribuição de tarefas. Sem vínculo, a conta enxerga
+        a operação inteira.
+      </p>
+      <p>
+        No Painel Operacional, o técnico e o coordenador técnico podem trocar para{' '}
+        <strong>Todos os pacientes</strong> e ver os pacientes de todos os hospitais. É só para
+        consulta: <strong>nos pacientes de fora da área eles não escrevem relatório</strong>, nem
+        mexem em CID, alta ou dados. Tarefas e cobranças continuam pela área.
       </p>
     </>
   )

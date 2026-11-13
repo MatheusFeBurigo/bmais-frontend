@@ -17,7 +17,7 @@ import {
   importEquipe, importConfiguracoes, importUpload,
   importKanban, importPaciente, importFormularioPorto, importImprimirRelatorio, importUsuarioForm, importLogs, importAjuda,
   importProgresso, importVolumetria, importRelatorio, importDocumentacao, importPortalProfissional,
-  importChamados,
+  importChamados, importAprovacoes,
 } from './routes'
 
 // Páginas carregadas sob demanda (code-splitting). Diretoria e Gestor arrastam
@@ -42,6 +42,7 @@ const Volumetria = lazy(importVolumetria)
 const Relatorio = lazy(importRelatorio)
 const DocumentacaoTecnica = lazy(importDocumentacao)
 const PortalProfissional = lazy(importPortalProfissional)
+const Aprovacoes = lazy(importAprovacoes)
 
 function PageFallback() {
   return <LoadingState style={{ minHeight: '100vh' }} />
@@ -206,6 +207,12 @@ function ProtectedRoutes() {
         />
         {/* Endereço antigo da tela (era "Volumetria"): mantém favoritos funcionando. */}
         <Route path="/volumetria" element={<Navigate to="/distribuicao" replace />} />
+        {/* Aprovações: pedidos para registrar relatório de paciente fora da área.
+            Coordenador técnico, gestor e admin (EXCLUSIVAS.aprovacoes). */}
+        <Route
+          path="/aprovacoes"
+          element={<GatedRoute screen="aprovacoes"><Aprovacoes /></GatedRoute>}
+        />
         <Route path="/paciente/:id" element={<RequireFichaPaciente><Paciente /></RequireFichaPaciente>} />
         {/* Formulário de prorrogação da Porto: sai dos dados da ficha, então tem o
             mesmo acesso dela. */}

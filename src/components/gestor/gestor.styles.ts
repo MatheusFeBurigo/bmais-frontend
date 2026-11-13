@@ -54,6 +54,10 @@ export const localStyles = `
 .pill-faixa.active{background:var(--ink);color:#fff;border-color:var(--ink)}
 .tbl-gestor tbody tr{cursor:pointer}
 .tbl-gestor tbody tr:hover td{background:var(--surface-3)}
+/* Situação da lista (12/11/2026): prorrogados, negociação, homecare */
+.gestor-situacoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--border)}
+.sit-linha{font-size:var(--t-sm);color:var(--muted);margin-top:3px;white-space:nowrap}
+.sit-linha.alerta{color:var(--warning-2);font-weight:600}
 .faixa-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
 /* Barra de filtros ativos (chips removíveis + limpar tudo) */
 .filtros-ativos{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}

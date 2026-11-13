@@ -10,6 +10,8 @@ import { useNavigate } from 'react-router-dom'
 import { StatusBadge, LeitoTag } from './StatusBadge'
 import { LoadingState } from './ui'
 import HospitalDetalhesModal from './HospitalDetalhesModal'
+import { alertaStyles } from './Alerta'
+import { AvisoForaDaArea } from './paciente/AvisoForaDaArea'
 import { AcaoAlta } from './paciente/AcaoAlta'
 import { BlocoAgendarVisita } from './paciente/BlocoAgendarVisita'
 import { BlocoRegistrarRelatorio } from './paciente/BlocoRegistrarRelatorio'
@@ -66,10 +68,12 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
   const { role } = useAuth()
   const navigate = useNavigate()
   // Ações exclusivas do perfil técnico (admin supervisiona). Demais papéis veem
-  // o drawer somente-leitura (KPIs + timeline).
-  const podeRegistrar = ACOES_NO_PAINEL && podeExecutar(role, 'registrarRelatorio')
-  const podeAgendar = ACOES_NO_PAINEL && podeExecutar(role, 'agendarVisita')
-  const podeDarAlta = podeExecutar(role, 'darAlta')
+  // o drawer somente-leitura (KPIs + timeline). Paciente de fora da área (filtro
+  // "Todos os pacientes" da Visão Geral) também: as ações seguem pela área.
+  const foraDaArea = Boolean(d?.fora_da_area)
+  const podeRegistrar = ACOES_NO_PAINEL && !foraDaArea && podeExecutar(role, 'registrarRelatorio')
+  const podeAgendar = ACOES_NO_PAINEL && !foraDaArea && podeExecutar(role, 'agendarVisita')
+  const podeDarAlta = !foraDaArea && podeExecutar(role, 'darAlta')
   const medicos = useMemo(
     () => (equipe?.medicos ?? []).filter((m) => Boolean(m.ativo)).map((m) => m.nome),
     [equipe],
@@ -146,6 +150,12 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
           {isError && <div className="empty-state">Não foi possível carregar os dados.</div>}
           {d && (
             <>
+              {foraDaArea && (
+                <div style={{ marginBottom: 16 }}>
+                  <style>{alertaStyles}</style>
+                  <AvisoForaDaArea internacaoId={internacaoId} hospitalNome={d.hospital_nome} naFicha={false} />
+                </div>
+              )}
               <KpisDrawer d={d} />
 
               <div className="section-label" style={{ margin: '0 0 12px' }}>Timeline da internação</div>

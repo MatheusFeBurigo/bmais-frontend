@@ -12,6 +12,7 @@ import { ROTA_CHAMADOS } from './ajuda/tipos'
 import { useAjudaNav } from './ajuda/useAjudaNav'
 import { useTrocaPainel } from './ajuda/useTrocaPainel'
 import { useChamadosNaoLidos } from '../hooks/useChamados'
+import { useContagemAutorizacoes } from '../hooks/useAutorizacoes'
 
 // Aquece o chunk da rota antes do clique (hover/foco), evitando o flash de
 // carregamento na navegação. Silencia falhas — é só otimização.
@@ -61,6 +62,10 @@ const IconProgresso = () => (
 // Volumetria: barras de tamanhos diferentes — a carga de trabalho por hospital.
 const IconVolumetria = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><rect x="5" y="13" width="4" height="8" /><rect x="11" y="8" width="4" height="13" /><rect x="17" y="4" width="4" height="17" /></svg>
+)
+// Aprovações: prancheta com o visto, o pedido conferido.
+const IconAprovacoes = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V3h6v1" /><path d="m9 13 2 2 4-4" /></svg>
 )
 // Ajuda: interrogação em círculo, o sinal universal de documentação.
 const IconAjuda = () => (
@@ -136,6 +141,9 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
   // Resposta nova num chamado: avisa no ícone do rodapé, em qualquer tela. Sem
   // isso a pessoa só saberia da resposta se voltasse a abrir os Chamados.
   const chamadosNaoLidos = useChamadosNaoLidos(!perfilCarregando)
+  // Pedidos de autorização para relatório esperando decisão: o contador do item
+  // Aprovações, para quem decide (o próprio pedido não conta).
+  const autorizacoesPendentes = useContagemAutorizacoes(!perfilCarregando && podeVer(role, 'aprovacoes'))
   // O ícone do rodapé mostra para onde o clique leva. Fora da Ajuda é a
   // interrogação; dentro da documentação vira o balão e abre os Chamados; nos
   // Chamados volta a ser a interrogação, que devolve à documentação. O painel
@@ -258,6 +266,20 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
             <NavLink to="/distribuicao" className={itemClass} {...prefetchProps('/distribuicao')}>
               <span className="sb-item-icon"><IconVolumetria /></span>
               <span className="sb-item-label">Distribuição de tarefas</span>
+            </NavLink>
+          )}
+          {mostrar('aprovacoes') && (
+            <NavLink to="/aprovacoes" className={itemClass} {...prefetchProps('/aprovacoes')}>
+              <span className="sb-item-icon"><IconAprovacoes /></span>
+              <span className="sb-item-label">Aprovações</span>
+              {autorizacoesPendentes > 0 && (
+                <span className="sb-item-badge alert"
+                  title={autorizacoesPendentes > 1
+                    ? `${autorizacoesPendentes} pedidos esperando decisão`
+                    : '1 pedido esperando decisão'}>
+                  {autorizacoesPendentes}
+                </span>
+              )}
             </NavLink>
           )}
           {mostrar('diretoria') && (

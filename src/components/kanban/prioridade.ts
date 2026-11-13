@@ -9,6 +9,7 @@
 // memória (o backend manda as colunas completas), então trocar de chip ou de
 // ordenação é instantâneo e não gasta uma ida ao servidor.
 import type { KanbanTarefa } from '../../types/api'
+import { ehColunaAcompanhamento } from './colunas'
 
 // ── Sinais do paciente ───────────────────────────────────────────────────────
 // Cada sinal responde a "por que este card merece atenção agora?". São a base
@@ -133,6 +134,9 @@ function comparar(a: KanbanTarefa, b: KanbanTarefa, ordem: OrdemKey): number {
     case 'hospital':
       return (a.hospital_nome || '').localeCompare(b.hospital_nome || '', 'pt-BR')
     default: {
+      // Aba Acompanhamento (13/11/2026): a ordem do servidor é a que importa ali
+      // (a prorrogação que termina antes, o aceite que espera há mais tempo).
+      if (ehColunaAcompanhamento(a.coluna) && ehColunaAcompanhamento(b.coluna)) return 0
       // Prioridade = a ordem do backend: status do relatório, depois mais dias sem
       // relatório, depois mais dias internado. UTI desempata antes dos dias porque
       // é o critério clínico mais forte dentro de um mesmo status.

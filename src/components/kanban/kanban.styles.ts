@@ -4,6 +4,24 @@
 // mora ao lado dos seus componentes, não embutido na página.
 
 export const localStyles = `
+/* ── Cabeçalho do quadro (13/11/2026): abas, colunas e filtros num cartão só ── */
+.kb-toolbar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 1px 2px rgba(6,46,92,.04);margin-bottom:14px}
+.kb-toolbar .kb-filtros{border:0;box-shadow:none;margin:0;background:transparent;border-radius:0 0 var(--r-md) var(--r-md)}
+.kb-toolbar.so-abas .kb-abas{border-bottom:0}
+.kb-abas{display:flex;gap:2px;padding:0 8px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.kb-abas::-webkit-scrollbar{display:none}
+.kb-aba{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:8px;padding:12px 12px 10px;border-bottom:2px solid transparent;margin-bottom:-1px;font-size:var(--t-base);font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;transition:color .12s,border-color .12s}
+.kb-aba:hover{color:var(--ink-2)}
+.kb-aba.ativa{color:var(--ink);border-bottom-color:var(--accent)}
+.kb-aba:focus-visible{outline:2px solid var(--accent);outline-offset:-3px;border-radius:6px}
+.kb-aba-ico{display:inline-flex;color:var(--muted-2)}
+.kb-aba.ativa .kb-aba-ico{color:var(--accent)}
+.kb-aba-n{font-family:var(--font-mono);font-size:var(--t-xs);font-weight:700;min-width:22px;height:20px;padding:0 7px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-3);color:var(--muted);border:1px solid var(--border)}
+.kb-aba.ativa .kb-aba-n{background:var(--accent-soft);color:var(--accent-2);border-color:transparent}
+/* Vermelho só onde o número é trabalho a fazer: claro nas outras abas,
+   cheio na aba aberta. */
+.kb-aba-n.alerta{background:var(--danger-bg);color:var(--danger);border-color:transparent}
+.kb-aba.ativa .kb-aba-n.alerta{background:var(--danger);color:#fff}
 /* grid-template-columns vem inline (nº de colunas depende do papel/board). */
 /* ── Barra de priorização (busca + chips + hospital + ordem) ── */
 .kb-filtros{display:flex;flex-direction:column;margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 1px 2px rgba(6,46,92,.04)}
@@ -135,6 +153,9 @@ export const localStyles = `
 /* Onde o paciente está e há quanto tempo: a linha que evitava abrir o drawer. */
 .kb-card-clinico{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:var(--t-sm);color:var(--muted)}
 .kb-leito-cod{font-family:var(--font-mono);color:var(--ink-2)}
+/* Negociação com o hospital (colunas Negociação e Aguardando aceite). */
+.kb-card-neg{margin-top:6px;font-size:var(--t-sm);color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.kb-neg-troca{color:var(--ink-2);font-weight:600}
 /* Etiquetas de prioridade: os mesmos sinais dos chips da barra de filtro. */
 .kb-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
 .kb-tag{font-size:var(--t-xs);font-weight:600;border-radius:99px;padding:2px 8px;line-height:1.5;white-space:nowrap}

@@ -77,16 +77,57 @@ export const COLUNAS: ColunaKanban[] = [
     cor: 'var(--success)',
     corBg: 'var(--success-bg)',
   },
+  // ── Acompanhamento (13/11/2026): aba própria, não é pendência ─────────────
+  // O paciente em dia também aparece aqui, e o que está sem relatório segue
+  // também na fila; por isso não fica ao lado de "Sem relatório".
+  {
+    key: 'prorrogados',
+    titulo: 'Prorrogados',
+    descricao: 'Internados com prorrogação em curso, terminando hoje ou pausada. A que termina antes vem primeiro',
+    cor: 'var(--indigo)',
+    corBg: 'var(--indigo-bg)',
+  },
+  {
+    key: 'negociacao',
+    titulo: 'Negociação',
+    descricao: 'Internados com negociação (folha rosa) num relatório aprovado, já com a resposta do hospital ou sem aceite informado',
+    cor: 'var(--rosa)',
+    corBg: 'var(--rosa-bg)',
+  },
+  {
+    key: 'aguardando_aceite',
+    titulo: 'Aguardando aceite',
+    descricao: 'A negociação mais recente ainda espera o aceite do hospital. A que espera há mais tempo vem primeiro',
+    cor: 'var(--warning)',
+    corBg: 'var(--warning-bg)',
+  },
+  {
+    // 13/11/2026: o home care saiu da alta e é registrado no relatório.
+    key: 'homecare',
+    titulo: 'Home care',
+    descricao: 'Internados com home care registrado num relatório aprovado. O registro mais recente vem primeiro',
+    cor: 'var(--success)',
+    corBg: 'var(--success-bg)',
+  },
 ]
 
 const CHAVES_CENSO: KanbanColuna[] = [
   'censos_atrasados', 'aguardando_retorno', 'aguardando_censo', 'censos_processados',
 ]
+const CHAVES_ACOMPANHAMENTO: KanbanColuna[] = ['prorrogados', 'negociacao', 'aguardando_aceite', 'homecare']
 
 /** As colunas de paciente (a fila do técnico e a aprovação de relatório, no
- *  mesmo quadro) e as de censo (do administrativo). */
-export const COLUNAS_PACIENTE = COLUNAS.filter((c) => !CHAVES_CENSO.includes(c.key))
+ *  mesmo quadro), as de censo (do administrativo) e as de acompanhamento. */
+export const COLUNAS_PACIENTE = COLUNAS.filter(
+  (c) => !CHAVES_CENSO.includes(c.key) && !CHAVES_ACOMPANHAMENTO.includes(c.key))
 export const COLUNAS_CENSO = COLUNAS.filter((c) => CHAVES_CENSO.includes(c.key))
+export const COLUNAS_ACOMPANHAMENTO = COLUNAS.filter((c) => CHAVES_ACOMPANHAMENTO.includes(c.key))
+
+/** Coluna de acompanhamento: a ordem é a do servidor (data da prorrogação ou
+ *  do aceite), não a prioridade do relatório. */
+export function ehColunaAcompanhamento(key: KanbanColuna | undefined): boolean {
+  return key != null && CHAVES_ACOMPANHAMENTO.includes(key)
+}
 
 export function colunaKanban(key: KanbanColuna): ColunaKanban | undefined {
   return COLUNAS.find((c) => c.key === key)

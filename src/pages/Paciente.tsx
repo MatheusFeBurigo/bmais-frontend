@@ -14,8 +14,11 @@ import { LoadingState } from '../components/ui'
 import HospitalDetalhesModal from '../components/HospitalDetalhesModal'
 import { alertaStyles } from '../components/Alerta'
 import { AcaoAlta } from '../components/paciente/AcaoAlta'
+import { resumoHomecare } from '../lib/altaHomecare'
 import { AcaoPausarProrrogacao } from '../components/paciente/AcaoPausarProrrogacao'
 import { AlertaCamposFaltantes } from '../components/paciente/AlertaCamposFaltantes'
+import { AvisoForaDaArea } from '../components/paciente/AvisoForaDaArea'
+import { useLiberacaoRelatorio } from '../hooks/useAutorizacoes'
 import { AlertaInternacaoMaisRecente, AlertaSugestoesPessoa } from '../components/paciente/AlertasPessoa'
 import { CardCids } from '../components/paciente/CardCids'
 import { CardDadosPaciente } from '../components/paciente/CardDadosPaciente'
@@ -48,6 +51,13 @@ export default function Paciente() {
 
   const idInvalido = !id || Number.isNaN(internacaoId)
   const { data: d, isLoading, isError } = useInternacaoDados(internacaoId)
+  // Paciente de fora da área de quem abriu (o filtro "Todos os pacientes" da
+  // Visão Geral leva o técnico até ele): a ficha abre só para leitura, e as
+  // ações seguem pela área. O servidor barra parte delas por conta própria.
+  const foraDaArea = Boolean(d?.fora_da_area)
+  // A exceção (09/11/2026, 0061): com o pedido aprovado em Aprovações, quem pediu
+  // registra UM relatório deste paciente. O servidor confere a autorização.
+  const { liberado: relatorioLiberado } = useLiberacaoRelatorio(internacaoId, foraDaArea)
   const timeline = useInternacaoTimeline(internacaoId)
   const relatorios = useInternacaoRelatorios(internacaoId)
   const { data: equipe } = useEquipe()
@@ -97,7 +107,7 @@ export default function Paciente() {
   // paciente": a confirmação abre antes de desligar.
   const [desligar, setDesligar] = useState<number | null>(null)
   const desvincular = useDesvincularPessoa(internacaoId)
-  const podeVincular = podeExecutar(role, 'vincularPessoa')
+  const podeVincular = !foraDaArea && podeExecutar(role, 'vincularPessoa')
   const hospitalDesligar = timeline.data?.eventos.find(
     (e) => e.internacao_id === desligar && e.outra_internacao)?.hospital_nome
 
@@ -131,12 +141,20 @@ export default function Paciente() {
                 {d.prorrogacao_situacao === 'pausada' ? ' (pausada)' : ''}
               </span></>
             )}
+            {/* Home care (13/11/2026): registrado no relatório, como a
+                prorrogação; o paciente segue internado. Vale o do relatório
+                aprovado mais recente; as respostas ficam no balão. */}
+            {d.homecare && (
+              <> · <span style={{ color: 'var(--success)', fontWeight: 600 }} title={resumoHomecare(d.homecare)}>
+                Home care{d.homecare.data_visita ? ` registrado em ${dataBR(d.homecare.data_visita)}` : ''}
+              </span></>
+            )}
           </>
         ) : undefined,
         actions: (
           <div style={{ display: 'flex', gap: 8 }}>
-            {d && podeExecutar(role, 'controlarProrrogacao') && <AcaoPausarProrrogacao d={d} onFeito={setToast} />}
-            {d && podeExecutar(role, 'darAlta') && <AcaoAlta d={d} onFeito={setToast} />}
+            {d && !foraDaArea && podeExecutar(role, 'controlarProrrogacao') && <AcaoPausarProrrogacao d={d} onFeito={setToast} />}
+            {d && !foraDaArea && podeExecutar(role, 'darAlta') && <AcaoAlta d={d} onFeito={setToast} />}
             {/* Imprimir a internação (22/10/2026): dados do paciente e os
                 relatórios, todos ou um. Funciona mesmo sem relatório. */}
             <button className="btn btn-outline btn-sm" style={{ gap: 6 }} disabled={!d}
@@ -153,7 +171,7 @@ export default function Paciente() {
           </div>
         ),
       }),
-      [d, sr, isLoading, navigate, role],
+      [d, sr, isLoading, navigate, role, foraDaArea],
     ),
   )
 
@@ -165,7 +183,8 @@ export default function Paciente() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <style>{alertaStyles + colunaStyles}</style>
       <KpisPaciente d={d} />
-      {!edicao.editando && <AlertaCamposFaltantes faltantes={faltantes} />}
+      {foraDaArea && <AvisoForaDaArea internacaoId={internacaoId} hospitalNome={d.hospital_nome} naFicha />}
+      {!edicao.editando && !foraDaArea && <AlertaCamposFaltantes faltantes={faltantes} />}
       <AlertaInternacaoMaisRecente recente={timeline.data?.internacao_mais_recente} />
       <AlertaSugestoesPessoa
         internacaoId={internacaoId}
@@ -179,11 +198,12 @@ export default function Paciente() {
           dados; a Timeline preenche o espaço restante e rola por dentro. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(280px,1fr)', gap: 16, alignItems: 'stretch' }}>
         <div className="ficha-col" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
-          <CardDadosPaciente d={d} edicao={edicao} faltaCampo={faltaCampo} podeHomecare={podeExecutar(role, 'leitoHomecare')} />
+          <CardDadosPaciente d={d} edicao={edicao} faltaCampo={faltaCampo} podeHomecare={podeExecutar(role, 'leitoHomecare')}
+                             podeEditar={!foraDaArea} />
           <CardCids
             internacaoId={internacaoId}
             sexoPaciente={d.sexo}
-            podeEditar={podeExecutar(role, 'atribuirCid')}
+            podeEditar={!foraDaArea && podeExecutar(role, 'atribuirCid')}
             onAlterado={setToast}
           />
         </div>
@@ -197,7 +217,7 @@ export default function Paciente() {
             relatorios={relatorios.data?.relatorios}
             carregando={relatorios.isLoading}
             erro={relatorios.isError}
-            podeRegistrar={podeExecutar(role, 'registrarRelatorio')}
+            podeRegistrar={(!foraDaArea || relatorioLiberado) && podeExecutar(role, 'registrarRelatorio')}
             medicos={medicos}
             enfermeiros={enfermeiros}
             prorrogacao={{ ate: d?.prorrogacao_ate, acomodacao: d?.prorrogacao_acomodacao }}
@@ -266,7 +286,9 @@ export default function Paciente() {
       {relatorioAberto && (
         <FichaRelatorio internacaoId={internacaoId} alvo={relatorioAberto}
                         onFechar={fecharRelatorio}
-                        acoes={{
+                        // Fora da área, a ficha do relatório abre sem aprovar
+                        // nem corrigir: só leitura, como o resto da ficha.
+                        acoes={foraDaArea ? undefined : {
                           nomePaciente: identificacaoPaciente(d), onDecidido: relatorioDecidido,
                           onCorrigir: setCorrigindo,
                         }} />

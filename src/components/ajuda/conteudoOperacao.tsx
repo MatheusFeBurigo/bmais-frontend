@@ -3,7 +3,8 @@
 // acessa essa tela.
 import { useAuth } from '../../auth/AuthContext'
 import { podeExecutar } from '../../auth/permissions'
-import { Callout, Chip, Key, Metric, Metrics, Passo, Passos, SoGestao, Tabela } from './blocos'
+import { Callout, Chip, Key, Metric, Metrics, Nao, Passo, Passos, Sim, SoGestao, Tabela } from './blocos'
+import { useLeSobreTodosOsPacientes } from './acessoAjuda'
 import { ComoFazer, Tela } from './replica'
 import { ACOES_NO_PAINEL, NEGOCIACAO_NO_RELATORIO } from '../../lib/recursos'
 import { ReplicaAvisoPendencia, ReplicaNovaPendencia, ReplicaQuadroPendencias } from './exemplosPendencias'
@@ -18,6 +19,9 @@ interface Props {
 }
 
 export function ModuloOperacional({ irPara }: Props) {
+  // O filtro "Todos os pacientes" é do técnico e do coordenador técnico: o
+  // operacional não o tem e não lê o passo a passo.
+  const todosOsPacientes = useLeSobreTodosOsPacientes()
   return (
     <>
       <h3>Objetivo</h3>
@@ -65,6 +69,31 @@ export function ModuloOperacional({ irPara }: Props) {
         </Tela>
       </ComoFazer>
 
+      {todosOsPacientes && (<>
+      <ComoFazer
+        titulo="Consultar pacientes de outros hospitais"
+        passos={[
+          { n: 1, titulo: "Clique em Todos os pacientes", corpo: <>O seletor fica no alto, à direita da operadora, e aparece para o técnico e o coordenador técnico que têm hospitais na área. A lista, os cartões e o seletor de hospital passam a contar os pacientes de todos os hospitais.</> },
+          { n: 2, titulo: "Veja quem é de fora da sua área", corpo: <>O paciente de um hospital que não é da sua área vem com a etiqueta <strong>Fora da sua área</strong>, embaixo do nome do hospital. Os seus aparecem como sempre.</> },
+          { n: 3, titulo: "Clique na linha para consultar", corpo: <>A ficha do paciente de fora abre só para leitura: dados, relatórios já registrados, CIDs e timeline ficam à vista, mas <strong>não dá para escrever o relatório</strong> dele (veja{' '} <button type="button" className="aj-link" onClick={() => irPara('ficha-do-paciente')}>Ficha do Paciente</button>).</> },
+          { n: 4, titulo: "Volte para Minha área para trabalhar", corpo: <>É a lista de sempre, só com os hospitais da sua área, onde você registra relatório e faz as demais ações.</> },
+        ]}
+      >
+        <Tela nome="Painel Operacional" largura={1120}
+          descricao="Técnico com o filtro Todos os pacientes ligado: os pacientes dos outros hospitais vêm com a etiqueta Fora da sua área.">
+          <ReplicaPainel verTodos marcas={{ escopo: 1, foraDaArea: 2, linha: 3 }} />
+        </Tela>
+      </ComoFazer>
+      <Callout tipo="rule" titulo="Ver todos os pacientes não é escrever em todos">
+        O filtro <strong>Todos os pacientes</strong> é de consulta. O técnico vê os pacientes de
+        qualquer hospital, mas <strong>só escreve relatório nos pacientes da sua área</strong>. O
+        mesmo vale para CID, alta e edição dos dados. Nesse modo, <strong>Exportar</strong> e{' '}
+        <strong>Adicionar paciente</strong> não aparecem, e o quadro de Tarefas continua mostrando
+        só a sua área. Para escrever o relatório de um paciente de outro hospital, o hospital
+        precisa entrar na sua área: fale com a coordenação.
+      </Callout>
+      </>)}
+
       <ComoFazer
         titulo="Cadastrar um paciente que não veio no censo"
         passos={[
@@ -107,6 +136,9 @@ export function ModuloOperacional({ irPara }: Props) {
       <h3>Filtros disponíveis</h3>
       <Tabela cabecalho={['Filtro', 'O que faz']} larguras={['185px']}>
         <tr><Key>Operadora</Key><td>Recorta tudo para uma operadora, ou consolida todas. Também se escolhe pela lista sob <strong>Visão Geral</strong>, no menu. Com uma aberta, <strong>Ver todas as operadoras</strong> volta ao consolidado.</td></tr>
+        {todosOsPacientes && (
+          <tr><Key>Minha área / Todos os pacientes</Key><td>Só para o técnico e o coordenador técnico com hospitais na área. <strong>Minha área</strong> é a lista de sempre. <strong>Todos os pacientes</strong> mostra os pacientes de todos os hospitais, só para consulta: os de fora da área vêm marcados com <strong>Fora da sua área</strong>, e na ficha deles não se escreve relatório, nem se mexe em CID, alta ou dados. Nesse modo, <strong>Exportar</strong> e <strong>Adicionar paciente</strong> não aparecem. As Tarefas continuam sendo as da área.</td></tr>
+        )}
         <tr><Key>Hospital</Key><td>Restringe a uma unidade. Cada opção já mostra quantos internados e quantos alertas ela tem. Na visão consolidada, os hospitais aparecem agrupados por operadora. <strong>Limpar filtro</strong> volta a todos.</td></tr>
         <tr><Key>Período</Key><td><strong>Internação de</strong> e <strong>até</strong>: recorta a lista pela data de internação. Na lista de altas vira <strong>Alta de</strong> e recorta pela data da alta. Digite a data ou escolha no calendário; <strong>Limpar datas</strong> tira o recorte.</td></tr>
         <tr><Key>Busca</Key><td>A lupa, no fim dos filtros rápidos, abre o campo de busca. Procura por nome do segurado, número de atendimento e senha de autorização, entre os internados e também entre as altas (sem precisar ligar o filtro <strong>Altas</strong>). Aberta, ocupa o espaço que sobra na linha dos filtros. Esc limpa e fecha; com o campo vazio, um novo clique na lupa também fecha.</td></tr>
@@ -153,6 +185,7 @@ export function ModuloOperacional({ irPara }: Props) {
 }
 
 export function ModuloPaciente({ irPara }: Props) {
+  const todosOsPacientes = useLeSobreTodosOsPacientes()
   return (
     <>
       <h3>Objetivo</h3>
@@ -169,9 +202,35 @@ export function ModuloPaciente({ irPara }: Props) {
         <strong>Técnico, coordenador técnico, gestor, operacional e coordenador operacional
         registram relatório</strong>; o do operacional e o do coordenador operacional só valem
         depois que um técnico, um coordenador técnico ou um gestor aprova.{' '}
-        <strong>Mexer nos CIDs é do técnico, do coordenador técnico e do gestor</strong>, e
-        cada pessoa continua vendo apenas os pacientes dos hospitais do seu escopo.
+        <strong>Mexer nos CIDs é do técnico, do coordenador técnico e do gestor</strong>. Cada
+        pessoa faz isso só nos pacientes dos hospitais da sua área.
+        {todosOsPacientes && <> O técnico e o coordenador técnico também abrem a ficha dos
+          pacientes dos outros hospitais, pelo filtro <strong>Todos os pacientes</strong> do
+          Painel Operacional, mas só para consultar.</>}
       </p>
+      <p>
+        Cada coordenador tem na ficha as ações de quem ele coordena, e o gestor tem as do técnico:
+      </p>
+      <Tabela cabecalho={['Ação na ficha', 'Técnico e coordenador técnico', 'Operacional e coordenador operacional']} larguras={['220px']}>
+        <tr><Key>Registrar relatório</Key><td>Vale na hora</td><td>Vai para aprovação</td></tr>
+        <tr><Key>Aprovar ou editar o relatório do operacional</Key><td><Sim /></td><td><Nao /></td></tr>
+        <tr><Key>Adicionar e remover CID</Key><td><Sim /></td><td><Nao /></td></tr>
+        <tr><Key>Pausar e retomar a prorrogação</Key><td><Nao /></td><td><Sim /></td></tr>
+        <tr><Key>Dar e desfazer alta</Key><td><Sim /></td><td><Sim /></td></tr>
+        <tr><Key>Juntar ou separar internações da mesma pessoa</Key><td><Sim /></td><td><Sim /></td></tr>
+      </Tabela>
+      {todosOsPacientes && (
+        <Callout tipo="rule" titulo="Paciente de fora da sua área: só leitura">
+          A ficha de um paciente que não é dos hospitais da sua área traz no topo o aviso{' '}
+          <strong>Este paciente não é da sua área</strong> e abre só para leitura. Dá para consultar
+          os dados, os relatórios já registrados, os CIDs e a timeline, mas{' '}
+          <strong>não dá para escrever o relatório</strong>: o botão <strong>Registrar</strong>, do
+          card Relatórios, não aparece. Também ficam de fora <strong>Editar</strong>, adicionar ou
+          remover CID, <strong>Dar alta</strong>, aprovar ou corrigir relatório e responder se é o
+          mesmo paciente. O relatório desse paciente é de quem cobre o hospital dele. A ficha
+          rápida, aberta pela lista, segue a mesma regra.
+        </Callout>
+      )}
 
       <h3>Passo a passo</h3>
       {/* Registrar pela ficha rápida está oculto (lib/recursos): o relatório
@@ -287,7 +346,7 @@ export function ModuloPaciente({ irPara }: Props) {
         titulo="Dar alta a um paciente que já saiu"
         passos={[
           { n: 1, titulo: "Clique em Alta", corpo: <>No rodapé da ficha rápida ou no topo da ficha completa. Serve para quando o hospital demora a mandar o censo e já se sabe que o paciente saiu: sem censo, ninguém sai da lista sozinho.</> },
-          { n: 2, titulo: "Escolha o motivo da alta", corpo: <>Obrigatório: alta médica, homecare, transferência, óbito, a pedido, evasão, administrativa ou outro. Com o motivo <strong>Homecare</strong>, a janela pede também as perguntas de home care, descritas em Relatórios, mais abaixo.</> },
+          { n: 2, titulo: "Escolha o motivo da alta", corpo: <>Obrigatório: alta médica, transferência, óbito, a pedido, evasão, administrativa ou outro. Home care não é motivo de alta: ele é registrado no relatório, na seção <strong>Home care</strong>, descrita em Relatórios, mais abaixo, e o paciente segue internado.</> },
           { n: 3, titulo: "Informe a data da alta", corpo: <>Obrigatória. Vai da data de internação até hoje.</> },
           { n: 4, titulo: "Informe o horário, se souber", corpo: <>Opcional.</> },
           { n: 5, titulo: "Clique em Confirmar alta", corpo: <>O botão só libera com o motivo e a data. O paciente sai da lista de internados e passa a constar nas altas. Se havia visita agendada, ela é cancelada. A alta fica registrada na timeline, com o seu nome e o motivo.</> },
@@ -415,6 +474,14 @@ export function ModuloPaciente({ irPara }: Props) {
           da ficha mostra <strong>Prorrogado até</strong> e a data final, com{' '}
           <strong>(pausada)</strong> quando for o caso; passada a data, mostra{' '}
           <strong>Prorrogação terminou em</strong>.</li>
+        <li><strong>Home care</strong>: marque <strong>Registrar home care</strong> e responda o que
+          souber: solicitado, oxigenioterapia, mobilização, nível de consciência, acesso venoso,
+          traqueostomia, curativo, ostomias e alimentação. Nenhuma pergunta é obrigatória: marcar já
+          registra, e a que ficar em branco sai como não informada. O paciente segue internado: home
+          care não é alta. Quando o relatório passa a valer, o
+          subtítulo da ficha mostra <strong>Home care registrado em</strong> e a data da visita, e o
+          paciente entra na coluna <strong>Home care</strong> da aba Acompanhamento, em Tarefas.
+          Vale o registro do relatório aprovado mais recente.</li>
 {NEGOCIACAO_NO_RELATORIO && (
         <li><strong>Negociação com o hospital</strong>: glosa de diárias, medicação negada,
           procedimento negado e troca de procedimento.</li>
@@ -426,21 +493,18 @@ export function ModuloPaciente({ irPara }: Props) {
         seguinte abre. Se faltar algo, o aviso aparece no alto da seção, em cima dos campos, e ela
         continua aberta.{' '}
         <strong>Registrar relatório</strong> continua valendo
-        de qualquer ponto. A prorrogação e os blocos de <strong>No período</strong>
+        de qualquer ponto. A prorrogação, o home care e os blocos de <strong>No período</strong>
         {NEGOCIACAO_NO_RELATORIO && <> e <strong>Negociação com o hospital</strong></>} abrem quando
         marcados. Nas listas, preencha a
         linha e clique em <strong>Adicionar</strong>; a última linha completa também entra ao
         registrar. O lápis devolve o item à linha para corrigir. Se o paciente teve alta, use o
         botão <strong>Alta</strong> do rodapé, ao lado de <strong>Registrar relatório</strong>: é o
-        mesmo do topo da ficha e vale na hora. Com o motivo <strong>Homecare</strong>, a alta pede
-        as perguntas de home care (solicitado, oxigenioterapia, mobilização, nível de consciência,
-        acesso venoso, traqueostomia, curativo e ostomias), todas obrigatórias, e a alimentação; as
-        respostas ficam no evento da alta na timeline.
+        mesmo do topo da ficha e vale na hora.
       </p>
       <p>
         Cada relatório aparece como um cartão com borda colorida pelo papel de quem o registrou, com
         data e hora, autor, médico responsável, os CIDs informados, um resumo do que foi marcado e,
-        quando há documento anexado, o nome dele. Prorrogação e negociação valem quando o
+        quando há documento anexado, o nome dele. Prorrogação, home care e negociação valem quando o
         relatório é aprovado. Clicar num relatório abre a ficha dele, só para leitura, com o que
         foi preenchido em cada seção, na mesma ordem da janela de registro (as negociações saem
         numa seção própria, <strong>Negociação com o hospital</strong>, no fim), e o botão{' '}
@@ -501,6 +565,7 @@ export function ModuloKanban({ irPara }: Props) {
   // Pedir pendência é do gestor, dos coordenadores e do admin: os demais leem
   // só como receber e resolver.
   const podePedir = podeExecutar(useAuth().role, 'criarPendencia')
+  const todosOsPacientes = useLeSobreTodosOsPacientes()
   return (
     <>
       <h3>Objetivo</h3>
@@ -775,12 +840,21 @@ export function ModuloKanban({ irPara }: Props) {
       <ul>
         <li>O perfil <strong>técnico</strong> vê as colunas de pacientes, que são a agenda de
           visitas dele, e a de aprovação, sem a cobrança de censo.</li>
+        {todosOsPacientes && (
+          <li>O filtro <strong>Todos os pacientes</strong>, do Painel Operacional, não muda o
+            quadro: o técnico e o coordenador técnico continuam recebendo só os pacientes dos
+            hospitais da área deles.</li>
+        )}
         <li>O perfil <strong>operacional</strong> vê as colunas de censos, que são a
           providência dele junto aos hospitais. Na aba <strong>Pacientes</strong>, vê a coluna{' '}
           <strong>Sem relatório</strong> e a de aprovação.</li>
         <li>Os coordenadores também trabalham no quadro: o <strong>coordenador técnico</strong>{' '}
           recebe as colunas do técnico, e o <strong>coordenador operacional</strong>, as do
-          operacional, com as mesmas abas.</li>
+          operacional, com as mesmas abas. Na coluna de aprovação, o coordenador técnico aprova,
+          como o técnico; o coordenador operacional acompanha a coluna, como o operacional, mas
+          não aprova. Nas
+          colunas de censos, o coordenador operacional desfaz a atualização na hora, sem pedido.
+          Os dois pedem pendências só ao próprio grupo.</li>
         <li>Quem acompanha as duas equipes alterna entre os quadros pelas abas{' '}
           <strong>Pacientes</strong> e <strong>Censos</strong>.</li>
         <li>A aba <strong>Pendências</strong> aparece para quem pode pedir pendências e para
@@ -889,6 +963,14 @@ export function ModuloUpload() {
         Receber os arquivos de censo que os hospitais enviam, em PDF, CSV ou Excel, ler
         automaticamente os pacientes, gravar as internações e altas, e dar ao usuário a chance de
         conferir e corrigir o que foi entendido antes de considerar o envio concluído.
+      </p>
+
+      <h3>Quem envia</h3>
+      <p>
+        Toda a equipe: o técnico, o operacional e os dois coordenadores<SoGestao>, além do
+        gestor e do diretor</SoGestao>. Não há diferença entre os
+        coordenadores aqui: os dois enviam, conferem e descartam do mesmo jeito. O analista interno
+        acompanha a operação, mas não envia censo.
       </p>
 
       <h3>Passo a passo</h3>

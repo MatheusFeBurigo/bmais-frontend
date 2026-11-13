@@ -19,6 +19,8 @@ const SECOES: Etapa[] = [
   { secao: 'quadro', titulo: 'Quadro clínico', obrigatoria: true },
   { secao: 'periodo', titulo: 'No período', obrigatoria: false },
   { secao: 'prorrogacao', titulo: 'Prorrogação', obrigatoria: false },
+  // Home care (13/11/2026): saiu da alta e veio para cá, como a prorrogação.
+  { secao: 'homecare', titulo: 'Home care', obrigatoria: false },
   { secao: 'negociacao', titulo: 'Negociação com o hospital', obrigatoria: false },
 ]
 

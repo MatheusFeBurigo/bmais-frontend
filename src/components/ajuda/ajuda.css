@@ -52,6 +52,16 @@
 .aj-table tbody tr:hover td{background:var(--surface-3)}
 .aj-key{color:var(--ink);font-weight:500}
 .aj-matrix td:not(:first-child),.aj-matrix th:not(:first-child){text-align:center}
+/* A matriz tem uma coluna por papel (oito com as de gestão, desde que os dois
+   coordenadores ganharam colunas próprias): o cabeçalho quebra linha em vez de
+   ser cortado pela moldura. */
+.aj-matrix thead th{white-space:normal;vertical-align:bottom}
+/* No celular, o cabeçalho de qualquer tabela quebra linha, e o que ainda não
+   couber rola para o lado dentro da moldura em vez de ser cortado. */
+@media(max-width:640px){
+  .aj-table thead th{white-space:normal;vertical-align:bottom}
+  .aj-table-wrap{overflow-x:auto}
+}
 .aj-mark{display:inline-grid;place-items:center;width:17px;height:17px}
 .aj-mark.yes{color:var(--success)}
 .aj-mark.no{color:var(--muted-3)}
@@ -109,6 +119,10 @@
 .aj-pager-btn{display:inline-flex;align-items:center;gap:9px;padding:9px 12px;border-radius:var(--r-sm);background:var(--surface);border:1px solid var(--border);cursor:pointer;font-family:inherit;text-align:left;color:var(--ink-2);min-width:0;transition:border-color .14s,box-shadow .14s}
 .aj-pager-btn:hover:not(:disabled){border-color:var(--accent);box-shadow:var(--shadow-xs)}
 .aj-pager-btn:disabled{opacity:0;pointer-events:none}
+/* Os dois botões ficam do tamanho do texto, cada um no seu canto (sem o
+   justify-self, o "Anterior" esticava até o meio da página). O max-width
+   segura o título longo dentro da coluna, com reticências. */
+.aj-pager-btn{justify-self:start;max-width:100%}
 .aj-pager-btn.end{justify-self:end;text-align:right}
 .aj-pager-arrow{flex-shrink:0;color:var(--accent)}
 .aj-pager-text{min-width:0;display:flex;flex-direction:column}

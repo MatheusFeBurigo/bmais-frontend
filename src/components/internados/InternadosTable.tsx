@@ -24,7 +24,9 @@ export interface InternadosTableProps {
   paginaAtual: number
   totalPaginas: number
   porPagina: number
-  onExportar: () => void
+  /** Ausente = sem o botão. No filtro "Todos os pacientes" o export seguiria
+   *  recortado pela área e sairia menor que a lista em tela. */
+  onExportar?: () => void
   /** Abre o modal de adicionar paciente (ação ao lado do Exportar). */
   /** Ausente = perfil somente leitura: o botão "Adicionar paciente" não aparece. */
   onAdicionarPaciente?: () => void
@@ -91,7 +93,7 @@ export default function InternadosTable({
         {/* Sem seletor de situação do relatório aqui: repetia os cards do topo
             (mesmo `filtro` da URL), que já recortam a lista e mostram a contagem. */}
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-          <button className="btn btn-outline btn-sm" onClick={onExportar}>Exportar</button>
+          {onExportar && <button className="btn btn-outline btn-sm" onClick={onExportar}>Exportar</button>}
           {onAdicionarPaciente && (
             <button className="btn btn-primary btn-sm" onClick={onAdicionarPaciente}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
@@ -192,6 +194,15 @@ export default function InternadosTable({
                       </button>
                     ) : (
                       <span style={{ fontSize: 'var(--t-sm)' }}>{p.hospital_nome || '—'}</span>
+                    )}
+                    {/* Filtro "Todos os pacientes": quem não é da área de quem
+                        vê. A ficha dele abre só para leitura. */}
+                    {p.fora_da_area && (
+                      <div style={{ marginTop: 3 }}>
+                        <span className="badge muted" title="Este hospital não é da sua área. A ficha abre só para leitura.">
+                          Fora da sua área
+                        </span>
+                      </div>
                     )}
                   </td>
                   <td style={{ maxWidth: 240 }}><div className="truncate fw-5">{identificacaoPaciente(p)}</div></td>

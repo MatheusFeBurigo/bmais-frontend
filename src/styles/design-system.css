@@ -672,7 +672,7 @@ button.qf-chip{line-height:inherit}
 /* Modal aberta POR CIMA de outra camada (ex.: a ficha do hospital chamada de
    dentro do drawer do paciente, z-index 51). Sem isto ela abriria atras. */
 .modal-backdrop.modal-sobreposta{z-index:60}
-.modal-foot{flex-shrink:0;padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.modal-foot{flex-shrink:0;padding:12px 20px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
 /* Telas baixas/estreitas: a modal encosta nas bordas para ganhar area util. */
 @media (max-width:560px),(max-height:560px){
   .modal-backdrop{padding:10px}

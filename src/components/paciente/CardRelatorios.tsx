@@ -15,6 +15,7 @@ import { ModalRelatorio } from './relatorio/ModalRelatorio'
 import { ResumoDetalhes } from './relatorio/ResumoDetalhes'
 import { ResumoFolhaRosa } from './SecaoFolhaRosa'
 import { ResumoProrrogacao } from './SecaoProrrogacao'
+import { ResumoHomecare } from './SecaoHomecare'
 import { useFormRelatorio, type ContextoFolhaRosa, type ContextoProrrogacao } from './useFormRelatorio'
 
 // Situação na aprovação do técnico. Aprovado não leva etiqueta: é o normal.
@@ -85,6 +86,7 @@ function RelatorioCard({ r, onAbrir }: { r: RelatorioItem; onAbrir?: () => void 
       )}
       {r.detalhes && <ResumoDetalhes d={r.detalhes} />}
       {r.prorrogacao && <ResumoProrrogacao p={r.prorrogacao} />}
+      {r.detalhes?.homecare && <ResumoHomecare h={r.detalhes.homecare} />}
       {r.folha_rosa && <ResumoFolhaRosa f={r.folha_rosa} />}
       {r.tem_anexo && (
         <div style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)', marginTop: 6 }}

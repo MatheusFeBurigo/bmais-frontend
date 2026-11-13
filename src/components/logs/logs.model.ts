@@ -166,6 +166,10 @@ export interface LoteDoRegistro {
   total: number
 }
 
+/** O que a confirmação desfaz: um arquivo do envio, ou o envio inteiro
+ *  (`arquivo` ausente, com os arquivos ainda abertos em `arquivos`). */
+export type AlvoDesfazer = Omit<LoteDoRegistro, 'arquivo'> & { arquivo?: string; arquivos: string[] }
+
 // Rotas que GRAVAM pacientes de censo: o processamento em fases e o envio
 // antigo de uma chamada só. O "1 arquivo(s) de censo enviado(s)" (stage) só
 // salva o arquivo, e o completar de pendência grava um paciente avulso.

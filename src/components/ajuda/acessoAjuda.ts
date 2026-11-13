@@ -67,6 +67,22 @@ export function useVeTodosOsPerfis(): boolean {
   return veGestao(role) || leAlemDoMenu(role)
 }
 
+// Filtro "Todos os pacientes" do Painel Operacional (09/11/2026): é do técnico e
+// do coordenador técnico (espelha ROLES_VER_TODOS_PACIENTES no backend). Leem o
+// passo a passo esses dois, quem lê a gestão (acompanha a equipe técnica) e o
+// analista, que lê além do menu. O operacional não tem o filtro.
+const PAPEIS_TODOS_OS_PACIENTES: readonly UserRole[] = ['tecnico', 'coordenador_tecnico']
+
+/** Pode ler sobre o filtro "Todos os pacientes"? */
+export function leSobreTodosOsPacientes(role: UserRole | null): boolean {
+  return (role != null && PAPEIS_TODOS_OS_PACIENTES.includes(role))
+    || veGestao(role) || leAlemDoMenu(role)
+}
+
+export function useLeSobreTodosOsPacientes(): boolean {
+  return leSobreTodosOsPacientes(useAuth().role)
+}
+
 /** Papéis que a réplica do cadastro de conta mostra: os da tela real, sem o de
  *  administrador, que a Ajuda não descreve. */
 export const PAPEIS_CADASTRO: readonly UserRole[] = ROLES_ORDEM.filter((r) => r !== 'admin')

@@ -21,6 +21,7 @@ export const importVolumetria = () => import('./pages/Volumetria')
 export const importRelatorio = () => import('./pages/Relatorio')
 export const importDocumentacao = () => import('./pages/DocumentacaoTecnica')
 export const importPortalProfissional = () => import('./pages/PortalProfissional')
+export const importAprovacoes = () => import('./pages/Aprovacoes')
 
 // Mapa rota → prefetch, consumido pela Sidebar via onMouseEnter/onFocus.
 export const prefetchPorRota: Record<string, () => Promise<unknown>> = {
@@ -37,6 +38,7 @@ export const prefetchPorRota: Record<string, () => Promise<unknown>> = {
   '/chamados': importChamados,
   '/progresso': importProgresso,
   '/distribuicao': importVolumetria,
+  '/aprovacoes': importAprovacoes,
   '/progresso/relatorio': importRelatorio,
   '/progresso/documentacao': importDocumentacao,
 }

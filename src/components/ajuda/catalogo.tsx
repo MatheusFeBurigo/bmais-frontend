@@ -10,7 +10,7 @@ import { lazy, type ComponentType } from 'react'
 import type { UserRole } from '../../types/api'
 import {
   IconAjustes, IconBalanca, IconEnvio, IconEquilibrio, IconFluxo,
-  IconGrafico, IconHistorico, IconObra, IconPaciente, IconPerfis, IconPulso,
+  IconGrafico, IconHistorico, IconNovidades, IconObra, IconPaciente, IconPerfis, IconPulso,
   IconQuadro, IconRede, IconVisao,
 } from './modulos'
 import type { ModuloAjuda } from './tipos'
@@ -28,6 +28,7 @@ const introducao = () => import('./conteudoIntroducao')
 const operacao = () => import('./conteudoOperacao')
 const gestao = () => import('./conteudoGestao')
 const administracao = () => import('./conteudoAdministracao')
+const novidades = () => import('./conteudoNovidades')
 
 export const MODULOS: readonly ModuloAjuda[] = [
   // ── Introdução: valem para todos os papéis ────────────────────────────────
@@ -46,6 +47,16 @@ export const MODULOS: readonly ModuloAjuda[] = [
     secao: 'Introdução',
     icone: IconPerfis,
     corpo: lazyCorpo(introducao, 'ModuloNavegacao'),
+  },
+  {
+    // Resumo das funcionalidades recentes (13/11/2026). Todos os papéis leem; a
+    // novidade do Painel do Gestor é filtrada dentro do módulo (conteudoNovidades).
+    id: 'o-que-ha-de-novo',
+    titulo: 'O que há de novo',
+    subtitulo: 'As funcionalidades mais recentes, explicadas uma a uma',
+    secao: 'Introdução',
+    icone: IconNovidades,
+    corpo: lazyCorpo(novidades, 'ModuloNovidades'),
   },
 
   // ── Operação ──────────────────────────────────────────────────────────────

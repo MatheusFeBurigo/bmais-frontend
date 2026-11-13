@@ -12,6 +12,7 @@ import { OperadoraPills, ChipsAtivos } from '../components/gestor/FiltrosBar'
 import FluxoCard from '../components/gestor/FluxoCard'
 import MediasJanelaCard from '../components/gestor/MediasJanelaCard'
 import TabelaPacientes from '../components/gestor/TabelaPacientes'
+import { SITUACOES } from '../components/gestor/gestor.model'
 import { FaixasDonut, HospBar, OpHospBar, RegBar } from '../components/gestor/charts'
 
 export default function Gestor() {
@@ -172,6 +173,19 @@ export default function Gestor() {
                 <span className={`pill-faixa${v.faixa === 'altas' ? ' active' : ''}`} onClick={() => v.toggleFaixa('altas')}><span className="faixa-dot" style={{ background: COR.verde }} />Altas</span>
               </div>
             </div>
+            {/* Situação (12/11/2026): prorrogados, negociação e homecare, com o
+                total de cada um no período. Recorta a lista junto com a faixa. */}
+            <div className="gestor-situacoes" role="group" aria-label="Situação">
+              <span className="topbar-lbl">Situação</span>
+              {SITUACOES.map((s) => (
+                <span key={s.key} title={s.titulo}
+                  className={`pill-faixa${v.situacao === s.key ? ' active' : ''}`}
+                  onClick={() => v.toggleSituacao(s.key)}>
+                  {s.label}
+                  <span className="fw-6 mono">{v.contagensSituacao[s.key]}</span>
+                </span>
+              ))}
+            </div>
             {/* Altas por motivo: é como o homecare (alta hospitalar) vira número. */}
             {v.faixa === 'altas' && (m.altas_por_motivo ?? []).length > 0 && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
@@ -183,7 +197,7 @@ export default function Gestor() {
                 ))}
               </div>
             )}
-            <TabelaPacientes pacientes={v.visiveis} onSelecionar={setDrawerId} onPrefetch={prefetchPaciente} vazio={v.modoIntervalo ? 'Nenhum paciente neste período' : v.diaHistorico ? 'Nenhum paciente neste dia' : 'Nenhum paciente internado'} />
+            <TabelaPacientes pacientes={v.visiveis} onSelecionar={setDrawerId} onPrefetch={prefetchPaciente} vazio={v.situacao ? 'Nenhum paciente com esta situação' : v.modoIntervalo ? 'Nenhum paciente neste período' : v.diaHistorico ? 'Nenhum paciente neste dia' : 'Nenhum paciente internado'} />
           </div>
 
           </Deferred>

@@ -150,6 +150,9 @@ export interface Internacao {
   // consolidada (todas as operadoras), para a tabela dizer de quem é cada linha.
   operadora_key?: string
   operadora_nome?: string | null
+  /** Filtro "Todos os pacientes": o hospital não é da área de quem vê a lista.
+   *  Só vem nesse filtro; ausente = da área. */
+  fora_da_area?: boolean
 }
 
 /** Contagens por hospital dentro de `DashboardStats.por_hospital`.
@@ -237,6 +240,10 @@ export interface DashboardOverview {
   lista: Array<{ key: string; nome: string }>
   hoje_efetivo: string
   medias?: DashboardMedias
+  /** Filtro "Todos os pacientes": `pode_ver_todos` diz se a pessoa tem o filtro
+   *  (técnico e coordenador técnico com área), `todos` se o panorama veio da
+   *  rede inteira. Ausente com o backend antigo. */
+  visao?: { pode_ver_todos: boolean; todos: boolean }
 }
 
 /** Operadora no sidebar. Espelha `sidebar_data` em application/internacoes.py. */
@@ -974,6 +981,25 @@ export interface PacienteDia {
   /** Só nas altas: "dd/mm/aaaa" e a chave do motivo (None = sem motivo). */
   data_alta?: string | null
   motivo_alta?: string | null
+  /** Filtros de situação do Painel do Gestor (12/11/2026). A prorrogação que
+   *  vale no dia analisado (só internados) e a negociação (folha rosa) aprovada
+   *  mais recente da internação. Ausentes com o backend antigo. */
+  prorrogacao?: { ate: string | null; pausada: boolean } | null
+  negociacao?: NegociacaoPaciente | null
+  /** Home care do relatório aprovado mais recente (13/11/2026). */
+  homecare?: HomecarePaciente | null
+}
+
+/** Negociação (folha rosa) aprovada mais recente da internação, no Painel do
+ *  Gestor e nos cards das Tarefas: espelho de
+ *  `domain/folha_rosa.ultima_por_internacao`. Datas ISO. */
+export interface NegociacaoPaciente {
+  de: string | null
+  para: string | null
+  diarias: number | null
+  data_inicio: string | null
+  data_fim: string | null
+  aceite: AceiteFolhaRosa | null
 }
 
 export interface GestorMetrics {
@@ -1022,7 +1048,11 @@ export interface GestorResposta {
 
 /** Coluna do kanban = categoria de tarefa. */
 export type KanbanColuna = 'sem_relatorio' | 'aguardando_visita' | 'visitas_atrasadas' | EstadoCenso
-  | ColunaAprovacao
+  | ColunaAprovacao | ColunaAcompanhamento
+
+/** Aba Acompanhamento (13/11/2026): prorrogação e negociação em colunas
+ *  próprias. Não são pendência; o paciente pode estar em dia. */
+export type ColunaAcompanhamento = 'prorrogados' | 'negociacao' | 'aguardando_aceite' | 'homecare'
 
 /** Coluna de aprovação (no quadro de pacientes): o relatório do administrativo
  *  espera quem aprova. "Devolvidos" saiu em 21/10/2026. */
@@ -1136,6 +1166,31 @@ export interface DetalhesRelatorio {
   medicacoes_negadas?: MedicacaoNegadaRelatorio[]
   procedimentos_negados?: ProcedimentoRelatorio[]
   trocas_procedimento?: TrocaProcedimentoRelatorio[]
+  /** Home care (13/11/2026): só quando marcado no relatório. */
+  homecare?: HomecareRelatorio
+}
+
+/** As respostas de home care do relatório (13/11/2026; de 08/10 a 13/11 iam na
+ *  alta com o motivo Homecare). Chaves dos catálogos de lib/altaHomecare.
+ *  Nenhuma é obrigatória: null = não respondida. */
+export interface HomecareRelatorio {
+  solicitado: boolean | null
+  oxigenioterapia: string | null
+  mobilizacao: string | null
+  consciencia: string | null
+  acesso_venoso: boolean | null
+  traqueostomia: boolean | null
+  curativo: boolean | null
+  ostomias: boolean | null
+  alimentacao: string[]
+}
+
+/** O home care que vale na internação: o do relatório aprovado da visita mais
+ *  recente (domain/alta_homecare.ultimo_por_internacao). */
+export interface HomecarePaciente extends HomecareRelatorio {
+  relatorio_id: number | null
+  /** ISO. */
+  data_visita: string | null
 }
 
 /** Uma linha do catálogo TUSS (GET /api/tuss). */
@@ -1346,6 +1401,12 @@ export interface KanbanTarefa {
   // ── Prorrogação: etiqueta "Prorrogado até" / "Prorrogação terminou" ───────
   prorrogacao_ate?: string | null
   prorrogacao_pausada?: boolean
+  /** Negociação (folha rosa) aprovada mais recente: só nos cards das colunas
+   *  "Negociação" e "Aguardando aceite" da aba Acompanhamento (13/11/2026). */
+  negociacao?: NegociacaoPaciente | null
+  /** Home care do relatório aprovado mais recente: só nos cards da coluna
+   *  "Home care" da aba Acompanhamento (13/11/2026). */
+  homecare?: HomecarePaciente | null
   /** Quem da equipe responde pelo card (23/10/2026): quem o tem no próprio
    *  quadro, pela área da Distribuição de tarefas. Vazio = ninguém cobre;
    *  ausente = o backend não conseguiu montar a equipe. */
@@ -1370,6 +1431,11 @@ export interface KanbanColunas {
   aguardando_retorno?: KanbanTarefa[]
   censos_processados?: KanbanTarefa[]
   aguardando_aprovacao?: KanbanTarefa[]
+  // Aba Acompanhamento (13/11/2026). Ausentes com o backend antigo.
+  prorrogados?: KanbanTarefa[]
+  negociacao?: KanbanTarefa[]
+  aguardando_aceite?: KanbanTarefa[]
+  homecare?: KanbanTarefa[]
 }
 
 /** Payload do GET /api/kanban — tarefas + opções de filtro (recortadas ao escopo).
@@ -1867,6 +1933,13 @@ export interface InternacaoDados {
   prorrogacao_justificativa_desc?: string | null
   prorrogacao_pausada?: boolean | null
   prorrogacao_situacao?: SituacaoProrrogacao | null
+  /** Home care do relatório aprovado mais recente (13/11/2026): no topo da
+   *  ficha, como o "Prorrogado até". Ausente com o backend antigo. */
+  homecare?: HomecarePaciente | null
+  /** O paciente não é da área de quem abriu a ficha (o filtro "Todos os
+   *  pacientes" leva o técnico até ele): a ficha abre só para leitura. Ausente
+   *  com o backend antigo. */
+  fora_da_area?: boolean
 }
 
 export type TimelineVariante =

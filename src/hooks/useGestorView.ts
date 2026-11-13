@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useGestor } from './useGestor'
 import { ehHoje, labelCurto } from '../lib/datas'
-import { FAIXA_INFO, JANELAS, type FaixaFiltro } from '../components/gestor/gestor.model'
+import { FAIXA_INFO, JANELAS, SITUACOES, type FaixaFiltro, type SituacaoFiltro } from '../components/gestor/gestor.model'
 import type { ChipFiltro } from '../components/gestor/FiltrosBar'
 
 export function useGestorView() {
@@ -21,6 +21,9 @@ export function useGestorView() {
   const fFim = params.get('fim') || ''
 
   const [faixa, setFaixa] = useState<FaixaFiltro>('')
+  // Situação (prorrogados, negociação, homecare...): recorte da lista, por cima
+  // da faixa. Não refaz a busca: os dados já vêm em cada paciente.
+  const [situacao, setSituacao] = useState<SituacaoFiltro>('')
 
   // O backend devolve métricas e opções de filtro num único payload aninhado
   // ({ metrics, filtros }) — não há rota /gestor/filtros separada.
@@ -61,6 +64,10 @@ export function useGestorView() {
     setFaixa((cur) => (cur === f ? '' : f))
   }
 
+  function toggleSituacao(s: SituacaoFiltro) {
+    setSituacao((cur) => (cur === s ? '' : s))
+  }
+
   // Modo intervalo: painel ancorado no período de um bucket do gráfico (clique
   // numa coluna agrupada — semana no 6m, mês no 1a, ou 1 dia no 30d/90d).
   const modoIntervalo = !!m && m.modo_intervalo
@@ -90,13 +97,25 @@ export function useGestorView() {
   useEffect(() => { setGraficoAberto(!periodoAtivo) }, [periodoAtivo])
 
   const visiveis = useMemo(() => {
-    const lista = m?.pacientes_dia ?? []
+    const sit = SITUACOES.find((s) => s.key === situacao)
+    const lista = (m?.pacientes_dia ?? []).filter((p) => !sit || sit.aplica(p))
     if (faixa === 'altas') return lista.filter((p) => p.situacao === 'ALTA')
     // Sem dia escolhido a lista traz também as altas de hoje (para o "Altas do
     // Dia"), mas "Todos" segue sendo "Pacientes internados", como diz o título.
-    if (!faixa) return periodoAtivo ? lista : lista.filter((p) => p.situacao === 'INTERNADO')
+    // Com uma situação escolhida as altas ficam: a negociação e o home care de
+    // quem saiu hoje também contam (e as altas antigas com motivo Homecare).
+    if (!faixa) return periodoAtivo || sit ? lista : lista.filter((p) => p.situacao === 'INTERNADO')
     return lista.filter((p) => p.faixa === faixa && p.situacao === 'INTERNADO')
-  }, [m, faixa, periodoAtivo])
+  }, [m, faixa, situacao, periodoAtivo])
+
+  // Quantos pacientes da lista do período casam cada situação, sem os demais
+  // recortes: o número diz quantos casos existem, e escolher uma faixa não zera
+  // os outros contadores.
+  const contagensSituacao = useMemo(() => {
+    const lista = m?.pacientes_dia ?? []
+    return Object.fromEntries(SITUACOES.map((s) => [s.key, lista.filter(s.aplica).length])) as
+      Record<Exclude<SituacaoFiltro, ''>, number>
+  }, [m])
 
   // Todos os recortes ativos como chips removíveis — incluindo o dia. Cada clique
   // num gráfico (operadora/hospital/região/faixa) ou num dia gera o chip aqui.
@@ -112,6 +131,8 @@ export function useGestorView() {
     if (fHospital) chipsFiltros.push({ tipo: 'Hospital', label: nomeHospFiltrado, onRemove: () => setFiltro({ hospital: '' }) })
     if (fRegiao) chipsFiltros.push({ tipo: 'Região', label: fRegiao, onRemove: () => setFiltro({ regiao: '' }) })
     if (faixa) chipsFiltros.push({ tipo: 'Permanência', label: faixaLabel, onRemove: () => setFaixa('') })
+    const sit = SITUACOES.find((s) => s.key === situacao)
+    if (sit) chipsFiltros.push({ tipo: 'Situação', label: sit.label, onRemove: () => setSituacao('') })
   }
 
   // Desfaz TUDO de uma vez e restaura o estado inicial: zera os recortes
@@ -119,6 +140,7 @@ export function useGestorView() {
   // expandir (30 dias) e as médias reaparecem, como no "Ver todo o período".
   const limparTudo = () => {
     setFaixa('')
+    setSituacao('')
     setFiltro({ operadora: '', hospital: '', regiao: '', data: '', inicio: '', fim: '' })
   }
 
@@ -142,6 +164,8 @@ export function useGestorView() {
     m, filtros, isLoading, isError, atualizando,
     // estado de faixa + acordeão
     faixa, toggleFaixa, graficoAberto, setGraficoAberto,
+    // estado da situação (prorrogados, negociação, homecare...)
+    situacao, toggleSituacao, contagensSituacao,
     // derivações de view
     diaHistorico, modoIntervalo, periodoAtivo, sufixoDia, nomeOpFiltrada, nomeHospFiltrado,
     janelaTitulo, visiveis, chipsFiltros, subtitle,

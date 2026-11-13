@@ -18,7 +18,7 @@ import { BlocoOpcional } from './relatorio/BlocoOpcional'
 import type { FormRelatorio } from './useFormRelatorio'
 
 /** Rótulos do aceite (espelho de domain/folha_rosa.ACEITES). */
-const ACEITES_FOLHA_ROSA: Record<AceiteFolhaRosa, string> = {
+export const ACEITES_FOLHA_ROSA: Record<AceiteFolhaRosa, string> = {
   sim: 'Sim, carimbado',
   nao: 'Não',
   aguardando: 'Aguardando',

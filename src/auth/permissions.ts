@@ -20,6 +20,7 @@ export type Screen =
   | 'logs'
   | 'progresso'
   | 'volumetria'
+  | 'aprovacoes'
 
 // Telas que cada papel NÃO pode ver. Ausência de entrada = vê tudo.
 const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
@@ -75,6 +76,11 @@ const EXCLUSIVAS: Partial<Record<Screen, readonly UserRole[]>> = {
   // como dividir hospitais entre administrativos/técnicos. Admin vê para supervisão.
   // O gestor entrou em 02/10/2026: vê e divide a carga dos dois grupos.
   volumetria: ['coordenador_administrativo', 'coordenador_tecnico', 'gestor', 'admin'],
+  // Aprovações (09/11/2026): os pedidos do técnico para registrar relatório de
+  // paciente fora da área. Decidem o coordenador técnico e o gestor (pedido do
+  // usuário) e o admin, que supervisiona. Espelha ROLES_DECIDIR_AUTORIZACAO no
+  // backend (application/autorizacao_relatorio.py).
+  aprovacoes: ['coordenador_tecnico', 'gestor', 'admin'],
 }
 
 // Papéis SOMENTE LEITURA: veem as telas, mas nenhuma ação que altera dados.
@@ -124,12 +130,13 @@ const ROTA_DA_SCREEN: Record<Screen, string> = {
   logs: '/logs',
   progresso: '/progresso',
   volumetria: '/distribuicao',
+  aprovacoes: '/aprovacoes',
 }
 
 // Ordem de preferência ao escolher a "tela inicial" de um papel barrado.
 const ORDEM_FALLBACK: readonly Screen[] = [
   'operacional', 'gestor', 'diretoria', 'kanban', 'logs', 'upload', 'configuracoes', 'equipe',
-  'volumetria',
+  'volumetria', 'aprovacoes',
   // Progresso fica por último de propósito: é tela de acompanhamento, e cair
   // nela ao ser barrado em outra não ajudaria ninguém a trabalhar.
   'progresso',
@@ -185,6 +192,10 @@ const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
   // coordenadores. Quem cada um alcança, o backend decide. Espelha
   // ROLES_CRIAR_PENDENCIA no backend.
   criarPendencia: ['gestor', 'coordenador_tecnico', 'coordenador_administrativo', 'admin'],
+  // Pedir autorização para registrar relatório de paciente FORA da área
+  // (09/11/2026): quem vê "Todos os pacientes" na Visão Geral. Quem decide está
+  // em EXCLUSIVAS.aprovacoes. Espelha ROLES_PEDIR_AUTORIZACAO no backend.
+  pedirAutorizacaoRelatorio: ['tecnico', 'coordenador_tecnico'],
   // Excluir uma operadora que tem pacientes apaga todos eles, de vez: destrutivo,
   // como apagar um paciente. A operadora sem paciente segue com quem cuida do
   // cadastro. O backend recusa os demais (403, DELETE /api/configuracoes/operadora).
@@ -193,7 +204,7 @@ const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
 
 export type AcaoProtegida = 'registrarRelatorio' | 'criarConvenio' | 'agendarVisita' | 'atribuirCid'
   | 'darAlta' | 'aprovarRelatorio' | 'controlarProrrogacao' | 'leitoHomecare' | 'vincularPessoa'
-  | 'criarPendencia' | 'excluirPacientesDaOperadora'
+  | 'criarPendencia' | 'excluirPacientesDaOperadora' | 'pedirAutorizacaoRelatorio'
 
 /** True se o papel pode executar a ação. `role` null/desconhecido NÃO libera:
  *  ação sensível exige papel resolvido (diferente de `podeVer`, que é permissivo). */
@@ -214,6 +225,16 @@ const GESTAO_OPERACOES: ReadonlySet<UserRole> = new Set<UserRole>(['admin', 'ana
 /** True se o papel gere a tela Operações inteira (inclusive contas de login). */
 export function podeGerirOperacoes(role: UserRole | null): boolean {
   return !!role && GESTAO_OPERACOES.has(role)
+}
+
+/** True se o papel desfaz um envio de censo em Movimentações: quem envia censo
+ *  e, desde 12/11/2026 (pedido do usuário), o analista, que acompanha a trilha e
+ *  precisava reverter um envio sem depender do admin. É exceção dele ao
+ *  somente-leitura, como a tela Operações; subir censo continua fechado a ele.
+ *  Espelha ROLES_DESFAZER_ENVIO do backend. */
+export function podeDesfazerEnvio(role: UserRole | null): boolean {
+  if (!role || PROFISSIONAL.has(role)) return false
+  return role === 'analista' || podeVer(role, 'upload')
 }
 
 /** True se o papel pode criar ou alterar uma conta com o papel informado.

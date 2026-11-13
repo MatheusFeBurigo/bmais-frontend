@@ -1,9 +1,9 @@
 // Ficha do relatório (08/10/2026): o que foi preenchido, só para ler. Abre ao
 // clicar num relatório na timeline (ou no card Relatórios da ficha). Segue as
 // seções da modal "Registrar relatório", na mesma ordem (Visita, Quadro
-// clínico, Quadro de internação, No período, Prorrogação: as obrigatórias
-// primeiro, desde 20/10/2026), mas só mostra o que tem conteúdo, em listas e
-// tabelas simples.
+// clínico, Quadro de internação, No período, Prorrogação, Home care: as
+// obrigatórias primeiro, desde 20/10/2026), mas só mostra o que tem conteúdo,
+// em listas e tabelas simples.
 //
 // Os dados vêm da lista de relatórios da internação (o mesmo cache do card
 // Relatórios). O evento novo traz o id do relatório; o antigo, sem id, é achado
@@ -22,8 +22,9 @@ import { podeVerFichaPaciente } from '../../../auth/permissions'
 import { useInternacaoRelatorios } from '../../../hooks/useInternacao'
 import { dataBR, dataHora, diariasNoPeriodo } from '../../../lib/datas'
 import { CARATER, TIPOS_ALTO_CUSTO, TIPOS_INTERNACAO, rotulo } from '../../../lib/relatorioDetalhes'
+import { ALIMENTACAO, CONSCIENCIA, MOBILIZACAO, OXIGENIOTERAPIA } from '../../../lib/altaHomecare'
 import { baixarAnexoRelatorio } from '../../../services/internacao.service'
-import type { RelatorioItem } from '../../../types/api'
+import type { HomecareRelatorio, RelatorioItem } from '../../../types/api'
 import { GerarRelatorioProrrogacao } from '../../porto/GerarRelatorioProrrogacao'
 import { AutorChip } from '../../StatusBadge'
 import { LoadingState, Modal, Spinner } from '../../ui'
@@ -147,6 +148,25 @@ function Anexo({ r }: { r: RelatorioItem }) {
   )
 }
 
+const simNao = (v?: boolean | null) => (v == null ? '' : v ? 'Sim' : 'Não')
+const rotHc = (lista: readonly { key: string; label: string }[], key?: string | null) =>
+  lista.find((x) => x.key === key)?.label ?? key ?? ''
+
+/** As respostas de home care (13/11/2026), na ordem da modal. */
+function homecareItens(h: HomecareRelatorio): [string, ReactNode][] {
+  return [
+    ['Home care solicitado', simNao(h.solicitado)],
+    ['Oxigenioterapia', rotHc(OXIGENIOTERAPIA, h.oxigenioterapia)],
+    ['Mobilização', rotHc(MOBILIZACAO, h.mobilizacao)],
+    ['Nível de consciência', rotHc(CONSCIENCIA, h.consciencia)],
+    ['Acesso venoso', simNao(h.acesso_venoso)],
+    ['Traqueostomia', simNao(h.traqueostomia)],
+    ['Curativo', simNao(h.curativo)],
+    ['Ostomias', simNao(h.ostomias)],
+    ['Alimentação', (h.alimentacao ?? []).map((a) => rotHc(ALIMENTACAO, a)).join(', ')],
+  ]
+}
+
 /** As seções preenchidas do relatório, na ordem da modal de registro. Leva os
  *  estilos junto: a folha de impressão também a usa (sem as ações). */
 export function ConteudoRelatorio({ r, acaoProrrogacao }: {
@@ -248,6 +268,14 @@ export function ConteudoRelatorio({ r, acaoProrrogacao }: {
       {!prr && r.tem_anexo && (
         <Secao titulo="Documento">
           <Anexo r={r} />
+        </Secao>
+      )}
+
+      {det.homecare && (
+        <Secao titulo="Home care">
+          {homecareItens(det.homecare).some(([, v]) => v !== '')
+            ? <Dados itens={homecareItens(det.homecare)} />
+            : <div className="fx-vazio">Registrado, sem respostas.</div>}
         </Secao>
       )}
 

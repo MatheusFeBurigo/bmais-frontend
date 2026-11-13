@@ -203,6 +203,17 @@ export function ModuloOperacoes() {
 
       <CadastroDeConta />
 
+      <Callout tipo="info" titulo="Coordenador técnico ou coordenador operacional?">
+        Escolha pela equipe que a pessoa vai coordenar. O <strong>coordenador técnico</strong>{' '}
+        coordena quem faz as visitas e registra os relatórios: divide os hospitais entre os
+        técnicos, aprova o relatório do operacional e decide os pedidos de relatório fora da área.
+        O <strong>coordenador operacional</strong> coordena quem envia e cobra os censos: divide as
+        operadoras entre os operacionais e pausa e retoma a prorrogação. Nos dois papéis a etapa de
+        área não aparece no cadastro: os hospitais da pessoa vêm da Distribuição de tarefas. Para
+        promover alguém que já tem conta, use <strong>Editar</strong> e troque o nível de acesso;
+        depois, confira a área dela na Distribuição de tarefas.
+      </Callout>
+
       <ComoFazer
         titulo="Desativar ou excluir um auditor"
         passos={[

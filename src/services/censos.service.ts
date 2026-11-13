@@ -179,6 +179,36 @@ export interface ReverterEnvioResposta {
   hospital_nome?: string | null
 }
 
+/** Um grupo dos pacientes que o lote só ATUALIZOU, pelo envio que os criou. */
+export interface OrigemReversao {
+  censo_id: number
+  /** Sessão do envio de origem; `null` quando ele está além da janela do
+   *  desfazer (200 envios) ou fora do escopo. */
+  sessao: string | null
+  arquivo: string | null
+  processado_em: string | null
+  pacientes: number
+  /** O desfazer ainda alcança o envio de origem (na janela e aberto). */
+  desfazivel: boolean
+  /** Mesmo conteúdo (hash) de um dos arquivos a desfazer: é o reenvio dele. */
+  mesmo_arquivo: boolean
+}
+
+/** O que o desfazer vai apagar, antes de apagar (12/11/2026). */
+export interface PreviaReversao {
+  ok: boolean
+  sessao: string
+  arquivo: string | null
+  /** Pacientes que o lote criou: os que saem. */
+  criados: number
+  /** Pacientes que já existiam e o lote só atualizou: ficam. */
+  atualizados: number
+  /** De qual envio vieram os `atualizados`, do maior grupo ao menor. */
+  origens: OrigemReversao[]
+  /** Atualizados sem envio de origem (cadastro manual ou antigo). */
+  sem_envio: number
+}
+
 /** Salva neste hospital (`salvar`) ou descarta os pacientes que o envio segurou
  *  por já estarem em OUTRO hospital com o mesmo atendimento (13/11/2026). */
 export function decidirOutroHospital(
@@ -188,6 +218,14 @@ export function decidirOutroHospital(
     method: 'POST',
     body: { pendencia_ids: pendenciaIds, salvar },
   })
+}
+
+/** Prévia do desfazer de um envio (ou de `arquivo`): quantos saem, quantos
+ *  ficam e de onde vieram os que ficam. Um reenvio do mesmo arquivo não cria
+ *  ninguém, e o desfazer dele removia 0 sem aviso. */
+export function fetchPreviaReversao(sessao: string, arquivo?: string): Promise<PreviaReversao> {
+  const q = arquivo ? `?arquivo=${encodeURIComponent(arquivo)}` : ''
+  return apiFetch(`/upload/envios/${encodeURIComponent(sessao)}/previa${q}`)
 }
 
 /** Envios de censo recentes, já recortados ao escopo de hospitais do usuário.

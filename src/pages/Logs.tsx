@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { ehSomenteLeitura, podeVer, rotaFallback } from '../auth/permissions'
+import { ehSomenteLeitura, podeDesfazerEnvio, podeVer, rotaFallback } from '../auth/permissions'
 import { usePageHeader } from '../components/PageHeader'
 import Tabs from '../components/Tabs'
 import Toast from '../components/Toast'
@@ -23,16 +23,14 @@ import FiltrosAuditoria from '../components/logs/FiltrosAuditoria'
 import TabelaAuditoria from '../components/logs/TabelaAuditoria'
 import UsuariosPainel from '../components/logs/UsuariosPainel'
 import DesfazerLote from '../components/logs/DesfazerLote'
-import { ConfirmarModal } from '../components/ConfirmarModal'
+import ConfirmarDesfazerLote from '../components/logs/ConfirmarDesfazerLote'
 import { localStyles } from '../components/logs/logs.styles'
-import { PERIODOS, lotesDoRegistro, nomeDoUsuario, type LoteDoRegistro } from '../components/logs/logs.model'
+import { PERIODOS, lotesDoRegistro, nomeDoUsuario, type AlvoDesfazer } from '../components/logs/logs.model'
 import { useLogsView } from '../hooks/useLogsView'
-import { useDefinirAtivoUsuario, useDesfazerLote, useEnviosCenso } from '../hooks/useAuditoria'
+import { useDefinirAtivoUsuario, useDesfazerLote, useEnviosCenso, usePreviaReversao } from '../hooks/useAuditoria'
+import { dataHora } from '../lib/datas'
+import type { OrigemReversao } from '../services/censos.service'
 import type { AuditoriaUsuario } from '../types/api'
-
-/** O que a confirmação desfaz: um arquivo do envio, ou o envio inteiro
- *  (`arquivo` ausente, com os arquivos ainda abertos em `arquivos`). */
-type AlvoDesfazer = Omit<LoteDoRegistro, 'arquivo'> & { arquivo?: string; arquivos: string[] }
 
 const IconRefresh = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
@@ -58,9 +56,10 @@ export default function Logs() {
   const totalTrilha = v.trilha.data?.total ?? 0
   const atualizando = v.trilha.isFetching || v.resumo.isFetching
 
-  // Desfazer lote (27/10/2026): só quem envia censo desfaz um envio, a mesma regra
-  // da tela de Envio e do backend (requer_envio_censo). O analista lê a trilha.
-  const podeDesfazer = liberado && podeVer(role, 'upload')
+  // Desfazer lote (27/10/2026): quem envia censo desfaz um envio, e o analista
+  // também desde 12/11/2026 (pedido do usuário). Mesma regra do backend
+  // (requer_desfazer_envio); fora isso, o analista só lê a trilha.
+  const podeDesfazer = liberado && podeDesfazerEnvio(role)
   const envios = useEnviosCenso(podeDesfazer)
   const enviosPorSessao = useMemo(
     () => new Map((envios.data?.envios ?? []).map((e) => [e.sessao, e])),
@@ -70,16 +69,47 @@ export default function Logs() {
   const desfazendo = desfazerLote.isPending && desfazerLote.variables
     ? `${desfazerLote.variables.sessao}|${desfazerLote.variables.arquivo ?? '*'}` : null
 
-  async function desfazer(alvo: AlvoDesfazer) {
+  // A prévia (12/11/2026): quantos saem, quantos ficam e de onde vieram. É ela
+  // que impede o "✓ Lote desfeito" com 0 removidos num reenvio do mesmo arquivo.
+  const previa = usePreviaReversao(confirmarLote
+    ? { sessao: confirmarLote.sessao, arquivo: confirmarLote.arquivo } : null)
+  const [desfazendoEmSequencia, setDesfazendoEmSequencia] = useState(false)
+
+  /** Desfaz o lote; antes dele, os envios do mesmo arquivo que criaram os
+   *  pacientes (`origens`, escolhidos na confirmação). A origem vai primeiro:
+   *  se ela falhar, este lote fica como estava. */
+  async function desfazer(alvo: AlvoDesfazer, origens: OrigemReversao[] = []) {
+    const plural = (n: number) => `${n} paciente${n === 1 ? '' : 's'} removido${n === 1 ? '' : 's'}`
+    let removidos = 0
+    const feitos: string[] = []
+    // Trava a confirmação na sequência inteira: entre um desfazer e o outro o
+    // `isPending` da mutação volta a falso e os botões aceitariam outro clique.
+    setDesfazendoEmSequencia(true)
     try {
+      for (const o of origens) {
+        if (!o.sessao) continue
+        const r = await desfazerLote.mutateAsync({ sessao: o.sessao, arquivo: o.arquivo ?? undefined })
+        removidos += r.removidos
+        feitos.push(`o envio de ${dataHora(o.processado_em)}`)
+      }
       const r = await desfazerLote.mutateAsync({ sessao: alvo.sessao, arquivo: alvo.arquivo })
-      const removidos = `${r.removidos} paciente${r.removidos === 1 ? '' : 's'} removido${r.removidos === 1 ? '' : 's'}`
-      setToast(alvo.arquivo
-        ? `✓ Lote desfeito: ${removidos} (${alvo.arquivo})`
-        : `✓ Envio desfeito: ${removidos} (${alvo.arquivos.length} arquivos)`)
+      removidos += r.removidos
+      const qual = alvo.arquivo ? `(${alvo.arquivo})` : `(${alvo.arquivos.length} arquivos)`
+      if (removidos === 0) {
+        // Nada saiu: dizer isso, e não "✓ desfeito".
+        const ficaram = previa.data?.atualizados ?? 0
+        setToast(`Nenhum paciente removido ${qual}: ${ficaram > 0
+          ? `os ${ficaram} deste lote já existiam antes dele`
+          : 'este lote não criou pacientes'}. O lote ficou marcado como desfeito.`)
+      } else {
+        setToast(`✓ ${alvo.arquivo ? 'Lote desfeito' : 'Envio desfeito'}${feitos.length ? `, junto com ${feitos.join(' e ')}` : ''}: ${plural(removidos)} ${qual}`)
+      }
     } catch (e) {
-      setToast(`Erro ao desfazer: ${(e as Error).message}`)
+      setToast(feitos.length
+        ? `Desfeito ${feitos.join(' e ')} (${plural(removidos)}), mas este lote falhou: ${(e as Error).message}`
+        : `Erro ao desfazer: ${(e as Error).message}`)
     } finally {
+      setDesfazendoEmSequencia(false)
       setConfirmarLote(null)
     }
   }
@@ -257,36 +287,15 @@ export default function Logs() {
         />
       )}
       {confirmarLote && (
-        <ConfirmarModal
-          titulo={confirmarLote.arquivo ? 'Desfazer este lote?' : 'Desfazer o envio inteiro?'}
-          perigo
-          confirmar="Apagar e desfazer"
-          cancelar="Manter como está"
-          ocupado={desfazerLote.isPending}
+        <ConfirmarDesfazerLote
+          alvo={confirmarLote}
+          previa={previa.data}
+          carregando={previa.isLoading}
+          erro={previa.error ? (previa.error as Error).message : null}
+          ocupado={desfazerLote.isPending || desfazendoEmSequencia}
           onCancelar={() => setConfirmarLote(null)}
-          onConfirmar={() => desfazer(confirmarLote)}
-        >
-          {confirmarLote.arquivo ? (
-            <div>
-              Os pacientes que <strong>{confirmarLote.arquivo}</strong> criou
-              {confirmarLote.hospital && <> em <strong>{confirmarLote.hospital}</strong></>} serão
-              apagados ({confirmarLote.total} gravado{confirmarLote.total === 1 ? '' : 's'} por este arquivo,
-              entre criados e atualizados). Esta ação não pode ser desfeita.
-            </div>
-          ) : (
-            <div>
-              Os pacientes que os <strong>{confirmarLote.arquivos.length} arquivos</strong> deste envio
-              criaram ({confirmarLote.arquivos.join(', ')})
-              {confirmarLote.hospital && <> em <strong>{confirmarLote.hospital}</strong></>} serão
-              apagados ({confirmarLote.total} gravados, entre criados e atualizados). Esta ação não
-              pode ser desfeita.
-            </div>
-          )}
-          <div>
-            Pacientes que já existiam antes e foram apenas atualizados por este envio continuam no
-            sistema, com os dados que tinham.
-          </div>
-        </ConfirmarModal>
+          onConfirmar={(origens) => desfazer(confirmarLote, origens)}
+        />
       )}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </>

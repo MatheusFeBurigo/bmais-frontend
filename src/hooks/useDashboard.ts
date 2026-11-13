@@ -15,6 +15,7 @@ import {
   getSidebarCache,
   LOTE_LISTA,
   type DashboardParams,
+  type EscopoPacientes,
 } from '../services/dashboard.service'
 
 /**
@@ -24,17 +25,21 @@ import {
  * para refletir ajustes feitos FORA desta aba: upload de outro analista, relatório
  * do técnico, cron. Mutações locais seguem pela invalidação por evento.
  */
-export function useDashboardOverview() {
+export function useDashboardOverview(escopo: EscopoPacientes = '') {
   return useQuery({
-    queryKey: queryKeys.dashboardOverview(),
-    queryFn: fetchDashboardOverview,
+    queryKey: queryKeys.dashboardOverview(escopo),
+    queryFn: () => fetchDashboardOverview(escopo),
+    // Trocar "Minha área" ↔ "Todos os pacientes" mantém o panorama anterior na
+    // tela até o novo chegar, como a troca de operadora faz com a lista.
+    placeholderData: keepPreviousData,
     ...opcoesAutoRefresh,
   })
 }
 
 export function useDashboard(params: DashboardParams, opts?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: queryKeys.dashboard(params.operadora, params.filtro, params.hospital ?? '', params.limite ?? 0),
+    queryKey: queryKeys.dashboard(params.operadora, params.filtro, params.hospital ?? '', params.escopo ?? '',
+      params.limite ?? 0),
     queryFn: () => fetchDashboard(params),
     // Ao trocar de operadora, mantém os dados da anterior visíveis enquanto a
     // nova carrega — evita o "flash" de tela vazia na navegação por operadora.
@@ -57,17 +62,17 @@ export function useDashboard(params: DashboardParams, opts?: { enabled?: boolean
  * clicar, os dados já estão no cache → troca instantânea, sem novo round-trip.
  * Respeita o staleTime — não refaz fetch se o cache ainda está fresco.
  *
- * Sem `extra`, pré-carrega o primeiro lote (`LOTE_LISTA`), que é o que a Visão
- * Geral pede ao abrir. A própria tela usa `extra` para trazer o lote seguinte
- * antes de a pessoa chegar nele.
+ * Sem `extra`, pré-carrega o primeiro lote da área (`LOTE_LISTA`), que é o que
+ * a Visão Geral pede ao abrir. A própria tela usa `extra` para trazer o lote
+ * seguinte antes de a pessoa chegar nele.
  */
 export function usePrefetchDashboard() {
   const qc = useQueryClient()
   return useCallback((operadora: string, filtro = 'todos', hospital = '',
-                      extra: Pick<DashboardParams, 'limite'> = { limite: LOTE_LISTA }) => {
+                      extra: Pick<DashboardParams, 'escopo' | 'limite'> = { limite: LOTE_LISTA }) => {
     const params: DashboardParams = { operadora, filtro, hospital, ...extra }
     qc.prefetchQuery({
-      queryKey: queryKeys.dashboard(operadora, filtro, hospital, params.limite ?? 0),
+      queryKey: queryKeys.dashboard(operadora, filtro, hospital, params.escopo ?? '', params.limite ?? 0),
       queryFn: () => fetchDashboard(params),
       staleTime: opcoesAutoRefresh.staleTime,
     })

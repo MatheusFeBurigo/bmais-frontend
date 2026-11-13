@@ -7,12 +7,12 @@
 // preserva os literais para o TypeScript casar chaves na invalidação.
 
 export const queryKeys = {
-  // `limite` no fim: 0 (a lista inteira) é o padrão; cada tamanho de janela
-  // vira outra entrada de cache.
-  dashboard: (operadora: string, filtro: string, hospital: string, limite = 0) =>
-    ['dashboard', operadora, filtro, hospital, limite] as const,
+  // `escopo` e `limite` no fim: '' (a área) e 0 (a lista inteira) são o padrão;
+  // a rede inteira e cada tamanho de janela viram outra entrada de cache.
+  dashboard: (operadora: string, filtro: string, hospital: string, escopo = '', limite = 0) =>
+    ['dashboard', operadora, filtro, hospital, escopo, limite] as const,
 
-  dashboardOverview: () => ['dashboard-overview'] as const,
+  dashboardOverview: (escopo = '') => ['dashboard-overview', escopo] as const,
 
   sidebar: () => ['sidebar'] as const,
 
@@ -72,6 +72,8 @@ export const queryKeys = {
   /** Envios de censo recentes com o estado de reversão de cada arquivo
    *  (Movimentações: o botão "Desfazer lote"). */
   enviosCenso: (limite: number) => ['envios-censo', limite] as const,
+  /** Prévia do desfazer de um lote (`arquivo` = '*' para o envio inteiro). */
+  previaReversao: (sessao: string, arquivo: string) => ['previa-reversao', sessao, arquivo] as const,
 
   /** Ajustes manuais do avanço dos módulos (tela Progresso). */
   progresso: () => ['progresso'] as const,
@@ -97,6 +99,12 @@ export const queryKeys = {
   chamados: () => ['chamados', 'lista'] as const,
   chamado: (id: number) => ['chamados', 'conversa', id] as const,
   chamadosNaoLidos: () => ['chamados', 'nao-lidos'] as const,
+
+  /** Autorização para relatório fora da área (0061): a situação na ficha de um
+   *  paciente, as listas da tela Aprovações e o contador do menu. */
+  autorizacaoNaFicha: (internacaoId: number) => ['autorizacoes', 'ficha', internacaoId] as const,
+  autorizacoes: (quais: string) => ['autorizacoes', 'lista', quais] as const,
+  autorizacoesContagem: () => ['autorizacoes', 'contagem'] as const,
 } as const
 
 // Raiz (primeiro segmento) de cada domínio — usada para invalidar TODAS as
@@ -120,6 +128,7 @@ export const queryRoots = {
   volumetria: ['volumetria'] as const,
   pendencias: ['pendencias'] as const,
   chamados: ['chamados'] as const,
+  autorizacoes: ['autorizacoes'] as const,
 } as const
 
 export type QueryRoot = keyof typeof queryRoots

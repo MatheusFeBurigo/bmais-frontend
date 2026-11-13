@@ -17,6 +17,12 @@ import { dataBR, hojeISO } from '../../lib/datas'
 import { etiquetaProrrogacao } from '../../lib/prorrogacao'
 import { ehLonga, nuncaVisitado } from './prioridade'
 import { ResponsaveisCard } from './ResponsaveisCard'
+import { ACEITES_FOLHA_ROSA } from '../paciente/SecaoFolhaRosa'
+import { resumoHomecare } from '../../lib/altaHomecare'
+
+const COR_ACEITE: Record<string, string> = {
+  sim: 'var(--success)', nao: 'var(--danger)', aguardando: 'var(--warning-2)',
+}
 
 /** Etiqueta curta de prioridade, exibida sob o nome. */
 function Etiqueta({ texto, cor, bg, titulo }: { texto: string; cor: string; bg: string; titulo: string }) {
@@ -126,6 +132,43 @@ export const PacienteCard = memo(function PacienteCard({ tarefa: t, onAbrir, onP
               <span className="kb-leito-cod">{t.leito_codigo}</span>
             </span>
           )}
+        </div>
+      )}
+
+      {/* O que foi negociado com o hospital. Só nas colunas Negociação e
+          Aguardando aceite (13/11/2026): é o motivo de o card estar ali. */}
+      {t.negociacao && (
+        <div className="kb-card-neg">
+          <div>
+            <span className="kb-meta-lbl">Negociação </span>
+            <span className="kb-neg-troca">{t.negociacao.de ?? '?'} → {t.negociacao.para ?? '?'}</span>
+            {t.negociacao.diarias ? ` · ${t.negociacao.diarias} ${t.negociacao.diarias === 1 ? 'diária' : 'diárias'}` : ''}
+          </div>
+          <div>
+            {t.negociacao.data_inicio && (
+              <span>
+                {dataBR(t.negociacao.data_inicio)}
+                {t.negociacao.data_fim ? ` a ${dataBR(t.negociacao.data_fim)}` : ''}
+                {' · '}
+              </span>
+            )}
+            <span style={{ color: COR_ACEITE[t.negociacao.aceite ?? ''] ?? 'var(--muted)', fontWeight: 600 }}>
+              {t.negociacao.aceite
+                ? `Aceite: ${ACEITES_FOLHA_ROSA[t.negociacao.aceite] ?? t.negociacao.aceite}`
+                : 'Aceite não informado'}
+            </span>
+          </div>
+        </div>
+      )}
+      {/* Home care (13/11/2026): as respostas do relatório aprovado mais
+          recente, só nos cards da coluna Home care. */}
+      {t.homecare && (
+        <div className="kb-card-neg">
+          <div>
+            <span className="kb-meta-lbl">Home care </span>
+            {t.homecare.data_visita ? `registrado em ${dataBR(t.homecare.data_visita)}` : 'registrado'}
+          </div>
+          {resumoHomecare(t.homecare) && <div>{resumoHomecare(t.homecare)}</div>}
         </div>
       )}
 

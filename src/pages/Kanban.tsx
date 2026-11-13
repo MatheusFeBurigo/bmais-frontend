@@ -9,7 +9,6 @@ import { ACOES_NO_PAINEL } from '../lib/recursos'
 import { LoadingState } from '../components/ui'
 import PacienteDrawer from '../components/PacienteDrawer'
 import Toast from '../components/Toast'
-import Tabs from '../components/Tabs'
 import {
   useAnotarCenso, useDesfazerAtualizado, useDesfazerCobranca, useKanban, useMarcarAtualizado,
   useMarcarCobrado,
@@ -21,6 +20,7 @@ import { QuadroPendencias } from '../components/pendencias/QuadroPendencias'
 import { useMinhasPendencias } from '../hooks/usePendencias'
 import { KanbanFiltros } from '../components/kanban/KanbanFiltros'
 import { ColunaInfo } from '../components/kanban/ColunaInfo'
+import { QuadroAbas, type AbaQuadro } from '../components/kanban/BarraQuadro'
 import CensoDrawer from '../components/kanban/CensoDrawer'
 import { AnotacaoCensoModal } from '../components/kanban/AnotacaoCensoModal'
 import {
@@ -30,7 +30,7 @@ import { contarCensos, contarChips, recortarColuna, type Recorte } from '../comp
 // Definição de cada coluna (rótulo, cor, descrição) vive em components/kanban/
 // colunas.ts: a Volumetria reusa os mesmos textos para a quebra de demandas.
 import {
-  COLUNAS_CENSO, COLUNAS_PACIENTE, type ColunaKanban,
+  COLUNAS_ACOMPANHAMENTO, COLUNAS_CENSO, COLUNAS_PACIENTE, type ColunaKanban,
 } from '../components/kanban/colunas'
 
 // Colunas por PAPEL, seguindo quem faz o trabalho: o administrativo persegue o
@@ -49,15 +49,22 @@ import {
 // usuário: quem está prorrogado se acha pelo chip do Painel Operacional, e
 // pausar/retomar ficou na ficha do paciente.
 //
+// A aba Acompanhamento (13/11/2026, pedido do usuário: colunas em vez de
+// etiquetas) traz Prorrogados, Negociação e Aguardando aceite. Fica numa aba e
+// não ao lado da fila porque não é pendência: o paciente em dia aparece ali, e
+// o que está sem relatório segue também na fila de Pacientes.
+//
 // A aba Pendências (27/10/2026) é a terceira: as pendências avulsas que o
 // gestor e os coordenadores pedem, num quadro próprio (QuadroPendencias). Ela
 // não vem do payload do quadro e não usa a barra de filtros dele.
-type Quadro = 'pacientes' | 'censos' | 'pendencias'
-const QUADROS: readonly Quadro[] = ['pacientes', 'censos', 'pendencias']
+type Quadro = 'pacientes' | 'censos' | 'acompanhamento' | 'pendencias'
+const QUADROS: readonly Quadro[] = ['pacientes', 'censos', 'acompanhamento', 'pendencias']
 
 // Colunas de censo que não são tarefa: o hospital está em dia. Ficam no quadro
 // (é o retrato de quem mandou), mas não entram no "N tarefas pendentes".
-const SEM_ACAO = new Set(['aguardando_censo', 'censos_processados'])
+// O Acompanhamento também não é tarefa: o paciente pode estar em dia.
+const SEM_ACAO = new Set(['aguardando_censo', 'censos_processados',
+  'prorrogados', 'negociacao', 'aguardando_aceite', 'homecare'])
 
 // Um card de censo = hospital + operadora: é a chave da trava de clique.
 const chaveCenso = (t: KanbanTarefa) => `${t.hospital_key}|${t.operadora_key ?? ''}`
@@ -70,6 +77,10 @@ const VAZIO: Record<string, string> = {
   aguardando_censo: 'Nenhum hospital aguardando o censo de hoje.',
   censos_processados: 'Nenhum censo atualizado hoje ainda.',
   aguardando_aprovacao: 'Nenhum relatório aguardando aprovação.',
+  prorrogados: 'Nenhum paciente prorrogado.',
+  negociacao: 'Nenhuma negociação aprovada.',
+  aguardando_aceite: 'Nenhuma negociação esperando o aceite do hospital.',
+  homecare: 'Nenhum paciente com home care registrado.',
 }
 
 
@@ -137,7 +148,7 @@ export default function Kanban() {
     setQuadro(q)
     // O endereço acompanha a aba: um F5 continua nela, e o aviso de pendência
     // nova sabe quando a aba Pendências está aberta.
-    navigate(q === 'pendencias' ? '/tarefas?aba=pendencias' : '/tarefas', { replace: true })
+    navigate(q === 'pendencias' || q === 'acompanhamento' ? `/tarefas?aba=${q}` : '/tarefas', { replace: true })
   }
 
   const pendenciasAvulsas = useMinhasPendencias()
@@ -152,14 +163,18 @@ export default function Kanban() {
   // As abas de cada papel: técnico só pacientes; administrativo, censos e os
   // pacientes da aprovação; os demais, os dois. Pendências por último, para
   // quem a tem.
+  // Acompanhamento só se o backend já manda as colunas (versão anterior não).
+  const temAcompanhamento = Boolean(data?.tarefas && 'prorrogados' in data.tarefas)
   const quadros: Quadro[] = [
     ...(ehTecnico ? ['pacientes'] as const : ehAdmin ? ['pacientes', 'censos'] as const : ['censos', 'pacientes'] as const),
+    ...(temAcompanhamento ? ['acompanhamento'] as const : []),
     ...(mostrarPendencias ? ['pendencias'] as const : []),
   ]
   const quadro: Quadro = quadro_(quadroEscolhido, quadros)
   const naPendencias = quadro === 'pendencias'
   const colunas: ColunaKanban[] = naPendencias ? []
-    : (quadro === 'censos' ? COLUNAS_CENSO : COLUNAS_PACIENTE)
+    : (quadro === 'censos' ? COLUNAS_CENSO
+      : quadro === 'acompanhamento' ? COLUNAS_ACOMPANHAMENTO : COLUNAS_PACIENTE)
       .filter((c) => !data?.tarefas || c.key in data.tarefas)
   // Os chips clínicos não se aplicam a card de hospital: um chip ligado no
   // quadro de pacientes esvaziaria o de censos ao trocar de aba.
@@ -194,12 +209,16 @@ export default function Kanban() {
   // Contagem dos chips sobre o quadro INTEIRO (sem os demais filtros): o número
   // ao lado do chip precisa dizer quantos casos existem, não quantos sobraram do
   // recorte atual — senão marcar um chip zeraria os outros e esconderia o resto.
+  // Só as colunas da aba aberta, e cada card uma vez: o mesmo paciente pode
+  // estar na fila e no Acompanhamento, ou em Prorrogados e em Negociação.
+  const chavesDaAba = colunas.map((c) => c.key).join(',')
   const contagens = useMemo(() => {
-    const todos = tarefasRaw
-      ? (Object.values(tarefasRaw).flat().filter(Boolean) as KanbanTarefa[])
-      : []
-    return contarChips(todos)
-  }, [tarefasRaw])
+    const unicos = new Map<string | number, KanbanTarefa>()
+    for (const key of chavesDaAba.split(',')) {
+      for (const t of tarefasRaw?.[key as keyof typeof tarefasRaw] ?? []) unicos.set(t.id, t)
+    }
+    return contarChips([...unicos.values()])
+  }, [tarefasRaw, chavesDaAba])
   // Mesma ideia para o quadro de censos: por operadora e por faixa de atraso.
   const contagensCenso = useMemo(
     () => contarCensos(COLUNAS_CENSO.flatMap((c) => tarefasRaw?.[c.key] ?? [])),
@@ -222,6 +241,18 @@ export default function Kanban() {
     ? cols.filter((c) => !SEM_ACAO.has(c.key))
       .reduce((s, c) => s + (tarefasRaw[c.key]?.length ?? 0), 0)
     : 0)
+  // Acompanhamento: pacientes, não cards (o mesmo pode estar em duas colunas).
+  const contarAcompanhamento = () => new Set(COLUNAS_ACOMPANHAMENTO
+    .flatMap((c) => tarefasRaw?.[c.key] ?? []).map((t) => t.internacao_id)).size
+  // O balão de cada aba diz o que o número conta; vermelho só onde é trabalho.
+  const abas: AbaQuadro[] = quadros.map((q) => (q === 'pacientes'
+    ? { key: q, label: 'Pacientes', count: contarQuadro(COLUNAS_PACIENTE), legenda: 'tarefas pendentes', alerta: true }
+    : q === 'censos'
+      ? { key: q, label: 'Censos', count: contarQuadro(COLUNAS_CENSO), legenda: 'cobranças de censo pendentes', alerta: true }
+      : q === 'acompanhamento'
+        ? { key: q, label: 'Acompanhamento', count: contarAcompanhamento(), legenda: 'pacientes prorrogados, em negociação ou em home care' }
+        // As abertas (pendentes e aguardando), recebidas e pedidas.
+        : { key: q, label: 'Pendências', count: abertasAvulsas, legenda: 'pendências abertas', alerta: true }))
 
   usePageHeader({
     title: 'Tarefas',
@@ -325,38 +356,31 @@ export default function Kanban() {
         </div>
       )}
 
-      {tarefasRaw && quadros.length > 1 && (
-        <div style={{ marginBottom: 12 }}>
-          <Tabs
-            tabs={quadros.map((q) => (q === 'pacientes'
-              ? { key: q, label: 'Pacientes', count: contarQuadro(COLUNAS_PACIENTE) }
-              : q === 'censos'
-                ? { key: q, label: 'Censos', count: contarQuadro(COLUNAS_CENSO) }
-                // As abertas (pendentes e aguardando), recebidas e pedidas.
-                : { key: q, label: 'Pendências', count: abertasAvulsas }))}
-            active={quadro}
-            onChange={(k) => escolherQuadro(k as Quadro)}
-          />
+      {/* Cabeçalho do quadro (13/11/2026): as abas e a barra de priorização
+          (busca, filtros, ordem) num cartão só. */}
+      {tarefasRaw && (quadros.length > 1 || !naPendencias) && (
+        <div className={`kb-toolbar${naPendencias ? ' so-abas' : ''}`}>
+          {quadros.length > 1 && (
+            <QuadroAbas abas={abas} ativa={quadro} onChange={(k) => escolherQuadro(k as Quadro)} />
+          )}
+          {!naPendencias && (
+            <KanbanFiltros
+              censos={quadro === 'censos'}
+              operadoras={operadorasCenso}
+              recorte={recorte}
+              onChange={setRecorte}
+              contagens={contagens}
+              contagensCenso={contagensCenso}
+              hospitais={data?.filtros?.hospitais ?? []}
+              totalVisivel={total}
+              totalGeral={totalGeral}
+            />
+          )}
         </div>
       )}
 
       {/* Pendências avulsas (27/10/2026): aba própria, com as três situações. */}
       {data && naPendencias && <QuadroPendencias onAviso={setToast} />}
-
-      {/* Barra de priorização: busca, chips de urgência, hospital e ordenação. */}
-      {tarefasRaw && !naPendencias && (
-        <KanbanFiltros
-          censos={quadro === 'censos'}
-          operadoras={operadorasCenso}
-          recorte={recorte}
-          onChange={setRecorte}
-          contagens={contagens}
-          contagensCenso={contagensCenso}
-          hospitais={data?.filtros?.hospitais ?? []}
-          totalVisivel={total}
-          totalGeral={totalGeral}
-        />
-      )}
 
       {tarefas && !naPendencias && total === 0 && totalGeral > 0 && (
         <div className="empty-state">

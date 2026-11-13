@@ -7,11 +7,13 @@ import { CampoFicha } from './CampoFicha'
 import { LEITO_HOMECARE, LEITO_OPCOES, STATUS_OPCOES, rnLabel, textoDataAlta } from './paciente.model'
 import type { EdicaoFicha } from './useEdicaoFicha'
 
-export function CardDadosPaciente({ d, edicao, faltaCampo, podeHomecare }: {
+export function CardDadosPaciente({ d, edicao, faltaCampo, podeHomecare, podeEditar = true }: {
   d: InternacaoDados
   edicao: EdicaoFicha
   faltaCampo: Set<CampoIncompleto>
   podeHomecare: boolean
+  /** Falso = sem o botão Editar (paciente de fora da área de quem vê). */
+  podeEditar?: boolean
 }) {
   const { editando, rascunho, setCampo, salvando, erro } = edicao
   // Props comuns a todo campo editável.
@@ -40,7 +42,7 @@ export function CardDadosPaciente({ d, edicao, faltaCampo, podeHomecare }: {
               {salvando ? 'Salvando…' : 'Salvar'}
             </button>
           </div>
-        ) : (
+        ) : podeEditar && (
           <button className="btn btn-outline btn-sm" style={{ flexShrink: 0, gap: 6 }} onClick={edicao.abrir}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
             Editar

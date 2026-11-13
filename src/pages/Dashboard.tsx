@@ -21,7 +21,7 @@ import { useIsFetching } from '@tanstack/react-query'
 import { queryRoots } from '../lib/queryKeys'
 import { AUTO_REFRESH_MS } from '../lib/autoRefresh'
 import {
-  LOTE_LISTA, NOME_TODAS, OPERADORA_TODAS, PACIENTES_POR_PAGINA, PAGINAS_POR_LOTE,
+  LOTE_LISTA, NOME_TODAS, OPERADORA_TODAS, PACIENTES_POR_PAGINA, PAGINAS_POR_LOTE, type EscopoPacientes,
 } from '../services/dashboard.service'
 import { dataBR, hojeISO, isoDeCenso } from '../lib/datas'
 import { etiquetaProrrogacao } from '../lib/prorrogacao'
@@ -114,6 +114,11 @@ export default function Dashboard() {
   // ao F5 e poder ser compartilhado, como operadora/hospital.
   const dataDe = params.get('de') || ''
   const dataAte = params.get('ate') || ''
+  // Filtro "Todos os pacientes" (09/11/2026): o técnico vê a lista da rede
+  // inteira, não só a da área dele. Fica na URL como os outros recortes. Só a
+  // lista abre: tarefas e ações seguem pela área (ver `get_visao_pacientes`).
+  const verTodos = params.get('escopo') === 'todos'
+  const escopo: EscopoPacientes = verTodos ? 'todos' : ''
 
   // Filtros client-side
   const [busca, setBusca] = useState('')
@@ -153,16 +158,21 @@ export default function Dashboard() {
 
   // Panorama de TODAS as operadoras (recortado ao escopo do usuário) num disparo:
   // alimenta KPIs, hospitais e o seletor sem um round-trip por operadora.
-  const { data: overview, dataUpdatedAt: overviewAtualizadoEm } = useDashboardOverview()
+  const {
+    data: overview, dataUpdatedAt: overviewAtualizadoEm, isPlaceholderData: overviewDeOutraVisao,
+  } = useDashboardOverview(escopo)
   const operadorasLista = useMemo(() => overview?.lista ?? [], [overview])
+  // O backend diz quem tem o filtro: técnico e coordenador técnico COM área
+  // (sem área a pessoa já vê a rede inteira).
+  const podeVerTodos = Boolean(overview?.visao?.pode_ver_todos)
 
   // Lista em lotes (09/11/2026): a tela abre com as PAGINAS_POR_LOTE primeiras
   // páginas e pede o lote seguinte conforme a pessoa avança. Busca, filtros
   // rápidos, datas e ordenação recortam no navegador, então pedem a lista
   // inteira; a exportação com os filtros da tela também, para não sair só um
-  // pedaço. Os lotes valem para a visão aberta: trocar de operadora, filtro ou
-  // hospital volta ao primeiro lote sem um pedido a mais.
-  const chaveVisao = [operadora, filtro, hospital].join('|')
+  // pedaço. Os lotes valem para a visão aberta: trocar de operadora, filtro,
+  // hospital ou escopo volta ao primeiro lote sem um pedido a mais.
+  const chaveVisao = [operadora, filtro, hospital, escopo].join('|')
   const [lotesDaVisao, setLotesDaVisao] = useState({ chave: chaveVisao, n: 1 })
   const lotes = lotesDaVisao.chave === chaveVisao ? lotesDaVisao.n : 1
   const filtroLocal = busca.trim() !== '' || utiOn || soProrrogados || aprovacaoOn
@@ -176,7 +186,7 @@ export default function Dashboard() {
   // operadora dona. Dispara de imediato: o consolidado nunca sai do escopo do usuário.
   const {
     data, isError, isPlaceholderData, isFetching: detalheFetching, dataUpdatedAt: detalheAtualizadoEm,
-  } = useDashboard({ operadora, filtro, hospital, limite })
+  } = useDashboard({ operadora, filtro, hospital, escopo, limite })
   // Troca de operadora/filtro: com keepPreviousData, os dados ANTERIORES seguem
   // na tela enquanto o novo detalhe carrega (isPlaceholderData). Sem sinal visual,
   // a lista "troca do nada". `trocando` liga um overlay sutil sobre a tabela — o
@@ -221,8 +231,17 @@ export default function Dashboard() {
   // Hospital fora do escopo da visão atual (?hospital=Y direto) → limpa o filtro
   // em vez de mostrar vazio sem explicação.
   useEffect(() => {
-    if (!overview) return  // espera o recorte chegar para não redirecionar cedo
+    // Espera o recorte chegar (e o do filtro atual, não o anterior que fica na
+    // tela durante a troca) para não redirecionar cedo.
+    if (!overview || overviewDeOutraVisao) return
     const next = new URLSearchParams(params)
+    // ?escopo=todos de quem não tem o filtro (link copiado de um técnico, ou
+    // backend antigo): volta para a área em vez de fingir que é a rede.
+    if (verTodos && !overview.visao?.todos) {
+      next.delete('escopo')
+      setParams(next, { replace: true })
+      return
+    }
     if (operadora && !operadorasLista.some((o) => o.key === operadora)) {
       next.delete('operadora')
       next.delete('hospital')  // hospital da operadora antiga não vale no consolidado
@@ -233,7 +252,7 @@ export default function Dashboard() {
       next.delete('hospital')
       setParams(next, { replace: true })
     }
-  }, [overview, operadorasLista, operadora, hospital, ovAtual, params, setParams])
+  }, [overview, overviewDeOutraVisao, verTodos, operadorasLista, operadora, hospital, ovAtual, params, setParams])
 
   function setParam(key: string, value: string | null) {
     const next = new URLSearchParams(params)
@@ -250,6 +269,12 @@ export default function Dashboard() {
     else next.delete('operadora')
     next.delete('hospital')
     setParams(next)
+  }
+
+  // Minha área ↔ Todos os pacientes. Operadora e hospital ficam: voltando para
+  // a área, o efeito acima limpa o que não for dela.
+  function trocarEscopo(todos: boolean) {
+    setParam('escopo', todos ? 'todos' : null)
   }
 
   function applyFilter(f: string) {
@@ -280,7 +305,7 @@ export default function Dashboard() {
   // busca entra depois dos internados, com o selo "Alta".
   const buscaComAltas = busca.trim().length >= 2 && filtro === 'todos'
   const { data: dadosAltas, isPlaceholderData: altasDeOutraVisao } = useDashboard(
-    { operadora, filtro: 'altas', hospital }, { enabled: buscaComAltas })
+    { operadora, filtro: 'altas', hospital, escopo }, { enabled: buscaComAltas })
   // Trocou operadora/hospital: as altas da visão anterior não entram na lista.
   const altasDaBusca = buscaComAltas && !altasDeOutraVisao
     ? dadosAltas?.internacoes ?? SEM_INTERNACOES
@@ -379,20 +404,20 @@ export default function Dashboard() {
   const faltaChegar = parcial && internacoes.length < totalLista
   useEffect(() => {
     if (faltaChegar && paginaAtual >= paginasCarregadas) {
-      prefetchDashboard(operadora, filtro, hospital, { limite: LOTE_LISTA * (lotes + 1) })
+      prefetchDashboard(operadora, filtro, hospital, { escopo, limite: LOTE_LISTA * (lotes + 1) })
     }
-  }, [faltaChegar, paginaAtual, paginasCarregadas, prefetchDashboard, operadora, filtro, hospital, lotes])
+  }, [faltaChegar, paginaAtual, paginasCarregadas, prefetchDashboard, operadora, filtro, hospital, escopo, lotes])
   // Qualquer mudança de filtro reinicia a paginação na primeira página.
   useEffect(() => {
     setPagina(1)
-  }, [busca, utiOn, soProrrogados, aprovacaoOn, permanencia, ordenar, operadora, filtro, hospital, dataDe, dataAte])
+  }, [busca, utiOn, soProrrogados, aprovacaoOn, permanencia, ordenar, operadora, filtro, hospital, dataDe, dataAte, escopo])
 
   // Chave da lista em tela: muda quando um filtro, a ordem ou a página trocam as
   // linhas, e a tabela refaz a entrada delas (senão a lista muda "do nada"). A
   // busca fica de fora para não animar a cada tecla, e o polling também, porque
   // não mexe na chave. Num filtro do backend a chave só vira quando a lista nova
   // chega: enquanto `trocando`, a tela ainda mostra a anterior, esmaecida.
-  const assinaturaLista = [operadora, filtro, hospital, dataDe, dataAte, utiOn, soProrrogados, aprovacaoOn, permanencia, ordenar, paginaAtual].join('|')
+  const assinaturaLista = [operadora, filtro, hospital, escopo, dataDe, dataAte, utiOn, soProrrogados, aprovacaoOn, permanencia, ordenar, paginaAtual].join('|')
   const [chaveLista, setChaveLista] = useState(assinaturaLista)
   if (!trocando && chaveLista !== assinaturaLista) setChaveLista(assinaturaLista)
 
@@ -513,7 +538,35 @@ export default function Dashboard() {
             Ver todas as operadoras
           </button>
         )}
+        {podeVerTodos && (
+          <div className="ops-seg" role="group" aria-label="Quais pacientes mostrar" style={{ marginLeft: 'auto' }}>
+            <button
+              type="button"
+              className={`ops-seg-btn${!verTodos ? ' active' : ''}`}
+              aria-pressed={!verTodos}
+              onClick={() => trocarEscopo(false)}
+              title="Só os pacientes dos hospitais da sua área"
+            >
+              Minha área
+            </button>
+            <button
+              type="button"
+              className={`ops-seg-btn${verTodos ? ' active' : ''}`}
+              aria-pressed={verTodos}
+              onClick={() => trocarEscopo(true)}
+              title="Os pacientes de todos os hospitais. Os de fora da sua área abrem só para leitura."
+            >
+              Todos os pacientes
+            </button>
+          </div>
+        )}
       </div>
+      {verTodos && podeVerTodos && (
+        <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', margin: '6px 0 2px' }}>
+          Mostrando os pacientes de todos os hospitais. Os de fora da sua área vêm marcados e abrem
+          só para leitura; suas tarefas continuam sendo as da sua área.
+        </div>
+      )}
 
       {/* Carregamento COESO: a tela renderiza o layout inteiro desde o 1º paint.
           Cada bloco mostra seu próprio skeleton até o dado dele chegar — sem
@@ -752,8 +805,11 @@ export default function Dashboard() {
                     vendoAltas={vendoAltas}
                     chaveLista={chaveLista}
                     filtrosAtivos={filtrosAtivos}
-                    onExportar={() => setExportOpen(true)}
-                    onAdicionarPaciente={somenteLeitura ? undefined : () => setAddOpen(true)}
+                    // No filtro "Todos os pacientes" a lista é de consulta: o
+                    // export seguiria recortado pela área (sairia menor que a
+                    // tela) e adicionar paciente é ação, que segue pela área.
+                    onExportar={verTodos ? undefined : () => setExportOpen(true)}
+                    onAdicionarPaciente={somenteLeitura || verTodos ? undefined : () => setAddOpen(true)}
                     onSelecionar={setDrawerId}
                     onSelecionarHospital={setHospitalFicha}
                     onPrefetch={prefetchPaciente}

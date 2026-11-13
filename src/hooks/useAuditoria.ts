@@ -10,7 +10,7 @@ import { invalidarPorEvento } from '../lib/invalidation'
 import {
   fetchAuditoria, fetchAuditoriaOpcoes, fetchAuditoriaResumo, type AuditoriaParams,
 } from '../services/auditoria.service'
-import { fetchEnviosCenso, reverterEnvioCenso } from '../services/censos.service'
+import { fetchEnviosCenso, fetchPreviaReversao, reverterEnvioCenso } from '../services/censos.service'
 import { atualizarUsuario } from '../services/usuarios.service'
 
 // Quantos envios Movimentações consulta: o mesmo alcance do desfazer no backend
@@ -61,6 +61,20 @@ export function useEnviosCenso(enabled: boolean) {
     queryFn: () => fetchEnviosCenso(ENVIOS_ALCANCE),
     ...opcoesAutoRefresh,
     enabled,
+  })
+}
+
+/** Prévia do desfazer (12/11/2026): quantos pacientes o lote apaga, quantos
+ *  ficam por já existirem e de qual envio estes vieram. Lida de novo a cada
+ *  abertura da confirmação (nada em cache): o estado muda com outros envios. */
+export function usePreviaReversao(alvo: { sessao: string; arquivo?: string } | null) {
+  return useQuery({
+    queryKey: queryKeys.previaReversao(alvo?.sessao ?? '', alvo?.arquivo ?? '*'),
+    queryFn: () => fetchPreviaReversao(alvo!.sessao, alvo!.arquivo),
+    enabled: alvo != null,
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
   })
 }
 

@@ -15,6 +15,10 @@ export interface DashboardParams {
   filtro: string
   hospital?: string
   q?: string
+  /** 'todos' = filtro "Todos os pacientes" (a rede inteira, não só a área).
+   *  O backend só atende o técnico e o coordenador técnico; os demais seguem
+   *  na área. Vazio = a área, como sempre. */
+  escopo?: EscopoPacientes
   /** Quantas linhas da lista trazer (as primeiras, na ordem da lista). 0 ou
    *  ausente = a lista inteira. A resposta diz o total em `total_lista`. */
   limite?: number
@@ -27,6 +31,9 @@ export interface DashboardParams {
 export const PACIENTES_POR_PAGINA = 50
 export const PAGINAS_POR_LOTE = 5
 export const LOTE_LISTA = PACIENTES_POR_PAGINA * PAGINAS_POR_LOTE
+
+/** Recorte da lista de pacientes: '' = a área da pessoa, 'todos' = a rede. */
+export type EscopoPacientes = '' | 'todos'
 
 /** Sentinel de operadora: TODAS as operadoras (mesmo valor que o backend usa).
  *  Na Visão Geral, operadora vazia ('') também significa "todas": o parâmetro é
@@ -42,13 +49,14 @@ export function fetchDashboard(params: DashboardParams): Promise<DashboardPayloa
   qs.set('filtro', params.filtro)
   if (params.hospital) qs.set('hospital', params.hospital)
   if (params.q) qs.set('q', params.q)
+  if (params.escopo) qs.set('escopo', params.escopo)
   if (params.limite) qs.set('limite', String(params.limite))
   return apiFetch<DashboardPayload>(`/dashboard?${qs.toString()}`)
 }
 
 /** Panorama de TODAS as operadoras (stats + hospitais) num único disparo. */
-export function fetchDashboardOverview(): Promise<DashboardOverview> {
-  return apiFetch<DashboardOverview>('/dashboard/overview')
+export function fetchDashboardOverview(escopo: EscopoPacientes = ''): Promise<DashboardOverview> {
+  return apiFetch<DashboardOverview>(escopo ? `/dashboard/overview?escopo=${escopo}` : '/dashboard/overview')
 }
 
 // Cache PERSISTENTE do sidebar. O cache do React Query é em memória e morre no

@@ -10,7 +10,7 @@ import { Modal, Spinner } from './ui'
 
 export function ConfirmarModal({
   titulo, children, confirmar = 'Confirmar', cancelar = 'Cancelar',
-  perigo, ocupado, sobreposta, onConfirmar, onCancelar,
+  perigo, ocupado, sobreposta, podeConfirmar = true, extra, largura, onConfirmar, onCancelar,
 }: {
   titulo: string
   /** Corpo: uma ou mais frases. O que for número/consequência vai em <strong>. */
@@ -23,6 +23,13 @@ export function ConfirmarModal({
   ocupado?: boolean
   /** Aberta por cima de outra camada (drawer/assistente): sobe o z-index. */
   sobreposta?: boolean
+  /** `false` trava só o confirmar (ex.: enquanto a prévia do que será apagado
+   *  carrega). Padrão: liberado. */
+  podeConfirmar?: boolean
+  /** Uma segunda ação, entre o cancelar e o confirmar (ex.: "Só este"). */
+  extra?: ReactNode
+  /** Largura máxima, em px (padrão do `Modal`: 440). Três botões pedem mais. */
+  largura?: number
   onConfirmar: () => void
   onCancelar: () => void
 }) {
@@ -30,6 +37,7 @@ export function ConfirmarModal({
     <Modal
       title={titulo}
       sobreposta={sobreposta}
+      largura={largura}
       onClose={ocupado ? () => {} : onCancelar}
       footer={
         <>
@@ -37,10 +45,11 @@ export function ConfirmarModal({
                   disabled={ocupado} onClick={onCancelar}>
             {cancelar}
           </button>
+          {extra}
           <button
             type="button"
             className={`btn btn-sm ${perigo ? 'btn-perigo' : 'btn-primary'}`}
-            disabled={ocupado}
+            disabled={ocupado || !podeConfirmar}
             onClick={onConfirmar}
           >
             {ocupado && <Spinner size={12} style={{ borderTopColor: '#fff', borderColor: 'rgba(255,255,255,.4)' }} />}

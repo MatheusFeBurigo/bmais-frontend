@@ -291,6 +291,22 @@ export function ModuloVolumetria() {
         <strong>gestor</strong>. Cada coordenador enxerga apenas o seu grupo; o gestor vê os dois
         e troca entre eles no seletor de grupo, no alto da tela.
       </p>
+      <Tabela cabecalho={['O que muda', 'Coordenador técnico', 'Coordenador operacional']} larguras={['190px']}>
+        <tr><Key>Grupo na tela</Key>
+          <td>Técnicos, com a carga em horas de análise dos pacientes</td>
+          <td>Operacionais, com a carga das cobranças de censo</td></tr>
+        <tr><Key>O que define</Key>
+          <td>Quais hospitais cada técnico cobre</td>
+          <td>Quais operadoras cada operacional atende</td></tr>
+        <tr><Key>A área dele mesmo</Key>
+          <td>Hospitais, como a dos técnicos</td>
+          <td>Hospitais, e não operadoras: por isso não divide carga com os operacionais</td></tr>
+      </Tabela>
+      <p>
+        Um coordenador não altera o grupo do outro, nem pela tela nem fora dela. Os dois definem
+        a própria área aqui, calibram os parâmetros de carga do grupo e aprovam ou recusam os
+        pedidos para desfazer a atualização de um censo.
+      </p>
 
       <h3>Passo a passo</h3>
       <p>
@@ -653,9 +669,12 @@ export function ModuloVolumetria() {
         com ele, e as duas o veem durante o período.
       </p>
       <Callout tipo="rule" titulo="O que cada pessoa vê">
-        Na Visão Geral e nas Tarefas, cada pessoa vê os hospitais da própria área. Dar hospitais por
-        um período amplia essa área por um tempo, e as tarefas desses hospitais vêm junto. Não libera
-        a rede inteira: a visão de toda a rede é a de <strong>Acontecendo agora</strong>, da
+        Na Visão Geral e nas Tarefas, cada pessoa trabalha nos hospitais da própria área. O técnico
+        e o coordenador técnico podem consultar os pacientes dos outros hospitais pelo filtro{' '}
+        <strong>Todos os pacientes</strong> da Visão Geral, mas só para leitura: fora da área não
+        escrevem relatório. Dar hospitais por um período é o que amplia a área por um tempo: a
+        pessoa passa a escrever relatório nesses hospitais, e as tarefas deles vêm junto. A linha do
+        tempo da rede inteira continua sendo a de <strong>Acontecendo agora</strong>, da
         coordenação, da gestão e da administração.
       </Callout>
       <Tabela cabecalho={['', 'Dividir a carga', 'Dar hospitais por um período']} larguras={['175px']}>
@@ -703,7 +722,7 @@ export function ModuloVolumetria() {
       <p>
         Ela abre nas ações do seu grupo; <strong>Todos</strong> mostra os dois. Dá para filtrar por
         pessoa e buscar por paciente ou hospital. Só a coordenação, a gestão e a administração veem
-        esta visão: técnicos e operacionais continuam vendo os hospitais da área deles.
+        esta visão: técnicos e operacionais trabalham nos hospitais da área deles.
       </p>
 
       <h3>Onde o tempo está indo</h3>
@@ -760,7 +779,9 @@ export function ModuloVolumetria() {
       <Callout tipo="caution" titulo="Vincular hospital ou operadora muda o que a pessoa enxerga">
         A lista de hospitais desta tela é a mesma do cadastro da conta, e a de operadoras do
         operacional também: ao receber hospitais (ou operadoras), a pessoa deixa de ver a rede
-        inteira e passa a ver apenas essas unidades, em todas as telas. Pelo mesmo motivo,{' '}
+        inteira e passa a ver apenas essas unidades, em todas as telas (o técnico e o coordenador
+        técnico ainda consultam os demais pelo filtro <strong>Todos os pacientes</strong>, só para
+        leitura). Pelo mesmo motivo,{' '}
         <strong>remover o último hospital (ou a última operadora) de alguém faz essa pessoa voltar a
         enxergar a rede inteira</strong>, e não a ficar sem nada.
       </Callout>

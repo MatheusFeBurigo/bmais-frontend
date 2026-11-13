@@ -16,7 +16,10 @@ const EVENTO_INVALIDA: Record<string, QueryRoot[]> = {
   dadosAlterados: ['dashboard', 'dashboardOverview', 'diretoria', 'gestor', 'sidebar', 'equipe', 'kanban'],
   // Relatório adicionado a um paciente muda seu status_relatorio → sai das colunas
   // "Sem relatório"/"Vencidos" do Kanban e recomputa os agregados por status.
-  relatorioAdicionado: ['kanban', 'dashboard', 'dashboardOverview', 'diretoria', 'gestor', 'sidebar'],
+  // Fora da área, o relatório gasta a autorização (0061): a ficha deixa de
+  // mostrar "liberado" e a aba Decididas passa a "usada".
+  relatorioAdicionado: ['kanban', 'dashboard', 'dashboardOverview', 'diretoria', 'gestor', 'sidebar',
+    'autorizacoes'],
   // Mudança de configuração de operadora/hospital afeta stats e sidebar. Inclui
   // a ficha de cada hospital: sem isso, reabrir a ficha logo após salvar
   // mostrava o valor velho (a query dela guarda cache por 5 min). As regras

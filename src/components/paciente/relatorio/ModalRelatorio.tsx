@@ -15,6 +15,9 @@
 //      troca de acomodação do portal; voltou da Negociação em 09/10/2026).
 //   5. Prorrogação: o pedido (períodos por acomodação e justificativa). Pausar
 //      e retomar ficam fora da modal: no topo da ficha, depois de valer.
+//   5b. Home care (13/11/2026): as perguntas do portal antigo, nenhuma
+//      obrigatória (marcar já registra). Saiu da alta (onde era o motivo
+//      Homecare) e veio para cá, como a prorrogação: o paciente segue internado.
 //   6. Negociação com o hospital (OCULTA desde 08/10/2026, `NEGOCIACAO_NO_RELATORIO`
 //      em lib/recursos): glosa, medicação negada, procedimento negado, troca
 //      de procedimento.
@@ -29,7 +32,6 @@
 // o erro que não é de seção nenhuma (ex.: a rede).
 // A alta não é bloco: é o botão "Alta" do rodapé, ao lado de "Registrar
 // relatório" (o mesmo do topo da ficha), e vale na hora, sem esperar o relatório.
-// As perguntas de home care ficam nela, com o motivo Homecare.
 // Com "Prorrogar" marcado, o rodapé ganha "Pausar prorrogação" (admin e
 // operacional): a pausa vai no pedido e vale quando o relatório vale.
 //
@@ -54,6 +56,7 @@ import { Modal } from '../../ui'
 import { AcaoAlta } from '../AcaoAlta'
 import { SecaoFolhaRosa } from '../SecaoFolhaRosa'
 import { SecaoProrrogacao } from '../SecaoProrrogacao'
+import { SecaoHomecare } from '../SecaoHomecare'
 import type { FormRelatorio, SecaoRelatorio } from '../useFormRelatorio'
 import { BlocoOpcional } from './BlocoOpcional'
 import { ETAPA, ETAPAS } from './etapas'
@@ -81,6 +84,7 @@ type Grupo = SecaoRelatorio
 function grupoDoErro(erro: string | null): Grupo | null {
   const e = (erro ?? '').toLowerCase()
   if (!e) return null
+  if (e.includes('home care')) return 'homecare'
   if (e.includes('prorrogação')) return 'prorrogacao'
   if (e.includes('relatório da visita') || e.includes('diagnóstico')) return 'quadro'
   if (e.includes('data da visita') || e.includes('médico auditor')) return 'visita'
@@ -108,6 +112,7 @@ function resumos(form: FormRelatorio): Record<Grupo, string> {
     prorrogacao: prr?.ativa
       ? `Pedida${diarias ? `: ${diarias} ${diarias === 1 ? 'diária' : 'diárias'}` : ''}`
       : 'Não pedida',
+    homecare: form.homecare?.ativo ? 'Registrado' : 'Não registrado',
     visita: [dataBR(form.dataVisita) || 'Sem data', form.medico, c?.enfermeiro].filter(Boolean).join(' · '),
     internacao: c
       ? [rotulo(CARATER, c.carater), rotulo(TIPOS_INTERNACAO, c.tipoInternacao),
@@ -215,6 +220,8 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
     quadro: true,
     periodo: Boolean(c && novos) || temFolhaRosa,
     prorrogacao: temProrrogacao,
+    // Vai no relatório completo: sem a 0054, não aparece.
+    homecare: Boolean(form.homecare),
     negociacao: NEGOCIACAO_NO_RELATORIO && Boolean(c && novos),
   }
   const ordem: Grupo[] = ETAPAS.map((e) => e.secao).filter((g) => visivel[g])
@@ -361,6 +368,11 @@ export function ModalRelatorio({ form, paciente, medicos, enfermeiros, onAviso, 
     prorrogacao: (
       <GrupoRecolhivel {...grupo('prorrogacao')} resumo={resumo.prorrogacao}>
         <SecaoProrrogacao form={form} paciente={paciente} />
+      </GrupoRecolhivel>
+    ),
+    homecare: (
+      <GrupoRecolhivel {...grupo('homecare')} resumo={resumo.homecare}>
+        <SecaoHomecare form={form} vigente={paciente.homecare} />
       </GrupoRecolhivel>
     ),
     negociacao: c && (

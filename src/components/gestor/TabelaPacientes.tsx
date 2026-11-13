@@ -5,6 +5,48 @@ import { Badge, OpAvatar } from '../ui'
 import { COR } from './gestor.styles'
 import { identificacaoPaciente } from '../../lib/texto'
 import { rotuloMotivoAlta } from '../../lib/motivoAlta'
+import { dataBR } from '../../lib/datas'
+import { resumoHomecare } from '../../lib/altaHomecare'
+import { ACEITES_FOLHA_ROSA } from '../paciente/SecaoFolhaRosa'
+
+type Paciente = GestorMetrics['pacientes_dia'][number]
+
+/** Prorrogação, negociação e home care do paciente, uma linha cada, abaixo da
+ *  situação (12/11/2026; home care em 13/11): é o que os filtros de situação
+ *  recortam. */
+function SituacaoExtra({ p }: { p: Paciente }) {
+  const pr = p.prorrogacao
+  const neg = p.negociacao
+  return (
+    <>
+      {pr && (
+        <div className="sit-linha">
+          {pr.pausada ? 'Prorrogação pausada' : `Prorrogado até ${dataBR(pr.ate).slice(0, 5)}`}
+        </div>
+      )}
+      {neg && (
+        <div className="sit-linha" title={[
+          `Negociação: ${neg.de ?? '?'} para ${neg.para ?? '?'}`,
+          neg.diarias ? `${neg.diarias} ${neg.diarias === 1 ? 'diária' : 'diárias'}` : '',
+          neg.data_inicio ? `${dataBR(neg.data_inicio)}${neg.data_fim ? ` a ${dataBR(neg.data_fim)}` : ''}` : '',
+        ].filter(Boolean).join(' · ')}>
+          Negociação: {neg.de} → {neg.para}
+          {neg.diarias ? ` · ${neg.diarias}d` : ''}
+        </div>
+      )}
+      {p.homecare && (
+        <div className="sit-linha" title={resumoHomecare(p.homecare)}>
+          Home care{p.homecare.data_visita ? ` desde a visita de ${dataBR(p.homecare.data_visita).slice(0, 5)}` : ''}
+        </div>
+      )}
+      {neg?.aceite && (
+        <div className={`sit-linha${neg.aceite === 'aguardando' ? ' alerta' : ''}`}>
+          {neg.aceite === 'aguardando' ? 'Aguardando aceite' : `Aceite: ${ACEITES_FOLHA_ROSA[neg.aceite] ?? neg.aceite}`}
+        </div>
+      )}
+    </>
+  )
+}
 
 export default function TabelaPacientes({ pacientes, onSelecionar, onPrefetch, vazio, maxHeight = 480 }: {
   pacientes: GestorMetrics['pacientes_dia']
@@ -49,6 +91,7 @@ export default function TabelaPacientes({ pacientes, onSelecionar, onPrefetch, v
                     </div>
                   </>
                 ) : <Badge variant="info" dot>Internado</Badge>}
+                <SituacaoExtra p={p} />
               </td>
             </tr>
           ))}

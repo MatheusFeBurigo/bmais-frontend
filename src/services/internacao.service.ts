@@ -2,9 +2,8 @@
 import { apiDownload, apiFetch } from '../api/client'
 import type { FolhaPortoValores } from '../components/porto/folhaPorto.model'
 import type { MotivoAlta } from '../lib/motivoAlta'
-import type { HomecareAlta } from '../lib/altaHomecare'
 import type {
-  CatalogosProrrogacao, Cid, FolhaRosa, InternacaoCids, InternacaoDados,
+  CatalogosProrrogacao, Cid, FolhaRosa, HomecareRelatorio, InternacaoCids, InternacaoDados,
   InternacaoRelatorios, InternacaoTimeline, PedidoProrrogacao, ProcedimentoTuss, SugestaoPessoa,
 } from '../types/api'
 
@@ -40,6 +39,8 @@ export interface PedidoDetalhes {
   medicacoes_negadas: { nome: string; qtde: string; unidade: string; data_inicio: string; data_fim: string }[]
   procedimentos_negados: { codigo: string; qtde: string; data: string }[]
   trocas_procedimento: { codigo_de: string; codigo_para: string; data: string }[]
+  /** Home care (13/11/2026): só quando marcado; sem ele, ausente. */
+  homecare?: HomecareRelatorio
 }
 
 /** Dados completos de uma internação (histórico, relatórios, eventos). */
@@ -269,13 +270,9 @@ export function desmarcarVisita(id: number): Promise<unknown> {
 
 /** Dá alta ao paciente. `data` é ISO, entre a internação e hoje; `hora`
  *  ("HH:MM") é opcional. Cancela a visita agendada, se houver. */
-export function darAlta(id: number, data: string, hora: string, motivo: MotivoAlta,
-                        homecare?: HomecareAlta): Promise<unknown> {
-  return apiFetch(`/internacao/${id}/alta`, {
-    method: 'POST',
-    // As perguntas de home care só vão com o motivo Homecare.
-    body: { data, hora, motivo, ...(homecare ? { homecare } : {}) },
-  })
+export function darAlta(id: number, data: string, hora: string, motivo: MotivoAlta): Promise<unknown> {
+  // O home care não vai mais na alta (13/11/2026): é registrado no relatório.
+  return apiFetch(`/internacao/${id}/alta`, { method: 'POST', body: { data, hora, motivo } })
 }
 
 /** Devolve o paciente ao leito. Só vale para alta manual ou inferida: a que veio

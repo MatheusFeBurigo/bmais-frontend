@@ -107,15 +107,22 @@ const ALTAS_PAINEL: LinhaPainel[] = [
     ultima: '08/09/2026', semRel: 17, janela: 7, dias: 9, gatilho: 5 },
 ]
 
+// Área do técnico da réplica no filtro "Todos os pacientes": as linhas dos
+// outros hospitais ganham a etiqueta "Fora da sua área".
+const AREA_PAINEL = new Set(['Hospital Santa Clara'])
+
 // Hora fictícia do indicador "Atualizado" do topo.
 const ATUALIZADO_EM = new Date(2026, 8, 25, 9, 41, 12).getTime()
 
 type MarcaPainel = 'operadora' | 'kpi' | 'hospital' | 'filtros' | 'busca' | 'linha' | 'hospitalLink'
-  | 'exportar' | 'adicionar' | 'alta'
+  | 'exportar' | 'adicionar' | 'alta' | 'escopo' | 'foraDaArea'
 
 /** O Painel Operacional como ele abre: operadora, cartões, filtros e a lista. */
-export function ReplicaPainel({ marcas = {}, kpiAtivo, uti, busca }: {
+export function ReplicaPainel({ marcas = {}, kpiAtivo, uti, busca, verTodos }: {
   marcas?: Partial<Record<MarcaPainel, number>>
+  /** Técnico no filtro "Todos os pacientes": o seletor ligado, o aviso, a
+   *  etiqueta nas linhas de fora da área e sem Exportar nem Adicionar. */
+  verTodos?: boolean
   /** Cartão já clicado (filtro ligado). */
   kpiAtivo?: 'sem_relatorio' | 'vencido' | 'proximo' | 'em_dia'
   /** Chip "UTI / CTI" ligado. */
@@ -143,6 +150,8 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti, busca }: {
     .filter((l) => !uti || l.leito === 'UTI')
     .filter(casa)
   const marcaAlta = linhas.find((l) => l.alta)?.id
+  const foraDaArea = (l: LinhaPainel) => Boolean(verTodos) && !AREA_PAINEL.has(l.hospital)
+  const marcaFora = linhas.find(foraDaArea)?.id
 
   const gradeKpis = (
     <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(5,1fr)' }}>
@@ -175,8 +184,24 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti, busca }: {
           <select className="bm-input bm-select" style={{ width: 'auto', minWidth: 220 }} value="" onChange={nada}>
             <option value="">Todas as operadoras</option>
           </select>
+          {verTodos && (
+            <span style={{ marginLeft: 'auto' }}>
+              {marcar(marcas.escopo, (
+                <span className="ops-seg">
+                  <button type="button" className="ops-seg-btn">Minha área</button>
+                  <button type="button" className="ops-seg-btn active">Todos os pacientes</button>
+                </span>
+              ))}
+            </span>
+          )}
         </div>
       ))}
+      {verTodos && (
+        <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', margin: '6px 0 2px' }}>
+          Mostrando os pacientes de todos os hospitais. Os de fora da sua área vêm marcados e abrem
+          só para leitura; suas tarefas continuam sendo as da sua área.
+        </div>
+      )}
 
       <div className="section-label">Controle de Relatórios de Auditoria</div>
       {marcar(marcas.kpi, gradeKpis, true)}
@@ -233,12 +258,14 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti, busca }: {
               {marcaAlta != null ? <span className="filtro-tag">Busca inclui altas</span> : 'Clique na linha para detalhes'}
             </div>
           </div>
-          <div className="row" style={{ gap: 12 }}>
-            {marcar(marcas.exportar, <button className="btn btn-outline btn-sm">Exportar</button>)}
-            {marcar(marcas.adicionar, (
-              <button className="btn btn-primary btn-sm" style={{ gap: 6 }}>{IcoMais}Adicionar paciente</button>
-            ))}
-          </div>
+          {!verTodos && (
+            <div className="row" style={{ gap: 12 }}>
+              {marcar(marcas.exportar, <button className="btn btn-outline btn-sm">Exportar</button>)}
+              {marcar(marcas.adicionar, (
+                <button className="btn btn-primary btn-sm" style={{ gap: 6 }}>{IcoMais}Adicionar paciente</button>
+              ))}
+            </div>
+          )}
         </div>
         <table className="bmais-table">
           <thead>
@@ -264,7 +291,10 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti, busca }: {
               return (
                 <tr key={l.id} className={rowFlagClass(l.sr, alta)}>
                   <td>
-                    {marcar(primeira ? marcas.linha : l.id === marcaAlta ? marcas.alta : undefined,
+                    {/* No filtro "Todos os pacientes" o clique que interessa é o
+                        do paciente de fora da área. */}
+                    {marcar((verTodos ? l.id === marcaFora : primeira) ? marcas.linha
+                      : l.id === marcaAlta ? marcas.alta : undefined,
                       <StatusBadge sr={l.sr} resumido={alta} />)}
                     {l.alta && (
                       <div className="mono" style={{ fontSize: 'var(--t-xs)', color: 'var(--muted)', marginTop: 2 }}>{l.alta}</div>
@@ -280,6 +310,12 @@ export function ReplicaPainel({ marcas = {}, kpiAtivo, uti, busca }: {
                     {marcar(primeira ? marcas.hospitalLink : undefined, (
                       <span className="link-cell" style={{ fontSize: 'var(--t-sm)', whiteSpace: 'nowrap' }}>{l.hospital}</span>
                     ))}
+                    {foraDaArea(l) && (
+                      <div style={{ marginTop: 3 }}>
+                        {marcar(l.id === marcaFora ? marcas.foraDaArea : undefined,
+                          <span className="badge muted">Fora da sua área</span>)}
+                      </div>
+                    )}
                   </td>
                   <td><div className="fw-5" style={{ whiteSpace: 'nowrap' }}>{l.nome}</div></td>
                   <td><span className="mono t-muted" style={{ fontSize: 'var(--t-sm)' }}>{l.atend}</span></td>

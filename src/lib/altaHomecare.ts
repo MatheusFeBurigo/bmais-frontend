@@ -1,7 +1,13 @@
-// Perguntas de home care da alta com motivo Homecare (08/10/2026). Espelho de
-// `domain/alta_homecare.py`: o banco guarda a CHAVE, a tela mostra o rótulo.
-// Todas obrigatórias (no portal antigo, "é requerido" em cada uma); só a
-// alimentação é opcional.
+// Perguntas de home care. Espelho de `domain/alta_homecare.py`: o banco guarda
+// a CHAVE, a tela mostra o rótulo. Nenhuma é obrigatória desde 13/11/2026
+// (pedido do usuário: "os campos do homecare não são todos obrigatórios"):
+// marcar o home care já registra, e a pergunta em branco vai como null.
+//
+// Desde 13/11/2026 vão no relatório, na seção "Home care" da modal, como a
+// prorrogação (pedido do usuário: "homecare não deve virar alta, e sim um
+// cadastro dentro do registro de relatório"). De 08/10 a 13/11 iam na alta com
+// o motivo Homecare. O nome do arquivo é o de 08/10.
+import type { HomecareRelatorio } from '../types/api'
 
 export const OXIGENIOTERAPIA = [
   { key: 'nao', label: 'Não' },
@@ -52,35 +58,56 @@ export type RascunhoHomecare = Record<SimNaoKey, '' | 'sim' | 'nao'> & {
   alimentacao: string[]
 }
 
-/** O que vai para POST /internacao/{id}/alta com o motivo Homecare. */
-export type HomecareAlta = Record<SimNaoKey, boolean> & {
-  oxigenioterapia: string
-  mobilizacao: string
-  consciencia: string
-  alimentacao: string[]
-}
-
 export const homecareVazio = (): RascunhoHomecare => ({
   solicitado: '', acesso_venoso: '', traqueostomia: '', curativo: '', ostomias: '',
   oxigenioterapia: '', mobilizacao: '', consciencia: '', alimentacao: [],
 })
 
-/** Todas as perguntas obrigatórias respondidas? */
-export function homecareCompleto(r: RascunhoHomecare): boolean {
-  return Boolean(r.oxigenioterapia && r.mobilizacao && r.consciencia)
-    && SIM_NAO.every((p) => r[p.key] !== '')
-}
+// Sim/Não em branco = não respondido (null), nunca "não".
+const simNaoParaEnvio = (v: '' | 'sim' | 'nao'): boolean | null => (v === '' ? null : v === 'sim')
 
-export function homecareParaEnvio(r: RascunhoHomecare): HomecareAlta {
+export function homecareParaEnvio(r: RascunhoHomecare): HomecareRelatorio {
   return {
-    solicitado: r.solicitado === 'sim',
-    acesso_venoso: r.acesso_venoso === 'sim',
-    traqueostomia: r.traqueostomia === 'sim',
-    curativo: r.curativo === 'sim',
-    ostomias: r.ostomias === 'sim',
-    oxigenioterapia: r.oxigenioterapia,
-    mobilizacao: r.mobilizacao,
-    consciencia: r.consciencia,
+    solicitado: simNaoParaEnvio(r.solicitado),
+    acesso_venoso: simNaoParaEnvio(r.acesso_venoso),
+    traqueostomia: simNaoParaEnvio(r.traqueostomia),
+    curativo: simNaoParaEnvio(r.curativo),
+    ostomias: simNaoParaEnvio(r.ostomias),
+    oxigenioterapia: r.oxigenioterapia || null,
+    mobilizacao: r.mobilizacao || null,
+    consciencia: r.consciencia || null,
     alimentacao: r.alimentacao,
   }
+}
+
+/** O rascunho a partir do que foi gravado (correção do relatório pendente). */
+export function homecareParaRascunho(h: HomecareRelatorio): RascunhoHomecare {
+  const sn = (v: boolean | null | undefined): '' | 'sim' | 'nao' => (v == null ? '' : v ? 'sim' : 'nao')
+  return {
+    solicitado: sn(h.solicitado), acesso_venoso: sn(h.acesso_venoso),
+    traqueostomia: sn(h.traqueostomia), curativo: sn(h.curativo), ostomias: sn(h.ostomias),
+    oxigenioterapia: h.oxigenioterapia ?? '', mobilizacao: h.mobilizacao ?? '',
+    consciencia: h.consciencia ?? '', alimentacao: [...(h.alimentacao ?? [])],
+  }
+}
+
+const rot = (lista: readonly { key: string; label: string }[], key?: string | null) =>
+  lista.find((x) => x.key === key)?.label ?? ''
+
+/** Uma linha com o que foi respondido, para o card do relatório, o topo da
+ *  ficha e o card das Tarefas (o que ficou em branco não entra; nada
+ *  respondido = ''). Mesma ordem de `alta_homecare.resumo`. */
+export function resumoHomecare(h: HomecareRelatorio): string {
+  const partes = [
+    h.solicitado == null ? '' : h.solicitado ? 'Home care solicitado' : 'Home care não solicitado',
+    rot(MOBILIZACAO, h.mobilizacao),
+    rot(CONSCIENCIA, h.consciencia),
+    !h.oxigenioterapia ? ''
+      : h.oxigenioterapia === 'nao' ? 'Sem oxigenioterapia'
+      : `Oxigenioterapia: ${rot(OXIGENIOTERAPIA, h.oxigenioterapia) || h.oxigenioterapia}`,
+    ...(['acesso_venoso', 'traqueostomia', 'curativo', 'ostomias'] as const)
+      .filter((k) => h[k]).map((k) => rot(SIM_NAO, k)),
+    h.alimentacao?.length ? `Alimentação: ${h.alimentacao.map((a) => rot(ALIMENTACAO, a) || a).join(', ')}` : '',
+  ]
+  return partes.filter(Boolean).join(' · ')
 }

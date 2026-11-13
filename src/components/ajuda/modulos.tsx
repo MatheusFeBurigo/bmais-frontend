@@ -58,6 +58,11 @@ export const IconEquilibrio = () => (
   <Svg><path d="M4 20h16" /><path d="M8 20v-6M12 20V8M16 20v-9" />
     <circle cx="12" cy="4.6" r="1.8" /></Svg>
 )
+/** O que há de novo: uma estrela de quatro pontas e uma menor ao lado. */
+export const IconNovidades = () => (
+  <Svg><path d="M10 3.5 11.6 8.4 16.5 10 11.6 11.6 10 16.5 8.4 11.6 3.5 10 8.4 8.4Z" />
+    <path d="M18 14.5 18.8 16.7 21 17.5 18.8 18.3 18 20.5 17.2 18.3 15 17.5 17.2 16.7Z" /></Svg>
+)
 export const IconObra = () => (
   <Svg><path d="M3 20h18" /><path d="M5.5 20V9.5l6.5-4.5 6.5 4.5V20" />
     <path d="M9.2 20v-5.2h5.6V20" /></Svg>
