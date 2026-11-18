@@ -65,7 +65,7 @@ export function CardDadosPaciente({ d, edicao, faltaCampo, podeHomecare, podeEdi
           <CampoFicha label="RN" valor={rnLabel(d)} />
           <CampoFicha label="Data de nascimento" valor={d.data_nascimento} mono />
 
-          <CampoFicha label="Atendimento" valor={d.atendimento} mono falta={faltaCampo.has('atendimento')} campo="atendimento" {...ed} />
+          <CampoFicha label="Atendimento" valor={d.atendimento} mono campo="atendimento" {...ed} />
           {/* Ao lado do atendimento porque são o mesmo tipo de dado visto de
               dois lados: o número do paciente no HOSPITAL e o número dele na
               OPERADORA. É a carteirinha que se informa ao ligar para o convênio. */}

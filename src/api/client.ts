@@ -27,7 +27,9 @@ const RENOVACAO_MARGEM_MS = 60_000
 // Timeout de rede das chamadas. Um timeout NÃO desloga o usuário — ele vira um
 // erro de rede (retentável), distinto de um 401 (sessão inválida). Sem um limite
 // explícito o fetch fica pendurado no default do navegador (minutos).
-const REQUEST_TIMEOUT_MS = 20_000
+// `VITE_API_TIMEOUT_MS` muda o limite só onde for definido (17/11/2026: no Mac, o backend
+// local fala com o banco da VPS por túnel e o painel passa dos 20 s na primeira carga).
+const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS) || 20_000
 // Uploads processam vários PDFs em série no backend (parse + escrita no Supabase,
 // ~1.3s por arquivo): um lote grande passa fácil dos 20s das leituras. Damos um
 // teto bem mais folgado só para o upload, para o navegador não abortar antes de

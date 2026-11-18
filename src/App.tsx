@@ -17,7 +17,7 @@ import {
   importEquipe, importConfiguracoes, importUpload,
   importKanban, importPaciente, importFormularioPorto, importImprimirRelatorio, importUsuarioForm, importLogs, importAjuda,
   importProgresso, importVolumetria, importRelatorio, importDocumentacao, importPortalProfissional,
-  importChamados, importAprovacoes,
+  importChamados, importAprovacoes, importAuditores, importFechamentos, importAusencias, importAgendaServicos,
 } from './routes'
 
 // Páginas carregadas sob demanda (code-splitting). Diretoria e Gestor arrastam
@@ -43,6 +43,10 @@ const Relatorio = lazy(importRelatorio)
 const DocumentacaoTecnica = lazy(importDocumentacao)
 const PortalProfissional = lazy(importPortalProfissional)
 const Aprovacoes = lazy(importAprovacoes)
+const Auditores = lazy(importAuditores)
+const Fechamentos = lazy(importFechamentos)
+const Ausencias = lazy(importAusencias)
+const AgendaServicos = lazy(importAgendaServicos)
 
 function PageFallback() {
   return <LoadingState style={{ minHeight: '100vh' }} />
@@ -212,6 +216,32 @@ function ProtectedRoutes() {
         <Route
           path="/aprovacoes"
           element={<GatedRoute screen="aprovacoes"><Aprovacoes /></GatedRoute>}
+        />
+        {/* Módulo 2 > Auditores: documentos de cada auditor (EXCLUSIVAS.auditores).
+            A ficha de um auditor fica no mesmo endereço, com o nome dele no fim
+            (/auditores/ana-paula-souza; 17/11/2026, no lugar de /modulo-2/auditores/11). */}
+        <Route
+          path="/auditores"
+          element={<GatedRoute screen="auditores"><Auditores /></GatedRoute>}
+        />
+        <Route
+          path="/auditores/:auditor"
+          element={<GatedRoute screen="auditores"><Auditores /></GatedRoute>}
+        />
+        {/* Módulo 2 > Fechamentos: a agenda de fechamentos de contas (EXCLUSIVAS.fechamentos). */}
+        <Route
+          path="/modulo-2/fechamentos"
+          element={<GatedRoute screen="fechamentos"><Fechamentos /></GatedRoute>}
+        />
+        {/* Módulo 2 > Ausências: os pedidos de ausência dos auditores (EXCLUSIVAS.ausencias). */}
+        <Route
+          path="/modulo-2/ausencias"
+          element={<GatedRoute screen="ausencias"><Ausencias /></GatedRoute>}
+        />
+        {/* Módulo 2 > Agenda de serviços: os postos de cada auditor (EXCLUSIVAS.agendaServicos). */}
+        <Route
+          path="/modulo-2/agenda-de-servicos"
+          element={<GatedRoute screen="agendaServicos"><AgendaServicos /></GatedRoute>}
         />
         <Route path="/paciente/:id" element={<RequireFichaPaciente><Paciente /></RequireFichaPaciente>} />
         {/* Formulário de prorrogação da Porto: sai dos dados da ficha, então tem o

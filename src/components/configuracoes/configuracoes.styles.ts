@@ -1,9 +1,10 @@
 // Constantes e CSS local da tela Configurações. Extraído de pages/Configuracoes.tsx.
 
+// S (Validação de Senha), 16/11/2026: o mesmo da escala em Equipe (equipe.styles.ts).
 export const SERVICO_LABEL: Record<string, string> = {
-  P: 'Análise de Conta', V: 'Auditoria Concorrente', AMB: 'Ambulatório', PS: 'Pronto Socorro',
+  P: 'Análise de Conta', V: 'Auditoria Concorrente', S: 'Validação de Senha', AMB: 'Ambulatório', PS: 'Pronto Socorro',
 }
-export const SERVICOS = ['P', 'V', 'AMB', 'PS']
+export const SERVICOS = ['P', 'V', 'S', 'AMB', 'PS']
 
 export const localStyles = `
 .cfg-num-wrap{display:flex;align-items:stretch;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;background:var(--surface)}

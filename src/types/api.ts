@@ -1168,6 +1168,16 @@ export interface DetalhesRelatorio {
   trocas_procedimento?: TrocaProcedimentoRelatorio[]
   /** Home care (13/11/2026): só quando marcado no relatório. */
   homecare?: HomecareRelatorio
+  /** CID que o auditor sugeriu pelo App (16/11/2026): o relatório do App vai para
+   *  aprovação sem CID, e quem aprova confirma ou troca a sugestão. */
+  cid_sugerido?: CidSugerido | null
+}
+
+export interface CidSugerido {
+  principal: { codigo: string; descricao?: string | null } | null
+  secundarios: { codigo: string; descricao?: string | null }[]
+  por?: string | null
+  em?: string | null
 }
 
 /** As respostas de home care do relatório (13/11/2026; de 08/10 a 13/11 iam na

@@ -4,12 +4,15 @@ import type { Profissional, ProfTipo } from '../../types/api'
 export const TIPO_LABEL: Record<ProfTipo, string> = {
   E: 'Enfermeiro(a)', M: 'Médico(a) Auditor(a)', O: 'Operador(a) Interno(a)',
 }
+// S (Validação de Senha), 16/11/2026: os hospitais em que o médico ou enfermeiro valida senha.
+// O App do auditor mostra em Hoje, em "Validação de senha hoje" (GET /api/me/senhas/postos).
 export const SERVICO_LABEL: Record<string, string> = {
-  P: 'Análise de Conta', V: 'Aud. Concorrente', AMB: 'Ambulatório', PS: 'Pronto Socorro',
+  P: 'Análise de Conta', V: 'Aud. Concorrente', S: 'Validação de Senha', AMB: 'Ambulatório', PS: 'Pronto Socorro',
 }
 export const SERVICOS = [
   { key: 'P', label: 'P: Análise de Conta' },
   { key: 'V', label: 'V: Auditoria Concorrente' },
+  { key: 'S', label: 'S: Validação de Senha' },
   { key: 'AMB', label: 'AMB: Ambulatório' },
   { key: 'PS', label: 'PS: Pronto Socorro' },
 ]

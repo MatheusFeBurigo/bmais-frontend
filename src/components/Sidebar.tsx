@@ -67,6 +67,22 @@ const IconVolumetria = () => (
 const IconAprovacoes = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V3h6v1" /><path d="m9 13 2 2 4-4" /></svg>
 )
+// Auditores (Módulo 2): crachá com a pessoa, o cadastro de quem audita.
+const IconAuditores = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="11" r="2.5" /><path d="M5.5 17a3.5 3.5 0 0 1 7 0" /><path d="M15 10h3M15 14h3" /></svg>
+)
+// Fechamentos (Módulo 2): calendário com a marca do dia combinado com o hospital.
+const IconFechamentos = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="m9 15 2 2 4-4" /></svg>
+)
+// Agenda de serviços (Módulo 2): a grade da agenda, cada casa um posto (hospital × serviço).
+const IconAgendaServicos = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M9 9v11M15 9v11" /><circle cx="6" cy="14.5" r="1" fill="currentColor" stroke="none" /><circle cx="18" cy="14.5" r="1" fill="currentColor" stroke="none" /></svg>
+)
+// Ausências (Módulo 2): calendário com o dia riscado, o dia em que o auditor não pode ir.
+const IconAusencias = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="m10 13 4 4m0-4-4 4" /></svg>
+)
 // Ajuda: interrogação em círculo, o sinal universal de documentação.
 const IconAjuda = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.4-2.8 4" /><path d="M12 17.3h.01" /></svg>
@@ -295,6 +311,38 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
             </NavLink>
           )}
         </div>
+
+        {/* Módulo 2 (16/11/2026): as telas do Bloco 2 (Auditores, Agenda de serviços,
+            Fechamentos e Ausências); a seção só aparece para quem vê alguma tela dela. */}
+        {(mostrar('auditores') || mostrar('agendaServicos') || mostrar('fechamentos') || mostrar('ausencias')) && (
+        <div className="sb-section">
+          <div className="sb-section-label">Módulo 2</div>
+          {mostrar('auditores') && (
+          <NavLink to="/auditores" className={itemClass} {...prefetchProps('/auditores')}>
+            <span className="sb-item-icon"><IconAuditores /></span>
+            <span className="sb-item-label">Auditores</span>
+          </NavLink>
+          )}
+          {mostrar('agendaServicos') && (
+          <NavLink to="/modulo-2/agenda-de-servicos" className={itemClass} {...prefetchProps('/modulo-2/agenda-de-servicos')}>
+            <span className="sb-item-icon"><IconAgendaServicos /></span>
+            <span className="sb-item-label">Agenda de serviços</span>
+          </NavLink>
+          )}
+          {mostrar('fechamentos') && (
+          <NavLink to="/modulo-2/fechamentos" className={itemClass} {...prefetchProps('/modulo-2/fechamentos')}>
+            <span className="sb-item-icon"><IconFechamentos /></span>
+            <span className="sb-item-label">Fechamentos</span>
+          </NavLink>
+          )}
+          {mostrar('ausencias') && (
+          <NavLink to="/modulo-2/ausencias" className={itemClass} {...prefetchProps('/modulo-2/ausencias')}>
+            <span className="sb-item-icon"><IconAusencias /></span>
+            <span className="sb-item-label">Ausências</span>
+          </NavLink>
+          )}
+        </div>
+        )}
 
         <div className="sb-section">
           <div className="sb-section-label">Sistema</div>

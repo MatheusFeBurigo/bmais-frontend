@@ -105,6 +105,24 @@ export const queryKeys = {
   autorizacaoNaFicha: (internacaoId: number) => ['autorizacoes', 'ficha', internacaoId] as const,
   autorizacoes: (quais: string) => ['autorizacoes', 'lista', quais] as const,
   autorizacoesContagem: () => ['autorizacoes', 'contagem'] as const,
+
+  /** Módulo 2 > Auditores: a lista com o resumo e a ficha de documentos de um. */
+  auditores: () => ['auditores', 'lista'] as const,
+  auditor: (id: number) => ['auditores', 'ficha', id] as const,
+
+  /** Módulo 2 > Fechamentos: a agenda de fechamentos de um período. */
+  fechamentos: (de: string, ate: string) => ['fechamentos', 'lista', de, ate] as const,
+
+  /** Módulo 2 > Agenda de serviços: os postos de cada auditor e as opções para lançar. */
+  postos: () => ['postos', 'lista'] as const,
+  /** Na tela Auditores: os serviços de cada um (lista) e a agenda de um (ficha). */
+  postosServicos: () => ['postos', 'servicos'] as const,
+  postosDoAuditor: (id: number) => ['postos', 'auditor', id] as const,
+
+  /** Módulo 2 > Ausências: os pedidos de ausência dos auditores. */
+  ausencias: () => ['ausencias', 'lista'] as const,
+  /** Módulo 2 > Auditores > ficha: cadastro e contrato (fica sob a raiz de auditores). */
+  auditorCadastro: (id: number) => ['auditores', 'cadastro', id] as const,
 } as const
 
 // Raiz (primeiro segmento) de cada domínio — usada para invalidar TODAS as
@@ -129,6 +147,10 @@ export const queryRoots = {
   pendencias: ['pendencias'] as const,
   chamados: ['chamados'] as const,
   autorizacoes: ['autorizacoes'] as const,
+  auditores: ['auditores'] as const,
+  fechamentos: ['fechamentos'] as const,
+  ausencias: ['ausencias'] as const,
+  postos: ['postos'] as const,
 } as const
 
 export type QueryRoot = keyof typeof queryRoots

@@ -229,6 +229,14 @@ export function useFormRelatorio(internacaoId: number, {
     const principal = doRelatorio.find((c) => c.codigo === rel.detalhes?.cid_principal) ?? null
     setCidPrincipal(principal)
     setCids(doRelatorio.filter((c) => c !== principal))
+    // Relatório do App sem CID: a correção já vem com o CID que o auditor sugeriu,
+    // para quem aprova confirmar ou trocar (16/11/2026).
+    const sug = !doRelatorio.length ? rel.detalhes?.cid_sugerido : null
+    if (sug) {
+      const comoEscolhido = (c: { codigo: string; descricao?: string | null }) => ({ codigo: c.codigo, descricao: c.descricao ?? '' })
+      setCidPrincipal(sug.principal ? comoEscolhido(sug.principal) : null)
+      setCids(sug.secundarios.map(comoEscolhido))
+    }
     setErro(null)
     const prr = rel.prorrogacao
     setPrrAtiva(Boolean(prr))

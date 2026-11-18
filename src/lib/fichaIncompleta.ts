@@ -15,11 +15,14 @@
 //
 // Tipo de leito também ficou de fora (decisão do produto): a maior parte dos censos
 // não imprime a categoria do leito, e o sistema já a infere do setor quando dá.
+//
+// Atendimento saiu em 18/11/2026: é opcional em toda entrada de dados. Sem ele a
+// ficha usa a chave provisória "SEM-…" (backend, domain/atendimento_provisorio.py).
 
 import type { InternacaoDados } from '../types/api'
 
 /** Chave do campo na ficha, na ordem em que a ficha os exibe. */
-export type CampoFicha = 'nome' | 'atendimento' | 'data_entrada' | 'leito_codigo'
+export type CampoFicha = 'nome' | 'data_entrada' | 'leito_codigo'
 
 export interface CampoIncompleto {
   campo: CampoFicha
@@ -32,20 +35,18 @@ export interface CampoIncompleto {
 /** Rótulo de cada campo, idêntico ao que a ficha imprime acima do valor. */
 const LABEL: Record<CampoFicha, string> = {
   nome: 'Nome do segurado',
-  atendimento: 'Atendimento',
   data_entrada: 'Data internação',
   leito_codigo: 'Leito / código',
 }
 
 const PORQUE: Record<CampoFicha, string> = {
   nome: 'Sem nome nem senha de autorização não há como identificar o paciente.',
-  atendimento: 'É a chave que liga este paciente aos próximos censos do hospital.',
   data_entrada: 'Sem ela não há contagem de dias internado nem gatilho de relatório.',
   leito_codigo: 'É como a equipe localiza o paciente na visita ao hospital.',
 }
 
 /** Ordem de exibição: a mesma da ficha, para o resumo ler de cima para baixo. */
-const ORDEM: CampoFicha[] = ['nome', 'atendimento', 'data_entrada', 'leito_codigo']
+const ORDEM: CampoFicha[] = ['nome', 'data_entrada', 'leito_codigo']
 
 function vazio(v?: string | number | null): boolean {
   // "—" é como a própria ficha desenha célula vazia; se ele chegou como VALOR
@@ -65,7 +66,6 @@ export function camposIncompletos(d: InternacaoDados): CampoIncompleto[] {
   const falta = new Set<CampoFicha>()
 
   if (vazio(d.nome) && vazio(d.senha)) falta.add('nome')
-  if (vazio(d.atendimento)) falta.add('atendimento')
   if (vazio(d.data_entrada)) falta.add('data_entrada')
   if (vazio(d.leito_codigo)) falta.add('leito_codigo')
 

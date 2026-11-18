@@ -179,6 +179,9 @@ export function ConteudoRelatorio({ r, acaoProrrogacao }: {
   const fr = r.folha_rosa
   const principal = det.cid_principal ? r.cids?.find((c) => c.codigo === det.cid_principal) : undefined
   const secundarios = (r.cids ?? []).filter((c) => c.codigo !== principal?.codigo)
+  // Relatório do App: o CID do auditor chega como sugestão, até quem aprova registrar o CID.
+  const sug = !r.cids?.length ? det.cid_sugerido : null
+  const sugeridos = sug ? [...(sug.principal ? [sug.principal] : []), ...sug.secundarios] : []
   const cid = (c: { codigo: string; descricao?: string | null }) => (
     <span key={c.codigo} style={{ display: 'block' }}><span className="fx-cid">{c.codigo}</span>{c.descricao}</span>
   )
@@ -208,6 +211,7 @@ export function ConteudoRelatorio({ r, acaoProrrogacao }: {
         <Dados itens={[
           ['Diagnóstico principal', principal ? cid(principal) : ''],
           [principal ? 'Diagnóstico secundário' : 'Diagnósticos', secundarios.length ? secundarios.map(cid) : '', true],
+          ['CID sugerido pelo auditor', sugeridos.length ? sugeridos.map(cid) : '', true],
         ]} />
         <div className="fx-sub">Relatório</div>
         {r.descricao ? <div className="fx-texto">{r.descricao}</div> : <div className="fx-vazio">Sem texto.</div>}

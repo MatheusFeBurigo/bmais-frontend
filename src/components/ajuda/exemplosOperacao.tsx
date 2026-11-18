@@ -1308,7 +1308,7 @@ export function ReplicaAdicionarPaciente({ marcas = {} }: {
         {marcar(marcas.paciente, (
           <div style={{ display: 'grid', gap: 12 }}>
             {campo('Nome do paciente *', 'Beatriz Almeida Rocha')}
-            {campo('Atendimento *', '771502')}
+            {campo('Atendimento', '771502')}
           </div>
         ), true)}
         {marcar(marcas.situacao, (
