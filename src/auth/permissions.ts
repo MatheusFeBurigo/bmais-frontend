@@ -54,6 +54,12 @@ const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
   coordenador_tecnico: ['diretoria', 'gestor', 'equipe', 'configuracoes', 'logs'],
 }
 
+// Módulo 2 (Auditores, Fechamentos, Ausências e Agenda de serviços) e as ações
+// dele: só o administrador do sistema, desde 18/11/2026 (pedido do usuário). Os
+// comentários de cada tela abaixo contam quem via antes. Espelha os ROLES_* do
+// Módulo 2 no backend, que também passaram a ser só do admin.
+const SO_ADMIN: readonly UserRole[] = ['admin']
+
 // Telas EXCLUSIVAS de papéis específicos (allowlist). Mais forte que a lista de
 // bloqueio: quem não estiver aqui NÃO vê. Use para telas que pertencem à visão de
 // papéis específicos — o Kanban é dos papéis operacionais (admin também vê, p/ supervisão).
@@ -92,26 +98,24 @@ const EXCLUSIVAS: Partial<Record<Screen, readonly UserRole[]>> = {
   // está em ACOES.gerirDocumentosAuditor. Espelha ROLES_VER_DOCUMENTOS_AUDITOR
   // no backend (application/documentos_auditores.py).
   // O Operacional (administrativo) consulta e baixa os documentos e, desde 17/11/2026, também pede e recebe.
-  auditores: ['coordenador_administrativo', 'coordenador_tecnico', 'gestor', 'diretor', 'analista', 'administrativo', 'admin'],
+  auditores: SO_ADMIN,
   // Módulo 2 > Fechamentos (16/11/2026, migration 0063): a agenda de fechamentos
   // de contas (`pa-agenda` do protótipo do Bloco 2). Operacional e coordenações
   // lançam; técnico e analista consultam. Quem lança, troca e cancela está em
   // ACOES.gerirFechamentos. Espelha ROLES_VER_FECHAMENTOS no backend.
-  fechamentos: ['admin', 'diretor', 'gestor', 'coordenador_administrativo', 'coordenador_tecnico',
-    'administrativo', 'tecnico', 'analista'],
+  fechamentos: SO_ADMIN,
   // Módulo 2 > Ausências (17/11/2026, migration 0065): os pedidos de ausência que
   // o médico e o enfermeiro fazem no App (REGRAS 2.1 do Bloco 2). Coordenações e
   // gestão decidem; a diretoria acompanha. Quem decide está em
   // ACOES.decidirAusencias. Espelha ROLES_VER_AUSENCIAS no backend.
-  ausencias: ['admin', 'diretor', 'gestor', 'coordenador_tecnico', 'coordenador_administrativo'],
+  ausencias: SO_ADMIN,
   // Módulo 2 > Agenda de serviços (17/11/2026, migration 0066): os postos de cada
   // auditor (hospital, operadora, serviço, de quando a quando), que o App lê.
   // Monta o coordenador operacional, como no protótipo do Bloco 2, e o admin e o
   // analista (que já montavam a escala em Operações); os demais consultam. Quem
   // monta vem do servidor (`pode_gerir`), porque o analista é somente leitura no
   // resto do portal. Espelha ROLES_VER_AGENDA no backend.
-  agendaServicos: ['admin', 'diretor', 'gestor', 'coordenador_administrativo', 'coordenador_tecnico',
-    'analista', 'administrativo'],
+  agendaServicos: SO_ADMIN,
 }
 
 // Papéis SOMENTE LEITURA: veem as telas, mas nenhuma ação que altera dados.
@@ -239,16 +243,15 @@ const ACOES: Record<AcaoProtegida, readonly UserRole[]> = {
   // recebido e cancelar um pedido (Módulo 2 > Auditores, 16/11/2026): o
   // coordenador operacional, como no protótipo, o Operacional (17/11/2026) e o
   // admin. Espelha ROLES_GERIR_DOCUMENTOS_AUDITOR no backend.
-  gerirDocumentosAuditor: ['coordenador_administrativo', 'administrativo', 'admin'],
+  gerirDocumentosAuditor: SO_ADMIN,
   // Lançar fechamento, trocar quem vai e cancelar (Módulo 2 > Fechamentos,
   // 16/11/2026): a operação e as coordenações, como `pa-agenda` do protótipo.
   // Espelha ROLES_GERIR_FECHAMENTOS no backend.
-  gerirFechamentos: ['admin', 'diretor', 'gestor', 'coordenador_administrativo', 'coordenador_tecnico',
-    'administrativo'],
+  gerirFechamentos: SO_ADMIN,
   // Aprovar ou recusar o pedido de ausência do auditor (Módulo 2 > Ausências,
   // 17/11/2026): coordenador técnico, coordenador operacional e gestor, como
   // REGRAS 2.1 do Bloco 2, e o admin. Espelha ROLES_DECIDIR_AUSENCIAS no backend.
-  decidirAusencias: ['admin', 'gestor', 'coordenador_tecnico', 'coordenador_administrativo'],
+  decidirAusencias: SO_ADMIN,
 }
 
 export type AcaoProtegida = 'registrarRelatorio' | 'criarConvenio' | 'agendarVisita' | 'atribuirCid'
