@@ -141,6 +141,9 @@ export interface Internacao {
   /** Prorrogação vigente (0047): a lista mostra "Prorrogado" no lugar dos dias. */
   prorrogacao_ate?: string | null
   prorrogacao_pausada?: boolean | null
+  /** Evento adverso num relatório aprovado da internação (filtro do Painel,
+   *  24/11/2026). Ausente = sem evento. */
+  evento_adverso?: boolean
   /** Passou do dia e a visita não foi registrada. */
   visita_agendada_vencida?: boolean | null
   alerta_relatorio?: boolean

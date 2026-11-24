@@ -128,6 +128,14 @@ export default function Dashboard() {
   // Só vale para internados: na lista de altas o chip some.
   const [prorrogOn, setProrrogOn] = useState(false)
   const soProrrogados = prorrogOn && !vendoAltas
+  // Prorrogação pausada (24/11/2026): só as pausadas, dentro das prorrogadas.
+  // Como "Prorrogados", só vale para internados.
+  const [pausadaOn, setPausadaOn] = useState(false)
+  const soPausadas = pausadaOn && !vendoAltas
+  // Evento adverso (24/11/2026): internação com evento adverso num relatório
+  // aprovado (`evento_adverso` da linha). Vale nas duas listas, como
+  // "Pendentes de aprovação".
+  const [eventoOn, setEventoOn] = useState(false)
   // Longa permanência: mínimo de dias escolhido (null = sem recorte). Compara com
   // `dias` da linha, e não com as marcas longa_10/longa_30: essas só existem nos
   // dois limites da operadora e zeram com a alta. `dias` conta até hoje, ou até
@@ -175,7 +183,7 @@ export default function Dashboard() {
   const chaveVisao = [operadora, filtro, hospital, escopo].join('|')
   const [lotesDaVisao, setLotesDaVisao] = useState({ chave: chaveVisao, n: 1 })
   const lotes = lotesDaVisao.chave === chaveVisao ? lotesDaVisao.n : 1
-  const filtroLocal = busca.trim() !== '' || utiOn || soProrrogados || aprovacaoOn
+  const filtroLocal = busca.trim() !== '' || utiOn || soProrrogados || soPausadas || eventoOn || aprovacaoOn
     || permanencia != null || ordenar !== '' || Boolean(dataDe || dataAte)
   const exportaFiltrado = exportOpen && (filtro !== 'todos' || Boolean(hospital))
   const precisaListaInteira = filtroLocal || exportaFiltrado
@@ -353,6 +361,9 @@ export default function Dashboard() {
       const okUti = !utiOn || (p.tipo_leito || '').toUpperCase() === 'UTI'
       const okProrrog = !soProrrogados
         || (!ehAlta(p.status_relatorio) && etiquetaProrrogacao(p.prorrogacao_ate, p.prorrogacao_pausada, hoje) != null)
+      const okPausada = !soPausadas
+        || (!ehAlta(p.status_relatorio) && Boolean(etiquetaProrrogacao(p.prorrogacao_ate, p.prorrogacao_pausada, hoje)?.pausada))
+      const okEvento = !eventoOn || Boolean(p.evento_adverso)
       const okAprovacao = !aprovacaoOn || Boolean(p.relatorio_em_aprovacao)
       // Sem data de internação não há como contar dias: sai do recorte.
       const okPerm = permanencia == null || (p.dias != null && p.dias >= permanencia)
@@ -363,7 +374,7 @@ export default function Dashboard() {
         const d = isoDeCenso(vendoAltas ? p.data_alta : p.data_entrada)
         okData = Boolean(d) && (!dataDe || d >= dataDe) && (!dataAte || d <= dataAte)
       }
-      return okBusca && okUti && okProrrog && okAprovacao && okPerm && okData
+      return okBusca && okUti && okProrrog && okPausada && okEvento && okAprovacao && okPerm && okData
     })
     if (ordenar === 'sem_rel') {
       // Mais dias sem relatório primeiro; sem relatório (null) vai ao topo.
@@ -375,7 +386,7 @@ export default function Dashboard() {
       return [...filtrados].sort((a, b) => (b.dias ?? 0) - (a.dias ?? 0))
     }
     return filtrados
-  }, [internacoes, altasDaBusca, busca, utiOn, soProrrogados, aprovacaoOn, permanencia, ordenar, dataDe, dataAte, vendoAltas])
+  }, [internacoes, altasDaBusca, busca, utiOn, soProrrogados, soPausadas, eventoOn, aprovacaoOn, permanencia, ordenar, dataDe, dataAte, vendoAltas])
 
   // Paginação client-side: renderizar todas as internações de uma vez trava a
   // tabela em operadoras grandes (cada linha tem vários componentes). Fatiamos
@@ -410,14 +421,14 @@ export default function Dashboard() {
   // Qualquer mudança de filtro reinicia a paginação na primeira página.
   useEffect(() => {
     setPagina(1)
-  }, [busca, utiOn, soProrrogados, aprovacaoOn, permanencia, ordenar, operadora, filtro, hospital, dataDe, dataAte, escopo])
+  }, [busca, utiOn, soProrrogados, soPausadas, eventoOn, aprovacaoOn, permanencia, ordenar, operadora, filtro, hospital, dataDe, dataAte, escopo])
 
   // Chave da lista em tela: muda quando um filtro, a ordem ou a página trocam as
   // linhas, e a tabela refaz a entrada delas (senão a lista muda "do nada"). A
   // busca fica de fora para não animar a cada tecla, e o polling também, porque
   // não mexe na chave. Num filtro do backend a chave só vira quando a lista nova
   // chega: enquanto `trocando`, a tela ainda mostra a anterior, esmaecida.
-  const assinaturaLista = [operadora, filtro, hospital, escopo, dataDe, dataAte, utiOn, soProrrogados, aprovacaoOn, permanencia, ordenar, paginaAtual].join('|')
+  const assinaturaLista = [operadora, filtro, hospital, escopo, dataDe, dataAte, utiOn, soProrrogados, soPausadas, eventoOn, aprovacaoOn, permanencia, ordenar, paginaAtual].join('|')
   const [chaveLista, setChaveLista] = useState(assinaturaLista)
   if (!trocando && chaveLista !== assinaturaLista) setChaveLista(assinaturaLista)
 
@@ -425,6 +436,8 @@ export default function Dashboard() {
   const filtrosAtivos: string[] = []
   if (utiOn) filtrosAtivos.push('UTI / CTI')
   if (soProrrogados) filtrosAtivos.push('Prorrogados')
+  if (soPausadas) filtrosAtivos.push('Prorrogação pausada')
+  if (eventoOn) filtrosAtivos.push('Evento adverso')
   if (aprovacaoOn) filtrosAtivos.push('Pendentes de aprovação')
   if (altasDaBusca.length && visiveis.some((p) => ehAlta(p.status_relatorio))) filtrosAtivos.push('Busca inclui altas')
   if (permanencia != null) filtrosAtivos.push(`Longa permanência ${permanencia}d+`)
@@ -671,7 +684,13 @@ export default function Dashboard() {
               cards KPI do topo já são o atalho clicável desses status. Estes chips
               cobrem o que a tabela mostra mas o topo não filtra: leito, permanência
               e ordenação por urgência. */}
+          {/* Duas áreas (24/11/2026): os chips à esquerda quebram linha entre si
+              quando falta espaço; Ordenar, Limpar e a lupa ficam sempre na
+              primeira linha, à direita. Numa linha só, com os chips "Prorrogação
+              pausada" e "Evento adverso", a lupa descia sozinha para uma linha
+              nova e deixava um vão na barra. */}
           <div className="quick-filters" style={{ marginTop: 14 }}>
+            <div className="qf-chips">
             <span style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)', flexShrink: 0 }}>Filtros rápidos:</span>
             <span className={`qf-chip${utiOn ? ' active' : ''}`} onClick={() => setUtiOn((v) => !v)}>UTI / CTI</span>
             {/* Longa permanência: o chip abre os cortes de dias; escolher um
@@ -724,6 +743,19 @@ export default function Dashboard() {
                 Prorrogados
               </span>
             )}
+            {!vendoAltas && (
+              <span className={`qf-chip${pausadaOn ? ' active' : ''}`} onClick={() => setPausadaOn((v) => !v)}
+                    title="Internados com a prorrogação pausada">
+                Prorrogação pausada
+              </span>
+            )}
+            <span
+              className={`qf-chip${eventoOn ? ' active' : ''}`}
+              onClick={() => setEventoOn((v) => !v)}
+              title="Pacientes com evento adverso registrado num relatório aprovado"
+            >
+              Evento adverso
+            </span>
             {/* Relatórios pendentes de aprovação (20/10/2026): o mesmo "Aguardando
                 aprovação" da coluna Relatório, que quem aprova procurava linha a linha. */}
             <span
@@ -744,9 +776,11 @@ export default function Dashboard() {
             >
               Altas
             </span>
+            </div>
+            <div className="qf-ferramentas">
             <select
               className="bm-input bm-select"
-              style={{ width: 'auto', minWidth: 180 }}
+              style={{ width: 'auto', minWidth: 160 }}
               value={ordenar}
               onChange={(e) => setOrdenar(e.target.value as '' | 'sem_rel' | 'dias')}
               title="Ordenar a lista"
@@ -755,12 +789,12 @@ export default function Dashboard() {
               <option value="sem_rel">Mais dias sem relatório</option>
               <option value="dias">{vendoAltas ? 'Mais dias internado (até a alta)' : 'Mais dias internado'}</option>
             </select>
-            {(utiOn || soProrrogados || aprovacaoOn || permanencia != null || ordenar !== '' || vendoAltas) && (
+            {(utiOn || soProrrogados || soPausadas || eventoOn || aprovacaoOn || permanencia != null || ordenar !== '' || vendoAltas) && (
               <button
                 className="btn btn-ghost btn-sm"
                 style={{ color: 'var(--muted)' }}
                 onClick={() => {
-                  setUtiOn(false); setProrrogOn(false); setAprovacaoOn(false); setPermanencia(null); setPermAberta(false); setOrdenar('')
+                  setUtiOn(false); setProrrogOn(false); setPausadaOn(false); setEventoOn(false); setAprovacaoOn(false); setPermanencia(null); setPermAberta(false); setOrdenar('')
                   // "Altas" mora na URL (é filtro de backend): limpar também o desfaz,
                   // senão o botão some e a lista continua mostrando altas.
                   if (vendoAltas) applyFilter('altas')
@@ -776,6 +810,7 @@ export default function Dashboard() {
               onChange={setBusca}
               placeholder={vendoAltas ? 'Buscar entre as altas…' : 'Buscar segurado, atendimento (e altas)…'}
             />
+            </div>
           </div>
 
           {/* Tabela — bloco pesado adiado para depois do primeiro paint dos KPIs

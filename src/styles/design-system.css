@@ -629,6 +629,10 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 
 /* ── Quick filters ── */
 .quick-filters{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);flex-wrap:wrap}
+/* Painel: chips à esquerda (quebram entre si) e ferramentas à direita, sempre na 1ª linha. */
+.qf-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1 1 0;min-width:0}
+.qf-ferramentas{display:flex;align-items:center;gap:6px;flex-shrink:0;align-self:flex-start}
+@media (max-width:760px){.qf-chips{flex-basis:100%}.qf-ferramentas{flex:1 1 100%}}
 .qf-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;background:var(--surface-3);border:1px solid var(--border);font-size:var(--t-sm);color:var(--ink-2);cursor:pointer;transition:background .12s,border-color .12s,color .12s;white-space:nowrap}
 .qf-chip:hover{border-color:var(--ink-3)}
 .qf-chip.active{background:var(--primary-soft);border-color:var(--primary-3);color:var(--primary)}
