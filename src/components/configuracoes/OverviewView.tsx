@@ -8,6 +8,9 @@ import { limparDados as apiLimparDados } from '../../services/admin.service'
 import { localStyles } from './configuracoes.styles'
 import { ChevronRight } from './shared'
 import { NovaOperadoraModal } from './forms'
+import { useAuth } from '../../auth/AuthContext'
+import { useAvisosContatoPendentes } from '../../hooks/useHospitalContatos'
+import { dataHora } from '../../lib/datas'
 
 export default function OverviewView({ operadoras, onNav, onToast, onChanged, toast }: {
   operadoras: OperadoraCard[]
@@ -20,6 +23,9 @@ export default function OverviewView({ operadoras, onNav, onToast, onChanged, to
   const [busy, setBusy] = useState<'limpar' | null>(null)
   // Operadoras expandidas no accordion (várias podem ficar abertas ao mesmo tempo).
   const [expandidas, setExpandidas] = useState<Set<string>>(new Set())
+  // Avisos de mudança de contato vindos do App, ainda não tratados (0068): só o admin, por ora.
+  const { role } = useAuth()
+  const avisos = useAvisosContatoPendentes(role === 'admin').data?.avisos ?? []
 
   function toggle(key: string) {
     setExpandidas((cur) => {
@@ -54,6 +60,26 @@ export default function OverviewView({ operadoras, onNav, onToast, onChanged, to
   return (
     <>
       <style>{localStyles}</style>
+
+      {avisos.length > 0 && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header">
+            <div>
+              <div className="card-title">Avisos de contato vindos do App · {avisos.length}</div>
+              <div style={{ fontSize: 'var(--t-sm)', color: 'var(--muted)' }}>O auditor avisou que um contato do hospital mudou. Abra a ficha, confira e marque como tratado.</div>
+            </div>
+          </div>
+          <div className="card-body" style={{ display: 'grid', gap: 8 }}>
+            {avisos.map((a) => (
+              <button key={a.id} type="button" className="btn btn-ghost" style={{ justifyContent: 'flex-start', textAlign: 'left', height: 'auto', padding: '8px 10px', display: 'block', width: '100%' }}
+                onClick={() => onNav({ hospital: a.hospital_key })}>
+                <div style={{ fontWeight: 600 }}>{a.hospital_nome || a.hospital_key} <span style={{ fontWeight: 400, color: 'var(--muted)', fontSize: 'var(--t-sm)' }}>· {a.profissional_nome}, {dataHora(a.em)}</span></div>
+                <div style={{ fontSize: 'var(--t-sm)', color: 'var(--ink-2)', whiteSpace: 'normal' }}>{a.texto}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="op-acc">
         {operadoras.map((o) => {

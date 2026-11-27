@@ -18,7 +18,7 @@ import { ConfirmarModal } from '../components/ConfirmarModal'
 import Toast from '../components/Toast'
 import { Badge, LoadingState, Modal } from '../components/ui'
 import {
-  useCancelarFechamento, useFechamentos, useLancarFechamento, useNomearNoFechamento,
+  useCancelarFechamento, useDesfazerLote, useFechamentos, useLancarFechamento, useLancarLote, useNomearNoFechamento,
 } from '../hooks/useFechamentos'
 import { dataBR, dataHora } from '../lib/datas'
 import type {
@@ -323,9 +323,114 @@ function CancelarModal({ f, onFechar, onFeito }: {
   )
 }
 
+// ── Lotes de pronto socorro e ambulatório (0069, 23/11/2026) ────────────
+// Um capeante para vários atendimentos de PS ou ambulatório (Prototipo_B2_Completo, "Lotes de pronto
+// socorro e ambulatório"). Fica com o enfermeiro do fechamento: o App conta no Meu mês dele. Operadora de
+// lançamento curto (Bradesco) não pede valores. Desfazer não apaga: o lote fica registrado como desfeito.
+
+const reais = (v: number | null) => (v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))
+const lerNumero = (s: string) => { const n = Number(s.replace(/\./g, '').replace(',', '.')); return Number.isFinite(n) ? n : NaN }
+
+function LotesModal({ f, onFechar, onFeito }: {
+  f: Fechamento
+  onFechar: () => void
+  onFeito: (msg: string) => void
+}) {
+  const lancar = useLancarLote()
+  const desfazer = useDesfazerLote()
+  const curto = f.entrada === 'curto'
+  const [tipo, setTipo] = useState<'PS' | 'AMB'>('PS')
+  const [n, setN] = useState('')
+  const [ap, setAp] = useState('')
+  const [gl, setGl] = useState('')
+  const [erro, setErro] = useState('')
+  const lotes = f.lotes ?? []
+  const ocupado = lancar.isPending || desfazer.isPending
+  const atend = Number(n)
+  const apN = lerNumero(ap), glN = gl.trim() ? lerNumero(gl) : 0
+  const pronto = Number.isInteger(atend) && atend > 0 && (curto || (apN > 0 && glN >= 0 && glN <= apN))
+
+  function enviar() {
+    if (!pronto || ocupado) return
+    setErro('')
+    lancar.mutate({ id: f.id, tipo, atendimentos: atend, ...(curto ? {} : { apresentado: apN, glosa: glN }) }, {
+      onSuccess: () => { setN(''); setAp(''); setGl(''); onFeito(`Lote de ${tipo === 'PS' ? 'pronto socorro' : 'ambulatório'} lançado: ${atend} atendimentos`) },
+      onError: (e) => setErro((e as Error).message || 'Não foi possível lançar. Tente de novo.'),
+    })
+  }
+  return (
+    <Modal title="Lotes de pronto socorro e ambulatório" largura={620} onClose={ocupado ? () => {} : onFechar}
+      footer={(
+        <>
+          <button type="button" className="btn btn-outline" onClick={onFechar} disabled={ocupado}>Fechar</button>
+          <button type="button" className="btn btn-primary" onClick={enviar} disabled={!pronto || ocupado}>
+            {lancar.isPending ? 'Lançando…' : 'Lançar lote'}
+          </button>
+        </>
+      )}>
+      <p className="fch-sub" style={{ margin: '0 0 12px' }}>
+        <strong>{f.hospital_nome}</strong> · {f.operadora_nome} · {dataBR(f.data)} às {f.hora}. Um capeante para vários
+        atendimentos. Fica com {f.enfermeiro.nome ? <strong>{f.enfermeiro.nome}</strong> : 'o enfermeiro do fechamento'}, no Meu mês do App.
+      </p>
+      {lotes.length > 0 && (
+        <div style={{ overflowX: 'auto', marginBottom: 14 }}>
+          <table className="bmais-table">
+            <thead><tr><th>Tipo</th><th>Atendimentos</th>{!curto && <><th>Apresentado</th><th>Glosa</th><th>Liberado</th></>}<th /></tr></thead>
+            <tbody>
+              {lotes.map((l) => (
+                <tr key={l.id}>
+                  <td>{l.tipo_nome}<div className="fch-sub">{l.lancado_por}{l.lancado_em ? `, ${dataHora(l.lancado_em)}` : ''}</div></td>
+                  <td>{l.atendimentos}</td>
+                  {!curto && <><td>{reais(l.apresentado)}</td><td>{reais(l.glosa)}</td><td>{reais(l.liberado)}</td></>}
+                  <td>
+                    <button type="button" className="btn btn-ghost btn-sm" disabled={ocupado}
+                      onClick={() => desfazer.mutate(l.id, {
+                        onSuccess: () => onFeito(`Lote desfeito: ${l.tipo_nome.toLowerCase()}, ${l.atendimentos} atendimentos`),
+                        onError: (e) => setErro((e as Error).message),
+                      })}>Desfazer</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="fch-campo">
+        <span className="form-lbl">Tipo</span>
+        <div className="fch-seg" role="group" aria-label="Tipo do lote">
+          {(['PS', 'AMB'] as const).map((t) => (
+            <button key={t} type="button" aria-pressed={tipo === t} className={tipo === t ? 'ativo' : undefined}
+              disabled={ocupado} onClick={() => setTipo(t)}>{t === 'PS' ? 'Pronto socorro' : 'Ambulatório'}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: curto ? '1fr' : '1fr 1fr 1fr', gap: 12 }}>
+        <div className="fch-campo">
+          <label className="form-lbl" htmlFor="lt-n">Atendimentos</label>
+          <input id="lt-n" className="bm-input" inputMode="numeric" value={n} disabled={ocupado} onChange={(e) => setN(e.target.value.replace(/\D/g, ''))} />
+        </div>
+        {!curto && (
+          <>
+            <div className="fch-campo">
+              <label className="form-lbl" htmlFor="lt-ap">Apresentado (R$)</label>
+              <input id="lt-ap" className="bm-input" inputMode="decimal" value={ap} placeholder="0,00" disabled={ocupado} onChange={(e) => setAp(e.target.value)} />
+            </div>
+            <div className="fch-campo">
+              <label className="form-lbl" htmlFor="lt-gl">Glosa (R$)</label>
+              <input id="lt-gl" className="bm-input" inputMode="decimal" value={gl} placeholder="0,00" disabled={ocupado} onChange={(e) => setGl(e.target.value)} />
+            </div>
+          </>
+        )}
+      </div>
+      {curto && <p className="fch-sub" style={{ margin: 0 }}>Operadora de lançamento curto: a conta completa fica no sistema dela, sem valores aqui.</p>}
+      {erro && <p className="fch-erro">{erro}</p>}
+    </Modal>
+  )
+}
+
 // ── A agenda ────────────────────────────────────────────────────────────
 
-type Acao = { tipo: 'nomear'; f: Fechamento; papel: Papel } | { tipo: 'cancelar'; f: Fechamento }
+type Acao = { tipo: 'nomear'; f: Fechamento; papel: Papel } | { tipo: 'cancelar'; f: Fechamento } | { tipo: 'lotes'; f: Fechamento }
 
 function Linha({ f, hoje, gerir, onAcao }: {
   f: Fechamento
@@ -352,8 +457,18 @@ function Linha({ f, hoje, gerir, onAcao }: {
       <td>{f.cancelado ? (f.enfermeiro.nome ?? '—') : <Pessoa p={f.enfermeiro} papel="enfermeiro" />}</td>
       <td style={{ whiteSpace: 'nowrap' }}>
         {f.contas.total ? `${f.contas.fechadas} de ${f.contas.total} fechadas` : <span className="fch-sub">nenhuma ainda</span>}
+        {(f.lotes?.length ?? 0) > 0 && (
+          <div className="fch-sub">
+            {f.lotes!.length} {f.lotes!.length === 1 ? 'lote' : 'lotes'} de PS/ambulatório · {f.lotes!.reduce((s, l) => s + l.atendimentos, 0)} atend.
+          </div>
+        )}
       </td>
       <td>
+        {gerir && !f.cancelado && f.lotes !== undefined && (
+          <div className="fch-acoes" style={{ marginBottom: mexe ? 4 : 0 }}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => onAcao({ tipo: 'lotes', f })}>Lotes</button>
+          </div>
+        )}
         {mexe && (
           <div className="fch-acoes">
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => onAcao({ tipo: 'nomear', f, papel: 'medico' })}>
@@ -486,6 +601,11 @@ export default function Fechamentos() {
       {acao?.tipo === 'cancelar' && (
         <CancelarModal f={acao.f} onFechar={() => setAcao(null)}
           onFeito={(m) => { setAcao(null); setAviso(m) }} />
+      )}
+      {acao?.tipo === 'lotes' && (
+        // O fechamento vem da lista (atualizada a cada lançamento), não do clique: a janela mostra o lote novo.
+        <LotesModal f={todos.find((x) => x.id === acao.f.id) ?? acao.f} onFechar={() => setAcao(null)}
+          onFeito={setAviso} />
       )}
       {aviso && <Toast message={aviso} onDone={() => setAviso('')} />}
     </div>

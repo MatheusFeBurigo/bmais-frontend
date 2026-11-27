@@ -92,10 +92,11 @@ function quadro_(escolhido: Quadro | null, quadros: Quadro[]): Quadro {
 export default function Kanban() {
   // O quadro já vem recortado ao escopo de hospitais/operadoras do analista pelo
   // backend (get_hospitais_permitidos) — sem filtro manual na tela.
-  const { data, isLoading, isError, isFetching } = useKanban()
-  // Refetch com dados anteriores em tela (staleTime venceu, ou pós-mutação): atenua
-  // o quadro em vez de piscar loading — mesmo padrão do Gestor (.atualizando).
-  const atualizando = isFetching && !isLoading
+  // A busca de fundo (a cada 30 s, ao voltar à aba, depois de uma ação) é
+  // silenciosa (27/11/2026): o quadro segue usável e o React Query troca só os
+  // cards que mudaram, que andam de coluna sozinhos. Antes o quadro inteiro
+  // ficava esmaecido enquanto o pedido estava no ar (2 a 9 s no QA, a cada 30 s).
+  const { data, isLoading, isError } = useKanban()
   const cobrar = useMarcarCobrado()
   const desfazer = useDesfazerCobranca()
   const atualizar = useMarcarAtualizado()
@@ -120,15 +121,8 @@ export default function Kanban() {
   const somenteLeitura = ehSomenteLeitura(role)
   const prefetch = usePrefetchInternacao()
   const [drawerId, setDrawerId] = useState<number | null>(null)
-  // Quem aprovou na ficha do paciente volta para cá com o aviso
-  // (`state.aviso`, ver pages/Paciente).
   const location = useLocation()
-  const avisoDaVolta = (location.state as { aviso?: string } | null)?.aviso
-  const [toast, setToast] = useState<string | null>(avisoDaVolta ?? null)
-  useEffect(() => {
-    // Some do histórico: um F5 não repete o aviso.
-    if (avisoDaVolta) navigate(location.pathname + location.search, { replace: true, state: null })
-  }, [avisoDaVolta, location.pathname, location.search, navigate])
+  const [toast, setToast] = useState<string | null>(null)
   // Recorte da tela: busca + chips de prioridade + hospital + ordenação. Tudo é
   // aplicado no cliente sobre o payload que já veio (o quadro inteiro está em
   // memória), então trocar de filtro não custa uma ida ao servidor.
@@ -280,7 +274,7 @@ export default function Kanban() {
       abrirPaciente(t)
       return
     }
-    navigate(`/paciente/${t.internacao_id}?relatorio=${t.relatorio.id}&origem=tarefas`)
+    navigate(`/paciente/${t.internacao_id}?relatorio=${t.relatorio.id}`)
   }, [role, abrirPaciente, navigate])
 
   // Ação de censo com trava por card: um segundo pedido no mesmo card enquanto
@@ -344,7 +338,9 @@ export default function Kanban() {
       <style>{localStyles}</style>
 
       {isLoading && <LoadingState label="Carregando tarefas…" />}
-      {isError && <div className="empty-state t-danger">Erro ao carregar o quadro.</div>}
+      {/* Só sem quadro em tela: uma busca de fundo que falha mantém o quadro
+          que já está aberto, e a próxima tenta de novo. */}
+      {isError && !data && <div className="empty-state t-danger">Erro ao carregar o quadro.</div>}
 
       {/* Defesa contra descompasso backend/frontend: se o payload chegou mas SEM
           a chave `tarefas` (backend numa versão anterior, ainda não reiniciado),
@@ -397,7 +393,7 @@ export default function Kanban() {
 
       {tarefas && !naPendencias && (
         <div
-          className={`kb-board${atualizando ? ' atualizando' : ''}`}
+          className="kb-board"
           // minmax(N, 1fr): as colunas dividem a largura por igual e param de
           // encolher no mínimo. Sem o mínimo ficariam ilegíveis; sem o 1fr,
           // sobraria espaço vazio à direita em telas largas. O quadro de

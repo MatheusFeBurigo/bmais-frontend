@@ -234,6 +234,9 @@ button.sb-item{width:calc(100% - 16px);border:0;background:transparent;font-fami
 .btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}.btn-primary:hover{background:var(--primary-2);border-color:var(--primary-2)}
 .btn-ghost{color:var(--muted)}.btn-ghost:hover{background:var(--surface-3);color:var(--ink-2)}
 .btn-success{background:var(--success);color:#fff;border-color:var(--success)}.btn-success:hover{background:var(--success-2)}
+/* Ação de recusa/perigo em vermelho (27/11/2026: Recusar relatório). Antes só existia dentro de ConfirmarModal e
+   DescartarConvenioModal, com a mesma regra. */
+.btn-perigo{background:var(--danger);color:#fff;border-color:var(--danger)}.btn-perigo:hover:not(:disabled){background:var(--danger-2);border-color:var(--danger-2)}
 .btn-sm{padding:5px 10px;font-size:var(--t-sm)}
 /* Desabilitado: CINZA de verdade, não só esmaecido. `opacity` sozinha mantinha
    a cor do botão (um primário continuava azul claro), e o estado "ainda não dá

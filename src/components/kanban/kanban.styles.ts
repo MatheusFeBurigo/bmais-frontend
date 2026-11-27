@@ -89,11 +89,7 @@ export const localStyles = `
    O número de colunas vem inline (depende do papel), com minmax(260px, 1fr):
    elas dividem a largura por igual e param de encolher em 260px — daí o
    overflow-x, que faz o quadro rolar na horizontal em vez de quebrar. */
-.kb-board{display:grid;gap:12px;align-items:start;transition:opacity .2s ease;overflow-x:auto}
-/* Refetch em andamento com dados anteriores em tela: esmaece o quadro (não bloqueia
-   cliques), sinalizando "atualizando" sem piscar o loading — igual ao Gestor. */
-.kb-board.atualizando{opacity:.55}
-@media (prefers-reduced-motion:reduce){.kb-board{transition:none}}
+.kb-board{display:grid;gap:12px;align-items:start;overflow-x:auto}
 /* Telas estreitas (celular): aí sim uma embaixo da outra, porque lado a lado
    nenhuma coluna teria largura utilizável. */
 @media (max-width:760px){

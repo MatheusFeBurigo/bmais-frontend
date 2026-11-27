@@ -55,6 +55,10 @@ const IconKanban = () => (
 const IconLogs = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><path d="M14 3v5h5" /><path d="M8 13h5" /><path d="M8 17h8" /><path d="m16 5 2 2 4-4" /></svg>
 )
+// Linha do tempo: o relógio da tela `linha` do protótipo do Bloco 2.
+const IconLinhaDoTempo = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+)
 // Progresso: trilha com etapas concluídas e uma em curso — a leitura da tela.
 const IconProgresso = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16" /><circle cx="5.5" cy="12" r="2.5" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" /><circle cx="18.5" cy="12" r="2.5" /></svg>
@@ -79,9 +83,9 @@ const IconFechamentos = () => (
 const IconAgendaServicos = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M9 9v11M15 9v11" /><circle cx="6" cy="14.5" r="1" fill="currentColor" stroke="none" /><circle cx="18" cy="14.5" r="1" fill="currentColor" stroke="none" /></svg>
 )
-// Ausências (Módulo 2): calendário com o dia riscado, o dia em que o auditor não pode ir.
-const IconAusencias = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="m10 13 4 4m0-4-4 4" /></svg>
+// Senhas (Módulo 2): a chave, a senha de autorização que o auditor valida no portal da operadora.
+const IconSenhas = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="15" r="4" /><path d="m11 12 9-9M17 6l3 3M14 9l2 2" /></svg>
 )
 // Ajuda: interrogação em círculo, o sinal universal de documentação.
 const IconAjuda = () => (
@@ -310,11 +314,18 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
               <span className="sb-item-label">Gestor / Fluxo</span>
             </NavLink>
           )}
+          {/* Linha do tempo: no grupo Painel, como no protótipo do Bloco 2. */}
+          {mostrar('linhaDoTempo') && (
+            <NavLink to="/linha-do-tempo" className={itemClass} {...prefetchProps('/linha-do-tempo')}>
+              <span className="sb-item-icon"><IconLinhaDoTempo /></span>
+              <span className="sb-item-label">Linha do tempo</span>
+            </NavLink>
+          )}
         </div>
 
         {/* Módulo 2 (16/11/2026): as telas do Bloco 2 (Auditores, Agenda de serviços,
             Fechamentos e Ausências); a seção só aparece para quem vê alguma tela dela. */}
-        {(mostrar('auditores') || mostrar('agendaServicos') || mostrar('fechamentos') || mostrar('ausencias')) && (
+        {(mostrar('auditores') || mostrar('agendaServicos') || mostrar('fechamentos') || mostrar('senhasPortal')) && (
         <div className="sb-section">
           <div className="sb-section-label">Módulo 2</div>
           {mostrar('auditores') && (
@@ -335,10 +346,12 @@ export default function Sidebar({ collapsed = false, onToggleCollapse }: Sidebar
             <span className="sb-item-label">Fechamentos</span>
           </NavLink>
           )}
-          {mostrar('ausencias') && (
-          <NavLink to="/modulo-2/ausencias" className={itemClass} {...prefetchProps('/modulo-2/ausencias')}>
-            <span className="sb-item-icon"><IconAusencias /></span>
-            <span className="sb-item-label">Ausências</span>
+          {/* Ausências saiu do menu (24/11/2026, pedido do usuário: "unifique as telas de Auditores com
+              Ausências"): os pedidos são decididos em Auditores, na ficha de cada auditor. */}
+          {mostrar('senhasPortal') && (
+          <NavLink to="/modulo-2/senhas" className={itemClass} {...prefetchProps('/modulo-2/senhas')}>
+            <span className="sb-item-icon"><IconSenhas /></span>
+            <span className="sb-item-label">Senhas</span>
           </NavLink>
           )}
         </div>

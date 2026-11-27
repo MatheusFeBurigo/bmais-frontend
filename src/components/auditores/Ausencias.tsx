@@ -1,23 +1,21 @@
-// Módulo 2 > Ausências (17/11/2026, migration 0065). Pedido do usuário: a agenda
-// e as ausências do App do auditor "devidamente implementadas", com a decisão da
-// coordenação "na parte de módulos" do portal.
+// Ausências dos auditores, dentro de Módulo 2 > Auditores (24/11/2026, pedido do usuário: "unifique as telas de
+// Auditores com Ausências; em Auditores são tomadas as decisões e aprovações referentes a ausências e falta de
+// documentações"). Antes era a tela /modulo-2/ausencias (17/11/2026, migration 0065), que agora abre Auditores
+// filtrado em "Decisões pendentes".
 //
-// /modulo-2/ausencias  os pedidos de ausência que o médico e o enfermeiro fazem
-//                      no App (Minha agenda): primeiro os que esperam decisão,
-//                      com os fechamentos do auditor naquele dia; depois os já
-//                      decididos (e os que ele mesmo cancelou).
+// AusenciasADecidir    na ficha do auditor, as linhas de ausência do "Para decidir" (Recusar e Aprovar), junto dos
+//                      documentos para aprovar (24/11/2026, sem abas; a ficha é para decidir).
+// HistoricoAusencias   na ficha, o cartão dos pedidos já decididos.
 //
-// Quem decide (ACOES.decidirAusencias) aprova ou recusa com motivo, como REGRAS
-// 2.1 do Bloco 2. Aprovado, os fechamentos do auditor no dia viram "troca
-// pedida" em Fechamentos, para a coordenação nomear quem vai.
-import { useMemo, useState } from 'react'
-import { usePageHeader } from '../components/PageHeader'
-import { ConfirmarModal } from '../components/ConfirmarModal'
-import Toast from '../components/Toast'
-import { Badge, LoadingState, Modal } from '../components/ui'
-import { useAusencias, useDecidirAusencia } from '../hooks/useAusencias'
-import { dataBR, dataHora } from '../lib/datas'
-import type { EstadoAusencia, FechamentoDoDia, PedidoAusencia } from '../services/ausencias.service'
+// Quem decide (ACOES.decidirAusencias) aprova ou recusa com motivo, como REGRAS 2.1 do Bloco 2. Aprovado, os
+// fechamentos do auditor no dia viram "troca pedida" em Fechamentos, para a coordenação nomear quem vai.
+import { useState } from 'react'
+import { ConfirmarModal } from '../ConfirmarModal'
+import Toast from '../Toast'
+import { Badge, Modal } from '../ui'
+import { useDecidirAusencia } from '../../hooks/useAusencias'
+import { dataBR, dataHora } from '../../lib/datas'
+import type { EstadoAusencia, FechamentoDoDia, PedidoAusencia } from '../../services/ausencias.service'
 
 const estilos = `
 .aus-nome{font-weight:600;color:var(--ink)}
@@ -44,7 +42,8 @@ const ESTADO: Record<EstadoAusencia, { rotulo: string; variante: Variante }> = {
   pendente: { rotulo: 'Aguardando', variante: 'warning' },
   aprovado: { rotulo: 'Aprovado', variante: 'success' },
   recusado: { rotulo: 'Recusado', variante: 'danger' },
-  cancelado: { rotulo: 'Cancelado pelo auditor', variante: 'muted' },
+  // Curto, para caber na coluna da ficha; "pelo auditor" vai embaixo, com a data.
+  cancelado: { rotulo: 'Cancelado', variante: 'muted' },
 }
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -52,7 +51,6 @@ const diaDaSemana = (s: string) => {
   const [a, m, d] = s.split('-').map(Number)
   return DIAS[new Date(a, m - 1, d).getDay()]
 }
-const tipoAuditor = (t: string | null) => (t === 'M' ? 'Médico(a)' : t === 'E' ? 'Enfermeiro(a)' : 'Auditor(a)')
 const PAPEL = { medico: 'médico', enfermeiro: 'enfermeiro' } as const
 /** Letras do texto (a regra do servidor: recusar exige pelo menos 4). */
 const letras = (s: string) => (s.match(/\p{L}/gu) ?? []).length
@@ -66,15 +64,6 @@ function Fechamentos({ l }: { l: FechamentoDoDia[] }) {
           {f.hora} · {f.hospital_nome} · {f.operadora_nome} <span className="aus-sub">(como {PAPEL[f.papel]})</span>
         </div>
       ))}
-    </>
-  )
-}
-
-function Auditor({ p }: { p: PedidoAusencia }) {
-  return (
-    <>
-      <div className="aus-nome">{p.profissional_nome}</div>
-      <div className="aus-sub">{tipoAuditor(p.tipo)}</div>
     </>
   )
 }
@@ -176,145 +165,107 @@ function RecusarModal({ p, onFechar, onFeito }: {
   )
 }
 
-// ── A lista ─────────────────────────────────────────────────────────────
-
 type Acao = { tipo: 'aprovar' | 'recusar'; p: PedidoAusencia }
 
-export default function Ausencias() {
-  const { data, isLoading, isError, error } = useAusencias()
+function Botoes({ onAprovar, onRecusar }: { onAprovar: () => void; onRecusar: () => void }) {
+  return (
+    <div className="aus-acoes">
+      <button type="button" className="btn btn-outline btn-sm" onClick={onRecusar}>Recusar</button>
+      <button type="button" className="btn btn-primary btn-sm" onClick={onAprovar}>Aprovar</button>
+    </div>
+  )
+}
+
+function Modais({ acao, onFechar, onFeito }: { acao: Acao | null; onFechar: () => void; onFeito: (m: string) => void }) {
+  if (acao?.tipo === 'aprovar') return <AprovarModal p={acao.p} onFechar={onFechar} onFeito={onFeito} />
+  if (acao?.tipo === 'recusar') return <RecusarModal p={acao.p} onFechar={onFechar} onFeito={onFeito} />
+  return null
+}
+
+// ── Na ficha do auditor ────────────────────────────────────────────────
+// A ficha é para decidir (24/11/2026, pedido do usuário: "essa tela precisa ser mais no sentido de aprovar"):
+// as ausências que esperam decisão entram como linhas de "Para decidir" (com os documentos para aprovar); as já
+// decididas ficam num cartão de histórico, mais abaixo. Os estilos das linhas (.aud-dec*) são da página.
+
+/** As ausências do auditor que esperam decisão: uma linha cada, com Recusar e Aprovar. */
+export function AusenciasADecidir({ pedidos, decide }: { pedidos: PedidoAusencia[]; decide: boolean }) {
   const [acao, setAcao] = useState<Acao | null>(null)
   const [aviso, setAviso] = useState('')
-  usePageHeader(useMemo(() => ({
-    title: 'Ausências',
-    subtitle: 'Pedidos de ausência dos auditores, feitos no App',
-  }), []))
-
-  if (isLoading) return <LoadingState />
-  if (isError || !data) {
-    return (
-      <div>
-        <style>{estilos}</style>
-        <div className="card"><div className="aus-vazio">{(error as Error)?.message || 'Não foi possível carregar as ausências.'}</div></div>
-      </div>
-    )
-  }
-
-  const decide = data.pode_decidir && data.disponivel
-  const pendentes = data.pedidos.filter((p) => p.estado === 'pendente')
-  const outros = data.pedidos.filter((p) => p.estado !== 'pendente')
   const feito = (m: string) => { setAcao(null); setAviso(m) }
-
   return (
-    <div>
+    <>
       <style>{estilos}</style>
-      {!data.disponivel && (
-        <div className="card" style={{ marginBottom: 14 }}>
-          <div className="aus-aviso">
-            As ausências ainda não estão disponíveis neste ambiente: o banco ainda não tem as tabelas de
-            ausências.
+      {pedidos.map((p) => (
+        <div key={p.id} className="aud-dec-item">
+          <div className="aud-dec-tipo"><Badge variant="info">Ausência</Badge></div>
+          <div className="aud-dec-txt">
+            <div className="aud-dec-t">Não vai em {diaDaSemana(p.dia).toLowerCase()}, {dataBR(p.dia)}</div>
+            <div className="aud-dec-s">
+              {p.motivo}{p.pedido_em ? ` · pedido em ${dataHora(p.pedido_em)}` : ''}
+            </div>
+            <div className="aud-dec-s">Fechamentos no dia: {p.fechamentos.length ? null : 'nenhum'}</div>
+            {p.fechamentos.length > 0 && <Fechamentos l={p.fechamentos} />}
           </div>
+          {decide && <Botoes onAprovar={() => setAcao({ tipo: 'aprovar', p })} onRecusar={() => setAcao({ tipo: 'recusar', p })} />}
         </div>
-      )}
+      ))}
+      <Modais acao={acao} onFechar={() => setAcao(null)} onFeito={feito} />
+      {aviso && <Toast message={aviso} onDone={() => setAviso('')} />}
+    </>
+  )
+}
 
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="card-header">
-          <div>
-            <div className="card-title">Aguardando decisão · {pendentes.length}</div>
-            <p className="card-sub">Enquanto o pedido espera, o auditor segue na agenda do dia.</p>
-          </div>
-        </div>
-        <div style={{ overflow: 'auto' }}>
-          <table className="bmais-table" style={{ minWidth: 900 }}>
-            <thead>
-              <tr>
-                <th>Auditor</th>
-                <th>Dia</th>
-                <th>Motivo</th>
-                <th>Fechamentos no dia</th>
-                <th style={{ width: 1 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendentes.map((p) => (
-                <tr key={p.id}>
-                  <td><Auditor p={p} /></td>
-                  <td><Dia p={p} /></td>
-                  <td>{p.motivo}</td>
-                  <td><Fechamentos l={p.fechamentos} /></td>
-                  <td>
-                    {decide && (
-                      <div className="aus-acoes">
-                        <button type="button" className="btn btn-outline btn-sm" onClick={() => setAcao({ tipo: 'recusar', p })}>
-                          Recusar
-                        </button>
-                        <button type="button" className="btn btn-primary btn-sm" onClick={() => setAcao({ tipo: 'aprovar', p })}>
-                          Aprovar
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {pendentes.length === 0 && (
-                <tr><td colSpan={5} className="aus-vazio">Nenhum pedido esperando decisão.</td></tr>
-              )}
-            </tbody>
-          </table>
+/** Os pedidos de ausência já decididos (e os que o auditor cancelou), dos últimos 30 dias em diante. */
+export function HistoricoAusencias({ pedidos, disponivel }: { pedidos: PedidoAusencia[]; disponivel: boolean }) {
+  return (
+    <div className="card" style={{ marginBottom: 14 }}>
+      <style>{estilos}</style>
+      <div className="card-header">
+        <div>
+          <div className="card-title">Ausências decididas</div>
+          <p className="card-sub">Pedidos que ele fez no App (Minha agenda), dos últimos 30 dias em diante.</p>
         </div>
       </div>
-
-      <div className="card">
-        <div className="card-header">
-          <div>
-            <div className="card-title">Decididos</div>
-            <p className="card-sub">Dos últimos 30 dias em diante, o dia mais recente primeiro.</p>
-          </div>
-        </div>
+      {!disponivel ? <div className="aus-aviso">As ausências ainda não estão disponíveis.</div> : (
         <div style={{ overflow: 'auto' }}>
-          <table className="bmais-table" style={{ minWidth: 900 }}>
+          <table className="bmais-table aud-grade" style={{ minWidth: 600 }}>
             <thead>
+              {/* A mesma grade da Documentação na ficha (22% e 24%), para as colunas alinharem. */}
               <tr>
-                <th>Auditor</th>
-                <th>Dia</th>
-                <th>Motivo</th>
-                <th>Situação</th>
-                <th>Decisão</th>
+                <th style={{ width: '22%' }}>Dia</th>
+                <th style={{ width: '24%' }}>Situação</th>
+                <th>Motivo e resposta</th>
               </tr>
             </thead>
             <tbody>
-              {outros.map((p) => {
+              {pedidos.map((p) => {
                 const e = ESTADO[p.estado]
                 return (
                   <tr key={p.id}>
-                    <td><Auditor p={p} /></td>
                     <td><Dia p={p} /></td>
-                    <td>{p.motivo}</td>
-                    <td><Badge variant={e.variante}>{e.rotulo}</Badge></td>
                     <td>
-                      {p.decisao ? (
-                        <>
-                          <div className="aus-sub" style={{ marginTop: 0 }}>
-                            {[p.decisao.por_nome && `por ${p.decisao.por_nome}`, p.decisao.em && `em ${dataHora(p.decisao.em)}`]
-                              .filter(Boolean).join(' ')}
-                          </div>
-                          {p.decisao.motivo && <div style={{ fontSize: 'var(--t-sm)' }}>{p.decisao.motivo}</div>}
-                        </>
-                      ) : <span className="aus-sub">—</span>}
+                      <Badge variant={e.variante}>{e.rotulo}</Badge>
+                      {p.decisao && (
+                        <div className="aus-sub">
+                          {[p.estado === 'cancelado' ? 'pelo auditor' : p.decisao.por_nome && `por ${p.decisao.por_nome}`,
+                            p.decisao.em && `em ${dataHora(p.decisao.em)}`].filter(Boolean).join(' ')}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <div>{p.motivo}</div>
+                      {p.decisao?.motivo && <div className="aus-sub">Resposta: {p.decisao.motivo}</div>}
                     </td>
                   </tr>
                 )
               })}
-              {outros.length === 0 && (
-                <tr><td colSpan={5} className="aus-vazio">Nenhum pedido decidido nos últimos 30 dias.</td></tr>
+              {pedidos.length === 0 && (
+                <tr><td colSpan={3} className="aus-vazio">Nenhum pedido decidido nos últimos 30 dias.</td></tr>
               )}
             </tbody>
           </table>
         </div>
-      </div>
-
-      {acao?.tipo === 'aprovar' && <AprovarModal p={acao.p} onFechar={() => setAcao(null)} onFeito={feito} />}
-      {acao?.tipo === 'recusar' && <RecusarModal p={acao.p} onFechar={() => setAcao(null)} onFeito={feito} />}
-      {aviso && <Toast message={aviso} onDone={() => setAviso('')} />}
+      )}
     </div>
   )
 }

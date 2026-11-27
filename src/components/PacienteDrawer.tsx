@@ -20,10 +20,10 @@ import { useFormRelatorio } from './paciente/useFormRelatorio'
 import { FichaRelatorio, type AlvoRelatorio } from './paciente/relatorio/FichaRelatorio'
 import { BotaoFormularioPorto } from './porto/BotaoFormularioPorto'
 import { TimelineEventos } from './timeline/TimelineEventos'
-import { useInternacaoDados, useInternacaoTimeline } from '../hooks/useInternacao'
+import { useInternacaoDados, useInternacaoRelatorios, useInternacaoTimeline } from '../hooks/useInternacao'
 import { useEquipe } from '../hooks/useEquipe'
 import { useAuth } from '../auth/AuthContext'
-import { podeExecutar, podeVerFichaPaciente } from '../auth/permissions'
+import { ehSomenteLeitura, podeExecutar, podeVerFichaPaciente } from '../auth/permissions'
 import { ACOES_NO_PAINEL } from '../lib/recursos'
 import { corDaGravidade, gravidadeDoStatus, KPI_PERIGO } from '../lib/statusRelatorio'
 import { identificacaoPaciente } from '../lib/texto'
@@ -74,6 +74,16 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
   const podeRegistrar = ACOES_NO_PAINEL && !foraDaArea && podeExecutar(role, 'registrarRelatorio')
   const podeAgendar = ACOES_NO_PAINEL && !foraDaArea && podeExecutar(role, 'agendarVisita')
   const podeDarAlta = !foraDaArea && podeExecutar(role, 'darAlta')
+  // Atalho para a aprovação (24/11/2026): com relatório aguardando aprovação,
+  // quem aprova vai direto à ficha com o relatório pendente aberto, o mesmo
+  // caminho do card de Tarefas (`?relatorio=`). A lista de relatórios só é
+  // buscada nesse caso.
+  const podeIrAprovar = Boolean(d?.relatorio_em_aprovacao) && !foraDaArea
+    && podeVerFichaPaciente(role) && podeExecutar(role, 'aprovarRelatorio') && !ehSomenteLeitura(role)
+  const relatorios = useInternacaoRelatorios(internacaoId, podeIrAprovar)
+  const relatorioPendente = podeIrAprovar
+    ? relatorios.data?.relatorios.find((r) => r.aprovacao === 'pendente')
+    : undefined
   const medicos = useMemo(
     () => (equipe?.medicos ?? []).filter((m) => Boolean(m.ativo)).map((m) => m.nome),
     [equipe],
@@ -192,6 +202,17 @@ export default function PacienteDrawer({ internacaoId, onClose, onSaved }: Props
             <div style={{ marginRight: 'auto' }}>
               <AcaoAlta d={d} sobreposta pequeno={false} onFeito={onSaved} />
             </div>
+          )}
+          {relatorioPendente && (
+            <button
+              className="btn btn-success"
+              style={{ gap: 6 }}
+              onClick={() => navigate(`/paciente/${internacaoId}?relatorio=${relatorioPendente.id}`)}
+              title="Abrir o relatório que aguarda aprovação"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+              Ir para aprovação
+            </button>
           )}
           <button className="btn btn-outline" onClick={onClose}>Fechar</button>
         </div>

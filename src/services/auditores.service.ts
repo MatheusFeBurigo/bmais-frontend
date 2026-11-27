@@ -6,14 +6,18 @@
 // Backend: routes/auditores.py.
 import { apiDownload, apiFetch, apiUpload } from '../api/client'
 
-/** Situação de um documento do auditor (DOC_ST do protótipo do App). */
-export type SituacaoDocumento = 'nao_pedido' | 'falta' | 'em_dia' | 'vence' | 'vencido'
-/** Situação geral do auditor (DOC_RES do protótipo); "sem" = nada atribuído. */
-export type SituacaoGeral = 'pendente' | 'vence' | 'em_dia' | 'sem'
+/** Situação de um documento do auditor (DOC_ST do protótipo do App). `em_analise` (24/11/2026,
+ *  migration 0072): enviado pelo auditor no App, aguardando a aprovação da B+. */
+export type SituacaoDocumento = 'nao_pedido' | 'falta' | 'em_analise' | 'em_dia' | 'vence' | 'vencido'
+/** Situação geral do auditor (DOC_RES do protótipo); "sem" = nada atribuído; "analise" = algum
+ *  documento aguardando a aprovação da B+ (e nada faltando ou vencido). */
+export type SituacaoGeral = 'pendente' | 'analise' | 'vence' | 'em_dia' | 'sem'
 
 export interface ResumoDocumentos {
   falta: number
   vencido: number
+  /** Aguardando a aprovação da B+ (0072). Ausente em servidor anterior. */
+  em_analise?: number
   vence: number
   em_dia: number
   total: number
@@ -63,6 +67,8 @@ export interface RegistroDocumento {
   pedido_por_nome: string | null
   /** Pedido automático da documentação padrão (no cadastro do auditor). */
   pedido_padrao?: boolean
+  /** O que a B+ escreveu para o auditor ao pedir (0073). */
+  pedido_observacao?: string | null
   enviado_em: string | null
   enviado_por_nome: string | null
   enviado_via: 'portal' | 'app' | null
@@ -74,6 +80,11 @@ export interface RegistroDocumento {
   nome_download?: string | null
   cancelado_em: string | null
   cancelado_por_nome: string | null
+  /** Aprovação pela B+ (0072): null nos registros antigos, que valem como aprovados. */
+  aprovacao?: 'pendente' | 'aprovado' | 'recusado' | null
+  aprovacao_em?: string | null
+  aprovacao_por_nome?: string | null
+  recusa_motivo?: string | null
 }
 
 export interface DocumentoDoAuditor {
@@ -83,6 +94,8 @@ export interface DocumentoDoAuditor {
   pedido: RegistroDocumento | null
   /** O último arquivo recebido (continua valendo durante uma renovação). */
   arquivo: RegistroDocumento | null
+  /** O envio recusado que reabriu o pedido, com o motivo (0072). */
+  recusa?: RegistroDocumento | null
 }
 
 export interface FichaAuditor {
@@ -94,6 +107,8 @@ export interface FichaAuditor {
   catalogo: (TipoDocumento & { em_aberto: boolean })[]
   pode_gerir: boolean
   disponivel: boolean
+  /** O banco tem a aprovação dos documentos (migration 0072): dá para aprovar e recusar com motivo. */
+  aprovacao_disponivel?: boolean
   vence_em_dias: number
 }
 
@@ -105,19 +120,32 @@ export function fetchFichaAuditor(id: number): Promise<FichaAuditor> {
   return apiFetch(`/auditores/${id}`)
 }
 
-export function pedirDocumentos(id: number, tipos: number[]):
+/** `observacao` (24/11/2026, 0073): o que o auditor vê no App; obrigatória ao pedir de novo o que já tem arquivo. */
+export function pedirDocumentos(id: number, tipos: number[], observacao?: string):
   Promise<{ ok: boolean; pedidos: string[]; ja_pedidos: string[]; auditor: string }> {
-  return apiFetch(`/auditores/${id}/documentos/pedir`, { method: 'POST', body: { tipos } })
+  return apiFetch(`/auditores/${id}/documentos/pedir`, { method: 'POST', body: { tipos, ...(observacao ? { observacao } : {}) } })
 }
 
 /** Pede ao auditor um documento fora da documentação padrão, pelo nome. */
-export function inserirDocumento(id: number, nome: string, comValidade: boolean):
+export function inserirDocumento(id: number, nome: string, comValidade: boolean, observacao?: string):
   Promise<{ ok: boolean; pedidos: string[]; ja_pedidos: string[]; auditor: string; tipo_nome: string; novo: boolean }> {
-  return apiFetch(`/auditores/${id}/documentos/inserir`, { method: 'POST', body: { nome, com_validade: comValidade } })
+  return apiFetch(`/auditores/${id}/documentos/inserir`, {
+    method: 'POST', body: { nome, com_validade: comValidade, ...(observacao ? { observacao } : {}) },
+  })
 }
 
 export function cancelarPedidoDocumento(documentoId: number): Promise<unknown> {
   return apiFetch(`/auditores/documentos/${documentoId}/cancelar`, { method: 'POST' })
+}
+
+/** A B+ aprova o documento que o auditor enviou pelo App (24/11/2026, 0072). */
+export function aprovarDocumento(documentoId: number): Promise<{ ok: boolean; tipo_nome: string; auditor: string }> {
+  return apiFetch(`/auditores/documentos/${documentoId}/aprovar`, { method: 'POST' })
+}
+
+/** A B+ recusa o documento enviado, com motivo: ele volta a ser pedido ao auditor, que vê o motivo no App. */
+export function recusarDocumento(documentoId: number, motivo: string): Promise<{ ok: boolean; tipo_nome: string; auditor: string }> {
+  return apiFetch(`/auditores/documentos/${documentoId}/recusar`, { method: 'POST', body: { motivo } })
 }
 
 export function receberDocumento(id: number, tipoId: number, arquivo: File, validade: string):
@@ -135,7 +163,7 @@ export function baixarDocumento(documentoId: number, nome: string): Promise<void
 // ── Cadastro e contrato (17/11/2026, migration 0065) ─────────────────────
 // A empresa e o registro do auditor (dados cadastrais) e o contrato com a B+
 // (só a diretoria vê e edita; para os demais o servidor manda `contrato: null`).
-// O App do auditor mostra os dois atrás da senha de desbloqueio.
+// O App do auditor mostra os dois em Meus dados (sem a senha de desbloqueio, que saiu em 27/11/2026).
 
 export interface CadastroAuditor {
   registro: string | null

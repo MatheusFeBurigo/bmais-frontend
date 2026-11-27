@@ -11,6 +11,8 @@ import { localStyles, SERVICO_LABEL } from './configuracoes.styles'
 import { StatMini } from './shared'
 import { AddEscalaHospForm } from './forms'
 import FichaHospital from './FichaHospital'
+import ContatosHospital from './ContatosHospital'
+import { useAuth } from '../../auth/AuthContext'
 import RegrasHospital from './RegrasHospital'
 
 export default function HospitalView({ opSel, hosp, profs, operadoras, onNav, onToast, onChanged, toast }: {
@@ -26,6 +28,8 @@ export default function HospitalView({ opSel, hosp, profs, operadoras, onNav, on
   toast: string | null
 }) {
   const [addForm, setAddForm] = useState(false)
+  // Contatos por área, censo e avisos do App (0068): só o admin, por ora (decisão de 23/11/2026).
+  const { role } = useAuth()
   const enfermeiros = hosp.escala.filter((e) => e.profissional_tipo === 'E').length
   const medicos = hosp.escala.filter((e) => e.profissional_tipo === 'M').length
   const servicos = new Set(hosp.escala.map((e) => e.servico)).size
@@ -73,6 +77,8 @@ export default function HospitalView({ opSel, hosp, profs, operadoras, onNav, on
       <style>{localStyles}</style>
 
       <FichaHospital hosp={hosp} operadoras={operadoras} onToast={onToast} onChanged={onChanged} />
+
+      {role === 'admin' && <ContatosHospital hospitalKey={hosp.key} onToast={onToast} />}
 
       <RegrasHospital hospitalKey={hosp.key} opKey={opSel?.key} onToast={onToast} />
 

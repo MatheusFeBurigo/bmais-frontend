@@ -104,7 +104,7 @@ function DropZone({ files, onFiles, progresso, operadoraKey }: {
   if (progresso) {
     return (
       <div className="up-drop trabalhando" style={varsOperadora(operadoraKey)}>
-        <ProgressoEnvio estado={progresso} arquivos={files.map((f) => f.name)} />
+        <ProgressoEnvio estado={progresso} arquivos={progresso.fila ?? files.map((f) => f.name)} />
       </div>
     )
   }
@@ -280,7 +280,9 @@ export function FormularioEnvio({
               disabled={!files.length || !hospital || busy}
             >
               {busy && <Spinner size={14} style={{ borderTopColor: '#fff', borderColor: 'rgba(255,255,255,.4)' }} />}
-              {busy ? 'Lendo os censos…' : 'Processar censos'}
+              {/* Primeiro confere (nada é gravado) e abre a confirmação com o hospital;
+                  o Salvar dela é que grava (25/11/2026). */}
+              {busy ? 'Aguarde…' : 'Conferir e salvar'}
             </button>
             {/* A contagem some daqui: o cabeçalho da lista logo acima já diz
                 "N arquivos anexados", e repetir o mesmo número a dois centímetros

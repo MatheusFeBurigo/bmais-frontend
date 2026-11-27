@@ -18,6 +18,7 @@ export type Screen =
   | 'upload'
   | 'kanban'
   | 'logs'
+  | 'linhaDoTempo'
   | 'progresso'
   | 'volumetria'
   | 'aprovacoes'
@@ -25,6 +26,7 @@ export type Screen =
   | 'fechamentos'
   | 'ausencias'
   | 'agendaServicos'
+  | 'senhasPortal'
 
 // Telas que cada papel NÃO pode ver. Ausência de entrada = vê tudo.
 const BLOQUEADAS: Partial<Record<UserRole, readonly Screen[]>> = {
@@ -78,6 +80,10 @@ const EXCLUSIVAS: Partial<Record<Screen, readonly UserRole[]>> = {
   // Movimentações (auditoria): administrador e analista interno. Nem o diretor vê.
   // Espelha ROLES_AUDITORIA do backend (interface/authz.py).
   logs: ['admin', 'analista'],
+  // Linha do tempo (24/11/2026): a tela do protótipo do Bloco 2 sobre a mesma
+  // trilha, com o mesmo público (no protótipo, toda a B+ vê; abrir aos demais é
+  // decisão do usuário). Espelha requer_auditoria em /api/auditoria/linha-do-tempo.
+  linhaDoTempo: ['admin', 'analista'],
   // Progresso (avanço da construção do produto): administração e diretoria.
   // É informação sobre o CONTRATO — o que já foi entregue e o que falta —, não
   // sobre a operação, então não chega a quem trabalha na assistência.
@@ -116,6 +122,10 @@ const EXCLUSIVAS: Partial<Record<Screen, readonly UserRole[]>> = {
   // monta vem do servidor (`pode_gerir`), porque o analista é somente leitura no
   // resto do portal. Espelha ROLES_VER_AGENDA no backend.
   agendaServicos: SO_ADMIN,
+  // Módulo 2 > Senhas (23/11/2026, migration 0070): as senhas do dia que a B+ copia à mão do portal
+  // da operadora, para o auditor lançar no App. Só o admin, por ora (próxima fase do App). Espelha
+  // senhas_portal.ROLES_GERIR no backend.
+  senhasPortal: SO_ADMIN,
 }
 
 // Papéis SOMENTE LEITURA: veem as telas, mas nenhuma ação que altera dados.
@@ -163,19 +173,23 @@ const ROTA_DA_SCREEN: Record<Screen, string> = {
   upload: '/upload',
   kanban: '/tarefas',
   logs: '/logs',
+  linhaDoTempo: '/linha-do-tempo',
   progresso: '/progresso',
   volumetria: '/distribuicao',
   aprovacoes: '/aprovacoes',
   auditores: '/auditores',
   fechamentos: '/modulo-2/fechamentos',
-  ausencias: '/modulo-2/ausencias',
+  // Dentro de Auditores desde 24/11/2026 (filtro "Decisões pendentes" e a ficha de cada auditor).
+  ausencias: '/auditores?filtro=decisoes',
   agendaServicos: '/modulo-2/agenda-de-servicos',
+  senhasPortal: '/modulo-2/senhas',
 }
 
 // Ordem de preferência ao escolher a "tela inicial" de um papel barrado.
 const ORDEM_FALLBACK: readonly Screen[] = [
   'operacional', 'gestor', 'diretoria', 'kanban', 'logs', 'upload', 'configuracoes', 'equipe',
-  'volumetria', 'aprovacoes', 'auditores', 'fechamentos', 'ausencias', 'agendaServicos',
+  'volumetria', 'aprovacoes', 'auditores', 'fechamentos', 'ausencias', 'agendaServicos', 'senhasPortal',
+  'linhaDoTempo',
   // Progresso fica por último de propósito: é tela de acompanhamento, e cair
   // nela ao ser barrado em outra não ajudaria ninguém a trabalhar.
   'progresso',

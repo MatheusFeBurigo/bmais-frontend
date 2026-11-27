@@ -496,11 +496,13 @@ export function ReplicaFichaRapida({ marcas = {}, agendada, atrasada, preenchido
             <>
               <div className="section-label" style={{ marginTop: 20 }}>Agendar visita</div>
               {agendada || atrasada ? (
-                <div className="dk" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="dk" style={{ display: 'flex', alignItems: 'center', gap: 10, ...(atrasada ? { background: 'var(--danger-bg)', borderColor: 'var(--danger)' } : {}) }}>
                   {marcar(marcas.agendaResumo, (
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 'var(--t-md)', color: atrasada ? 'var(--danger)' : 'var(--ink-2)' }}>
-                        {atrasada ? 'Visita atrasada, era 24/09/2026 às 10:30' : 'Visita marcada para 26/09/2026 às 14:00'}
+                      {/* Como o bloco de verdade (BlocoAgendarVisita, 27/11/2026): passou a visita sem relatório = alerta. */}
+                      {atrasada && <div style={{ fontSize: 'var(--t-sm)', fontWeight: 700, color: 'var(--danger-2)' }}>Relatório não registrado</div>}
+                      <div style={{ fontSize: 'var(--t-md)', color: 'var(--ink-2)' }}>
+                        {atrasada ? 'Visita agendada para 24/09/2026 às 10:30' : 'Visita marcada para 26/09/2026 às 14:00'}
                       </div>
                       <div className="dk-meta">Responsável: {atrasada ? 'Dra. Renata Alves' : 'Dr. Paulo Mendes'}</div>
                     </div>
@@ -831,6 +833,7 @@ export function ReplicaFichaRelatorioPendente({ marcas = {} }: {
         <>
           <span className="btn btn-outline">Fechar</span>
           <span className="btn btn-outline" style={{ marginRight: 'auto' }}>Imprimir ou PDF</span>
+          <span className="btn btn-outline">Recusar</span>
           {marcar(marcas.editar, <span className="btn btn-outline">Editar</span>)}
           {marcar(marcas.aprovar, <span className="btn btn-success">Aprovar</span>)}
         </>
@@ -1307,7 +1310,8 @@ export function ReplicaAdicionarPaciente({ marcas = {} }: {
         ), true)}
         {marcar(marcas.paciente, (
           <div style={{ display: 'grid', gap: 12 }}>
-            {campo('Nome do paciente *', 'Beatriz Almeida Rocha')}
+            {campo('Nome do paciente', 'Beatriz Almeida Rocha')}
+            {campo('Senha', '84210377')}
             {campo('Atendimento', '771502')}
           </div>
         ), true)}

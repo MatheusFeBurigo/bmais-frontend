@@ -8,7 +8,7 @@ import {
   type CensoAlvo, type MovimentoCenso,
 } from '../services/kanban.service'
 import {
-  aprovarRelatorio, editarRelatorio, fetchCatalogosProrrogacao,
+  aprovarRelatorio, editarRelatorio, fetchCatalogosProrrogacao, recusarRelatorio,
   pausarProrrogacao, type RelatorioRapido,
 } from '../services/internacao.service'
 import { invalidarPorEvento } from '../lib/invalidation'
@@ -165,6 +165,16 @@ export function useAprovarRelatorio() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (v: { relatorioId: number; internacaoId?: number | null }) => aprovarRelatorio(v.relatorioId),
+    onSuccess: (_r, v) => aoMudarAprovacao(qc, v.internacaoId),
+  })
+}
+
+/** Quem aprova recusa o relatório pendente, com motivo (26/11/2026). */
+export function useRecusarRelatorio() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { relatorioId: number; internacaoId?: number | null; motivo: string }) =>
+      recusarRelatorio(v.relatorioId, v.motivo),
     onSuccess: (_r, v) => aoMudarAprovacao(qc, v.internacaoId),
   })
 }

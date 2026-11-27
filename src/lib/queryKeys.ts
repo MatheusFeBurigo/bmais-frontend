@@ -69,6 +69,11 @@ export const queryKeys = {
     ['auditoria', userId, entidade, acao, de, ate, q, pagina, limite] as const,
   auditoriaOpcoes: () => ['auditoria-opcoes'] as const,
   auditoriaResumo: (de: string) => ['auditoria-resumo', de] as const,
+  /** Tela Linha do tempo: o período e os filtros (área, operadora, quem, busca,
+   *  coluna do ritmo) e quantas linhas a lista mostra. */
+  linhaDoTempo: (periodo: string, area: string, operadora: string, quem: string,
+                 q: string, balde: string, limite: number) =>
+    ['linha-do-tempo', periodo, area, operadora, quem, q, balde, limite] as const,
   /** Envios de censo recentes com o estado de reversão de cada arquivo
    *  (Movimentações: o botão "Desfazer lote"). */
   enviosCenso: (limite: number) => ['envios-censo', limite] as const,
@@ -123,6 +128,15 @@ export const queryKeys = {
   ausencias: () => ['ausencias', 'lista'] as const,
   /** Módulo 2 > Auditores > ficha: cadastro e contrato (fica sob a raiz de auditores). */
   auditorCadastro: (id: number) => ['auditores', 'cadastro', id] as const,
+
+  /** Ficha do hospital: contatos por área, censo e avisos do App (0068). */
+  hospitalContatos: (key: string) => ['hospital-contatos', 'ficha', key] as const,
+  /** Avisos de mudança de contato vindos do App, ainda não tratados (todos os hospitais). */
+  hospitalAvisos: () => ['hospital-contatos', 'avisos'] as const,
+  /** Módulo 2 > Senhas: as senhas do dia cadastradas pela B+ (0070). */
+  senhasPortal: () => ['senhas-portal', 'lista'] as const,
+  /** Módulo 2 > Senhas > Contagem do mês (0071). */
+  senhasContagem: (comp: string) => ['senhas-portal', 'contagem', comp] as const,
 } as const
 
 // Raiz (primeiro segmento) de cada domínio — usada para invalidar TODAS as
@@ -151,6 +165,8 @@ export const queryRoots = {
   fechamentos: ['fechamentos'] as const,
   ausencias: ['ausencias'] as const,
   postos: ['postos'] as const,
+  hospitalContatos: ['hospital-contatos'] as const,
+  senhasPortal: ['senhas-portal'] as const,
 } as const
 
 export type QueryRoot = keyof typeof queryRoots

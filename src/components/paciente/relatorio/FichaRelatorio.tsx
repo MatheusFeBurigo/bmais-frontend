@@ -41,6 +41,7 @@ const ACEITES: Record<string, string> = { sim: 'Sim, carimbado', nao: 'Não', ag
 
 const estilos = `
 .fx-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--t-sm);color:var(--muted)}
+.fx-recusa{margin-top:10px;padding:8px 12px;border-radius:8px;background:var(--danger-bg);color:var(--danger-2);font-size:var(--t-sm);line-height:1.5}
 .fx-sec{margin-top:20px}
 /* Título da seção acima dos rótulos (10,5px, caixa alta), como na modal. */
 .fx-sec-tit{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:var(--t-lg);font-weight:600;letter-spacing:-.01em;color:var(--ink)}
@@ -373,7 +374,16 @@ export function FichaRelatorio({ internacaoId, alvo, onFechar, sobreposta, acoes
             {r.autor && <AutorChip role={r.autor_role} autor={r.autor} nome={r.autor_nome} />}
             {r.criado_em && <span>Registrado em {dataHora(r.criado_em)}</span>}
             {r.aprovacao === 'pendente' && <span className="badge info">Aguardando aprovação</span>}
+            {r.aprovacao === 'devolvido' && <span className="badge danger">Recusado</span>}
           </div>
+          {r.aprovacao === 'devolvido' && (
+            // Recusado (26/11/2026): não vale como visita; quem recusou e o motivo.
+            <div className="fx-recusa">
+              Recusado{r.aprovacao_em ? ` em ${dataHora(r.aprovacao_em)}` : ''}
+              {r.aprovacao_por_nome ? ` por ${r.aprovacao_por_nome}` : ''}
+              {r.recusa_motivo ? `: ${r.recusa_motivo}` : ''}. Não vale como visita.
+            </div>
+          )}
           <ConteudoRelatorio r={r} acaoProrrogacao={imprimivel
             ? <GerarRelatorioProrrogacao internacaoId={internacaoId} relatorio={r} />
             : undefined} />

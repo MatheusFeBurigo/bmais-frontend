@@ -250,6 +250,12 @@ export function aprovarRelatorio(relatorioId: number): Promise<unknown> {
   return apiFetch(`/relatorio/${relatorioId}/aprovar`, { method: 'POST' })
 }
 
+/** Quem aprova recusa o relatório pendente, com o motivo (26/11/2026, como a
+ *  ausência): ele não conta como visita e o auditor vê o motivo no App. */
+export function recusarRelatorio(relatorioId: number, motivo: string): Promise<unknown> {
+  return apiFetch(`/relatorio/${relatorioId}/recusar`, { method: 'POST', body: { motivo } })
+}
+
 /**
  * Agenda a visita. `data` é ISO (AAAA-MM-DD) e precisa ser hoje ou futura: para
  * uma visita que já aconteceu o caminho é `registrarRelatorioRapido`. `medico`

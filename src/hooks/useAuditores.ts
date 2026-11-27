@@ -2,8 +2,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys, queryRoots } from '../lib/queryKeys'
 import {
-  cancelarPedidoDocumento, fetchAuditores, fetchCadastroAuditor, fetchFichaAuditor, inserirDocumento, pedirDocumentos,
-  receberDocumento, salvarCadastroAuditor, salvarContratoAuditor,
+  aprovarDocumento, cancelarPedidoDocumento, fetchAuditores, fetchCadastroAuditor, fetchFichaAuditor, inserirDocumento, pedirDocumentos,
+  receberDocumento, recusarDocumento, salvarCadastroAuditor, salvarContratoAuditor,
   type NovoCadastro, type NovoContrato,
 } from '../services/auditores.service'
 
@@ -38,15 +38,25 @@ function useEscrita<V, R>(fn: (v: V) => Promise<R>) {
 }
 
 export function usePedirDocumentos(id: number) {
-  return useEscrita((tipos: number[]) => pedirDocumentos(id, tipos))
+  return useEscrita((v: { tipos: number[]; observacao?: string }) => pedirDocumentos(id, v.tipos, v.observacao))
 }
 
 export function useInserirDocumento(id: number) {
-  return useEscrita((v: { nome: string; comValidade: boolean }) => inserirDocumento(id, v.nome, v.comValidade))
+  return useEscrita((v: { nome: string; comValidade: boolean; observacao?: string }) =>
+    inserirDocumento(id, v.nome, v.comValidade, v.observacao))
 }
 
 export function useCancelarPedidoDocumento() {
   return useEscrita((documentoId: number) => cancelarPedidoDocumento(documentoId))
+}
+
+/** Aprovar ou recusar o documento que o auditor enviou pelo App (24/11/2026, 0072). */
+export function useAprovarDocumento() {
+  return useEscrita((documentoId: number) => aprovarDocumento(documentoId))
+}
+
+export function useRecusarDocumento() {
+  return useEscrita((v: { documentoId: number; motivo: string }) => recusarDocumento(v.documentoId, v.motivo))
 }
 
 export function useReceberDocumento(id: number) {

@@ -12,7 +12,10 @@ import { lerPasso1, salvarPasso1 } from '../lib/envioPersistido'
 import { type EstadoProgresso, progressoStyles } from '../components/upload/ProgressoEnvio'
 import { ehSomenteLeitura } from '../auth/permissions'
 import { useAuth } from '../auth/AuthContext'
-import { enviarCensos, reverterEnvioCenso } from '../services/censos.service'
+import {
+  conferirCensos, distribuirCenso, processarCensos, reverterEnvioCenso, subirCensos,
+  type ItemEnvioCenso, type PreviaCenso,
+} from '../services/censos.service'
 import { useSegurarAtualizacao } from '../lib/versaoApp'
 import type {
   CompletarPendenciaResponse, HospitalManual, Operadora, PendenteCenso, UploadCensoResponse,
@@ -22,9 +25,10 @@ import { usePageHeader } from '../components/PageHeader'
 import Toast from '../components/Toast'
 import WizardComplemento from '../components/upload/WizardComplemento'
 import { ConfirmarModal } from '../components/ConfirmarModal'
+import { ConfirmarEnvio, type DecisaoArquivo } from '../components/upload/ConfirmarEnvio'
 import { FormularioEnvio, formularioStyles } from '../components/upload/FormularioEnvio'
 import { ResultadoEnvio, estilosResultado } from '../components/upload/ResultadoEnvio'
-import { plural } from '../components/upload/comuns'
+import { nomeDoGrupo, plural } from '../components/upload/comuns'
 import { useTodosHospitais } from '../hooks/useEquipe'
 import { useSidebar } from '../hooks/useDashboard'
 
@@ -67,6 +71,9 @@ export default function Upload() {
   // Arquivos que o usuário mandou ignorar (só na tela): o PDF ilegível sai da lista
   // e do placar. Nada é gravado — não há o que gravar, o arquivo não foi lido.
   const [ignorados, setIgnorados] = useState<string[]>([])
+  // Confirmação antes de salvar (25/11/2026): os arquivos já subiram e foram lidos
+  // pela prévia, que não grava nada; o Salvar da modal é que processa.
+  const [conferencia, setConferencia] = useState<{ sessao: string; previas: PreviaCenso[] } | null>(null)
   // Hospital do LOTE, escolhido antes de anexar os arquivos. É o 1º passo do envio:
   // com ele o sistema já lê cada PDF sabendo a origem (usando o leitor próprio
   // daquele hospital quando existe) em vez de perguntar depois.
@@ -96,7 +103,7 @@ export default function Upload() {
   const podeExcluir = !somenteLeitura
   // Arquivo escolhido, envio em curso ou a conferência do resultado na tela: nada
   // disso sobrevive a um F5, então a versão nova espera a pessoa sair daqui.
-  useSegurarAtualizacao(files.length > 0 || busy || result != null || wizardAberto)
+  useSegurarAtualizacao(files.length > 0 || busy || result != null || wizardAberto || conferencia != null)
   // Guarda só o passo 1, a cada mudança. Sem condição de "tem resultado": estas
   // são escolhas do usuário e valem para o próximo envio, mesmo que este ainda
   // nem tenha acontecido.
@@ -164,49 +171,103 @@ export default function Upload() {
   const atualizados = visiveis.reduce((n, r) => n + (r.atualizados?.length ?? 0), 0)
   const aResolver = pendentes.length + semHospital.length
 
+  // O hospital do LOTE vale para todos os arquivos. A operadora vai junto: sem ela
+  // o servidor cai na operadora PRINCIPAL do cadastro, e um hospital que atende
+  // várias (AACD: Allianz principal, censo da Bradesco) carimbaria o envio com a
+  // operadora errada.
+  const hospitalLote: HospitalManual = { key: hospital, operadora_key: operadora }
+
+  // 1º passo do botão: sobe os arquivos e confere cada um (prévia), SEM gravar. A
+  // modal de confirmação mostra em qual hospital cada um será salvo e, quando o
+  // arquivo traz pacientes de mais de um hospital, pergunta se são hospitais
+  // diferentes (25/11/2026).
   async function processar(e: React.FormEvent) {
     e.preventDefault()
     if (!files.length) return
     setBusy(true)
     setProgresso({ fase: 'enviando', feitos: 0, total: files.length, fracao: 0 })
     try {
-      // O hospital do lote vale para TODOS os arquivos deste envio. O backend usa a
-      // key para escolher o leitor e carimbar o resultado.
-      const hospitais: Record<string, HospitalManual> = {}
-      // A operadora escolhida vai junto: sem ela o servidor cai na operadora
-      // PRINCIPAL do cadastro, e um hospital que atende várias (AACD: Allianz
-      // principal, censo da Bradesco) carimbaria o envio com a operadora errada.
-      for (const f of files) hospitais[f.name] = { key: hospital, operadora_key: operadora }
-      const data = await enviarCensos(files, hospitais, setProgresso)
-      const pend = coletarPendentes(data.resultados ?? [])
-      const faltaHosp = (data.resultados ?? []).filter((r) => r.precisa_hospital).length
-      const scans = (data.resultados ?? []).filter((r) => r.erro_tipo === 'imagem').length
-      setResult(data)
-      setPendentes(pend)
-      setWizardAberto(pend.length + faltaHosp > 0)
-      // Só agora a lista é esvaziada: durante o processamento a caixa de
-      // arrastar mostra estes mesmos arquivos com o estado de cada um, e
-      // limpá-la antes deixaria a barra sem a fila a que ela se refere.
-      setFiles([])
-      setIgnorados([])
-      invalidarDados()
-      const partes: string[] = []
-      if (faltaHosp) partes.push(`${faltaHosp} ${plural(faltaHosp, 'arquivo')} sem hospital`)
-      // O digitalizado entra no toast porque é o único caso cuja saída está FORA
-      // desta tela: os pacientes vão ter de ser cadastrados na Visão Geral, e
-      // quem envia precisa sair daqui sabendo disso.
-      if (scans) {
-        partes.push(`${scans} ${plural(scans, 'arquivo')} ${plural(scans, 'digitalizado')}`
-          + ': cadastrar à mão')
-      }
-      if (pend.length) partes.push(`${pend.length} ${plural(pend.length, 'paciente')} para completar`)
-      setToast(partes.length ? `Censos lidos: ${partes.join(' · ')}` : 'Censos processados')
+      const stage = await subirCensos(files, setProgresso)
+      const previas = await conferirCensos(stage.sessao, stage.arquivos, hospitalLote, setProgresso)
+      setConferencia({ sessao: stage.sessao, previas })
     } catch (err) {
       setToast(`Erro: ${(err as Error).message}`)
     } finally {
       setBusy(false)
       setProgresso(null)
     }
+  }
+
+  // 2º passo, o Salvar da confirmação: o que for distribuído vira uma cópia por
+  // hospital (cada uma processada no hospital dela, só com os pacientes da sua
+  // unidade); o resto é processado como sempre, no hospital do lote.
+  async function salvarConferido(decisoes: Record<string, DecisaoArquivo>) {
+    const conf = conferencia
+    if (!conf) return
+    setConferencia(null)
+    setBusy(true)
+    try {
+      const itens: ItemEnvioCenso[] = []
+      for (const p of conf.previas) {
+        const grupos = p.hospitais_encontrados ?? []
+        const d = decisoes[p.arquivo]
+        if (!p.erro && grupos.length && d?.modo === 'distribuir') {
+          // Nome de cada cópia: o hospital do grupo (único, senão a cópia
+          // sobrescreveria a outra na pasta da sessão).
+          const usados = new Set<string>()
+          const partes = grupos.map((g, i) => {
+            const base = nomeDoGrupo(g)
+            const nome = usados.has(base) ? `${base} ${i + 1}` : base
+            usados.add(nome)
+            return nome
+          })
+          const { arquivos } = await distribuirCenso(conf.sessao, p.arquivo, partes)
+          arquivos.forEach((a, i) => itens.push({
+            nome: a.arquivo,
+            hospital: { key: d.hospitais[i] ?? grupos[i].hospital ?? hospital, operadora_key: operadora },
+            unidade: grupos[i].unidade ?? '-',
+          }))
+        } else if (!p.erro && grupos.length) {
+          // "Não são hospitais diferentes": todos no hospital do lote.
+          itens.push({ nome: p.arquivo, hospital: hospitalLote, unidade: '*' })
+        } else {
+          itens.push({ nome: p.arquivo, hospital: hospitalLote })
+        }
+      }
+      setProgresso({ fase: 'lendo', feitos: 0, total: itens.length, fracao: 0, fila: itens.map((x) => x.nome) })
+      aplicarResultado(await processarCensos(conf.sessao, itens, setProgresso))
+    } catch (err) {
+      setToast(`Erro: ${(err as Error).message}`)
+    } finally {
+      setBusy(false)
+      setProgresso(null)
+    }
+  }
+
+  function aplicarResultado(data: UploadCensoResponse) {
+    const pend = coletarPendentes(data.resultados ?? [])
+    const faltaHosp = (data.resultados ?? []).filter((r) => r.precisa_hospital).length
+    const scans = (data.resultados ?? []).filter((r) => r.erro_tipo === 'imagem').length
+    setResult(data)
+    setPendentes(pend)
+    setWizardAberto(pend.length + faltaHosp > 0)
+    // Só agora a lista é esvaziada: durante o processamento a caixa de
+    // arrastar mostra estes mesmos arquivos com o estado de cada um, e
+    // limpá-la antes deixaria a barra sem a fila a que ela se refere.
+    setFiles([])
+    setIgnorados([])
+    invalidarDados()
+    const partes: string[] = []
+    if (faltaHosp) partes.push(`${faltaHosp} ${plural(faltaHosp, 'arquivo')} sem hospital`)
+    // O digitalizado entra no toast porque é o único caso cuja saída está FORA
+    // desta tela: os pacientes vão ter de ser cadastrados na Visão Geral, e
+    // quem envia precisa sair daqui sabendo disso.
+    if (scans) {
+      partes.push(`${scans} ${plural(scans, 'arquivo')} ${plural(scans, 'digitalizado')}`
+        + ': cadastrar à mão')
+    }
+    if (pend.length) partes.push(`${pend.length} ${plural(pend.length, 'paciente')} para completar`)
+    setToast(partes.length ? `Censos salvos: ${partes.join(' · ')}` : 'Censos salvos')
   }
 
   // Desfazer um envio: apaga os pacientes que ELE criou. É o conserto do erro mais
@@ -396,9 +457,10 @@ export default function Upload() {
               somenteLeitura={somenteLeitura}
               onDesfazerArquivo={(arquivo) => {
                 const r = visiveis.find((x) => x.arquivo === arquivo)
+                // A cópia de um arquivo distribuído foi salva no hospital dela.
                 setConfirmarDesfazer({
                   sessao: result.sessao, arquivo,
-                  quantos: r?.criados ?? 0, hospital: hospitalEscolhido?.nome,
+                  quantos: r?.criados ?? 0, hospital: r?.hospital_nome || hospitalEscolhido?.nome,
                 })
               }}
               desfazendoArquivo={revertendo}
@@ -423,6 +485,21 @@ export default function Upload() {
           onSalvo={onSalvo}
           onDescartado={onDescartado}
           onClose={() => setWizardAberto(false)}
+        />
+      )}
+
+      {conferencia && (
+        <ConfirmarEnvio
+          previas={conferencia.previas}
+          hospitalNome={hospitalEscolhido?.nome || hospital}
+          operadoraNome={operadoras.find((o) => o.key === operadora)?.nome}
+          hospitaisOpcoes={hospitaisDaOperadora.map((h) => ({ key: h.key, nome: h.nome }))}
+          ocupado={busy}
+          onCancelar={() => {
+            setConferencia(null)
+            setToast('Envio cancelado. Nada foi salvo')
+          }}
+          onSalvar={(d) => void salvarConferido(d)}
         />
       )}
 

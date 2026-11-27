@@ -39,11 +39,12 @@ export function useInternacaoTimeline(id: number) {
   })
 }
 
-export function useInternacaoRelatorios(id: number) {
+export function useInternacaoRelatorios(id: number, habilitado = true) {
   return useQuery({
     queryKey: queryKeys.internacaoRelatorios(id),
     queryFn: () => fetchInternacaoRelatorios(id),
     staleTime: DRAWER_STALE,
+    enabled: habilitado,
   })
 }
 

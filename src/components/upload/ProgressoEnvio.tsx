@@ -101,8 +101,9 @@ export const progressoStyles = `
 `
 
 export interface EstadoProgresso {
-  /** `enviando` = subindo os bytes; `lendo` = o backend lê os PDFs, um a um. */
-  fase: 'enviando' | 'lendo'
+  /** `enviando` = subindo os bytes; `conferindo` = a prévia antes de salvar
+   *  (25/11/2026, nada é gravado); `lendo` = o backend lê e grava, um a um. */
+  fase: 'enviando' | 'conferindo' | 'lendo'
   /** Arquivos já lidos. */
   feitos: number
   total: number
@@ -110,6 +111,8 @@ export interface EstadoProgresso {
   fracao: number
   /** Nome do que está sendo lido agora (só na fase `lendo`). */
   atual?: string | null
+  /** A fila, quando não são os arquivos da caixa (cópias por hospital). */
+  fila?: string[]
 }
 
 const IcoOk = (
@@ -162,12 +165,15 @@ export function ProgressoEnvio({ estado, arquivos }: {
         <div className="up-run-anel" aria-hidden />
         <div className="up-run-txt">
           <div className="up-run-fase">
-            {fase === 'enviando' ? 'Enviando os arquivos' : 'Lendo os censos'}
+            {fase === 'enviando' ? 'Enviando os arquivos'
+              : fase === 'conferindo' ? 'Conferindo os censos' : 'Salvando os censos'}
           </div>
           <div className="up-run-sub">
             {fase === 'enviando'
               ? <>Mandando {total} {plural(total, 'arquivo')} para o servidor.</>
-              : 'Cada arquivo é lido e gravado, um por vez.'}
+              : fase === 'conferindo'
+                ? 'Lendo cada arquivo para você confirmar antes de salvar. Nada foi gravado ainda.'
+                : 'Cada arquivo é lido e gravado, um por vez.'}
           </div>
         </div>
         <div className="up-run-pct">{pct}%</div>
@@ -179,7 +185,7 @@ export function ProgressoEnvio({ estado, arquivos }: {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={pct}
-        aria-label={fase === 'enviando' ? 'Enviando arquivos' : 'Lendo censos'}
+        aria-label={fase === 'enviando' ? 'Enviando arquivos' : fase === 'conferindo' ? 'Conferindo censos' : 'Salvando censos'}
       >
         <div className="up-run-barra" style={{ width: `${pct}%` }} />
       </div>
@@ -187,9 +193,9 @@ export function ProgressoEnvio({ estado, arquivos }: {
         <span>
           {fase === 'enviando'
             ? 'Preparando o envio'
-            : <><b>{feitos}</b> de <b>{total}</b> {plural(total, 'arquivo')} {plural(feitos, 'lido')}</>}
+            : <><b>{feitos}</b> de <b>{total}</b> {plural(total, 'arquivo')} {plural(feitos, fase === 'conferindo' ? 'conferido' : 'salvo')}</>}
         </span>
-        {fase === 'lendo' && feitos < total && <span>Faltam {total - feitos}</span>}
+        {fase !== 'enviando' && feitos < total && <span>Faltam {total - feitos}</span>}
       </div>
 
       {/* O recado da demora. `aria-live` fica no contêiner de cima (a região

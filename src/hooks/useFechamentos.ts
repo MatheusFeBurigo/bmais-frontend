@@ -2,7 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys, queryRoots } from '../lib/queryKeys'
 import {
-  cancelarFechamento, fetchFechamentos, lancarFechamento, nomearNoFechamento,
+  cancelarFechamento, desfazerLote, fetchFechamentos, lancarFechamento, lancarLote, nomearNoFechamento,
   type NovoFechamento, type Papel,
 } from '../services/fechamentos.service'
 
@@ -37,4 +37,13 @@ export function useNomearNoFechamento() {
 
 export function useCancelarFechamento() {
   return useEscrita((v: { id: number; motivo: string | null }) => cancelarFechamento(v.id, v.motivo))
+}
+
+export function useLancarLote() {
+  return useEscrita((v: { id: number; tipo: 'PS' | 'AMB'; atendimentos: number; apresentado?: number | null; glosa?: number | null }) =>
+    lancarLote(v.id, { tipo: v.tipo, atendimentos: v.atendimentos, apresentado: v.apresentado, glosa: v.glosa }))
+}
+
+export function useDesfazerLote() {
+  return useEscrita((loteId: number) => desfazerLote(loteId))
 }

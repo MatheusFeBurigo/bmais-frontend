@@ -17,7 +17,8 @@ import {
   importEquipe, importConfiguracoes, importUpload,
   importKanban, importPaciente, importFormularioPorto, importImprimirRelatorio, importUsuarioForm, importLogs, importAjuda,
   importProgresso, importVolumetria, importRelatorio, importDocumentacao, importPortalProfissional,
-  importChamados, importAprovacoes, importAuditores, importFechamentos, importAusencias, importAgendaServicos,
+  importChamados, importAprovacoes, importAuditores, importFechamentos, importAgendaServicos, importSenhasPortal,
+  importLinhaDoTempo,
 } from './routes'
 
 // Páginas carregadas sob demanda (code-splitting). Diretoria e Gestor arrastam
@@ -45,7 +46,8 @@ const PortalProfissional = lazy(importPortalProfissional)
 const Aprovacoes = lazy(importAprovacoes)
 const Auditores = lazy(importAuditores)
 const Fechamentos = lazy(importFechamentos)
-const Ausencias = lazy(importAusencias)
+const SenhasPortal = lazy(importSenhasPortal)
+const LinhaDoTempo = lazy(importLinhaDoTempo)
 const AgendaServicos = lazy(importAgendaServicos)
 
 function PageFallback() {
@@ -186,6 +188,8 @@ function ProtectedRoutes() {
         <Route path="/kanban" element={<Navigate to="/tarefas" replace />} />
         {/* Movimentações (auditoria): analista interno e admin (EXCLUSIVAS.logs). */}
         <Route path="/logs" element={<GatedRoute screen="logs"><Logs /></GatedRoute>} />
+        {/* Linha do tempo (tela do protótipo do Bloco 2): o mesmo público de Movimentações. */}
+        <Route path="/linha-do-tempo" element={<GatedRoute screen="linhaDoTempo"><LinhaDoTempo /></GatedRoute>} />
         {/* Progresso (avanço do projeto): administração e diretoria. */}
         <Route
           path="/progresso"
@@ -233,10 +237,16 @@ function ProtectedRoutes() {
           path="/modulo-2/fechamentos"
           element={<GatedRoute screen="fechamentos"><Fechamentos /></GatedRoute>}
         />
-        {/* Módulo 2 > Ausências: os pedidos de ausência dos auditores (EXCLUSIVAS.ausencias). */}
+        {/* Módulo 2 > Ausências foi para dentro de Auditores (24/11/2026, pedido do usuário: "unifique as telas
+            de Auditores com Ausências"): o endereço antigo abre Auditores já filtrado em "Decisões pendentes". */}
         <Route
           path="/modulo-2/ausencias"
-          element={<GatedRoute screen="ausencias"><Ausencias /></GatedRoute>}
+          element={<GatedRoute screen="ausencias"><Navigate to="/auditores?filtro=decisoes" replace /></GatedRoute>}
+        />
+        {/* Módulo 2 > Senhas: as senhas do dia cadastradas pela B+ para o App (0070, só admin). */}
+        <Route
+          path="/modulo-2/senhas"
+          element={<GatedRoute screen="senhasPortal"><SenhasPortal /></GatedRoute>}
         />
         {/* Módulo 2 > Agenda de serviços: os postos de cada auditor (EXCLUSIVAS.agendaServicos). */}
         <Route

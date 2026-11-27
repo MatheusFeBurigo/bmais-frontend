@@ -78,3 +78,9 @@ export function DataDoCenso({ iso }: { iso?: string | null }) {
     </span>
   )
 }
+
+/** Nome de um grupo de pacientes de um arquivo com vários hospitais (confirmação do
+ *  envio, 25/11/2026): o hospital do cadastro, senão o que o arquivo diz. */
+export function nomeDoGrupo(g: { hospital_nome: string | null; nome_lido: string | null }): string {
+  return g.hospital_nome || g.nome_lido || 'Sem unidade no arquivo'
+}

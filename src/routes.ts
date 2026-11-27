@@ -24,8 +24,9 @@ export const importPortalProfissional = () => import('./pages/PortalProfissional
 export const importAprovacoes = () => import('./pages/Aprovacoes')
 export const importAuditores = () => import('./pages/Auditores')
 export const importFechamentos = () => import('./pages/Fechamentos')
-export const importAusencias = () => import('./pages/Ausencias')
+export const importSenhasPortal = () => import('./pages/SenhasPortal')
 export const importAgendaServicos = () => import('./pages/AgendaServicos')
+export const importLinhaDoTempo = () => import('./pages/LinhaDoTempo')
 
 // Mapa rota → prefetch, consumido pela Sidebar via onMouseEnter/onFocus.
 export const prefetchPorRota: Record<string, () => Promise<unknown>> = {
@@ -37,6 +38,7 @@ export const prefetchPorRota: Record<string, () => Promise<unknown>> = {
   '/upload': importUpload,
   '/tarefas': importKanban,
   '/logs': importLogs,
+  '/linha-do-tempo': importLinhaDoTempo,
   '/ajuda': importAjuda,
   '/ajuda/chamados': importChamados,
   '/chamados': importChamados,
@@ -45,7 +47,7 @@ export const prefetchPorRota: Record<string, () => Promise<unknown>> = {
   '/aprovacoes': importAprovacoes,
   '/auditores': importAuditores,
   '/modulo-2/fechamentos': importFechamentos,
-  '/modulo-2/ausencias': importAusencias,
+  '/modulo-2/senhas': importSenhasPortal,
   '/modulo-2/agenda-de-servicos': importAgendaServicos,
   '/progresso/relatorio': importRelatorio,
   '/progresso/documentacao': importDocumentacao,

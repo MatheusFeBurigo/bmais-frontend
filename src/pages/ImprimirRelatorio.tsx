@@ -105,6 +105,7 @@ const IconImprimir = () => (
 /** Situação do relatório no papel: quem lê a folha impressa não vê a tela. */
 function situacao(r: RelatorioItem): string {
   if (r.aprovacao === 'pendente') return 'Aguardando aprovação'
+  if (r.aprovacao === 'devolvido') return `Recusado${r.aprovacao_em ? ` em ${dataHora(r.aprovacao_em)}` : ''}`
   return r.aprovacao_em ? `Aprovado em ${dataHora(r.aprovacao_em)}` : ''
 }
 

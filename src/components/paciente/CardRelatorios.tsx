@@ -18,9 +18,11 @@ import { ResumoProrrogacao } from './SecaoProrrogacao'
 import { ResumoHomecare } from './SecaoHomecare'
 import { useFormRelatorio, type ContextoFolhaRosa, type ContextoProrrogacao } from './useFormRelatorio'
 
-// Situação na aprovação do técnico. Aprovado não leva etiqueta: é o normal.
+// Situação na aprovação do técnico. Aprovado não leva etiqueta: é o normal. O
+// recusado (26/11/2026) leva, com o motivo no título.
 function EtiquetaAprovacao({ r }: { r: RelatorioItem }) {
   if (r.aprovacao === 'pendente') return <span className="badge info">Aguardando aprovação</span>
+  if (r.aprovacao === 'devolvido') return <span className="badge danger" title={r.recusa_motivo ?? undefined}>Recusado</span>
   return null
 }
 

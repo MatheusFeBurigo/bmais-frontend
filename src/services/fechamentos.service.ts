@@ -47,6 +47,22 @@ export interface Fechamento {
   lancado_por: string | null
   lancado_em: string | null
   nomeacoes: Nomeacao[]
+  /** Lotes de pronto socorro e ambulatório (0069). `entrada` curto: a operadora não pede valores (Bradesco). */
+  entrada?: 'curto' | 'capeante'
+  lotes?: LoteFechamento[]
+}
+
+/** Lote de pronto socorro (PS) ou ambulatório (AMB): um capeante para vários atendimentos (0069). */
+export interface LoteFechamento {
+  id: number
+  tipo: 'PS' | 'AMB'
+  tipo_nome: string
+  atendimentos: number
+  apresentado: number | null
+  glosa: number | null
+  liberado: number | null
+  lancado_em: string | null
+  lancado_por: string | null
 }
 
 /** Par hospital + operadora da escala P, com o médico e o enfermeiro sugeridos. */
@@ -102,4 +118,15 @@ export function nomearNoFechamento(id: number, body: { papel: Papel; profissiona
 
 export function cancelarFechamento(id: number, motivo: string | null): Promise<{ fechamento: Fechamento }> {
   return apiFetch(`/fechamentos/${id}/cancelar`, { method: 'POST', body: { motivo } })
+}
+
+/** Lança o lote de PS ou ambulatório no fechamento (0069). Valores só quando a operadora não é de lançamento curto. */
+export function lancarLote(id: number, body: { tipo: 'PS' | 'AMB'; atendimentos: number; apresentado?: number | null; glosa?: number | null }):
+  Promise<{ fechamento: Fechamento }> {
+  return apiFetch(`/fechamentos/${id}/lotes`, { method: 'POST', body })
+}
+
+/** Desfaz o lote (fica registrado como desfeito; nada se apaga). */
+export function desfazerLote(loteId: number): Promise<{ fechamento: Fechamento | null }> {
+  return apiFetch(`/fechamentos/lotes/${loteId}/desfazer`, { method: 'POST', body: {} })
 }

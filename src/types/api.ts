@@ -737,6 +737,67 @@ export interface AuditoriaResumo {
   usuarios: AuditoriaUsuario[]
 }
 
+// ── Linha do tempo (GET /api/auditoria/linha-do-tempo) ──────────────────────
+// A trilha de Movimentações no formato da tela `linha` do protótipo do Bloco 2:
+// só o que deu certo, com o ritmo, as áreas e os rankings já contados no servidor.
+
+export type LinhaPeriodo = 'hoje' | '7' | '14'
+/** Área da ficha (application/linha_do_tempo.AREAS). */
+export type LinhaArea =
+  | 'pacientes' | 'censos' | 'tarefas' | 'senhas' | 'contas' | 'fech' | 'auditores'
+  | 'cad' | 'obs' | 'regras' | 'dist' | 'usuarios' | 'geral'
+/** ok = feito ou aprovado; warn = ajuste, troca ou pedido; crit = recusa. */
+export type LinhaTom = 'ok' | 'warn' | 'crit' | ''
+
+export interface LinhaItem {
+  id: number
+  quando: string
+  /** Dia e hora no horário de Brasília. */
+  dia: string
+  hora: string
+  area: LinhaArea
+  tom: LinhaTom
+  texto: string
+  quem_key: string | null
+  quem: string
+  papel: UserRole | string | null
+  hospitais: Array<{ key: string; nome: string }>
+  operadora: { key: string; nome: string } | null
+  /** Abre a ficha do paciente. */
+  internacao_id: number | null
+  desfeito_em: string | null
+  desfeito_hora: string | null
+}
+
+export interface LinhaBalde {
+  id: string
+  rot: string
+  tit: string
+  /** Fim de semana (sem tabela de feriados). */
+  fraco: boolean
+}
+
+export interface LinhaRanking { key: string; nome: string; n: number }
+
+export interface LinhaDoTempoPayload {
+  periodo: LinhaPeriodo
+  desde: string
+  hoje: string
+  hoje_total: number
+  ritmo: Array<LinhaBalde & { n: number }>
+  balde: LinhaBalde | null
+  areas: Array<{ key: LinhaArea; rotulo: string; n: number }>
+  tudo: number
+  pessoas: Array<{ key: string; nome: string }>
+  operadoras: Array<{ key: string; nome: string }>
+  quem_mais: LinhaRanking[]
+  onde: LinhaRanking[]
+  total: number
+  por_dia: Record<string, number>
+  itens: LinhaItem[]
+  mais: boolean
+}
+
 // ── Configurações (GET /api/configuracoes) ──────────────────────────────────
 export interface OperadoraRegras {
   dias_uti: number
@@ -1062,8 +1123,9 @@ export type ColunaAcompanhamento = 'prorrogados' | 'negociacao' | 'aguardando_ac
 export type ColunaAprovacao = 'aguardando_aprovacao'
 
 /** Situação do relatório na aprovação (backend: aprovacao_relatorio). A
- *  devolução ao autor saiu em 21/10/2026 (migration 0057). */
-export type AprovacaoRelatorio = 'aprovado' | 'pendente'
+ *  devolução ao autor saiu em 21/10/2026 (migration 0057). 'devolvido' voltou em
+ *  26/11/2026 como RECUSADO: final, com motivo (`recusa_motivo`), não conta. */
+export type AprovacaoRelatorio = 'aprovado' | 'pendente' | 'devolvido'
 
 // ── Prorrogação (0047) ────────────────────────────────────────────────────
 /** Um período do pedido de prorrogação: acomodação e datas ISO. */
@@ -1861,7 +1923,10 @@ export interface PacienteNovo {
   /** Opcional desde 13/11/2026: sem ele o backend usa a chave provisória
    *  (nome + entrada), e cadastrar de novo acha a mesma ficha. */
   atendimento?: string | null
+  /** Nome OU senha (26/11/2026): pode ir vazio quando há senha. */
   nome: string
+  /** Senha de autorização; sem nome, é ela que identifica o paciente. */
+  senha?: string | null
   data_entrada: string
   /** Preenchida = paciente cadastrado já com alta (status ALTA no backend). */
   data_alta?: string | null
@@ -2055,7 +2120,11 @@ export interface RelatorioItem {
   /** Aprovação do técnico: só o aprovado conta como visita. */
   aprovacao?: AprovacaoRelatorio
   aprovacao_por?: string | null
+  /** Nome de quem aprovou ou recusou, para exibir. */
+  aprovacao_por_nome?: string | null
   aprovacao_em?: string | null
+  /** Motivo da recusa (só no recusado). */
+  recusa_motivo?: string | null
   /** Pedido de prorrogação deste relatório. */
   prorrogacao?: PedidoProrrogacao | null
   /** Folha rosa negociada neste relatório. */

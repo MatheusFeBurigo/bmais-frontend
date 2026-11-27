@@ -6,8 +6,10 @@
 //                 hospital dela (combobox de valor fechado). Com hospital ↔
 //                 operadoras N-N, o hospital sozinho não diz a operadora do
 //                 paciente, e o censo do quadro é por hospital + operadora.
-//   ② Pacientes — uma linha por paciente: Nome, Atendimento, Entrada, Alta,
-//                 Leito; especialidade e médico abrem por linha ("mais dados").
+//   ② Pacientes — uma linha por paciente: Nome, Senha, Atendimento, Entrada,
+//                 Alta, Leito; especialidade e médico abrem por linha ("mais
+//                 dados"). Nome OU senha (26/11/2026: "esse campo não é
+//                 obrigatório, mas sempre deve haver, ou a senha ou o nome").
 //                 Tab anda entre os campos; Enter vai para a próxima linha (e
 //                 abre uma nova na última). Linha em branco é ignorada.
 //   ③ Censo     — "O hospital já atualizou o censo de hoje": a confirmação, no
@@ -37,7 +39,7 @@ const styles = `
 .ap-sec-dica{font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted);font-size:var(--t-xs)}
 .ap-corpo{padding-left:28px}
 .ap-local{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:640px}
-.ap-grade{display:grid;grid-template-columns:minmax(170px,1fr) 108px 142px 142px 124px 30px 30px;column-gap:8px;align-items:center}
+.ap-grade{display:grid;grid-template-columns:minmax(170px,1fr) 108px 108px 142px 142px 124px 30px 30px;column-gap:8px;align-items:center}
 .ap-cab{font-size:10px;letter-spacing:.1em;font-weight:600;text-transform:uppercase;color:var(--muted);padding:0 2px 4px}
 .ap-linha{padding:4px 0}
 .ap-linha + .ap-linha{border-top:1px dashed var(--border)}
@@ -47,7 +49,7 @@ const styles = `
 .ap-btn-ico.on{color:var(--primary);background:var(--primary-soft)}
 .ap-btn-ico:disabled{opacity:.35;cursor:default;background:transparent}
 .ap-extra{margin-top:6px}
-.ap-extra-medico{grid-column:2 / 6}
+.ap-extra-medico{grid-column:2 / 7}
 .ap-erro{margin-top:4px;font-size:var(--t-xs);color:var(--danger)}
 .ap-falta{border-color:var(--warning)!important;background:var(--warning-bg)!important}
 .ap-add{justify-self:start;margin-top:4px;border:0;background:transparent;color:var(--accent);font-weight:600;font-size:var(--t-sm);cursor:pointer;padding:4px 0}
@@ -71,6 +73,8 @@ const LEITO_OPCOES = [
 interface Linha {
   id: number
   nome: string
+  /** Senha de autorização: sem nome, é ela que identifica o paciente. */
+  senha: string
   atendimento: string
   entrada: string
   alta: string
@@ -85,13 +89,13 @@ interface Linha {
 
 let proximoId = 1
 const linhaVazia = (): Linha => ({
-  id: proximoId++, nome: '', atendimento: '', entrada: '', alta: '', leito: '',
+  id: proximoId++, nome: '', senha: '', atendimento: '', entrada: '', alta: '', leito: '',
   especialidade: '', medico: '', mais: false,
 })
 
 // Linha em branco não conta (o leito sozinho não identifica ninguém).
 const preenchida = (l: Linha) =>
-  [l.nome, l.atendimento, l.entrada, l.alta, l.especialidade, l.medico].some((v) => v.trim() !== '')
+  [l.nome, l.senha, l.atendimento, l.entrada, l.alta, l.especialidade, l.medico].some((v) => v.trim() !== '')
 
 // Hoje no fuso local, em ISO (o que o input date usa). toISOString() daria o dia
 // em UTC, que à noite no Brasil já é amanhã.
@@ -102,11 +106,13 @@ function hojeIso(): string {
 
 /** O que falta ou está errado numa linha preenchida. */
 function problemas(l: Linha, hoje: string) {
-  const nome = !l.nome.trim()
+  // Nome ou senha: um dos dois identifica o paciente (os dois ficam marcados).
+  const nome = !l.nome.trim() && !l.senha.trim()
   const entrada = !l.entrada || l.entrada > hoje
   const alta = Boolean(l.alta) && (l.alta < l.entrada || l.alta > hoje)
   let msg = ''
-  if (l.entrada > hoje) msg = 'A data de entrada não pode ser futura.'
+  if (nome) msg = 'Informe o nome ou a senha do paciente.'
+  else if (l.entrada > hoje) msg = 'A data de entrada não pode ser futura.'
   else if (l.alta && l.alta > hoje) msg = 'A data de alta não pode ser futura.'
   else if (l.alta && l.entrada && l.alta < l.entrada) msg = 'A alta não pode ser antes da entrada.'
   return { nome, entrada, alta, msg, algum: nome || entrada || alta }
@@ -115,7 +121,10 @@ function problemas(l: Linha, hoje: string) {
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
 
 // Anotação do card de censo (obrigatória no quadro): diz que veio do cadastro
-// manual e quem entrou, para a timeline do censo contar o que aconteceu.
+// manual e quem entrou, para a timeline do censo contar o que aconteceu. Sem
+// nome, o paciente aparece pela senha.
+const identificacao = (l: Linha) => l.nome.trim() || `senha ${l.senha.trim()}`
+
 function anotacaoDoCenso(nomes: string[]): string {
   const texto = `O hospital já atualizou o censo. ${plural(nomes.length, 'paciente adicionado', 'pacientes adicionados')} à mão: ${nomes.join(', ')}.`
   return texto.length <= 1000 ? texto : `${texto.slice(0, 997)}...`
@@ -250,6 +259,7 @@ export default function AddPacienteModal({
           operadora_key: operadora,
           atendimento: l.atendimento.trim() || null,
           nome: l.nome.trim(),
+          senha: l.senha.trim() || null,
           data_entrada: l.entrada,
           data_alta: l.alta || null,
           tipo_leito: l.leito || null,
@@ -292,7 +302,7 @@ export default function AddPacienteModal({
         await marcarAtualizado.mutateAsync({
           hospitalKey: hospital,
           operadoraKey: operadora,
-          anotacao: anotacaoDoCenso(validas.map((l) => l.nome.trim())),
+          anotacao: anotacaoDoCenso(validas.map(identificacao)),
         })
         onDone(`${resumo} · censo marcado como atualizado`)
       } catch (err) {
@@ -315,7 +325,7 @@ export default function AddPacienteModal({
     <Modal
       title="Adicionar pacientes"
       onClose={onClose}
-      largura={900}
+      largura={1000}
       footer={
         <>
           <button className="btn btn-outline" onClick={onClose} disabled={saving}>Cancelar</button>
@@ -360,11 +370,12 @@ export default function AddPacienteModal({
         <section className="ap-sec">
           <div className="ap-sec-tit">
             <span className="ap-num">2</span>Pacientes
-            <span className="ap-sec-dica">· Enter vai para a próxima linha</span>
+            <span className="ap-sec-dica">· informe o nome ou a senha · Enter vai para a próxima linha</span>
           </div>
           <div className="ap-corpo" style={{ display: 'grid' }}>
             <div className="ap-grade">
-              <div className="ap-cab">Nome *</div>
+              <div className="ap-cab">Nome</div>
+              <div className="ap-cab">Senha</div>
               <div className="ap-cab">Atendimento</div>
               <div className="ap-cab">Entrada *</div>
               <div className="ap-cab">Alta</div>
@@ -385,6 +396,11 @@ export default function AddPacienteModal({
                       value={l.nome} disabled={saving}
                       autoFocus={i === 0 && !!par}
                       onChange={(e) => mudar(l.id, 'nome', e.target.value)} />
+                    <input type="text" className={`bm-input${p?.nome ? ' ap-falta' : ''}`}
+                      placeholder="Sem nome, obrigatória" aria-label="Senha de autorização"
+                      title="Opcional quando há nome; sem nome, é a senha que identifica o paciente"
+                      value={l.senha} disabled={saving}
+                      onChange={(e) => mudar(l.id, 'senha', e.target.value)} />
                     <input type="text" className="bm-input" placeholder="Opcional" aria-label="Atendimento"
                       value={l.atendimento} disabled={saving}
                       onChange={(e) => mudar(l.id, 'atendimento', e.target.value)} />

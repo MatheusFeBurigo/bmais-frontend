@@ -99,7 +99,7 @@ export function ModuloOperacional({ irPara }: Props) {
         passos={[
           { n: 1, titulo: "Clique em Adicionar paciente", corpo: <>Abre o formulário de cadastro manual. Quem tem perfil somente leitura não vê o botão.</> },
           { n: 2, titulo: "Escolha a operadora e o hospital", corpo: <>O hospital só libera depois da operadora, e a lista traz apenas os hospitais dela.</> },
-          { n: 3, titulo: "Informe o nome e, se tiver, o atendimento", corpo: <>O nome é obrigatório e o atendimento, opcional. Sem o número, o sistema reconhece o paciente pelo nome e pela data de entrada, e cadastrar de novo não cria outra ficha.</> },
+          { n: 3, titulo: "Informe o nome ou a senha e, se tiver, o atendimento", corpo: <>É preciso o nome ou a senha do paciente (um dos dois, ou os dois); o atendimento é opcional. Sem o número, o sistema reconhece o paciente pelo nome (ou, sem nome, pela senha) e pela data de entrada, e cadastrar de novo não cria outra ficha.</> },
           { n: 4, titulo: "Marque a situação e as datas", corpo: <><strong>Internado</strong> pede só a data de entrada, que é a base de todo o cálculo de dias. <strong>Alta</strong> serve para quem já saiu: pede também a data de alta, entre a entrada e hoje, e o paciente entra direto nos indicadores de altas e de permanência.</> },
           { n: 5, titulo: "Complete o resto, se souber", corpo: <>Leito, especialidade e médico são opcionais e podem ser completados depois, na ficha. O leito define o gatilho de monitoramento, então vale informar.</> },
           { n: 6, titulo: "Clique em Adicionar", corpo: <>Se o atendimento já existir naquele hospital, o sistema avisa e não cria um paciente repetido.</> },
@@ -175,7 +175,7 @@ export function ModuloOperacional({ irPara }: Props) {
       <Tabela cabecalho={['Ação', 'Efeito']} larguras={['185px']}>
         <tr><Key>Clicar numa linha</Key><td>Abre a <strong>ficha rápida do paciente</strong> em painel lateral: dias internado, dias sem relatório, leito, timeline da internação{ACOES_NO_PAINEL ? ' e, para técnico, gestor e operacional, o formulário de registrar relatório' : ''}. O nome do hospital abre a ficha dele, e um relatório da timeline abre o relatório. No topo ficam <strong>Detalhes</strong>, que leva à ficha completa, e, em paciente da Porto, <strong>Formulário Porto</strong>; o analista não vê os dois nem abre os relatórios. Técnico, coordenador técnico, gestor, operacional e coordenador operacional têm ainda o botão <strong>Alta</strong>, no rodapé; em quem saiu por alta dada à mão ou automática, ele vira <strong>Desfazer alta</strong>.</td></tr>
         <tr><Key>Clicar no hospital</Key><td>Abre a ficha do hospital, com indicadores, operadoras atendidas, dados cadastrais e histórico de censos sob demanda.<SoGestao> Gestor e diretor têm ainda <strong>Abrir cadastro</strong>, que leva ao cadastro do hospital em Configurações.</SoGestao></td></tr>
-        <tr><Key>Adicionar paciente</Key><td>Cadastro manual: operadora, hospital, nome, atendimento, situação (internado ou alta), data de entrada, data de alta quando for o caso e, opcionalmente, leito, especialidade e médico. Não duplica: se o atendimento já existir no hospital, avisa que o paciente não foi duplicado.</td></tr>
+        <tr><Key>Adicionar paciente</Key><td>Cadastro manual: operadora, hospital, nome ou senha (um dos dois é obrigatório), atendimento, situação (internado ou alta), data de entrada, data de alta quando for o caso e, opcionalmente, leito, especialidade e médico. Não duplica: se o atendimento já existir no hospital, avisa que o paciente não foi duplicado.</td></tr>
         <tr><Key>Exportar</Key><td>Gera a planilha de controle de auditoria. Com algum filtro ligado (card de status, hospital, busca, filtro rápido ou período), a primeira opção já vem marcada: <strong>Com os filtros do painel</strong>, só com os pacientes que a lista mostra, de todas as páginas. Se a lista ainda não tinha vindo inteira, a opção mostra <strong>carregando a lista…</strong> e libera o botão quando ela chega. As outras dão a planilha inteira, sem os filtros da tela: da operadora aberta, ou de todas num único arquivo, com uma aba por hospital.</td></tr>
         <tr><Key>Próxima / Anterior</Key><td>A lista mostra 50 pacientes por página e abre com as 5 primeiras páginas, para aparecer mais rápido. Ao chegar na quinta, as 5 seguintes já vêm em segundo plano, e assim por diante; se a página ainda não tiver chegado, a tabela mostra <strong>Carregando mais pacientes…</strong>. A contagem e o total de páginas são sempre os da lista inteira. Busca, filtros rápidos, período e ordenação trazem a lista inteira de uma vez, porque recortam todos os pacientes.</td></tr>
         <tr><Key>Atualizar</Key><td>Recarrega lista, indicadores e contagens da barra lateral. A tela também se atualiza sozinha enquanto está à vista e ao voltar para ela; ao lado do botão, <strong>Atualizado</strong> mostra a hora dos dados na tela.</td></tr>
@@ -305,7 +305,7 @@ export function ModuloPaciente({ irPara }: Props) {
       >
         <>
           <Tela nome="Ficha do relatório" largura={760}
-            descricao="Relatório do operacional esperando aprovação. Editar fica ao lado de Aprovar.">
+            descricao="Relatório do operacional esperando aprovação. Recusar e Editar ficam ao lado de Aprovar.">
             <ReplicaFichaRelatorioPendente marcas={{ editar: 1 }} />
           </Tela>
           <Tela nome="Corrigir relatório" largura={900}
@@ -725,7 +725,7 @@ export function ModuloKanban({ irPara }: Props) {
       <Tabela cabecalho={['Coluna', 'O que reúne', 'O que fazer']} larguras={['160px', undefined, '215px']}>
         <tr><Key>Aguardando aprovação</Key>
           <td>Relatórios enviados pelo operacional e pelo coordenador operacional: paciente, visita, quem enviou, a prorrogação pedida e se há documento anexado.</td>
-          <td>Técnico, coordenador técnico ou gestor: clique no card. A ficha do paciente abre com o relatório, e Editar e Aprovar ficam no rodapé dele. Na edição, Salvar deixa o relatório aqui; Salvar e aprovar libera.</td></tr>
+          <td>Técnico, coordenador técnico ou gestor: clique no card. A ficha do paciente abre com o relatório, e Recusar, Editar e Aprovar ficam no rodapé dele. Na edição, Salvar deixa o relatório aqui; Salvar e aprovar libera. Recusar pede o motivo: o relatório não vale como visita, sai daqui e quem registrou vê o motivo.</td></tr>
       </Tabela>
 
       <h3>Pendências</h3>
@@ -980,7 +980,8 @@ export function ModuloUpload() {
           { n: 1, titulo: "Escolha a operadora", corpo: <>A lista de hospitais do passo seguinte passa a mostrar só os daquela operadora. Ela também define qual censo do hospital é dado como recebido em Tarefas.</> },
           { n: 2, titulo: "Escolha o hospital", corpo: <>Digite parte do nome. Vale para todos os arquivos do envio: censos de hospitais diferentes vão em envios separados.</> },
           { n: 3, titulo: "Arraste os arquivos para a caixa", corpo: <>Ou clique nela para escolher. PDF, CSV e Excel, vários de uma vez, até 25 MB cada. Confira a lista que aparece embaixo; o <strong>X</strong> tira um arquivo que veio errado, e <strong>Limpar arquivos</strong> tira todos.</> },
-          { n: 4, titulo: "Clique em Processar censos", corpo: <>O andamento aparece dentro da própria caixa. Não feche a página até terminar.</> },
+          { n: 4, titulo: "Clique em Conferir e salvar", corpo: <>O sistema lê os arquivos <strong>sem gravar nada</strong> e mostra a confirmação: em qual hospital cada arquivo será salvo, de que dia é o censo e quantos internados e altas ele traz. Se o arquivo indicar outro hospital, ou tiver pacientes de mais de um hospital, a confirmação avisa e pergunta se são hospitais diferentes, para salvar cada paciente no seu hospital.</> },
+          { n: 5, titulo: "Confira e clique em Salvar", corpo: <>Só aqui os pacientes são gravados. <strong>Cancelar</strong> não grava nada. O andamento aparece dentro da própria caixa; não feche a página até terminar.</> },
         ]}
       >
         <Tela nome="Envio de Censos" largura={760}

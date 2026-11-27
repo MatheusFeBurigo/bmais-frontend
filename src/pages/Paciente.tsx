@@ -79,8 +79,6 @@ export default function Paciente() {
     const rid = Number(params.get('relatorio'))
     return rid ? { relatorio_id: rid } : null
   })
-  // Veio do card de Tarefas: decidido o relatório, volta para o quadro.
-  const veioDeTarefas = params.get('origem') === 'tarefas'
   function fecharRelatorio() {
     setRelatorioAberto(null)
     if (params.has('relatorio')) {
@@ -91,12 +89,12 @@ export default function Paciente() {
   }
   // Relatório pendente em correção por quem aprova: abre por cima da ficha dele.
   const [corrigindo, setCorrigindo] = useState<RelatorioItem | null>(null)
+  // Decidido o relatório (aprovado ou recusado), fica na ficha do paciente, mesmo
+  // quando veio do card de Tarefas (27/11/2026, pedido do usuário: "não devo
+  // voltar para tarefas, devo entrar na ficha do paciente"); o Voltar do topo
+  // leva de volta ao quadro.
   function relatorioDecidido(aviso: string) {
     setCorrigindo(null)
-    if (veioDeTarefas) {
-      navigate('/tarefas', { state: { aviso } })
-      return
-    }
     fecharRelatorio()
     setToast(aviso)
   }
